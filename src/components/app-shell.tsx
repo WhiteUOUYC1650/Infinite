@@ -21,7 +21,7 @@ export function AppShell() {
       </Sidebar>
       <SidebarInset>
         {selectedItem ? (
-          <ChatView item={selectedItem} />
+          <ChatView item={selectedItem} onClose={() => setSelectedItem(null)} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center bg-background p-4">
             <div className="flex flex-col items-center text-center">

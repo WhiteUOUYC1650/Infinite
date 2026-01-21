@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { currentUser, getUserById } from "@/lib/data";
 import type { ChatItem, Message } from "@/types";
-import { Paperclip, Phone, Send, Video } from "lucide-react";
+import { Paperclip, Phone, Send, Video, X } from "lucide-react";
 import { UserAvatarWithStatus } from "./user-avatar-with-status";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 
 
-export function ChatView({ item }: { item: ChatItem }) {
+export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => void }) {
   const getChatName = () => {
     if (item.type === "dm") {
       const otherUserId = item.members.find((id) => id !== currentUser.id);
@@ -52,6 +52,9 @@ export function ChatView({ item }: { item: ChatItem }) {
           </Button>
           <Button variant="ghost" size="icon">
             <Video className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
           </Button>
         </div>
       </header>
