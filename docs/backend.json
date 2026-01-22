@@ -7,11 +7,11 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "User's display name."
+          "description": "User's display name or nickname. This is not unique."
         },
         "username": {
           "type": "string",
-          "description": "User's unique handle, starting with '@'."
+          "description": "User's unique handle, starting with '@'. This must be unique across all users."
         },
         "avatar": {
           "type": "string",
