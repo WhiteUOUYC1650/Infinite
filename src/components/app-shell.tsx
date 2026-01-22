@@ -1,34 +1,43 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 import {
   SidebarProvider,
   Sidebar,
   SidebarInset,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
-import { SidebarContent } from "@/components/sidebar-content";
-import { ChatView } from "@/components/chat/chat-view";
-import type { ChatItem } from "@/types";
-import { MessageCircle } from "lucide-react";
+} from '@/components/ui/sidebar';
+import { SidebarContent } from '@/components/sidebar-content';
+import { ChatView } from '@/components/chat/chat-view';
+import type { ChatItem, PopulatedChat } from '@/types';
+import { MessageCircle } from 'lucide-react';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { useCollection, useDoc } from '@/firebase';
+import { collection, doc, getFirestore, query, where } from 'firebase/firestore';
+import type { User } from '@/types';
 
-function ChatUI() {
-  const [selectedItem, setSelectedItem] = useState<ChatItem | null>(null);
+
+function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
+  const [selectedItem, setSelectedItem] = useState<PopulatedChat | null>(null);
   const { isMobile } = useSidebar();
+  const db = getFirestore();
 
-  const handleSelect = (item: ChatItem) => {
+  const { data: userData } = useDoc<User>(db && doc(db, 'users', currentUser.uid));
+
+
+  const handleSelect = (item: PopulatedChat) => {
     setSelectedItem(item);
   };
 
   return (
     <>
       <Sidebar>
-        <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} />
+        {userData && <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={{...currentUser, ...userData}} />}
       </Sidebar>
       <SidebarInset>
         {selectedItem ? (
-          <ChatView item={selectedItem} onClose={() => setSelectedItem(null)} />
+          <ChatView item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={currentUser} />
         ) : (
           <div className="relative flex h-full flex-col items-center justify-center bg-background p-4">
             {isMobile && (
@@ -49,10 +58,10 @@ function ChatUI() {
   );
 }
 
-export function AppShell() {
+export function AppShell({ user }: { user: FirebaseUser }) {
   return (
     <SidebarProvider>
-      <ChatUI />
+      <ChatUI currentUser={user} />
     </SidebarProvider>
   );
 }

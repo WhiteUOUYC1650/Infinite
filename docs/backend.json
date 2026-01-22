@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "User's display name."
+        },
+        "avatar": {
+          "type": "string",
+          "description": "URL to the user's avatar image."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["online", "away", "offline"],
+          "description": "User's current status."
+        },
+        "statusMessage": {
+            "type": "string",
+            "description": "A short status message from the user."
+        }
+      },
+      "required": ["name", "avatar", "status"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message within a chat.",
+      "type": "object",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "description": "The ID of the user who sent the message."
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "timestamp": {
+          "type": "object",
+          "description": "The server timestamp when the message was created."
+        }
+      },
+      "required": ["senderId", "content", "timestamp"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Represents a chat conversation.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["dm", "group", "channel"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the group or channel."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of user IDs who are members of this chat."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Name of the lucide-react icon for the chat."
+        },
+        "description": {
+            "type": "string",
+            "description": "Description for a channel."
+        },
+        "lastMessage": {
+            "type": "object",
+            "description": "The last message sent in the chat for display in the sidebar."
+        }
+      },
+      "required": ["type", "members"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/User"
+      },
+      "description": "Stores individual user profiles."
+    },
+    "/chats/{chatId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Chat"
+      },
+      "description": "Stores metadata for chat rooms (DMs, groups, channels)."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Message"
+      },
+      "description": "Stores messages for a specific chat."
+    }
+  }
+}

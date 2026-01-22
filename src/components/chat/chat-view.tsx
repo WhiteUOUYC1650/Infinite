@@ -1,31 +1,112 @@
+'use client';
 
-"use client";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { currentUser, getUserById } from "@/lib/data";
-import type { ChatItem, Message } from "@/types";
-import { Paperclip, Phone, Send, Video, X } from "lucide-react";
-import { UserAvatarWithStatus } from "./user-avatar-with-status";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import type { Message, PopulatedChat, User } from '@/types';
+import { Paperclip, Phone, Send, Video, X } from 'lucide-react';
+import { UserAvatarWithStatus } from './user-avatar-with-status';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
+import { useCollection, useDoc } from '@/firebase';
+import { addDoc, collection, doc, getFirestore, serverTimestamp } from 'firebase/firestore';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import type { User as FirebaseUser } from 'firebase/auth';
+
+function useUsers(userIds: string[]) {
+    const db = getFirestore();
+    const [users, setUsers] = useState<Record<string, User>>({});
+
+    const userDocs = useMemo(() => {
+        if (!db || !userIds) return [];
+        return userIds.map(uid => doc(db, 'users', uid));
+    }, [db, userIds]);
+
+    // This is not efficient, but use-doc doesn't support multiple docs
+    useEffect(() => {
+        if (!userDocs.length) return;
+
+        const unsubscribes = userDocs.map(userDoc => {
+            const { onSnapshot } = require('firebase/firestore');
+            return onSnapshot(userDoc, (snapshot) => {
+                if (snapshot.exists()) {
+                    setUsers(prev => ({ ...prev, [snapshot.id]: { id: snapshot.id, ...snapshot.data() } as User }));
+                }
+            });
+        });
+        
+        return () => unsubscribes.forEach(unsub => unsub());
+
+    }, [userDocs]);
+    
+    return users;
+}
 
 
-export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => void }) {
+export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: FirebaseUser }) {
+  const db = getFirestore();
+  const [messageContent, setMessageContent] = useState('');
+
+  const messagesQuery = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'chats', item.id, 'messages');
+  }, [db, item.id]);
+
+  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, { orderBy: 'timestamp' });
+  const allUserIds = useMemo(() => {
+    const ids = new Set(item.members);
+    if (messages) {
+        messages.forEach(msg => ids.add(msg.senderId));
+    }
+    return Array.from(ids);
+  }, [item.members, messages]);
+
+  const usersData = useUsers(allUserIds);
+  
+  const otherUser = useMemo(() => {
+    if (item.type !== 'dm' || !usersData) return null;
+    const otherUserId = item.members.find((id) => id !== currentUser.uid);
+    return otherUserId ? usersData[otherUserId] : null;
+  }, [item, currentUser.uid, usersData]);
+  
   const getChatName = () => {
-    if (item.type === "dm") {
-      const otherUserId = item.members.find((id) => id !== currentUser.id);
-      return otherUserId ? getUserById(otherUserId)?.name : "Direct Message";
+    if (item.type === 'dm') {
+      return otherUser?.name || 'Direct Message';
     }
     return item.name;
+  };
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+        }
+    }
+  }, [messages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageContent.trim() || !db) return;
+
+    try {
+      await addDoc(collection(db, 'chats', item.id, 'messages'), {
+        senderId: currentUser.uid,
+        content: messageContent,
+        timestamp: serverTimestamp(),
+      });
+      setMessageContent('');
+    } catch (error) {
+      console.error("Error sending message: ", error);
+    }
   };
 
   return (
@@ -35,18 +116,16 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
-        {item.type === "dm" ? (
-          <UserAvatarWithStatus
-            user={getUserById(item.members.find((id) => id !== currentUser.id)!)!}
-          />
+        {item.type === "dm" && otherUser ? (
+          <UserAvatarWithStatus user={otherUser} />
         ) : (
-          item.icon && <item.icon className="h-8 w-8 mr-3 text-muted-foreground" />
+          item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />
         )}
         <div className="flex-1">
           <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
           <p className="text-sm text-muted-foreground">
-            {item.type === "dm"
-              ? getUserById(item.members.find((id) => id !== currentUser.id)!)?.status
+            {item.type === "dm" && otherUser
+              ? otherUser.status
               : `${item.members?.length || 0} members`}
           </p>
         </div>
@@ -63,10 +142,11 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
       </header>
 
       {/* Message List */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-6">
-          {item.messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+          {messagesLoading && <div>Loading messages...</div>}
+          {messages && messages.map((message) => (
+            <ChatMessage key={message.id} message={message} sender={usersData[message.senderId]} isCurrentUser={message.senderId === currentUser.uid} />
           ))}
         </div>
       </ScrollArea>
@@ -74,43 +154,51 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
       {/* Message Input */}
       {item.type !== 'channel' && (
         <footer className="p-4 border-t">
-            <div className="relative">
+            <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder="Type a message..."
                 className="pr-24 py-3 resize-none"
                 rows={1}
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                    }
+                }}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" type="button">
                     <Paperclip className="h-5 w-5" />
                 </Button>
-                <Button size="icon">
-                <Send className="h-5 w-5" />
+                <Button size="icon" type="submit">
+                  <Send className="h-5 w-5" />
                 </Button>
             </div>
-            </div>
+            </form>
         </footer>
       )}
     </div>
   );
 }
 
-function ChatMessage({ message }: { message: Message }) {
-  const isCurrentUser = message.senderId === currentUser.id;
-
+function ChatMessage({ message, sender, isCurrentUser }: { message: Message, sender?: User, isCurrentUser: boolean }) {
+    const timestamp = message.timestamp ? new Date(message.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    
   return (
     <div className={cn("flex items-end gap-3", isCurrentUser && "flex-row-reverse")}>
-      {!isCurrentUser && (
+      {!isCurrentUser && sender && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Avatar className="h-8 w-8">
-                        {message.sender?.avatar && <AvatarImage src={message.sender.avatar} alt={message.sender.name} />}
-                        <AvatarFallback>{message.sender?.name.charAt(0)}</AvatarFallback>
+                        {sender.avatar && <AvatarImage src={sender.avatar} alt={sender.name} />}
+                        <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>{message.sender?.name}</p>
+                    <p>{sender.name}</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
@@ -124,7 +212,7 @@ function ChatMessage({ message }: { message: Message }) {
         )}
       >
         <p className="text-sm">{message.content}</p>
-        <p className="text-xs opacity-70 mt-1 text-right">{message.timestamp}</p>
+        <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
     </div>
   );
