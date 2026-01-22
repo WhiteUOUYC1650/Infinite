@@ -50,14 +50,16 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
               : `${item.members?.length || 0} members`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
-            <Phone className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Video className="h-5 w-5" />
-          </Button>
-        </div>
+        {item.type === 'dm' && (
+            <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon">
+                <Phone className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon">
+                <Video className="h-5 w-5" />
+            </Button>
+            </div>
+        )}
       </header>
 
       {/* Message List */}
@@ -70,23 +72,25 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
       </ScrollArea>
 
       {/* Message Input */}
-      <footer className="p-4 border-t">
-        <div className="relative">
-          <Textarea
-            placeholder="Type a message..."
-            className="pr-24 py-3 resize-none"
-            rows={1}
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-             <Button variant="ghost" size="icon">
-                <Paperclip className="h-5 w-5" />
-            </Button>
-            <Button size="icon">
-              <Send className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </footer>
+      {item.type !== 'channel' && (
+        <footer className="p-4 border-t">
+            <div className="relative">
+            <Textarea
+                placeholder="Type a message..."
+                className="pr-24 py-3 resize-none"
+                rows={1}
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <Button variant="ghost" size="icon">
+                    <Paperclip className="h-5 w-5" />
+                </Button>
+                <Button size="icon">
+                <Send className="h-5 w-5" />
+                </Button>
+            </div>
+            </div>
+        </footer>
+      )}
     </div>
   );
 }
