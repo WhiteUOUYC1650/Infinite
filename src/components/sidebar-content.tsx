@@ -16,6 +16,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -38,24 +40,34 @@ interface SidebarContentProps {
 export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
   const directMessages = chats.filter((chat) => chat.type === "dm");
   const groupDiscussions = chats.filter((chat) => chat.type === "group");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    const storedTheme = localStorage.getItem("theme");
+    const initialTheme =
+      storedTheme === "dark" ||
+      (!storedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ? "dark"
+        : "light";
+    setTheme(initialTheme);
+    if (initialTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
   }, []);
 
-  const setTheme = (theme: "light" | "dark") => {
-    localStorage.setItem("theme", theme);
-    if (theme === "dark") {
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    localStorage.setItem("theme", newTheme);
+    setTheme(newTheme);
+    if (newTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
   };
+
 
   return (
     <>
@@ -150,12 +162,20 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
       <Separator />
 
       <SidebarFooter className="p-2">
-        <div className="flex items-center gap-3 p-2">
+        <div className="flex items-center gap-2 p-2">
           <UserAvatarWithStatus user={currentUser} />
           <div className="flex-1 truncate">
             <p className="font-semibold">{currentUser.name}</p>
             <p className="text-xs text-muted-foreground capitalize">{currentUser.status}</p>
           </div>
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            {theme === "light" ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -163,13 +183,20 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                <Sun className="mr-2 h-4 w-4" />
-                <span>Light</span>
+              <DropdownMenuLabel>Settings</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                <Moon className="mr-2 h-4 w-4" />
-                <span>Dark</span>
+              <DropdownMenuItem>
+                <span>Notifications</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <span>Appearance</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
