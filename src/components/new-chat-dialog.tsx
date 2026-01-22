@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
 
 const dmFormSchema = z.object({
   username: z.string()
@@ -38,6 +39,11 @@ const dmFormSchema = z.object({
 const groupFormSchema = z.object({
   name: z.string().min(3, { message: 'Group name must be at least 3 characters.' }),
   icon: z.string().optional(),
+});
+
+const channelFormSchema = z.object({
+    name: z.string().min(3, { message: 'Channel name must be at least 3 characters.' }),
+    description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
 });
 
 
@@ -61,6 +67,11 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const groupForm = useForm<z.infer<typeof groupFormSchema>>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: { name: '' },
+  });
+
+  const channelForm = useForm<z.infer<typeof channelFormSchema>>({
+    resolver: zodResolver(channelFormSchema),
+    defaultValues: { name: '', description: '' },
   });
 
   const onDmSubmit = async (values: z.infer<typeof dmFormSchema>) => {
@@ -124,6 +135,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
       name: values.name,
       members: [currentUser.uid],
       icon: 'Users',
+      ownerId: currentUser.uid,
     };
 
     addDoc(collection(db, 'chats'), newGroup)
@@ -142,6 +154,36 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         })
         .finally(() => setIsCreating(false));
   };
+  
+  const onChannelSubmit = async (values: z.infer<typeof channelFormSchema>) => {
+    if (!db || isCreating) return;
+    setIsCreating(true);
+
+    const newChannel = {
+      type: 'channel',
+      name: values.name,
+      description: values.description,
+      members: [currentUser.uid],
+      icon: 'Megaphone',
+      ownerId: currentUser.uid,
+    };
+
+    addDoc(collection(db, 'chats'), newChannel)
+        .then((docRef) => {
+            toast({ title: 'Success!', description: `Channel "${values.name}" created.` });
+            onOpenChange(false);
+            if (onChatCreated) onChatCreated(docRef.id);
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: 'chats',
+                operation: 'create',
+                requestResourceData: newChannel,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        })
+        .finally(() => setIsCreating(false));
+  };
 
 
   return (
@@ -150,13 +192,14 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         <DialogHeader>
           <DialogTitle>New Conversation</DialogTitle>
           <DialogDescription>
-            Start a new direct message or create a group discussion.
+            Start a new direct message, group discussion, or broadcast channel.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="dm" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="dm">Direct Message</TabsTrigger>
                 <TabsTrigger value="group">New Group</TabsTrigger>
+                <TabsTrigger value="channel">New Channel</TabsTrigger>
             </TabsList>
             <TabsContent value="dm">
                 <Form {...dmForm}>
@@ -201,6 +244,43 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                          <div className='flex justify-end'>
                             <Button type="submit" disabled={isCreating}>
                                 {isCreating ? 'Creating...' : 'Create Group'}
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </TabsContent>
+             <TabsContent value="channel">
+                 <Form {...channelForm}>
+                    <form onSubmit={channelForm.handleSubmit(onChannelSubmit)} className="space-y-4 pt-4">
+                        <FormField
+                        control={channelForm.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Channel Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. Company Announcements" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={channelForm.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="What is this channel about?" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                         <div className='flex justify-end'>
+                            <Button type="submit" disabled={isCreating}>
+                                {isCreating ? 'Creating...' : 'Create Channel'}
                             </Button>
                         </div>
                     </form>

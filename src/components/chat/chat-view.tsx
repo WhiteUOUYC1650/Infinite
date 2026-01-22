@@ -108,6 +108,8 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     }
   };
 
+  const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Chat Header */}
@@ -151,7 +153,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
       </ScrollArea>
 
       {/* Message Input */}
-      {item.type !== 'channel' && (
+      {canSendMessage && (
         <footer className="p-4 border-t">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea

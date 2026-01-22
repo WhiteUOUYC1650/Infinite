@@ -14,6 +14,10 @@ service cloud.firestore {
       // Check if user is signed in before checking auth.uid
       return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
     }
+    
+    function isChatOwner(chatId) {
+      return isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId;
+    }
 
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -31,17 +35,21 @@ service cloud.firestore {
 
     match /chats/{chatId} {
       // allow reading single doc and updating it if member
-      allow get, update: if isChatMember(chatId);
+      allow get: if isChatMember(chatId);
+      allow update: if isChatOwner(chatId);
 
       // allow querying chats collection if the query filters for the user's membership
       allow list: if isSignedIn() && request.auth.uid in resource.data.members;
 
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.members;
+      allow create: if isSignedIn() && 
+                     request.auth.uid in request.resource.data.members &&
+                     (request.resource.data.type == 'dm' || request.resource.data.ownerId == request.auth.uid);
     }
 
     match /chats/{chatId}/messages/{messageId} {
       allow read: if isChatMember(chatId);
-      allow create: if isChatMember(chatId) && isOwner(request.resource.data.senderId);
+      allow create: if isChatMember(chatId) && isOwner(request.resource.data.senderId) &&
+                     (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || isChatOwner(chatId));
       allow update, delete: if false;
     }
   }

@@ -26,6 +26,7 @@ export type Chat = {
   type: "dm" | "group" | "channel";
   name?: string;
   members: string[]; // user ids
+  ownerId?: string;
   lastMessage?: Omit<Message, 'id' | 'sender'> & { senderName?: string };
   unreadCount?: number;
   icon?: string;

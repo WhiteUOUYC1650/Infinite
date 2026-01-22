@@ -81,6 +81,10 @@
           },
           "description": "List of user IDs who are members of this chat."
         },
+        "ownerId": {
+          "type": "string",
+          "description": "The user ID of the owner of the group or channel."
+        },
         "icon": {
           "type": "string",
           "description": "Name of the lucide-react icon for the chat."
