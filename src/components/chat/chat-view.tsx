@@ -32,7 +32,7 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
     <div className="flex flex-col h-full bg-background">
       {/* Chat Header */}
       <header className="flex items-center p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
+        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 md:hidden">
             <X className="h-5 w-5" />
         </Button>
         {item.type === "dm" ? (

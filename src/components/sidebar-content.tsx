@@ -24,6 +24,7 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarContent as SidebarBody,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { chats, channels, currentUser, getUserById } from "@/lib/data";
 import type { ChatItem, Chat } from "@/types";
@@ -41,6 +42,7 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
   const directMessages = chats.filter((chat) => chat.type === "dm");
   const groupDiscussions = chats.filter((chat) => chat.type === "group");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { setOpenMobile } = useSidebar();
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
@@ -66,6 +68,11 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
     } else {
       document.documentElement.classList.remove("dark");
     }
+  };
+  
+  const handleSelect = (item: ChatItem) => {
+    onSelect(item);
+    setOpenMobile(false);
   };
 
 
@@ -107,7 +114,7 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
                       <Button
                         key={chat.id}
                         variant="ghost"
-                        onClick={() => onSelect(chat)}
+                        onClick={() => handleSelect(chat)}
                         className={cn("w-full justify-start h-auto p-2 text-left", selectedId === chat.id && 'bg-accent')}
                       >
                         <div className="flex items-center gap-3 w-full">
@@ -136,7 +143,7 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
               <AccordionContent>
                 <div className="space-y-1">
                   {groupDiscussions.map((chat) => (
-                    <ChatItemComponent key={chat.id} item={chat} onSelect={onSelect} selectedId={selectedId} />
+                    <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} />
                   ))}
                 </div>
               </AccordionContent>
@@ -149,7 +156,7 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
               <AccordionContent>
                 <div className="space-y-1">
                   {channels.map((channel) => (
-                     <ChatItemComponent key={channel.id} item={channel} onSelect={onSelect} selectedId={selectedId} />
+                     <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} />
                   ))}
                 </div>
               </AccordionContent>
