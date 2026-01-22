@@ -27,11 +27,8 @@ export function AppShell() {
             <div className="flex flex-col items-center text-center">
                 <MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} />
                 <h2 className="text-2xl font-bold tracking-tight font-headline">
-                  Welcome to Infinite
+                  Chat not selected
                 </h2>
-                <p className="text-muted-foreground mt-2 max-w-sm">
-                  Your new hub for seamless communication. Select a conversation from the sidebar to get started.
-                </p>
             </div>
           </div>
         )}
