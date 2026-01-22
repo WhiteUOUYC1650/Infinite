@@ -27,10 +27,10 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 
-import type { Chat, Channel, PopulatedChat, User, AuthenticatedUser } from '@/types';
+import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -43,8 +43,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { EditProfileDialog } from './edit-profile-dialog';
+import { NewChatDialog } from './new-chat-dialog';
 
 
 const iconMap = {
@@ -64,6 +65,9 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showNewChat, setShowNewChat] = useState(false);
+
 
   const chatsQuery = useMemo(() => {
     if (!db) return null;
@@ -111,6 +115,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     onSelect(populatedItem);
     setOpenMobile(false);
   };
+  
+  const handleChatCreated = (chatId: string) => {
+    const newChat = chats?.find(c => c.id === chatId);
+    if (newChat) {
+      handleSelect(newChat);
+    }
+  }
 
   const handleLogout = () => {
     if (auth) {
@@ -121,9 +132,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   return (
     <>
       <SidebarHeader className="p-4">
-        <h1 className="text-2xl font-bold font-headline text-primary">
-          Infinite
-        </h1>
+        <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold font-headline text-primary">
+            Infinite
+            </h1>
+            <Button variant="ghost" size="icon" onClick={() => setShowNewChat(true)}>
+                <PlusCircle className="h-6 w-6" />
+            </Button>
+        </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search..." className="pl-8" />
@@ -219,7 +235,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <DropdownMenuLabel>Settings</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>Profile</DropdownMenuItem>
                     <DropdownMenuItem>Notifications</DropdownMenuItem>
                     <DropdownMenuItem>Appearance</DropdownMenuItem>
                 </DropdownMenuGroup>
@@ -251,6 +267,24 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showEditProfile && (
+        <EditProfileDialog 
+            user={currentUser}
+            open={showEditProfile}
+            onOpenChange={setShowEditProfile}
+        />
+      )}
+
+      {showNewChat && (
+        <NewChatDialog
+            currentUser={currentUser}
+            open={showNewChat}
+            onOpenChange={setShowNewChat}
+            onChatCreated={handleChatCreated}
+        />
+      )}
+
     </>
   );
 }
