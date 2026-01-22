@@ -32,9 +32,8 @@ import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status'
 import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth, useCollection } from '@/firebase';
-import { collection, getFirestore, query, where, doc } from 'firebase/firestore';
-import { useDoc } from '@/firebase';
+import { useAuth, useCollection, useFirestore, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +60,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarContentProps) {
   const auth = useAuth();
-  const db = getFirestore();
+  const db = useFirestore();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
@@ -257,7 +256,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 }
 
 function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
-  const db = getFirestore();
+  const db = useFirestore();
   const otherUserId = useMemo(() => item.members.find(id => id !== currentUserId), [item.members, currentUserId]);
   
   const userDocRef = useMemo(() => {

@@ -1,15 +1,15 @@
 'use client';
 
 import { AppShell } from '@/components/app-shell';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { doc, getFirestore, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function Home() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const db = getFirestore();
+  const db = useFirestore();
 
   useEffect(() => {
     if (!loading && !user) {

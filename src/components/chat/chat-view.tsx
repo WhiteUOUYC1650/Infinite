@@ -14,13 +14,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useCollection, useDoc } from '@/firebase';
-import { addDoc, collection, doc, getFirestore, serverTimestamp } from 'firebase/firestore';
+import { useCollection, useFirestore } from '@/firebase';
+import { addDoc, collection, doc, serverTimestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function useUsers(userIds: string[]) {
-    const db = getFirestore();
+    const db = useFirestore();
     const [users, setUsers] = useState<Record<string, User>>({});
 
     const userDocs = useMemo(() => {
@@ -50,7 +50,7 @@ function useUsers(userIds: string[]) {
 
 
 export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: FirebaseUser }) {
-  const db = getFirestore();
+  const db = useFirestore();
   const [messageContent, setMessageContent] = useState('');
 
   const messagesQuery = useMemo(() => {

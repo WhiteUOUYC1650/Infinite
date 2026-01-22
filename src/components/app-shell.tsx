@@ -13,15 +13,15 @@ import { ChatView } from '@/components/chat/chat-view';
 import type { ChatItem, PopulatedChat } from '@/types';
 import { MessageCircle } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { useCollection, useDoc } from '@/firebase';
-import { collection, doc, getFirestore, query, where } from 'firebase/firestore';
+import { useDoc, useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { User } from '@/types';
 
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const [selectedItem, setSelectedItem] = useState<PopulatedChat | null>(null);
   const { isMobile } = useSidebar();
-  const db = getFirestore();
+  const db = useFirestore();
 
   const { data: userData } = useDoc<User>(db && doc(db, 'users', currentUser.uid));
 
