@@ -1,5 +1,7 @@
+
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -11,6 +13,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   SidebarFooter,
   SidebarHeader,
   SidebarContent as SidebarBody,
@@ -19,7 +27,7 @@ import { chats, channels, currentUser, getUserById } from "@/lib/data";
 import type { ChatItem, Chat } from "@/types";
 import { UserAvatarWithStatus } from "@/components/chat/user-avatar-with-status";
 import { Badge } from "@/components/ui/badge";
-import { Cog, Plus, Search } from "lucide-react";
+import { Cog, Moon, Plus, Search, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarContentProps {
@@ -30,6 +38,24 @@ interface SidebarContentProps {
 export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
   const directMessages = chats.filter((chat) => chat.type === "dm");
   const groupDiscussions = chats.filter((chat) => chat.type === "group");
+
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const setTheme = (theme: "light" | "dark") => {
+    localStorage.setItem("theme", theme);
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   return (
     <>
@@ -130,9 +156,23 @@ export function SidebarContent({ onSelect, selectedId }: SidebarContentProps) {
             <p className="font-semibold">{currentUser.name}</p>
             <p className="text-xs text-muted-foreground capitalize">{currentUser.status}</p>
           </div>
-          <Button variant="ghost" size="icon">
-            <Cog className="h-5 w-5" />
-          </Button>
+           <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Cog className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                <Sun className="mr-2 h-4 w-4" />
+                <span>Light</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                <Moon className="mr-2 h-4 w-4" />
+                <span>Dark</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </SidebarFooter>
     </>

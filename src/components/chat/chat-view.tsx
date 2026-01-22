@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,9 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
     <div className="flex flex-col h-full bg-background">
       {/* Chat Header */}
       <header className="flex items-center p-4 border-b">
+        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
+            <X className="h-5 w-5" />
+        </Button>
         {item.type === "dm" ? (
           <UserAvatarWithStatus
             user={getUserById(item.members.find((id) => id !== currentUser.id)!)!}
@@ -52,9 +56,6 @@ export function ChatView({ item, onClose }: { item: ChatItem, onClose: () => voi
           </Button>
           <Button variant="ghost" size="icon">
             <Video className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
           </Button>
         </div>
       </header>
