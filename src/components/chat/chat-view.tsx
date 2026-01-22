@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCollection, useFirestore } from '@/firebase';
-import { addDoc, collection, doc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 
@@ -33,7 +33,6 @@ function useUsers(userIds: string[]) {
         if (!userDocs.length) return;
 
         const unsubscribes = userDocs.map(userDoc => {
-            const { onSnapshot } = require('firebase/firestore');
             return onSnapshot(userDoc, (snapshot) => {
                 if (snapshot.exists()) {
                     setUsers(prev => ({ ...prev, [snapshot.id]: { id: snapshot.id, ...snapshot.data() } as User }));
