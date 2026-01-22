@@ -5,12 +5,13 @@ import type { Timestamp } from 'firebase/firestore';
 export type User = {
   id: string;
   name: string;
+  username: string;
   avatar: string;
   status: "online" | "away" | "offline";
   statusMessage?: string;
 };
 
-export type AuthenticatedUser = FirebaseUser & User;
+export type AuthenticatedUser = FirebaseUser & Partial<User>;
 
 export type Message = {
   id: string;

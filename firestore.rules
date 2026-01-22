@@ -17,8 +17,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId) && request.resource.data.username == resource.data.username; // Cannot change username
       allow delete: if false;
+    }
+
+    match /usernames/{username} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if !exists(/databases/$(database)/documents/usernames/$(username)) && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     match /chats/{chatId} {

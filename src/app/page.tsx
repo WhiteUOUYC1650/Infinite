@@ -18,8 +18,6 @@ export default function Home() {
     if (user && db) {
         const userRef = doc(db, 'users', user.uid);
         setDoc(userRef, {
-            name: user.displayName,
-            avatar: user.photoURL,
             status: 'online'
         }, { merge: true });
     }

@@ -9,6 +9,10 @@
           "type": "string",
           "description": "User's display name."
         },
+        "username": {
+          "type": "string",
+          "description": "User's unique handle, starting with '@'."
+        },
         "avatar": {
           "type": "string",
           "description": "URL to the user's avatar image."
@@ -23,7 +27,19 @@
             "description": "A short status message from the user."
         }
       },
-      "required": ["name", "avatar", "status"]
+      "required": ["name", "username", "avatar", "status"]
+    },
+    "Username": {
+        "title": "Username",
+        "description": "Maps a unique username to a user ID to enforce uniqueness.",
+        "type": "object",
+        "properties": {
+            "uid": {
+                "type": "string",
+                "description": "The user ID associated with this username."
+            }
+        },
+        "required": ["uid"]
     },
     "Message": {
       "title": "Message",
@@ -82,7 +98,7 @@
     }
   },
   "auth": {
-    "providers": ["google.com"]
+    "providers": ["password"]
   },
   "firestore": {
     "/users/{userId}": {
@@ -90,6 +106,12 @@
         "$ref": "#/backend/entities/User"
       },
       "description": "Stores individual user profiles."
+    },
+    "/usernames/{username}": {
+        "schema": {
+            "$ref": "#/backend/entities/Username"
+        },
+        "description": "Used to enforce unique usernames."
     },
     "/chats/{chatId}": {
       "schema": {

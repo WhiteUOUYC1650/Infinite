@@ -195,11 +195,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <SidebarFooter className="p-2">
         <div className="flex items-center gap-2 p-2">
-          {currentUser && (
-            <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.displayName || "User", avatar: currentUser.photoURL || "", status: currentUser.status || "online" }} />
+          {currentUser.id && currentUser.name && currentUser.avatar && (
+            <UserAvatarWithStatus user={{id: currentUser.id, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online" }} />
           )}
           <div className="flex-1 truncate">
-            <p className="font-semibold">{currentUser.displayName}</p>
+            <p className="font-semibold">{currentUser.name || currentUser.email}</p>
             <p className="text-xs text-muted-foreground capitalize">{currentUser.status || 'online'}</p>
           </div>
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
