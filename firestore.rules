@@ -42,9 +42,9 @@ service cloud.firestore {
                      (isChatMember(chatId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']));
 
       // allow querying chats collection if the query filters for the user's membership
-      allow list: if isSignedIn() && 
+      allow list: if isSignedIn() &&
                    request.query.where.size() == 1 &&
-                   request.query.where[0].fieldPath == ['members'] &&
+                   request.query.where[0].fieldPath == 'members' &&
                    request.query.where[0].op == 'array-contains' &&
                    request.query.where[0].value == request.auth.uid;
 
