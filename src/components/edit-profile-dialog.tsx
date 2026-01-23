@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import React from 'react';
+import { useLanguage } from '@/context/language-context';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
@@ -42,6 +43,7 @@ interface EditProfileDialogProps {
 export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialogProps) {
   const db = useFirestore();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -58,7 +60,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
 
     setDoc(userRef, updatedData, { merge: true })
         .then(() => {
-            toast({ title: 'Success', description: 'Your nickname has been updated.' });
+            toast({ title: t('dm_success'), description: t('nickname_update_success') });
             onOpenChange(false);
         })
         .catch(async (serverError) => {
@@ -75,9 +77,9 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogTitle>{t('edit_profile')}</DialogTitle>
           <DialogDescription>
-            Change your display name. This will not change your unique @username.
+            {t('edit_profile_desc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -87,9 +89,9 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nickname</FormLabel>
+                  <FormLabel>{t('nickname_label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your new nickname" {...field} />
+                    <Input placeholder={t('nickname_placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,10 +99,10 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Saving...' : 'Save'}
+                {form.formState.isSubmitting ? t('saving') : t('save')}
               </Button>
             </DialogFooter>
           </form>

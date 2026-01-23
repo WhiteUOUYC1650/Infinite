@@ -20,9 +20,11 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
+import { useLanguage } from '@/context/language-context';
 
 export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
+  const { t } = useLanguage();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -66,9 +68,9 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   const getChatName = () => {
     if (item.type === 'dm') {
       if (otherUser?.id === currentUser.uid) {
-        return 'Saved Messages';
+        return t('saved_messages');
       }
-      return otherUser?.name || 'Direct Message';
+      return otherUser?.name || t('direct_message_tab');
     }
     return item.name;
   };
@@ -155,7 +157,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
           <p className="text-sm text-muted-foreground">
             {item.type === "dm" && otherUser && otherUser.id !== currentUser.uid
               ? otherUser.status
-              : `${item.members?.length || 0} members`}
+              : t('members_count', {count: item.members?.length || 0})}
           </p>
         </div>
         {item.type === 'dm' && otherUser?.id !== currentUser.uid && (
@@ -179,12 +181,12 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         ) : messages && messages.length > 0 ? (
             <div className="space-y-6">
                 {messages.map((message) => (
-                    <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
+                    <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} chatName={item.name} />
                 ))}
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground">
-                There is nothing here yet.
+                {t('no_messages_yet')}
             </div>
         )}
       </ScrollArea>
@@ -194,7 +196,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         <footer className="p-4 border-t">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
-                placeholder="Type a message..."
+                placeholder={t('message_placeholder')}
                 className="pr-24 py-3 resize-none"
                 rows={1}
                 value={messageContent}
@@ -223,17 +225,17 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 }
 
 // Simplified ChatMessage component that uses denormalized data
-function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type'] }) {
+function ChatMessage({ message, isCurrentUser, chatType, chatName }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type'], chatName?: string }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     const isChannel = chatType === 'channel';
-    const alignRight = isCurrentUser && !isChannel;
+    const alignRight = isCurrentUser;
 
-    const senderName = message.senderName || "User";
+    const senderName = message.senderName;
     const senderAvatar = message.senderAvatar || '';
     
   return (
     <div className={cn("flex items-end gap-3", alignRight && "flex-row-reverse")}>
-      {!alignRight && !isChannel && (
+      {!alignRight && !isChannel && senderName && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -256,7 +258,7 @@ function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, i
           isChannel && "bg-card"
         )}
       >
-        {!alignRight && isChannel && <p className="text-sm font-bold text-primary mb-1">{senderName}</p>}
+        {!alignRight && isChannel && <p className="text-sm font-bold text-primary mb-1">{senderName || chatName}</p>}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>

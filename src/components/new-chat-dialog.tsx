@@ -29,6 +29,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
+import { useLanguage } from '@/context/language-context';
 
 const dmFormSchema = z.object({
   username: z.string()
@@ -59,6 +60,7 @@ interface NewChatDialogProps {
 export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }: NewChatDialogProps) {
   const db = useFirestore();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isCreating, setIsCreating] = useState(false);
 
   const dmForm = useForm<z.infer<typeof dmFormSchema>>({
@@ -86,7 +88,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         const usernameSnap = await getDoc(usernameRef);
 
         if (!usernameSnap.exists()) {
-            dmForm.setError('username', { message: 'User not found.' });
+            dmForm.setError('username', { message: t('user_not_found') });
             setIsCreating(false);
             return;
         }
@@ -103,7 +105,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         const chatSnap = await getDoc(chatRef);
 
         if (chatSnap.exists()) {
-            toast({ title: 'Chat already exists', description: 'This direct message chat is already in your list.' });
+            toast({ title: t('chat_exists'), description: t('chat_exists_desc') });
             onOpenChange(false);
             if(onChatCreated) onChatCreated(chatId);
             setIsCreating(false);
@@ -115,13 +117,13 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             members: members,
         });
         
-        toast({ title: 'Success!', description: `Chat with ${values.username} started.`});
+        toast({ title: t('dm_success'), description: t('dm_success_desc', { username: values.username })});
         onOpenChange(false);
         if(onChatCreated) onChatCreated(chatId);
 
     } catch (error) {
         console.error("Error creating DM:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not create direct message.' });
+        toast({ variant: 'destructive', title: 'Error', description: t('dm_error') });
     } finally {
         setIsCreating(false);
     }
@@ -141,7 +143,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
             const linkDoc = await transaction.get(linkRef);
             if (linkDoc.exists()) {
-                throw new Error("Failed to generate a unique link. Please try again.");
+                throw new Error(t('link_error'));
             }
 
             const newGroup = {
@@ -156,7 +158,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             transaction.set(newChatRef, newGroup);
             transaction.set(linkRef, { chatId: newChatRef.id });
 
-            toast({ title: 'Success!', description: `Group "${values.name}" created.` });
+            toast({ title: t('dm_success'), description: t('group_success', {groupName: values.name}) });
             onOpenChange(false);
             if (onChatCreated) onChatCreated(newChatRef.id);
         });
@@ -166,7 +168,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         if (isPermissionError) {
              errorEmitter.emit('permission-error', error);
         } else {
-            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not create group.' });
+            toast({ variant: 'destructive', title: 'Error', description: error.message || t('group_error') });
         }
     } finally {
         setIsCreating(false);
@@ -184,7 +186,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             const linkDoc = await transaction.get(linkRef);
 
             if (linkDoc.exists()) {
-                throw new Error("This link is already taken. Please choose another.");
+                throw new Error(t('link_taken'));
             }
 
             const newChatRef = doc(collection(db, "chats"));
@@ -201,18 +203,18 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             transaction.set(newChatRef, newChannel);
             transaction.set(linkRef, { chatId: newChatRef.id });
             
-            toast({ title: 'Success!', description: `Channel "${values.name}" created.` });
+            toast({ title: t('dm_success'), description: t('channel_success', {channelName: values.name}) });
             onOpenChange(false);
             if (onChatCreated) onChatCreated(newChatRef.id);
         });
     } catch (error: any) {
          console.error("Error creating channel:", error);
-        if (error.message.includes("This link is already taken")) {
+        if (error.message.includes(t('link_taken'))) {
             channelForm.setError('link', { message: error.message });
         } else if (error.name === 'FirestorePermissionError') {
              errorEmitter.emit('permission-error', error);
         } else {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not create channel.' });
+            toast({ variant: 'destructive', title: 'Error', description: t('channel_error') });
         }
     } finally {
         setIsCreating(false);
@@ -224,16 +226,14 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Conversation</DialogTitle>
-          <DialogDescription>
-            Start a new direct message, group discussion, or broadcast channel.
-          </DialogDescription>
+          <DialogTitle>{t('new_conversation')}</DialogTitle>
+          <DialogDescription>{t('new_conversation_desc')}</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="dm" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="dm">Direct Message</TabsTrigger>
-                <TabsTrigger value="group">New Group</TabsTrigger>
-                <TabsTrigger value="channel">New Channel</TabsTrigger>
+                <TabsTrigger value="dm">{t('direct_message_tab')}</TabsTrigger>
+                <TabsTrigger value="group">{t('new_group_tab')}</TabsTrigger>
+                <TabsTrigger value="channel">{t('new_channel_tab')}</TabsTrigger>
             </TabsList>
             <TabsContent value="dm">
                 <Form {...dmForm}>
@@ -243,9 +243,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         name="username"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Username</FormLabel>
+                            <FormLabel>{t('username_label')}</FormLabel>
                             <FormControl>
-                                <Input placeholder="@username" {...field} />
+                                <Input placeholder={t('username_placeholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -253,7 +253,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         />
                         <div className='flex justify-end'>
                             <Button type="submit" disabled={isCreating}>
-                                {isCreating ? 'Searching...' : 'Start Chat'}
+                                {isCreating ? t('searching') : t('start_chat')}
                             </Button>
                         </div>
                     </form>
@@ -267,9 +267,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Group Name</FormLabel>
+                            <FormLabel>{t('group_name_label')}</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g. Project Team" {...field} />
+                                <Input placeholder={t('group_name_placeholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -277,7 +277,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         />
                          <div className='flex justify-end'>
                             <Button type="submit" disabled={isCreating}>
-                                {isCreating ? 'Creating...' : 'Create Group'}
+                                {isCreating ? t('creating') : t('create_group')}
                             </Button>
                         </div>
                     </form>
@@ -291,9 +291,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Channel Name</FormLabel>
+                            <FormLabel>{t('channel_name_label')}</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g. Company Announcements" {...field} />
+                                <Input placeholder={t('channel_name_placeholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -304,9 +304,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         name="description"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Description</FormLabel>
+                            <FormLabel>{t('description_label')}</FormLabel>
                             <FormControl>
-                                <Textarea placeholder="What is this channel about?" {...field} />
+                                <Textarea placeholder={t('description_placeholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -317,9 +317,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         name="link"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Unique Link</FormLabel>
+                            <FormLabel>{t('unique_link_label')}</FormLabel>
                             <FormControl>
-                                <Input placeholder="/C/your-channel-name" {...field} />
+                                <Input placeholder={t('link_placeholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -327,7 +327,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         />
                          <div className='flex justify-end'>
                             <Button type="submit" disabled={isCreating}>
-                                {isCreating ? 'Creating...' : 'Create Channel'}
+                                {isCreating ? t('creating') : t('create_channel')}
                             </Button>
                         </div>
                     </form>

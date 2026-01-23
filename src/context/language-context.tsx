@@ -1,12 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { translations, Language, TranslationKey } from '@/lib/translations';
+import { translations, Language, TranslationKey, interpolate } from '@/lib/translations';
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (language: Language) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, values?: Record<string, any>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -28,8 +28,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useMemo(
     () =>
-      (key: TranslationKey): string => {
-        return translations[language]?.[key] || translations['en'][key];
+      (key: TranslationKey, values?: Record<string, any>): string => {
+        const translationString = translations[language]?.[key] || translations['en'][key];
+        if (values) {
+          return interpolate(translationString, values);
+        }
+        return translationString;
       },
     [language]
   );

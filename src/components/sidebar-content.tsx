@@ -228,7 +228,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <ScrollArea className="flex-1">
         <SidebarBody>
           {chatsLoading ? (
-            <div className='p-4'>Loading chats...</div>
+            <div className='p-4'>{t('loading_chats')}</div>
           ) : (
           <Accordion
             type="multiple"
@@ -353,13 +353,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <AlertDialog open={showVersion} onOpenChange={setShowVersion}>
         <AlertDialogContent>
             <AlertDialogHeader>
-            <AlertDialogTitle>App Version</AlertDialogTitle>
+            <AlertDialogTitle>{t('app_version')}</AlertDialogTitle>
             <AlertDialogDescription>
-                You are currently running version 0.1 of Infinite messenger.
+                {t('version_info')}
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowVersion(false)}>OK</AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -387,7 +387,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
 // --- Simplified DMChatItemComponent ---
 function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherUser, isLoading }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, otherUser?: User, isLoading: boolean }) {
-  
+  const { t } = useLanguage();
   if (isLoading || !otherUser) {
     return (
         <Button variant="ghost" className="w-full justify-start h-auto p-2 text-left">
@@ -414,7 +414,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
         <div className="flex items-center gap-3 w-full">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
             <div className="flex-1 truncate">
-                <p className="font-semibold">{isSavedMessages ? 'Saved Messages' : otherUser.name}</p>
+                <p className="font-semibold">{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
                 {item.lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>}
             </div>
             {item.unreadCount && item.unreadCount > 0 && (
