@@ -85,14 +85,14 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
       senderId: currentUser.uid,
       content: content,
       timestamp: serverTimestamp(),
-      senderName: currentUser.name,
-      senderAvatar: currentUser.avatar
+      senderName: currentUser.name || currentUser.username || "User",
+      senderAvatar: currentUser.avatar || ''
     };
 
     const lastMessageData = {
         content: content,
         senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.username,
+        senderName: currentUser.name || currentUser.username || "User",
         timestamp: serverTimestamp(),
     };
     
