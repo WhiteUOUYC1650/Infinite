@@ -58,7 +58,9 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     return collection(db, 'chats', item.id, 'messages');
   }, [db, item.id]);
 
-  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, { orderBy: 'timestamp' });
+  const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
+  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
+
   const allUserIds = useMemo(() => {
     const ids = new Set(item.members);
     if (messages) {
