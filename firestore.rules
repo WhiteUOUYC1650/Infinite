@@ -42,7 +42,11 @@ service cloud.firestore {
                      (isChatMember(chatId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']));
 
       // allow querying chats collection if the query filters for the user's membership
-      allow list: if isSignedIn() && request.query.where.field == "members" && request.query.where.op == "array-contains" && request.query.where.value == request.auth.uid;
+      allow list: if isSignedIn() && 
+                   request.query.where.size() == 1 &&
+                   request.query.where[0].fieldPath == ['members'] &&
+                   request.query.where[0].op == 'array-contains' &&
+                   request.query.where[0].value == request.auth.uid;
 
       allow create: if isSignedIn() && 
                      request.auth.uid in request.resource.data.members &&
@@ -52,7 +56,7 @@ service cloud.firestore {
     match /chats/{chatId}/messages/{messageId} {
       allow read: if isChatMember(chatId);
       allow create: if isChatMember(chatId) && isOwner(request.resource.data.senderId) &&
-                     (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || isChatOwner(chaId));
+                     (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || isChatOwner(chatId));
       allow update, delete: if false;
     }
 
