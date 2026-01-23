@@ -77,6 +77,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
 
+  useEffect(() => {
+    if (currentUser && currentUser.name === currentUser.username && !showEditProfile) {
+        const hasSeenPrompt = sessionStorage.getItem('hasSeenEditProfilePrompt');
+        if (!hasSeenPrompt) {
+            setShowEditProfile(true);
+            sessionStorage.setItem('hasSeenEditProfilePrompt', 'true');
+        }
+    }
+  }, [currentUser, showEditProfile]);
+
   const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm') || [], [chats]);
   const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group') || [], [chats]);
   const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel') || [], [chats]);
@@ -211,8 +221,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <SidebarFooter className="p-2">
         <div className="flex items-center gap-2 p-2">
-          {currentUser.id && currentUser.name && currentUser.avatar && (
-            <UserAvatarWithStatus user={{id: currentUser.id, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online" }} />
+          {currentUser.id && currentUser.name && (
+            <UserAvatarWithStatus user={{id: currentUser.id, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar || '', status: currentUser.status || "online" }} />
           )}
           <div className="flex-1 truncate">
             <p className="font-semibold">{currentUser.name || currentUser.email}</p>

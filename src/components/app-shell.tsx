@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -10,12 +10,12 @@ import {
 } from '@/components/ui/sidebar';
 import { SidebarContent } from '@/components/sidebar-content';
 import { ChatView } from '@/components/chat/chat-view';
-import type { ChatItem, PopulatedChat } from '@/types';
+import type { PopulatedChat } from '@/types';
 import { MessageCircle } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { User } from '@/types';
+import type { User, AuthenticatedUser } from '@/types';
 
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
@@ -25,6 +25,11 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
   const { data: userData } = useDoc<User>(db && doc(db, 'users', currentUser.uid));
 
+  const populatedUser: AuthenticatedUser | null = useMemo(() => {
+    if (!userData) return null;
+    return { ...currentUser, ...userData };
+  }, [currentUser, userData]);
+
 
   const handleSelect = (item: PopulatedChat) => {
     setSelectedItem(item);
@@ -33,7 +38,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   return (
     <>
       <Sidebar>
-        {userData && <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={{...currentUser, ...userData}} />}
+        {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={populatedUser} />}
       </Sidebar>
       <SidebarInset>
         {selectedItem ? (

@@ -31,7 +31,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages }: UserA
   return (
     <div className={cn("relative", className)}>
       <Avatar>
-        <AvatarImage src={user.avatar} alt={user.name} />
+        {user.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
       </Avatar>
       {user.status && (

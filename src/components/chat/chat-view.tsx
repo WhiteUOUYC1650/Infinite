@@ -18,6 +18,8 @@ import { useCollection, useFirestore } from '@/firebase';
 import { addDoc, collection, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function useUsers(userIds: string[]) {
     const db = useFirestore();
@@ -96,20 +98,29 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db) return;
 
-    try {
-      await addDoc(collection(db, 'chats', item.id, 'messages'), {
-        senderId: currentUser.uid,
-        content: messageContent,
-        timestamp: serverTimestamp(),
+    const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
+    const messageData = {
+      senderId: currentUser.uid,
+      content: messageContent,
+      timestamp: serverTimestamp(),
+    };
+
+    setMessageContent('');
+
+    addDoc(messagesCollectionRef, messageData)
+      .catch(async (serverError) => {
+        console.error("Error sending message: ", serverError);
+        const permissionError = new FirestorePermissionError({
+            path: messagesCollectionRef.path,
+            operation: 'create',
+            requestResourceData: messageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      setMessageContent('');
-    } catch (error) {
-      console.error("Error sending message: ", error);
-    }
   };
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
@@ -207,7 +218,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType }: { message: Me
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Avatar className="h-8 w-8">
-                        {sender.avatar && <AvatarImage src={sender.avatar} alt={sender.name} />}
+                        {sender.avatar ? <AvatarImage src={sender.avatar} alt={sender.name} /> : null}
                         <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                 </TooltipTrigger>
