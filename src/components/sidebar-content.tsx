@@ -19,6 +19,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import {
   SidebarFooter,
@@ -30,7 +35,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore'; // Import getDocs and where
@@ -46,6 +51,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
+import { useLanguage } from '@/context/language-context';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -116,6 +122,7 @@ interface SidebarContentProps {
 export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarContentProps) {
   const auth = useAuth();
   const db = useFirestore();
+  const { language, setLanguage, t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
@@ -214,7 +221,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search..." className="pl-8" />
+          <Input placeholder={t('search')} className="pl-8" />
         </div>
       </SidebarHeader>
 
@@ -230,7 +237,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           >
             <AccordionItem value="direct-messages">
               <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
-                Direct Messages
+                {t('direct_messages')}
               </AccordionTrigger>
               <AccordionContent className="p-0">
                 <div className="space-y-1">
@@ -254,7 +261,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
             <AccordionItem value="groups">
               <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
-                Group Discussions
+                {t('groups')}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-1">
@@ -267,7 +274,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
             <AccordionItem value="channels">
               <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
-                Broadcast Channels
+                {t('channels')}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-1">
@@ -309,22 +316,34 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="end">
-                <DropdownMenuLabel>Settings</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('settings')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                    <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>Profile</DropdownMenuItem>
-                    <DropdownMenuItem>Notifications</DropdownMenuItem>
-                    <DropdownMenuItem>Appearance</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
+                    <DropdownMenuItem>{t('notifications')}</DropdownMenuItem>
+                    <DropdownMenuItem>{t('appearance')}</DropdownMenuItem>
+                     <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                          <Languages className="mr-2 h-4 w-4" />
+                          <span>{t('language')}</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                          <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
+                              <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setShowVersion(true)}>
                     <Info className="mr-2 h-4 w-4" />
-                    <span>Version</span>
+                    <span>{t('version')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>{t('logout')}</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

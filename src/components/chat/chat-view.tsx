@@ -52,6 +52,12 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
 
   useEffect(() => {
+    if (item) {
+      setLoadingMessages(true);
+    }
+  }, [item]);
+
+  useEffect(() => {
       if(!messagesLoading) {
         setLoadingMessages(false);
       }
@@ -227,7 +233,7 @@ function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, i
     
   return (
     <div className={cn("flex items-end gap-3", alignRight && "flex-row-reverse")}>
-      {(!alignRight) && (
+      {!alignRight && !isChannel && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -246,9 +252,11 @@ function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, i
           "max-w-xs lg:max-w-md p-3 rounded-lg",
           alignRight
             ? "bg-primary text-primary-foreground rounded-br-none"
-            : "bg-secondary text-secondary-foreground rounded-bl-none"
+            : "bg-secondary text-secondary-foreground rounded-bl-none",
+          isChannel && "bg-card"
         )}
       >
+        {!alignRight && isChannel && <p className="text-sm font-bold text-primary mb-1">{senderName}</p>}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
