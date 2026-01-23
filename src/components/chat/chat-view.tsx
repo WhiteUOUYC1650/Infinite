@@ -19,11 +19,13 @@ import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { format } from 'date-fns';
 
 export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(true);
 
   // --- Optimized User fetching for DM header ---
   const otherUserId = useMemo(() => {
@@ -42,11 +44,18 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
+    setLoadingMessages(true);
     return collection(db, 'chats', item.id, 'messages');
   }, [db, item.id]);
 
   const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
+
+  useEffect(() => {
+      if(!messagesLoading) {
+        setLoadingMessages(false);
+      }
+  }, [messagesLoading]);
 
   const getChatName = () => {
     if (item.type === 'dm') {
@@ -157,7 +166,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 
       {/* Message List */}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        {messagesLoading ? (
+        {loadingMessages ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
@@ -209,12 +218,12 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 
 // Simplified ChatMessage component that uses denormalized data
 function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type'] }) {
-    const timestamp = message.timestamp ? new Date(message.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     const isChannel = chatType === 'channel';
     const alignRight = isCurrentUser && !isChannel;
 
     const senderName = message.senderName || "User";
-    const senderAvatar = message.senderAvatar;
+    const senderAvatar = message.senderAvatar || '';
     
   return (
     <div className={cn("flex items-end gap-3", alignRight && "flex-row-reverse")}>
