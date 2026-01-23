@@ -22,7 +22,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore } from '@/firebase';
-import { addDoc, collection, doc, getDoc, getDocs, query, where, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, runTransaction, setDoc } from 'firebase/firestore';
 import type { AuthenticatedUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -93,32 +93,31 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
         const targetUserId = usernameSnap.data().uid;
         
-        const chatsRef = collection(db, "chats");
-        const membersQuery = targetUserId === currentUser.uid
+        const members = targetUserId === currentUser.uid
             ? [currentUser.uid]
             : [currentUser.uid, targetUserId].sort();
+        
+        const chatId = members.join('_');
+        const chatRef = doc(db, 'chats', chatId);
 
-        const q = query(chatsRef, where("type", "==", "dm"), where("members", "==", membersQuery));
+        const chatSnap = await getDoc(chatRef);
 
-        const querySnapshot = await getDocs(q);
-        const existingChat = querySnapshot.docs.find(d => d.data().members.length === membersQuery.length);
-
-        if (existingChat) {
+        if (chatSnap.exists()) {
             toast({ title: 'Chat already exists', description: 'This direct message chat is already in your list.' });
             onOpenChange(false);
-            if(onChatCreated) onChatCreated(existingChat.id);
+            if(onChatCreated) onChatCreated(chatId);
             setIsCreating(false);
             return;
         }
 
-        const newChatRef = await addDoc(chatsRef, {
+        await setDoc(chatRef, {
             type: 'dm',
-            members: membersQuery,
+            members: members,
         });
         
         toast({ title: 'Success!', description: `Chat with ${values.username} started.`});
         onOpenChange(false);
-        if(onChatCreated) onChatCreated(newChatRef.id);
+        if(onChatCreated) onChatCreated(chatId);
 
     } catch (error) {
         console.error("Error creating DM:", error);
