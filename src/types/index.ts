@@ -20,6 +20,8 @@ export type Message = {
   content: string;
   timestamp: Timestamp;
   sender?: User; // hydrated sender
+  senderName?: string;
+  senderAvatar?: string;
 };
 
 export type Chat = {

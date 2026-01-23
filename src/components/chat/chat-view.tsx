@@ -14,44 +14,31 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-function useUsers(userIds: string[]) {
-    const db = useFirestore();
-    const [users, setUsers] = useState<Record<string, User>>({});
-
-    const userDocs = useMemoFirebase(() => {
-        if (!db || !userIds) return [];
-        return userIds.map(uid => doc(db, 'users', uid));
-    }, [db, userIds]);
-
-    // This is not efficient, but use-doc doesn't support multiple docs
-    useEffect(() => {
-        if (!userDocs.length) return;
-
-        const unsubscribes = userDocs.map(userDoc => {
-            return onSnapshot(userDoc, (snapshot) => {
-                if (snapshot.exists()) {
-                    setUsers(prev => ({ ...prev, [snapshot.id]: { id: snapshot.id, ...snapshot.data() } as User }));
-                }
-            });
-        });
-        
-        return () => unsubscribes.forEach(unsub => unsub());
-
-    }, [userDocs]);
-    
-    return users;
-}
-
-
 export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
   const [messageContent, setMessageContent] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  // --- Optimized User fetching for DM header ---
+  const otherUserId = useMemo(() => {
+    if (item.type !== 'dm') return null;
+    // For DMs, find the other user's ID. For 'Saved Messages', it's the current user's ID.
+    return item.members.find((id) => id !== currentUser.uid) || currentUser.uid;
+  }, [item, currentUser.uid]);
+
+  const otherUserDocRef = useMemoFirebase(() => {
+    if (!db || !otherUserId) return null;
+    return doc(db, 'users', otherUserId);
+  }, [db, otherUserId]);
+
+  const { data: otherUser } = useDoc<User>(otherUserDocRef);
+  // --- End Optimization ---
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -61,23 +48,6 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
 
-  const allUserIds = useMemo(() => {
-    const ids = new Set(item.members);
-    if (messages) {
-        messages.forEach(msg => ids.add(msg.senderId));
-    }
-    return Array.from(ids);
-  }, [item.members, messages]);
-
-  const usersData = useUsers(allUserIds);
-  
-  const otherUser = useMemo(() => {
-    if (item.type !== 'dm' || !usersData) return null;
-    const otherUserId = item.members.find((id) => id !== currentUser.uid);
-    // For "Saved Messages", otherUserId might be undefined or self
-    return otherUserId ? usersData[otherUserId] : usersData[currentUser.uid];
-  }, [item, currentUser.uid, usersData]);
-  
   const getChatName = () => {
     if (item.type === 'dm') {
       if (otherUser?.id === currentUser.uid) {
@@ -101,24 +71,28 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageContent.trim() || !db) return;
+    if (!messageContent.trim() || !db || isSending) return;
 
+    setIsSending(true);
     const content = messageContent;
     setMessageContent(''); // Optimistic UI update
 
     const chatRef = doc(db, 'chats', item.id);
     const messagesCollectionRef = collection(chatRef, 'messages');
 
+    // Denormalize sender info into the message for fewer reads
     const messageData = {
       senderId: currentUser.uid,
       content: content,
       timestamp: serverTimestamp(),
+      senderName: currentUser.name,
+      senderAvatar: currentUser.avatar
     };
 
     const lastMessageData = {
         content: content,
         senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.email || 'A user',
+        senderName: currentUser.name || currentUser.username,
         timestamp: serverTimestamp(),
     };
     
@@ -142,9 +116,10 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
             requestResourceData: messageData,
         });
         errorEmitter.emit('permission-error', permissionError);
+    } finally {
+        setIsSending(false);
     }
   };
-
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
@@ -189,7 +164,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         ) : messages && messages.length > 0 ? (
             <div className="space-y-6">
                 {messages.map((message) => (
-                    <ChatMessage key={message.id} message={message} sender={usersData[message.senderId]} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
+                    <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
                 ))}
             </div>
         ) : (
@@ -215,13 +190,14 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
                         handleSendMessage(e);
                     }
                 }}
+                disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Button variant="ghost" size="icon" type="button">
                     <Paperclip className="h-5 w-5" />
                 </Button>
-                <Button size="icon" type="submit">
-                  <Send className="h-5 w-5" />
+                <Button size="icon" type="submit" disabled={isSending}>
+                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                 </Button>
             </div>
             </form>
@@ -231,23 +207,27 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'] }) {
+// Simplified ChatMessage component that uses denormalized data
+function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type'] }) {
     const timestamp = message.timestamp ? new Date(message.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const isChannel = chatType === 'channel';
     const alignRight = isCurrentUser && !isChannel;
+
+    const senderName = message.senderName || "User";
+    const senderAvatar = message.senderAvatar;
     
   return (
     <div className={cn("flex items-end gap-3", alignRight && "flex-row-reverse")}>
-      {(!alignRight) && sender && (
+      {(!alignRight) && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Avatar className="h-8 w-8">
-                        {sender.avatar ? <AvatarImage src={sender.avatar} alt={sender.name} /> : <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>}
+                        {senderAvatar ? <AvatarImage src={senderAvatar} alt={senderName} /> : <AvatarFallback>{senderName.charAt(0)}</AvatarFallback>}
                     </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>{sender.name}</p>
+                    <p>{senderName}</p>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>

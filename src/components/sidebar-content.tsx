@@ -32,8 +32,8 @@ import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status'
 import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth, useCollection, useFirestore, useDoc } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { useAuth, useCollection, useFirestore } from '@/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore'; // Import getDocs and where
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +46,59 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
+
+// --- New Optimized Hook for fetching users in batches ---
+function useBatchUsers(userIds: string[]) {
+    const db = useFirestore();
+    const [users, setUsers] = useState<Record<string, User>>({});
+    const [loading, setLoading] = useState(true);
+
+    // Sort and stringify to create a stable dependency for useEffect
+    const stringifiedUserIds = JSON.stringify(userIds.sort());
+
+    useEffect(() => {
+        const uniqueUserIds = JSON.parse(stringifiedUserIds);
+        if (!db || uniqueUserIds.length === 0) {
+            setLoading(false);
+            return;
+        }
+
+        const fetchUsers = async () => {
+            setLoading(true);
+            const usersCollection = collection(db, 'users');
+            const fetchedUsers: Record<string, User> = {};
+            
+            // Firestore 'in' queries are limited to 30 elements.
+            const chunks: string[][] = [];
+            for (let i = 0; i < uniqueUserIds.length; i += 30) {
+                chunks.push(uniqueUserIds.slice(i, i + 30));
+            }
+
+            try {
+                const querySnapshots = await Promise.all(chunks.map(chunk => {
+                    const q = query(usersCollection, where('__name__', 'in', chunk));
+                    return getDocs(q);
+                }));
+
+                querySnapshots.forEach(snapshot => {
+                    snapshot.forEach(doc => {
+                        fetchedUsers[doc.id] = { id: doc.id, ...doc.data() } as User;
+                    });
+                });
+                setUsers(fetchedUsers);
+            } catch (error) {
+                console.error("Error fetching users in batch:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [db, stringifiedUserIds]);
+
+    return { users, loading };
+}
 
 
 const iconMap = {
@@ -77,6 +130,17 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [db, currentUser.uid]);
 
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
+  
+  // --- Optimization: Batch fetch user data for DMs ---
+  const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm') || [], [chats]);
+  const dmUserIds = useMemo(() => {
+      return Array.from(new Set(directMessages
+          .map(chat => chat.members.find(id => id !== currentUser.uid) || chat.members[0])
+          .filter((id): id is string => !!id)));
+  }, [directMessages, currentUser.uid]);
+
+  const { users: dmUsers, loading: usersLoading } = useBatchUsers(dmUserIds);
+  // --- End Optimization ---
 
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
@@ -85,7 +149,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
   }, [currentUser, editProfileInitiallyShown]);
 
-  const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm') || [], [chats]);
   const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group') || [], [chats]);
   const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel') || [], [chats]);
 
@@ -171,15 +234,20 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               </AccordionTrigger>
               <AccordionContent className="p-0">
                 <div className="space-y-1">
-                  {directMessages.map((chat) => (
-                    <DMChatItemComponent
-                      key={chat.id}
-                      item={chat}
-                      onSelect={handleSelect}
-                      selectedId={selectedId}
-                      currentUserId={currentUser.uid}
-                    />
-                  ))}
+                  {directMessages.map((chat) => {
+                    const otherUserId = chat.members.find(id => id !== currentUser.uid) || chat.members[0];
+                    return (
+                        <DMChatItemComponent
+                        key={chat.id}
+                        item={chat}
+                        onSelect={handleSelect}
+                        selectedId={selectedId}
+                        currentUserId={currentUser.uid}
+                        otherUser={dmUsers[otherUserId]}
+                        isLoading={usersLoading}
+                        />
+                    );
+                  })}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -298,23 +366,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   );
 }
 
-function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
-  const db = useFirestore();
-  const otherUserId = useMemo(() => {
-    if (item.members.length === 1) return item.members[0];
-    return item.members.find(id => id !== currentUserId)
-  }, [item.members, currentUserId]);
+// --- Simplified DMChatItemComponent ---
+function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherUser, isLoading }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, otherUser?: User, isLoading: boolean }) {
   
-  const userDocRef = useMemo(() => {
-    if (!db || !otherUserId) return null;
-    return doc(db, 'users', otherUserId);
-  }, [db, otherUserId]);
-
-  const { data: otherUser, loading } = useDoc<User>(userDocRef);
-
-  const isSavedMessages = otherUser?.id === currentUserId;
-  
-  if (loading || !otherUser) {
+  if (isLoading || !otherUser) {
     return (
         <Button variant="ghost" className="w-full justify-start h-auto p-2 text-left">
             <div className="flex items-center gap-3 w-full">
@@ -328,6 +383,8 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { it
     )
   }
 
+  const isSavedMessages = otherUser?.id === currentUserId;
+
   return (
     <Button
         key={item.id}
@@ -338,7 +395,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { it
         <div className="flex items-center gap-3 w-full">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
             <div className="flex-1 truncate">
-                <p className="font-semibold">{isSavedMessages ? 'Saved Messages' : otherUser?.name}</p>
+                <p className="font-semibold">{isSavedMessages ? 'Saved Messages' : otherUser.name}</p>
                 {item.lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>}
             </div>
             {item.unreadCount && item.unreadCount > 0 && (
