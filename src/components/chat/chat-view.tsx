@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import type { Message, PopulatedChat, User, AuthenticatedUser } from '@/types';
-import { Paperclip, Phone, Send, Video, X } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { cn } from '@/lib/utils';
@@ -14,8 +14,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useCollection, useFirestore } from '@/firebase';
-import { addDoc, collection, doc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -24,7 +24,7 @@ function useUsers(userIds: string[]) {
     const db = useFirestore();
     const [users, setUsers] = useState<Record<string, User>>({});
 
-    const userDocs = useMemo(() => {
+    const userDocs = useMemoFirebase(() => {
         if (!db || !userIds) return [];
         return userIds.map(uid => doc(db, 'users', uid));
     }, [db, userIds]);
@@ -53,7 +53,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   const db = useFirestore();
   const [messageContent, setMessageContent] = useState('');
 
-  const messagesQuery = useMemo(() => {
+  const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'chats', item.id, 'messages');
   }, [db, item.id]);
@@ -183,7 +183,9 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
       {/* Message List */}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         {messagesLoading ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">Loading messages...</div>
+            <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
         ) : messages && messages.length > 0 ? (
             <div className="space-y-6">
                 {messages.map((message) => (

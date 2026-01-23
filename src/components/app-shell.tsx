@@ -42,7 +42,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
       </Sidebar>
       <SidebarInset>
         {selectedItem && populatedUser ? (
-          <ChatView item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} />
+          <ChatView key={selectedItem.id} item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} />
         ) : (
           <div className="relative flex h-full flex-col items-center justify-center bg-background p-4">
             {isMobile && (
