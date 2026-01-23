@@ -13,7 +13,7 @@ import { ChatView } from '@/components/chat/chat-view';
 import type { PopulatedChat } from '@/types';
 import { MessageCircle } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { useDoc, useFirestore } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { User, AuthenticatedUser } from '@/types';
 
@@ -23,7 +23,12 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const { isMobile } = useSidebar();
   const db = useFirestore();
 
-  const { data: userData } = useDoc<User>(db && doc(db, 'users', currentUser.uid));
+  const userDocRef = useMemoFirebase(() => {
+    if (!db) return null;
+    return doc(db, 'users', currentUser.uid);
+  }, [db, currentUser.uid]);
+
+  const { data: userData } = useDoc<User>(userDocRef);
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
     if (!userData) return null;
