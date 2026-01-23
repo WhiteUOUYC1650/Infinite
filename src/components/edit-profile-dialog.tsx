@@ -49,16 +49,14 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       name: user.name || '',
     },
   });
-  
-  React.useEffect(() => {
-    form.reset({ name: user.name || '' });
-  }, [user, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!db || !user) return;
 
     const userRef = doc(db, 'users', user.uid);
-    setDoc(userRef, { name: values.name }, { merge: true })
+    const updatedData = { name: values.name, hasSetNickname: true };
+
+    setDoc(userRef, updatedData, { merge: true })
         .then(() => {
             toast({ title: 'Success', description: 'Your nickname has been updated.' });
             onOpenChange(false);
@@ -67,7 +65,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             const permissionError = new FirestorePermissionError({
                 path: userRef.path,
                 operation: 'update',
-                requestResourceData: { name: values.name },
+                requestResourceData: updatedData,
             });
             errorEmitter.emit('permission-error', permissionError);
       });

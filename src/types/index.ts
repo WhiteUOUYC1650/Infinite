@@ -9,6 +9,7 @@ export type User = {
   avatar: string;
   status: "online" | "away" | "offline";
   statusMessage?: string;
+  hasSetNickname?: boolean;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User>;

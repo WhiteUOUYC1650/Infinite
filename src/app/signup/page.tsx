@@ -72,9 +72,10 @@ export default function SignUpPage() {
         transaction.set(userDocRef, {
           name: values.username,
           username: values.username,
-          avatar: '',
+          avatar: `https://i.pravatar.cc/150?u=${user.uid}`,
           status: 'online',
-          statusMessage: 'Hey there! I am using Infinite.'
+          statusMessage: 'Hey there! I am using Infinite.',
+          hasSetNickname: false
         });
       });
       

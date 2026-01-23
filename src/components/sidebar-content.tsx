@@ -78,12 +78,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
 
   useEffect(() => {
-    if (currentUser && currentUser.name === currentUser.username && !showEditProfile) {
-        const hasSeenPrompt = sessionStorage.getItem('hasSeenEditProfilePrompt');
-        if (!hasSeenPrompt) {
-            setShowEditProfile(true);
-            sessionStorage.setItem('hasSeenEditProfilePrompt', 'true');
-        }
+    if (currentUser && currentUser.hasSetNickname === false && !showEditProfile) {
+        setShowEditProfile(true);
     }
   }, [currentUser, showEditProfile]);
 

@@ -25,6 +25,10 @@
         "statusMessage": {
             "type": "string",
             "description": "A short status message from the user."
+        },
+        "hasSetNickname": {
+            "type": "boolean",
+            "description": "True if the user has set their nickname at least once."
         }
       },
       "required": ["name", "username", "avatar", "status"]
