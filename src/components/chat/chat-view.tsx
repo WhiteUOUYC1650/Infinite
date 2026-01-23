@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import type { Message, PopulatedChat, User } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -15,9 +15,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCollection, useFirestore } from '@/firebase';
-import { addDoc, collection, doc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
-import type { User as FirebaseUser } from 'firebase/auth';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -50,7 +49,7 @@ function useUsers(userIds: string[]) {
 }
 
 
-export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: FirebaseUser }) {
+export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
   const [messageContent, setMessageContent] = useState('');
 
@@ -98,21 +97,42 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     }
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db) return;
 
-    const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
+    const content = messageContent;
+    setMessageContent(''); // Optimistic UI update
+
+    const chatRef = doc(db, 'chats', item.id);
+    const messagesCollectionRef = collection(chatRef, 'messages');
+
     const messageData = {
       senderId: currentUser.uid,
-      content: messageContent,
+      content: content,
       timestamp: serverTimestamp(),
     };
 
-    setMessageContent('');
+    const lastMessageData = {
+        content: content,
+        senderId: currentUser.uid,
+        senderName: currentUser.name || currentUser.email || 'A user',
+        timestamp: serverTimestamp(),
+    };
+    
+    try {
+        const batch = writeBatch(db);
+        const newMessageRef = doc(messagesCollectionRef); // Create ref with auto-id
+        
+        batch.set(newMessageRef, messageData);
+        batch.update(chatRef, { lastMessage: lastMessageData });
+        
+        await batch.commit();
 
-    addDoc(messagesCollectionRef, messageData)
-      .catch(async (serverError) => {
+    } catch (serverError: any) {
+        // Revert optimistic UI on failure
+        setMessageContent(content);
+
         console.error("Error sending message: ", serverError);
         const permissionError = new FirestorePermissionError({
             path: messagesCollectionRef.path,
@@ -120,8 +140,9 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
             requestResourceData: messageData,
         });
         errorEmitter.emit('permission-error', permissionError);
-      });
+    }
   };
+
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
@@ -218,8 +239,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType }: { message: Me
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Avatar className="h-8 w-8">
-                        {sender.avatar ? <AvatarImage src={sender.avatar} alt={sender.name} /> : null}
-                        <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+                        {sender.avatar ? <AvatarImage src={sender.avatar} alt={sender.name} /> : <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>}
                     </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>

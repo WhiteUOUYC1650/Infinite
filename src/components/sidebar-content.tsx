@@ -221,8 +221,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <SidebarFooter className="p-2">
         <div className="flex items-center gap-2 p-2">
-          {currentUser.id && currentUser.name && (
-            <UserAvatarWithStatus user={{id: currentUser.id, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar || '', status: currentUser.status || "online" }} />
+          {currentUser.uid && currentUser.name && (
+            <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar || '', status: currentUser.status || "online" }} />
           )}
           <div className="flex-1 truncate">
             <p className="font-semibold">{currentUser.name || currentUser.email}</p>
@@ -341,8 +341,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { it
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
             <div className="flex-1 truncate">
                 <p className="font-semibold">{isSavedMessages ? 'Saved Messages' : otherUser?.name}</p>
-                {/* lastMessage can be implemented later */}
-                {/* {item.lastMessage && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>} */}
+                {item.lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>}
             </div>
             {item.unreadCount && item.unreadCount > 0 && (
                 <Badge className="bg-primary">{item.unreadCount}</Badge>
@@ -365,7 +364,7 @@ function ChatItemComponent({ item, onSelect, selectedId }: { item: Chat, onSelec
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 truncate">
           <p className="font-semibold">{item.name}</p>
-          {lastMessage && <p className="text-xs text-muted-foreground truncate">{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
+          {lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
         {item.unreadCount && item.unreadCount > 0 && (
             <Badge className="bg-primary">{item.unreadCount}</Badge>

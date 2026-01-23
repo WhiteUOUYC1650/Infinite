@@ -41,8 +41,8 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
         {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={populatedUser} />}
       </Sidebar>
       <SidebarInset>
-        {selectedItem ? (
-          <ChatView item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={currentUser} />
+        {selectedItem && populatedUser ? (
+          <ChatView item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} />
         ) : (
           <div className="relative flex h-full flex-col items-center justify-center bg-background p-4">
             {isMobile && (
@@ -53,7 +53,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             <div className="flex flex-col items-center text-center">
                 <MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} />
                 <h2 className="text-2xl font-bold tracking-tight font-headline">
-                  Chat not selected
+                  {selectedItem ? "Loading chat..." : "Chat not selected"}
                 </h2>
             </div>
           </div>
