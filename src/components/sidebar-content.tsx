@@ -68,6 +68,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false);
 
 
   const chatsQuery = useMemo(() => {
@@ -78,10 +79,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
 
   useEffect(() => {
-    if (currentUser && currentUser.hasSetNickname === false && !showEditProfile) {
+    if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
         setShowEditProfile(true);
+        setEditProfileInitiallyShown(true);
     }
-  }, [currentUser, showEditProfile]);
+  }, [currentUser, editProfileInitiallyShown]);
 
   const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm') || [], [chats]);
   const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group') || [], [chats]);
