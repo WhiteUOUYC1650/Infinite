@@ -31,6 +31,7 @@ export type Chat = {
   unreadCount?: number;
   icon?: string;
   description?: string;
+  link?: string;
 };
 
 export type Channel = Chat & {

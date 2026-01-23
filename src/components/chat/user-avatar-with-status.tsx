@@ -3,10 +3,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@/types";
 import { cn } from "@/lib/utils";
+import { Bookmark } from "lucide-react";
 
 interface UserAvatarWithStatusProps {
   user: User;
   className?: string;
+  isSavedMessages?: boolean;
 }
 
 const statusColors = {
@@ -15,7 +17,17 @@ const statusColors = {
   offline: "bg-gray-400",
 };
 
-export function UserAvatarWithStatus({ user, className }: UserAvatarWithStatusProps) {
+export function UserAvatarWithStatus({ user, className, isSavedMessages }: UserAvatarWithStatusProps) {
+  if (isSavedMessages) {
+    return (
+      <Avatar className={cn("h-10 w-10", className)}>
+        <div className="flex h-full w-full items-center justify-center bg-secondary">
+          <Bookmark className="h-6 w-6 text-secondary-foreground" />
+        </div>
+      </Avatar>
+    );
+  }
+  
   return (
     <div className={cn("relative", className)}>
       <Avatar>

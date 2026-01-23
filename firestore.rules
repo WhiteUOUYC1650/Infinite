@@ -52,5 +52,12 @@ service cloud.firestore {
                      (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || isChatOwner(chatId));
       allow update, delete: if false;
     }
+
+    match /chatLinks/{linkId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isSignedIn(); // Relies on client transaction
+      allow update, delete: if false;
+    }
   }
 }

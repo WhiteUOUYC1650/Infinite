@@ -30,7 +30,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -51,6 +51,7 @@ import { NewChatDialog } from './new-chat-dialog';
 const iconMap = {
     Users,
     Megaphone,
+    Bookmark,
 };
 
 interface SidebarContentProps {
@@ -291,7 +292,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
 function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
   const db = useFirestore();
-  const otherUserId = useMemo(() => item.members.find(id => id !== currentUserId), [item.members, currentUserId]);
+  const otherUserId = useMemo(() => {
+    if (item.members.length === 1) return item.members[0];
+    return item.members.find(id => id !== currentUserId)
+  }, [item.members, currentUserId]);
   
   const userDocRef = useMemo(() => {
     if (!db || !otherUserId) return null;
@@ -299,6 +303,8 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { it
   }, [db, otherUserId]);
 
   const { data: otherUser, loading } = useDoc<User>(userDocRef);
+
+  const isSavedMessages = otherUser?.id === currentUserId;
   
   if (loading || !otherUser) {
     return (
@@ -322,11 +328,9 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId }: { it
         className={cn("w-full justify-start h-auto p-2 text-left", selectedId === item.id && 'bg-accent')}
         >
         <div className="flex items-center gap-3 w-full">
-            {otherUser && (
-                <UserAvatarWithStatus user={otherUser} />
-            )}
+            <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
             <div className="flex-1 truncate">
-                <p className="font-semibold">{otherUser?.name}</p>
+                <p className="font-semibold">{isSavedMessages ? 'Saved Messages' : otherUser?.name}</p>
                 {/* lastMessage can be implemented later */}
                 {/* {item.lastMessage && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>} */}
             </div>

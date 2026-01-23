@@ -96,9 +96,25 @@
         "lastMessage": {
             "type": "object",
             "description": "The last message sent in the chat for display in the sidebar."
+        },
+        "link": {
+          "type": "string",
+          "description": "Unique link for a group or channel."
         }
       },
       "required": ["type", "members"]
+    },
+    "ChatLink": {
+      "title": "Chat Link",
+      "description": "Maps a unique chat link to a chat ID to enforce uniqueness.",
+      "type": "object",
+      "properties": {
+          "chatId": {
+              "type": "string",
+              "description": "The chat ID associated with this link."
+          }
+      },
+      "required": ["chatId"]
     }
   },
   "auth": {
@@ -128,6 +144,12 @@
         "$ref": "#/backend/entities/Message"
       },
       "description": "Stores messages for a specific chat."
+    },
+    "/chatLinks/{linkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/ChatLink"
+      },
+      "description": "Used to enforce unique links for groups and channels."
     }
   }
 }

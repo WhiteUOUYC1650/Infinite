@@ -22,7 +22,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore } from '@/firebase';
-import { addDoc, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, where, runTransaction } from 'firebase/firestore';
 import type { AuthenticatedUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -38,12 +38,14 @@ const dmFormSchema = z.object({
 
 const groupFormSchema = z.object({
   name: z.string().min(3, { message: 'Group name must be at least 3 characters.' }),
-  icon: z.string().optional(),
 });
 
 const channelFormSchema = z.object({
     name: z.string().min(3, { message: 'Channel name must be at least 3 characters.' }),
     description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+    link: z.string().min(5, { message: 'Link must be at least 4 characters after /C/.'})
+        .refine(value => value.startsWith('/C/'), { message: "Link must start with '/C/'." })
+        .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'}),
 });
 
 
@@ -71,7 +73,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   const channelForm = useForm<z.infer<typeof channelFormSchema>>({
     resolver: zodResolver(channelFormSchema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: { name: '', description: '', link: '/C/' },
   });
 
   const onDmSubmit = async (values: z.infer<typeof dmFormSchema>) => {
@@ -90,16 +92,16 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         }
 
         const targetUserId = usernameSnap.data().uid;
-        if (targetUserId === currentUser.uid) {
-            dmForm.setError('username', { message: "You can't start a chat with yourself." });
-            setIsCreating(false);
-            return;
-        }
         
         const chatsRef = collection(db, "chats");
-        const q = query(chatsRef, where("type", "==", "dm"), where("members", "array-contains", currentUser.uid));
+        const membersQuery = targetUserId === currentUser.uid
+            ? [currentUser.uid]
+            : [currentUser.uid, targetUserId].sort();
+
+        const q = query(chatsRef, where("type", "==", "dm"), where("members", "==", membersQuery));
+
         const querySnapshot = await getDocs(q);
-        const existingChat = querySnapshot.docs.find(d => d.data().members.includes(targetUserId));
+        const existingChat = querySnapshot.docs.find(d => d.data().members.length === membersQuery.length);
 
         if (existingChat) {
             toast({ title: 'Chat already exists', description: 'This direct message chat is already in your list.' });
@@ -111,7 +113,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
         const newChatRef = await addDoc(chatsRef, {
             type: 'dm',
-            members: [currentUser.uid, targetUserId],
+            members: membersQuery,
         });
         
         toast({ title: 'Success!', description: `Chat with ${values.username} started.`});
@@ -130,59 +132,92 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     if (!db || isCreating) return;
     setIsCreating(true);
 
-    const newGroup = {
-      type: 'group',
-      name: values.name,
-      members: [currentUser.uid],
-      icon: 'Users',
-      ownerId: currentUser.uid,
-    };
+    try {
+        await runTransaction(db, async (transaction) => {
+            const newChatRef = doc(collection(db, "chats"));
+            
+            // This is a simplified random link generator. For production, a more robust solution is needed.
+            const link = '/G/' + Math.random().toString(36).substr(2, 8);
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(link));
 
-    addDoc(collection(db, 'chats'), newGroup)
-        .then((docRef) => {
+            const linkDoc = await transaction.get(linkRef);
+            if (linkDoc.exists()) {
+                throw new Error("Failed to generate a unique link. Please try again.");
+            }
+
+            const newGroup = {
+                type: 'group',
+                name: values.name,
+                members: [currentUser.uid],
+                icon: 'Users',
+                ownerId: currentUser.uid,
+                link: link
+            };
+            
+            transaction.set(newChatRef, newGroup);
+            transaction.set(linkRef, { chatId: newChatRef.id });
+
             toast({ title: 'Success!', description: `Group "${values.name}" created.` });
             onOpenChange(false);
-            if (onChatCreated) onChatCreated(docRef.id);
-        })
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: 'chats',
-                operation: 'create',
-                requestResourceData: newGroup,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        })
-        .finally(() => setIsCreating(false));
+            if (onChatCreated) onChatCreated(newChatRef.id);
+        });
+    } catch (error: any) {
+        console.error("Error creating group:", error);
+        const isPermissionError = error.name === 'FirestorePermissionError';
+        if (isPermissionError) {
+             errorEmitter.emit('permission-error', error);
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not create group.' });
+        }
+    } finally {
+        setIsCreating(false);
+    }
   };
   
   const onChannelSubmit = async (values: z.infer<typeof channelFormSchema>) => {
     if (!db || isCreating) return;
     setIsCreating(true);
+    channelForm.clearErrors();
 
-    const newChannel = {
-      type: 'channel',
-      name: values.name,
-      description: values.description,
-      members: [currentUser.uid],
-      icon: 'Megaphone',
-      ownerId: currentUser.uid,
-    };
+    try {
+        await runTransaction(db, async (transaction) => {
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(values.link));
+            const linkDoc = await transaction.get(linkRef);
 
-    addDoc(collection(db, 'chats'), newChannel)
-        .then((docRef) => {
+            if (linkDoc.exists()) {
+                throw new Error("This link is already taken. Please choose another.");
+            }
+
+            const newChatRef = doc(collection(db, "chats"));
+            const newChannel = {
+                type: 'channel',
+                name: values.name,
+                description: values.description,
+                members: [currentUser.uid],
+                icon: 'Megaphone',
+                ownerId: currentUser.uid,
+                link: values.link,
+            };
+
+            transaction.set(newChatRef, newChannel);
+            transaction.set(linkRef, { chatId: newChatRef.id });
+            
             toast({ title: 'Success!', description: `Channel "${values.name}" created.` });
             onOpenChange(false);
-            if (onChatCreated) onChatCreated(docRef.id);
-        })
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: 'chats',
-                operation: 'create',
-                requestResourceData: newChannel,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        })
-        .finally(() => setIsCreating(false));
+            if (onChatCreated) onChatCreated(newChatRef.id);
+        });
+    } catch (error: any) {
+         console.error("Error creating channel:", error);
+        if (error.message.includes("This link is already taken")) {
+            channelForm.setError('link', { message: error.message });
+        } else if (error.name === 'FirestorePermissionError') {
+             errorEmitter.emit('permission-error', error);
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not create channel.' });
+        }
+    } finally {
+        setIsCreating(false);
+    }
   };
 
 
@@ -273,6 +308,19 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             <FormLabel>Description</FormLabel>
                             <FormControl>
                                 <Textarea placeholder="What is this channel about?" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={channelForm.control}
+                        name="link"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Unique Link</FormLabel>
+                            <FormControl>
+                                <Input placeholder="/C/your-channel-name" {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>

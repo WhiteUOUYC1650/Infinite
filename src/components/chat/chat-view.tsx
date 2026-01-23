@@ -71,11 +71,15 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   const otherUser = useMemo(() => {
     if (item.type !== 'dm' || !usersData) return null;
     const otherUserId = item.members.find((id) => id !== currentUser.uid);
-    return otherUserId ? usersData[otherUserId] : null;
+    // For "Saved Messages", otherUserId might be undefined or self
+    return otherUserId ? usersData[otherUserId] : usersData[currentUser.uid];
   }, [item, currentUser.uid, usersData]);
   
   const getChatName = () => {
     if (item.type === 'dm') {
+      if (otherUser?.id === currentUser.uid) {
+        return 'Saved Messages';
+      }
       return otherUser?.name || 'Direct Message';
     }
     return item.name;
@@ -118,19 +122,19 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
             <X className="h-5 w-5" />
         </Button>
         {item.type === "dm" && otherUser ? (
-          <UserAvatarWithStatus user={otherUser} />
+          <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
         ) : (
           item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />
         )}
         <div className="flex-1">
           <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
           <p className="text-sm text-muted-foreground">
-            {item.type === "dm" && otherUser
+            {item.type === "dm" && otherUser && otherUser.id !== currentUser.uid
               ? otherUser.status
               : `${item.members?.length || 0} members`}
           </p>
         </div>
-        {item.type === 'dm' && (
+        {item.type === 'dm' && otherUser?.id !== currentUser.uid && (
             <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon">
                 <Phone className="h-5 w-5" />
@@ -144,12 +148,19 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 
       {/* Message List */}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-6">
-          {messagesLoading && <div>Loading messages...</div>}
-          {messages && messages.map((message) => (
-            <ChatMessage key={message.id} message={message} sender={usersData[message.senderId]} isCurrentUser={message.senderId === currentUser.uid} />
-          ))}
-        </div>
+        {messagesLoading ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">Loading messages...</div>
+        ) : messages && messages.length > 0 ? (
+            <div className="space-y-6">
+                {messages.map((message) => (
+                    <ChatMessage key={message.id} message={message} sender={usersData[message.senderId]} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
+                ))}
+            </div>
+        ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+                There is nothing here yet.
+            </div>
+        )}
       </ScrollArea>
 
       {/* Message Input */}
@@ -184,12 +195,14 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser }: { message: Message, sender?: User, isCurrentUser: boolean }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'] }) {
     const timestamp = message.timestamp ? new Date(message.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const isChannel = chatType === 'channel';
+    const alignRight = isCurrentUser && !isChannel;
     
   return (
-    <div className={cn("flex items-end gap-3", isCurrentUser && "flex-row-reverse")}>
-      {!isCurrentUser && sender && (
+    <div className={cn("flex items-end gap-3", alignRight && "flex-row-reverse")}>
+      {(!alignRight) && sender && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -207,7 +220,7 @@ function ChatMessage({ message, sender, isCurrentUser }: { message: Message, sen
       <div
         className={cn(
           "max-w-xs lg:max-w-md p-3 rounded-lg",
-          isCurrentUser
+          alignRight
             ? "bg-primary text-primary-foreground rounded-br-none"
             : "bg-secondary text-secondary-foreground rounded-bl-none"
         )}
