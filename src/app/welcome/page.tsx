@@ -30,12 +30,11 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg text-center">
         <CardHeader>
           <div className="flex justify-center items-center gap-2">
             <CardTitle className="text-3xl font-bold font-headline">{t('welcome_title')}</CardTitle>
-            <Badge variant="outline">{t('beta_badge')}</Badge>
           </div>
           <CardDescription>{t('welcome_subtitle')}</CardDescription>
         </CardHeader>
@@ -53,6 +52,9 @@ export default function WelcomePage() {
           </Button>
         </CardFooter>
       </Card>
+      <div className="absolute bottom-4 right-4">
+        <Badge variant="outline">{t('beta_badge')}</Badge>
+      </div>
     </div>
   );
 }

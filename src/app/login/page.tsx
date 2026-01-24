@@ -121,7 +121,6 @@ export default function LoginPage() {
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <h1 className="text-4xl font-bold font-headline text-primary">Infinite</h1>
-            <Badge variant="outline">{t('beta_badge')}</Badge>
           </div>
           <p className="text-muted-foreground">
             {t('login_subtitle')}
@@ -166,6 +165,9 @@ export default function LoginPage() {
             {t('sign_up_link')}
           </Link>
         </p>
+      </div>
+      <div className="absolute bottom-4 right-4">
+        <Badge variant="outline">{t('beta_badge')}</Badge>
       </div>
     </div>
   );

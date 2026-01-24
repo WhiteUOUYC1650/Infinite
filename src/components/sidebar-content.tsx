@@ -34,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -55,6 +55,7 @@ import { SearchDialog } from './search-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { UserProfileCard } from './user-profile-card';
+import { Alert, AlertDescription } from './ui/alert';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -305,7 +306,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               <h1 className="text-2xl font-bold font-headline text-primary">
                 Infinite
               </h1>
-              <Badge variant="outline">{t('beta_badge')}</Badge>
             </div>
             <div className='flex items-center'>
               <Button variant="ghost" size="icon" onClick={() => setShowSearchDialog(true)}>
@@ -355,7 +355,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 {t('direct_messages')}
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-1 md:px-4">
+                <div className="space-y-1">
                   {directMessages.map((chat) => {
                     const otherUserId = chat.members.find(id => id !== currentUser.uid) || chat.members[0];
                     return (
@@ -379,7 +379,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 {t('groups')}
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-1 md:px-4">
+                <div className="space-y-1">
                   {groupDiscussions.map((chat) => (
                     <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
                   ))}
@@ -392,7 +392,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 {t('channels')}
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-1 md:px-4">
+                <div className="space-y-1">
                   {channels.map((channel) => (
                      <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
                   ))}
@@ -439,7 +439,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             )}
             <span className="sr-only">Toggle theme</span>
           </Button>
-           <DropdownMenu modal={false}>
+           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Cog className="h-5 w-5" />
@@ -488,7 +488,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 {t('version_info')}
             </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
+            <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left mt-4">
+              <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
+              <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+                  {t('thank_you_beta')}
+              </AlertDescription>
+            </Alert>
+            <AlertDialogFooter className='mt-4'>
             <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
