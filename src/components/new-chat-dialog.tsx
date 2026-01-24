@@ -46,7 +46,7 @@ const groupFormSchema = z.object({
 
 const channelFormSchema = z.object({
     name: z.string().min(3, { message: 'Channel name must be at least 3 characters.' }),
-    description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+    description: z.string().optional(),
     link: z.string().min(4, { message: 'Link must be at least 4 characters.'})
         .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'}),
 });
@@ -68,22 +68,32 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const [usernameExists, setUsernameExists] = useState(false);
   const debounceTimeout = useRef<NodeJS.Timeout>();
 
+  const [isCheckingGroupLink, setIsCheckingGroupLink] = useState(false);
+  const [isCheckingChannelLink, setIsCheckingChannelLink] = useState(false);
+  const groupDebounceTimeout = useRef<NodeJS.Timeout>();
+  const channelDebounceTimeout = useRef<NodeJS.Timeout>();
+
   const dmForm = useForm<z.infer<typeof dmFormSchema>>({
     resolver: zodResolver(dmFormSchema),
     defaultValues: { username: '@' },
+    mode: 'onChange',
   });
 
   const groupForm = useForm<z.infer<typeof groupFormSchema>>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: { name: '', link: '' },
+    mode: 'onChange',
   });
 
   const channelForm = useForm<z.infer<typeof channelFormSchema>>({
     resolver: zodResolver(channelFormSchema),
     defaultValues: { name: '', description: '', link: '' },
+    mode: 'onChange',
   });
 
   const dmUsernameValue = dmForm.watch('username');
+  const groupLinkValue = groupForm.watch('link');
+  const channelLinkValue = channelForm.watch('link');
 
   useEffect(() => {
     if (debounceTimeout.current) {
@@ -122,6 +132,70 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         }
     };
   }, [dmUsernameValue, db, dmForm, t]);
+
+    useEffect(() => {
+        if (groupDebounceTimeout.current) clearTimeout(groupDebounceTimeout.current);
+        if (groupForm.formState.dirtyFields.link) {
+            groupForm.clearErrors('link');
+        }
+
+        if (groupLinkValue && groupLinkValue.length >= 4 && !/\s/.test(groupLinkValue)) {
+            setIsCheckingGroupLink(true);
+            groupDebounceTimeout.current = setTimeout(async () => {
+                if (!db) return;
+                const linkWithPrefix = '/G/' + groupLinkValue;
+                const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
+                try {
+                    const linkSnap = await getDoc(linkRef);
+                    if (linkSnap.exists()) {
+                        groupForm.setError('link', { message: t('link_taken') });
+                    }
+                } catch (error) {
+                    console.error("Error checking group link", error);
+                } finally {
+                    setIsCheckingGroupLink(false);
+                }
+            }, 800);
+        } else {
+            setIsCheckingGroupLink(false);
+        }
+
+        return () => {
+            if (groupDebounceTimeout.current) clearTimeout(groupDebounceTimeout.current);
+        };
+    }, [groupLinkValue, db, groupForm, t]);
+
+    useEffect(() => {
+        if (channelDebounceTimeout.current) clearTimeout(channelDebounceTimeout.current);
+        if (channelForm.formState.dirtyFields.link) {
+            channelForm.clearErrors('link');
+        }
+
+        if (channelLinkValue && channelLinkValue.length >= 4 && !/\s/.test(channelLinkValue)) {
+            setIsCheckingChannelLink(true);
+            channelDebounceTimeout.current = setTimeout(async () => {
+                if (!db) return;
+                const linkWithPrefix = '/C/' + channelLinkValue;
+                const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
+                try {
+                    const linkSnap = await getDoc(linkRef);
+                    if (linkSnap.exists()) {
+                        channelForm.setError('link', { message: t('link_taken') });
+                    }
+                } catch (error) {
+                    console.error("Error checking channel link", error);
+                } finally {
+                    setIsCheckingChannelLink(false);
+                }
+            }, 800);
+        } else {
+            setIsCheckingChannelLink(false);
+        }
+
+        return () => {
+            if (channelDebounceTimeout.current) clearTimeout(channelDebounceTimeout.current);
+        };
+    }, [channelLinkValue, db, channelForm, t]);
 
 
   const onDmSubmit = async (values: z.infer<typeof dmFormSchema>) => {
@@ -178,7 +252,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const onGroupSubmit = async (values: z.infer<typeof groupFormSchema>) => {
     if (!db || isCreating) return;
     setIsCreating(true);
-    groupForm.clearErrors();
+    groupForm.clearErrors('link');
 
     const linkWithPrefix = '/G/' + values.link;
 
@@ -225,7 +299,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const onChannelSubmit = async (values: z.infer<typeof channelFormSchema>) => {
     if (!db || isCreating) return;
     setIsCreating(true);
-    channelForm.clearErrors();
+    channelForm.clearErrors('link');
 
     const linkWithPrefix = '/C/' + values.link;
 
@@ -345,8 +419,10 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             )}
                         />
                          <div className='flex justify-end'>
-                            <Button type="submit" disabled={isCreating}>
-                                {isCreating ? t('creating') : t('create_group')}
+                            <Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid}>
+                                {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
+                                 isCheckingGroupLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
+                                 t('create_group')}
                             </Button>
                         </div>
                     </form>
@@ -400,8 +476,10 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         )}
                         />
                          <div className='flex justify-end'>
-                            <Button type="submit" disabled={isCreating}>
-                                {isCreating ? t('creating') : t('create_channel')}
+                            <Button type="submit" disabled={isCreating || isCheckingChannelLink || !channelForm.formState.isValid}>
+                                {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
+                                 isCheckingChannelLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> :
+                                 t('create_channel')}
                             </Button>
                         </div>
                     </form>
