@@ -53,6 +53,8 @@ import { NewChatDialog } from './new-chat-dialog';
 import { useLanguage } from '@/context/language-context';
 import { SearchDialog } from './search-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { UserProfileCard } from './user-profile-card';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -131,6 +133,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showNewChat, setShowNewChat] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false);
+  const [showUserProfilePopover, setShowUserProfilePopover] = useState(false);
 
 
   const chatsQuery = useMemo(() => {
@@ -396,14 +399,29 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <Separator />
 
       <SidebarFooter className="p-2">
-        <div className="flex items-center gap-2 p-2">
-          {currentUser.uid && currentUser.name && (
-            <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online" }} />
-          )}
-          <div className="flex-1 truncate">
-            <p className="font-semibold">{currentUser.name || currentUser.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">{t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
-          </div>
+        <div className="flex items-center gap-2">
+          <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
+            <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 flex-1 truncate p-2 rounded-md hover:bg-sidebar-accent text-left">
+                    {currentUser.uid && currentUser.name && (
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online" }} />
+                    )}
+                    <div className="flex-1 truncate">
+                    <p className="font-semibold">{currentUser.name || currentUser.email}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
+                    </div>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-80 mb-1">
+                <UserProfileCard 
+                    user={currentUser} 
+                    onEditProfile={() => {
+                        setShowUserProfilePopover(false);
+                        setShowEditProfile(true);
+                    }}
+                />
+            </PopoverContent>
+          </Popover>
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {theme === 'light' ? (
               <Sun className="h-5 w-5" />
