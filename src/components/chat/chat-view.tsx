@@ -186,9 +186,9 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Chat Header */}
-      <header className="flex items-center p-4 border-b">
+      <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
@@ -240,7 +240,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer className="p-4 border-t">
+        <footer className="flex-shrink-0 p-4 border-t">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
