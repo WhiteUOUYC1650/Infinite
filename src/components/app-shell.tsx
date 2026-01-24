@@ -16,12 +16,14 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { User, AuthenticatedUser } from '@/types';
+import { useLanguage } from '@/context/language-context';
 
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const [selectedItem, setSelectedItem] = useState<PopulatedChat | null>(null);
   const { isMobile } = useSidebar();
   const db = useFirestore();
+  const { t } = useLanguage();
 
   const userDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -58,7 +60,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             <div className="flex flex-col items-center text-center">
                 <MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} />
                 <h2 className="text-2xl font-bold tracking-tight font-headline">
-                  {selectedItem ? "Loading chat..." : "Chat not selected"}
+                  {selectedItem ? t('loading_chat') : t('chat_not_selected')}
                 </h2>
             </div>
           </div>
