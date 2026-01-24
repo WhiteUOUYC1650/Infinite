@@ -179,7 +179,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Auto-scroll ---
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, item, chatLoading, messagesLoading, membersLoading]);
 
 
@@ -364,34 +364,36 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </header>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-        ) : messages && messages.length > 0 ? (
-            <div className="space-y-4 p-4">
-                {messages.map((message) => {
-                    const sender = memberDetails[message.senderId];
-                    return (
-                        <ChatMessage 
-                            key={message.id} 
-                            message={message} 
-                            sender={sender}
-                            isCurrentUser={message.senderId === currentUser.uid} 
-                            chatType={item.type} 
-                            onAvatarClick={setProfileDialogUser}
-                            isGeneralChat={item.id === 'GENERAL_CHAT'}
-                        />
-                    );
-                })}
-                <div ref={messagesEndRef} />
-            </div>
-        ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground p-4">
-                {t('no_messages_yet')}
-            </div>
-        )}
+      <div className="flex-1 relative">
+        <div className="absolute inset-0 overflow-y-auto">
+            {isLoading ? (
+                <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+            ) : messages && messages.length > 0 ? (
+                <div className="space-y-4 p-4">
+                    {messages.map((message) => {
+                        const sender = memberDetails[message.senderId];
+                        return (
+                            <ChatMessage 
+                                key={message.id} 
+                                message={message} 
+                                sender={sender}
+                                isCurrentUser={message.senderId === currentUser.uid} 
+                                chatType={item.type} 
+                                onAvatarClick={setProfileDialogUser}
+                                isGeneralChat={item.id === 'GENERAL_CHAT'}
+                            />
+                        );
+                    })}
+                    <div ref={messagesEndRef} />
+                </div>
+            ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground p-4">
+                    {t('no_messages_yet')}
+                </div>
+            )}
+        </div>
       </div>
 
       {/* Message Input */}
