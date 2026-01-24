@@ -318,7 +318,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-svh bg-background overflow-hidden">
       {/* Chat Header */}
       <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
@@ -536,7 +536,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             isCurrentUser && "flex-row-reverse"
         )}>
             {/* AVATAR */}
-            {showAvatar ? (
+            {showAvatar && (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={!sender}>
@@ -546,10 +546,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : (
-                // This spacer was causing the alignment issue for the current user's messages in groups/channels.
-                // It is no longer needed with the simplified flex-row-reverse and alignment logic.
-                !isCurrentUser && chatType !== 'dm' && <div className="w-10" />
             )}
 
             {/* Message Bubble */}
