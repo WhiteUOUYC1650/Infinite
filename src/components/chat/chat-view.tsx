@@ -413,15 +413,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-start gap-3",
             isCurrentUser && "flex-row-reverse"
         )}>
-            {!isCurrentUser ? (
-                <div className="w-10 h-10 flex-shrink-0">
-                    {showSenderInfoInGroup && sender && (
-                        <button onClick={handleAvatarClick}>
-                            <UserAvatarWithStatus user={sender} />
-                        </button>
-                    )}
-                </div>
-            ) : null }
+            {showSenderInfoInGroup && sender ? (
+                <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
+                    <UserAvatarWithStatus user={sender} />
+                </button>
+            ) : null}
 
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
