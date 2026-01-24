@@ -228,19 +228,18 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 function ChatMessage({ message, isCurrentUser, chatType, chatName }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type'], chatName?: string }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     const isChannel = chatType === 'channel';
-    const alignRight = isCurrentUser;
-
+    
     const senderName = message.senderName;
     const senderAvatar = message.senderAvatar || '';
     
   return (
-    <div className={cn("flex items-end gap-3", alignRight && "flex-row-reverse")}>
-      {!alignRight && !isChannel && senderName && (
+    <div className={cn("flex items-end gap-3", isCurrentUser && "flex-row-reverse")}>
+      {!isCurrentUser && !isChannel && senderName && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Avatar className="h-8 w-8">
-                        {senderAvatar ? <AvatarImage src={senderAvatar} alt={senderName} /> : <AvatarFallback>{senderName.charAt(0)}</AvatarFallback>}
+                        {senderAvatar ? <AvatarImage src={senderAvatar} alt={senderName || ''} /> : <AvatarFallback>{senderName?.charAt(0)}</AvatarFallback>}
                     </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -252,13 +251,14 @@ function ChatMessage({ message, isCurrentUser, chatType, chatName }: { message: 
       <div
         className={cn(
           "max-w-xs lg:max-w-md p-3 rounded-lg",
-          alignRight
+          isCurrentUser
             ? "bg-primary text-primary-foreground rounded-br-none"
-            : "bg-secondary text-secondary-foreground rounded-bl-none",
-          isChannel && "bg-card"
+            : isChannel
+                ? "bg-card text-card-foreground rounded-bl-none"
+                : "bg-secondary text-secondary-foreground rounded-bl-none"
         )}
       >
-        {!alignRight && isChannel && <p className="text-sm font-bold text-primary mb-1">{senderName || chatName}</p>}
+        {!isCurrentUser && isChannel && <p className="text-sm font-bold text-primary mb-1">{senderName || chatName}</p>}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
