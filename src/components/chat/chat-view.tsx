@@ -79,7 +79,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -179,8 +179,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Auto-scroll ---
   useLayoutEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages, item]);
+    if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [messages, item, chatLoading, messagesLoading, membersLoading]);
 
 
   const handleSendMessageToUser = async (targetUser: User) => {
@@ -364,7 +366,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </header>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {isLoading ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -385,7 +387,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         />
                     );
                 })}
-                <div ref={messagesEndRef} />
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground p-4">
@@ -458,18 +459,15 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         }
     };
     
-    // Only show avatar in group chats (and general chat) for other users.
     const showAvatar = !isCurrentUser && (chatType === 'group' || isGeneralChat);
     const isChannel = chatType === 'channel';
 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            // All channel messages are left-aligned.
-            // For other chats, only the current user's messages are right-aligned.
             isCurrentUser && !isChannel && "flex-row-reverse"
         )}>
-            {/* AVATAR BLOCK: Only renders for other users in groups/general chat */}
+            {/* AVATAR: for others in groups */}
             {showAvatar ? (
                 <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
@@ -480,7 +478,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                 </div>
-            ) : null}
+            ) : (
+                /* SPACER: for self in groups, to align with others' messages */
+                (isCurrentUser && (chatType === 'group' || isGeneralChat)) ? (
+                    <div className="w-10 flex-shrink-0" />
+                ) : null
+            )}
 
             {/* Message Bubble */}
             <div className={cn(
