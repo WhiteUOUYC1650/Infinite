@@ -528,15 +528,15 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    const showAvatar = !isCurrentUser && chatType === 'group';
+    const showAvatar = !isCurrentUser && (chatType === 'group' || chatType === 'channel');
 
     return (
         <div className={cn(
             "flex items-start gap-3",
             isCurrentUser && "flex-row-reverse"
         )}>
-            {/* AVATAR OR SPACER */}
-            {showAvatar ? (
+            {/* AVATAR */}
+            {showAvatar && (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={!sender}>
@@ -546,7 +546,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : !isCurrentUser && <div className="w-10" /> }
+            )}
 
             {/* Message Bubble */}
             <div className={cn(
