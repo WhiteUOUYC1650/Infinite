@@ -83,7 +83,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const headerRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -181,7 +180,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid) || item.id === 'GENERAL_CHAT';
 
-  // --- Height calculation and Auto-scroll ---
+  // --- Height calculation ---
   useLayoutEffect(() => {
     const calculateAndSetHeight = () => {
         if (containerRef.current && headerRef.current && messagesContainerRef.current) {
@@ -203,9 +202,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return () => resizeObserver.disconnect();
   }, [canSendMessage]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // --- Auto-scroll ---
+  useLayoutEffect(() => {
+    if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages, item]);
 
 
   const handleSendMessageToUser = async (targetUser: User) => {
@@ -410,7 +412,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         />
                     );
                 })}
-                <div ref={messagesEndRef} />
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground p-4">
@@ -476,24 +477,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, isGeneralChat }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, isGeneralChat: boolean }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const isChannel = chatType === 'channel';
-
+    
     const handleAvatarClick = () => {
         if (sender && !isCurrentUser) {
             onAvatarClick(sender);
         }
     };
+    
+    // Only show avatar in group chats (and general chat) for other users.
+    const showAvatar = !isCurrentUser && (chatType === 'group' || isGeneralChat);
+    const isChannel = chatType === 'channel';
 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            !isChannel && isCurrentUser && "flex-row-reverse"
+            isCurrentUser && !isChannel && "flex-row-reverse" // Your messages are reversed, except in channels.
         )}>
-            {/* AVATAR/SPACER BLOCK: Only renders for other users in groups/general chat */}
-            {(!isCurrentUser && (chatType === 'group' || isGeneralChat)) ? (
+            {/* AVATAR BLOCK: Only renders for other users in groups/general chat */}
+            {showAvatar ? (
                 <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
-                        <button onClick={handleAvatarClick}>
+                        <button onClick={handleAvatarClick} disabled={!sender}>
                             <UserAvatarWithStatus user={sender} />
                         </button>
                     ) : (
@@ -512,7 +516,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
                 {/* Sender Name: for others in groups/general, and for everyone in channels */}
-                {(isChannel && sender) || ((chatType === 'group' || isGeneralChat) && !isCurrentUser && sender) ? (
+                {(isChannel && sender) || (showAvatar && sender) ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 
