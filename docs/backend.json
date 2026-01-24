@@ -105,6 +105,13 @@
             "type": "object",
             "description": "The last message sent in the chat for display in the sidebar."
         },
+        "unreadCounts": {
+            "type": "object",
+            "description": "Map of user IDs to their unread message count for this chat.",
+            "additionalProperties": {
+                "type": "number"
+            }
+        },
         "link": {
           "type": "string",
           "description": "Unique link for a group or channel."

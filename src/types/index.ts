@@ -32,7 +32,7 @@ export type Chat = {
   members: string[]; // user ids
   ownerId?: string;
   lastMessage?: Omit<Message, 'id' | 'sender'> & { senderName?: string };
-  unreadCount?: number;
+  unreadCounts?: { [userId: string]: number };
   icon?: string;
   description?: string;
   link?: string;

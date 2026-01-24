@@ -8,7 +8,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -321,7 +320,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               <AccordionContent>
                 <div className="space-y-1">
                   {groupDiscussions.map((chat) => (
-                    <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} />
+                    <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
                   ))}
                 </div>
               </AccordionContent>
@@ -334,7 +333,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               <AccordionContent>
                 <div className="space-y-1">
                   {channels.map((channel) => (
-                     <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} />
+                     <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
                   ))}
                 </div>
               </AccordionContent>
@@ -466,6 +465,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
   }
 
   const isSavedMessages = otherUser?.id === currentUserId;
+  const unreadCount = item.unreadCounts?.[currentUserId] || 0;
 
   return (
     <Button
@@ -480,17 +480,19 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
                 <p className="font-semibold">{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
                 {item.lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>}
             </div>
-            {item.unreadCount && item.unreadCount > 0 && (
-                <Badge className="bg-primary">{item.unreadCount}</Badge>
+            {unreadCount > 0 && (
+                <Badge className="bg-primary">{unreadCount}</Badge>
             )}
         </div>
     </Button>
   );
 }
 
-function ChatItemComponent({ item, onSelect, selectedId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string }) {
+function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
   const lastMessage = item.lastMessage as { senderName?: string, content?: string };
   const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
+  const unreadCount = item.unreadCounts?.[currentUserId] || 0;
+
   return (
     <Button
       variant="ghost"
@@ -503,8 +505,8 @@ function ChatItemComponent({ item, onSelect, selectedId }: { item: Chat, onSelec
           <p className="font-semibold">{item.name}</p>
           {lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
-        {item.unreadCount && item.unreadCount > 0 && (
-            <Badge className="bg-primary">{item.unreadCount}</Badge>
+        {unreadCount > 0 && (
+            <Badge className="bg-primary">{unreadCount}</Badge>
         )}
       </div>
     </Button>

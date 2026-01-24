@@ -3,31 +3,52 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import type { Message, PopulatedChat, User, AuthenticatedUser } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch, increment, updateDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 
-export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
+export function ChatView({ item: initialItem, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
   const { t } = useLanguage();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
+
+  // --- Get live chat data ---
+  const chatDocRef = useMemoFirebase(() => {
+    if (!db) return null;
+    return doc(db, 'chats', initialItem.id);
+  }, [db, initialItem.id]);
+
+  const { data: liveChatData } = useDoc<Chat>(chatDocRef);
+
+  const item = useMemo(() => {
+      return { ...initialItem, ...liveChatData };
+  }, [initialItem, liveChatData]);
+  // --- End live chat data ---
+
+  // --- Reset unread count ---
+  useEffect(() => {
+    if (db && currentUser?.uid && item.id) {
+      const unreadCountForCurrentUser = item.unreadCounts?.[currentUser.uid] || 0;
+      if (unreadCountForCurrentUser > 0) {
+        const chatRef = doc(db, 'chats', item.id);
+        updateDoc(chatRef, {
+          [`unreadCounts.${currentUser.uid}`]: 0
+        }).catch(error => {
+            console.error("Could not reset unread count:", error);
+        });
+      }
+    }
+  }, [db, currentUser?.uid, item.id, item.unreadCounts]);
 
   // --- Optimized User fetching for DM header ---
   const otherUserId = useMemo(() => {
@@ -131,7 +152,18 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         const newMessageRef = doc(messagesCollectionRef);
         
         batch.set(newMessageRef, messageData);
-        batch.update(chatRef, { lastMessage: lastMessageData });
+        
+        const chatUpdateData: { [key:string]: any } = { 
+            lastMessage: lastMessageData 
+        };
+
+        item.members.forEach(memberId => {
+            if (memberId !== currentUser.uid) {
+                chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+            }
+        });
+        
+        batch.update(chatRef, chatUpdateData);
         
         await batch.commit();
 
@@ -241,24 +273,20 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type']}) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     const isChannel = chatType === 'channel';
-    
-    const senderName = message.senderName;
-    const senderAvatar = message.senderAvatar || '';
-    
+
   return (
     <div className={cn(
         "flex items-end gap-3", 
-        !isChannel && isCurrentUser && "flex-row-reverse"
+        isCurrentUser && !isChannel && "flex-row-reverse"
     )}>
       <div
         className={cn(
           "max-w-xs lg:max-w-md p-3 rounded-lg",
-          isCurrentUser && chatType !== 'channel'
+          isCurrentUser && !isChannel
             ? "bg-primary text-primary-foreground rounded-br-none ml-auto"
             : "bg-card text-card-foreground rounded-bl-none"
         )}
       >
-        {!isCurrentUser && isChannel && senderName && <p className="text-xs font-bold mb-1">{senderName}</p>}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
