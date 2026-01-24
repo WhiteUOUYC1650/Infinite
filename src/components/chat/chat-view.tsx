@@ -116,7 +116,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   }
 
   // --- Auto-scroll to bottom ---
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
