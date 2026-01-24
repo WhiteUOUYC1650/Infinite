@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -529,10 +530,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    // Avatar is shown for other users in groups, and for all users in channels.
-    const showAvatar = (chatType === 'group' && !isCurrentUser) || chatType === 'channel';
+    // Avatar is shown only for other users in groups.
+    const showAvatar = chatType === 'group' && !isCurrentUser;
 
-    // Messages are aligned to the right for the current user, except in channels.
+    // Messages are aligned to the right for the current user, except in channels where all messages are on the left.
     const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
@@ -555,7 +556,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
 
             {/* Message Bubble */}
             <div className={cn(
-                "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
+                "max-w-lg lg:max-w-xl p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
