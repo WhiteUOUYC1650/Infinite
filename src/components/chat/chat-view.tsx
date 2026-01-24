@@ -530,7 +530,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    // Avatar is shown only for other users in groups.
+    // Avatar is only shown for other users in group chats.
     const showAvatar = chatType === 'group' && !isCurrentUser;
 
     // Messages are aligned to the right for the current user, except in channels where all messages are on the left.
@@ -556,7 +556,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
 
             {/* Message Bubble */}
             <div className={cn(
-                "max-w-lg lg:max-w-xl p-3 rounded-lg flex flex-col",
+                "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
@@ -572,5 +572,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         </div>
     );
 }
+
+    
 
     
