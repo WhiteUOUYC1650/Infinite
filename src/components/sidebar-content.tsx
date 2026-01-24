@@ -480,7 +480,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogAction>{t('ok')}</AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
