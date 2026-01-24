@@ -27,6 +27,7 @@ function useBatchUsers(userIds: string[]) {
     useEffect(() => {
         const uniqueUserIds = JSON.parse(stringifiedUserIds);
         if (!db || uniqueUserIds.length === 0) {
+            setUsers({});
             setLoading(false);
             return;
         }
@@ -126,9 +127,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   // --- End Optimization ---
 
   // --- Fetch all members' data ---
-  const { users: memberDetails, loading: membersLoading } = useBatchUsers(item.members);
-
-
   const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'chats', item.id, 'messages');
@@ -136,6 +134,20 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
+
+  const messageSenderIds = useMemo(() => {
+    if (item.id !== 'GENERAL_CHAT' || !messages) return [];
+    const ids = messages.map(m => m.senderId);
+    return Array.from(new Set(ids));
+  }, [item.id, messages]);
+
+  const allUserIdsToFetch = useMemo(() => {
+      const combined = [...item.members, ...messageSenderIds];
+      return Array.from(new Set(combined));
+  }, [item.members, messageSenderIds]);
+
+  const { users: memberDetails, loading: membersLoading } = useBatchUsers(allUserIdsToFetch);
+
 
   const getChatName = () => {
     if (item.type === 'dm') {
@@ -323,7 +335,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message List */}
       <div ref={messagesContainerRef} className="overflow-y-auto">
-        {messagesLoading ? (
+        {(messagesLoading || (allUserIdsToFetch.length > 0 && membersLoading)) ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
@@ -400,7 +412,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const showAvatarInGroup = !isCurrentUser && chatType === 'group';
+    const showAvatarAndName = !isCurrentUser && chatType === 'group';
 
     const handleAvatarClick = () => {
         if (sender) {
@@ -413,19 +425,23 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-start gap-3",
             (isCurrentUser && chatType !== 'channel') && "flex-row-reverse"
         )}>
-            {showAvatarInGroup && sender ? (
+            {showAvatarAndName && sender ? (
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
                     <UserAvatarWithStatus user={sender} />
                 </button>
-            ) : null}
+            ) : (!isCurrentUser && chatType === 'group') ? (
+                <div className="w-10 h-10 flex-shrink-0" />
+            ): null}
 
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
-                (isCurrentUser && chatType !== 'channel')
+                 chatType === 'channel'
+                    ? "bg-card text-card-foreground rounded-bl-none"
+                    : isCurrentUser
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {showAvatarInGroup && sender && (
+                {(showAvatarAndName || (chatType === 'channel')) && sender && (
                     <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 )}
                 <p className="text-sm break-words">{message.content}</p>
