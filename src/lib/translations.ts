@@ -130,6 +130,11 @@ export const translations = {
       'you_left_the_group_desc': 'You can no longer see new messages or send messages in this conversation.',
       'you_left_the_channel': 'You have left this channel',
       'you_left_the_channel_desc': 'You will no longer receive updates. You can rejoin using the link.',
+      'welcome_title': 'Welcome to Infinite!',
+      'welcome_subtitle': 'You are one of the first to experience the future of communication.',
+      'beta_badge': 'Beta',
+      'welcome_message': 'Thank you for joining the beta test of our new messenger. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
+      'continue_button': 'Continue',
     },
     ru: {
       'settings': 'Настройки',
@@ -143,7 +148,7 @@ export const translations = {
       'groups': 'Групповые обсуждения',
       'channels': 'Каналы',
       'loading_chats': 'Загрузка чатов...',
-      'saved_messages': 'Сохраненные сообщения',
+      'saved_messages': 'Избранное',
       'app_version': 'Версия приложения',
       'version_info': 'Вы используете версию 0.1 мессенджера Infinite.',
       'ok': 'OK',
@@ -262,6 +267,11 @@ export const translations = {
       'you_left_the_group_desc': 'Вы больше не можете видеть новые сообщения или отправлять сообщения в этом диалоге.',
       'you_left_the_channel': 'Вы покинули этот канал',
       'you_left_the_channel_desc': 'Вы больше не будете получать обновления. Вы можете присоединиться снова по ссылке.',
+      'welcome_title': 'Добро пожаловать в Infinite!',
+      'welcome_subtitle': 'Вы один из первых, кто прикоснулся к будущему общения.',
+      'beta_badge': 'Бета',
+      'welcome_message': 'Спасибо, что присоединились к бета-тестированию нашего нового мессенджера. Мы усердно работаем, чтобы предоставить вам лучший опыт, и ваш отзыв невероятно важен для нас.',
+      'continue_button': 'Продолжить',
     }
   };
   

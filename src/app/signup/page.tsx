@@ -117,7 +117,7 @@ export default function SignUpPage() {
         });
       });
       
-      router.push('/');
+      router.push('/welcome');
 
     } catch (error: any) {
         if (auth.currentUser && error.message.includes(t('username_just_taken_error'))) {
