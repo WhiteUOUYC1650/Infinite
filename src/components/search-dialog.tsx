@@ -206,7 +206,9 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                                 <Button size="sm" onClick={() => handleMessage(result.data as User)}>{t('message')}</Button>
                            )}
                            {result.type === 'chat' && (
-                               <Button size="sm" onClick={() => handleJoin(result.data as Chat)}>{t('join')}</Button>
+                               <Button size="sm" onClick={() => handleJoin(result.data as Chat)}>
+                                   {(result.data as Chat).members.includes(currentUser.uid) ? t('open') : t('join')}
+                               </Button>
                            )}
                         </div>
                     ))}

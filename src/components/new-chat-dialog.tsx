@@ -112,7 +112,12 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                 const usernameRef = doc(db, 'usernames', dmUsernameValue);
                 const usernameSnap = await getDoc(usernameRef);
                 if (usernameSnap.exists()) {
-                    setUsernameExists(true);
+                    if (usernameSnap.data().uid === currentUser.uid) {
+                         dmForm.setError('username', { message: t('cannot_chat_with_self_dm') });
+                         setUsernameExists(false);
+                    } else {
+                        setUsernameExists(true);
+                    }
                 } else {
                     setUsernameExists(false);
                     dmForm.setError('username', { message: t('user_not_found') });
@@ -133,7 +138,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             clearTimeout(debounceTimeout.current);
         }
     };
-  }, [dmUsernameValue, db, dmForm, t]);
+  }, [dmUsernameValue, db, dmForm, t, currentUser.uid]);
 
     useEffect(() => {
         if (groupDebounceTimeout.current) clearTimeout(groupDebounceTimeout.current);
@@ -218,9 +223,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
         targetUserId = usernameSnap.data().uid;
         
-        const members = targetUserId === currentUser.uid
-            ? [currentUser.uid]
-            : [currentUser.uid, targetUserId].sort();
+        const members = [currentUser.uid, targetUserId].sort();
         
         chatId = members.join('_');
         
