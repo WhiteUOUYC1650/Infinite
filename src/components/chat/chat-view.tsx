@@ -132,13 +132,16 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     const chatRef = doc(db, 'chats', item.id);
     const messagesCollectionRef = collection(chatRef, 'messages');
 
-    const messageData = {
+    const messageData: { [key: string]: any } = {
       senderId: currentUser.uid,
       content: content,
       timestamp: serverTimestamp(),
       senderName: currentUser.name || currentUser.username || "User",
-      senderAvatar: currentUser.avatar
     };
+
+    if (currentUser.avatar) {
+      messageData.senderAvatar = currentUser.avatar;
+    }
 
     const lastMessageData = {
         content: content,
