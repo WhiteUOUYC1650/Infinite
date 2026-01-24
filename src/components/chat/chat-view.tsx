@@ -293,7 +293,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                     <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
-                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  <Send className="h-5 w-5" />
                 </Button>
             </div>
             </form>
