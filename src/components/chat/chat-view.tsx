@@ -120,7 +120,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, messagesLoading]);
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
