@@ -83,6 +83,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const headerRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -204,9 +205,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Auto-scroll ---
   useLayoutEffect(() => {
-    if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages, item]);
 
 
@@ -412,6 +411,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         />
                     );
                 })}
+                <div ref={messagesEndRef} />
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground p-4">
@@ -491,7 +491,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            isCurrentUser && !isChannel && "flex-row-reverse" // Your messages are reversed, except in channels.
+            // All channel messages are left-aligned.
+            // For other chats, only the current user's messages are right-aligned.
+            isCurrentUser && !isChannel && "flex-row-reverse"
         )}>
             {/* AVATAR BLOCK: Only renders for other users in groups/general chat */}
             {showAvatar ? (
