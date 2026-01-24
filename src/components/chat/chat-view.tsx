@@ -82,12 +82,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
 
   useEffect(() => {
-    if (item) {
-      setLoadingMessages(true);
-    }
-  }, [item]);
-
-  useEffect(() => {
       if(!messagesLoading) {
         setLoadingMessages(false);
       }
