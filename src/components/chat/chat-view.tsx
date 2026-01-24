@@ -7,7 +7,7 @@ import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment } from 'firebase/firestore';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
@@ -20,6 +20,12 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
+
+  // --- Refs for height calculation ---
+  const chatViewRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -109,18 +115,46 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     return t('offline');
   }
 
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-
+  // --- Auto-scroll to bottom ---
   useEffect(() => {
     if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
+  const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
+
+  // --- Dynamic Height Calculation ---
+  useLayoutEffect(() => {
+    const calculateAndSetHeight = () => {
+      if (chatViewRef.current && headerRef.current && messagesContainerRef.current) {
+        const totalHeight = chatViewRef.current.offsetHeight;
+        const headerHeight = headerRef.current.offsetHeight;
+        const footerHeight = footerRef.current ? footerRef.current.offsetHeight : 0;
+        
+        const messagesHeight = totalHeight - headerHeight - footerHeight;
+        
+        messagesContainerRef.current.style.height = `${messagesHeight}px`;
+      }
+    };
+
+    calculateAndSetHeight();
+
+    const resizeObserver = new ResizeObserver(calculateAndSetHeight);
+    if (chatViewRef.current) {
+      resizeObserver.observe(chatViewRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [canSendMessage]); // Recalculate if footer appears/disappears
+
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db || isSending) return;
   
+    setIsSending(true);
     const content = messageContent;
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
@@ -140,16 +174,20 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         messageData.senderAvatar = currentUser.avatar;
     }
   
-    addDoc(messagesCollectionRef, messageData).catch((serverError: any) => {
-      setMessageContent(content); // Re-populate the input on error
-      console.error("Error sending message: ", serverError);
-      const permissionError = new FirestorePermissionError({
-          path: messagesCollectionRef.path,
-          operation: 'create',
-          requestResourceData: messageData,
+    addDoc(messagesCollectionRef, messageData)
+      .catch((serverError: any) => {
+        setMessageContent(content); // Re-populate the input on error
+        console.error("Error sending message: ", serverError);
+        const permissionError = new FirestorePermissionError({
+            path: messagesCollectionRef.path,
+            operation: 'create',
+            requestResourceData: messageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSending(false);
       });
-      errorEmitter.emit('permission-error', permissionError);
-    });
   
     const chatRef = doc(db, 'chats', item.id);
     const lastMessageData = {
@@ -174,12 +212,10 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     });
   };
 
-  const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
-
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div ref={chatViewRef} className="flex flex-col h-full bg-background overflow-hidden">
       {/* Chat Header */}
-      <header className="flex-shrink-0 flex items-center p-4 border-b">
+      <header ref={headerRef} className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
@@ -211,7 +247,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       </header>
 
       {/* Message List */}
-      <div className="flex-1 min-h-0 overflow-y-auto" ref={messagesContainerRef}>
+      <div ref={messagesContainerRef} className="overflow-y-auto">
         {loadingMessages ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -231,7 +267,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer className="flex-shrink-0 p-4 border-t">
+        <footer ref={footerRef} className="flex-shrink-0 p-4 border-t">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
