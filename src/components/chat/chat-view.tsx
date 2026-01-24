@@ -6,7 +6,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -16,6 +16,58 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 
+// --- New Optimized Hook for fetching users in batches ---
+function useBatchUsers(userIds: string[]) {
+    const db = useFirestore();
+    const [users, setUsers] = useState<Record<string, User>>({});
+    const [loading, setLoading] = useState(true);
+
+    const stringifiedUserIds = JSON.stringify(userIds.sort());
+
+    useEffect(() => {
+        const uniqueUserIds = JSON.parse(stringifiedUserIds);
+        if (!db || uniqueUserIds.length === 0) {
+            setLoading(false);
+            return;
+        }
+
+        const fetchUsers = async () => {
+            setLoading(true);
+            const usersCollection = collection(db, 'users');
+            const fetchedUsers: Record<string, User> = {};
+            
+            const chunks: string[][] = [];
+            for (let i = 0; i < uniqueUserIds.length; i += 30) {
+                chunks.push(uniqueUserIds.slice(i, i + 30));
+            }
+
+            try {
+                const querySnapshots = await Promise.all(chunks.map(chunk => {
+                    const q = query(usersCollection, where('__name__', 'in', chunk));
+                    return getDocs(q);
+                }));
+
+                querySnapshots.forEach(snapshot => {
+                    snapshot.forEach(doc => {
+                        fetchedUsers[doc.id] = { id: doc.id, ...doc.data() } as User;
+                    });
+                });
+                setUsers(fetchedUsers);
+            } catch (error) {
+                console.error("Error fetching users in batch:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [db, stringifiedUserIds]);
+
+    return { users, loading };
+}
+
+
 export function ChatView({ item: initialItem, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
   const { t } = useLanguage();
@@ -23,7 +75,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
-  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
 
   // --- Refs for height calculation and scrolling ---
   const chatViewRef = useRef<HTMLDivElement>(null);
@@ -73,6 +125,10 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   const { data: otherUser } = useDoc<User>(otherUserDocRef);
   // --- End Optimization ---
+
+  // --- Fetch all members' data ---
+  const { users: memberDetails, loading: membersLoading } = useBatchUsers(item.members);
+
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -226,7 +282,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                 otherUser ? ( // If we have the user, show the profile button
                     <button
                         className="flex items-center text-left hover:bg-accent p-1 rounded-md -m-1 transition-colors min-w-0"
-                        onClick={() => setIsProfileDialogOpen(true)}
+                        onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid}
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
@@ -280,10 +336,22 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
         ) : messages && messages.length > 0 ? (
-            <div className="space-y-6 p-4">
-                {messages.map((message) => (
-                    <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
-                ))}
+            <div className="space-y-4 p-4">
+                {messages.map((message) => {
+                    const sender = memberDetails[message.senderId];
+                    if (item.type !== 'dm' && !sender && !membersLoading) return null;
+
+                    return (
+                        <ChatMessage 
+                            key={message.id} 
+                            message={message} 
+                            sender={sender}
+                            isCurrentUser={message.senderId === currentUser.uid} 
+                            chatType={item.type} 
+                            onAvatarClick={setProfileDialogUser}
+                        />
+                    );
+                })}
                 <div ref={messagesEndRef} />
             </div>
         ) : (
@@ -324,38 +392,57 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         </footer>
       )}
 
-      {otherUser && (
+      {profileDialogUser && (
         <UserProfileDialog 
-            user={otherUser}
-            open={isProfileDialogOpen}
-            onOpenChange={setIsProfileDialogOpen}
-            onSendMessage={() => setIsProfileDialogOpen(false)}
+            user={profileDialogUser}
+            open={!!profileDialogUser}
+            onOpenChange={(open) => {
+                if(!open) setProfileDialogUser(null);
+            }}
+            onSendMessage={() => {
+                setProfileDialogUser(null);
+            }}
         />
       )}
     </div>
   );
 }
 
-function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type']}) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const isChannel = chatType === 'channel';
+    const isFromOtherUserInGroup = !isCurrentUser && (chatType === 'group' || chatType === 'channel');
 
-  return (
-    <div className={cn(
-        "flex items-end gap-3", 
-        isCurrentUser && !isChannel && "flex-row-reverse"
-    )}>
-      <div
-        className={cn(
-          "max-w-xs lg:max-w-md p-3 rounded-lg",
-          isCurrentUser && !isChannel
-            ? "bg-primary text-primary-foreground rounded-br-none ml-auto"
-            : "bg-card text-card-foreground rounded-bl-none"
-        )}
-      >
-        <p className="text-sm">{message.content}</p>
-        <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
-      </div>
-    </div>
-  );
+    const handleAvatarClick = () => {
+        if (sender) {
+            onAvatarClick(sender);
+        }
+    };
+
+    return (
+        <div className={cn(
+            "flex items-start gap-3",
+            isCurrentUser && "flex-row-reverse"
+        )}>
+            <div className="w-10 h-10 flex-shrink-0">
+                {isFromOtherUserInGroup && sender && (
+                    <button onClick={handleAvatarClick}>
+                        <UserAvatarWithStatus user={sender} />
+                    </button>
+                )}
+            </div>
+
+            <div className={cn(
+                "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
+                isCurrentUser
+                    ? "bg-primary text-primary-foreground rounded-br-none"
+                    : "bg-card text-card-foreground rounded-bl-none"
+            )}>
+                {isFromOtherUserInGroup && sender && (
+                    <p className="font-semibold text-sm mb-1">{sender.name}</p>
+                )}
+                <p className="text-sm break-words">{message.content}</p>
+                <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
+            </div>
+        </div>
+    );
 }
