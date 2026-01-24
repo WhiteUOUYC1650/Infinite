@@ -530,10 +530,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    // Logic for avatar: only for other users in a group chat.
     const showAvatar = chatType === 'group' && !isCurrentUser;
-
-    // Logic for alignment: user's own messages are on the right, except in channels where all messages are on the left.
     const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
@@ -541,8 +538,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-end gap-3",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
-            {showAvatar ? (
-                 <div className="w-10 h-10 flex-shrink-0">
+            {showAvatar && (
+                <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser}>
                             <UserAvatarWithStatus user={sender} />
@@ -550,18 +547,17 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     ) : (
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
-                 </div>
-            ) : (
-                <div className={cn({'w-10': chatType === 'group' && isCurrentUser})} />
+                </div>
             )}
 
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
-                : "bg-card text-card-foreground rounded-bl-none"
+                : "bg-card text-card-foreground rounded-bl-none",
+                !showAvatar && (chatType === 'group' && isCurrentUser ? 'mr-10' : '')
             )}>
-                {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
+                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 

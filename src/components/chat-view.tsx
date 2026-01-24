@@ -496,16 +496,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </footer>
       )}
 
-      {showChatProfile && item.type !== 'dm' && (
-        <ChatProfileDialog 
-            chat={item}
-            members={Object.values(memberDetails).filter(m => item.members.includes(m.id))}
-            currentUser={currentUser}
-            open={showChatProfile}
-            onOpenChange={(open) => { if (!open) setShowChatProfile(false); }}
-            onCloseChat={onClose}
-        />
-      )}
+      <ChatProfileDialog 
+          chat={item}
+          members={Object.values(memberDetails).filter(m => item.members.includes(m.id))}
+          currentUser={currentUser}
+          open={showChatProfile && item.type !== 'dm'}
+          onOpenChange={setShowChatProfile}
+          onCloseChat={onClose}
+      />
 
       {profileDialogUser && (
         <UserProfileDialog 
