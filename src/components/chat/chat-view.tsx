@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -320,7 +318,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div className="flex flex-col h-svh bg-background overflow-hidden">
+    <div className="flex flex-col h-svh w-screen bg-background overflow-hidden">
       {/* Chat Header */}
       <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
@@ -530,19 +528,20 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    // Avatar is only shown for other users in group chats.
-    const showAvatar = chatType === 'group' && !isCurrentUser;
+    const showAvatar = (chatType === 'group' || chatType === 'channel') && !isCurrentUser;
 
-    // Messages are aligned to the right for the current user, except in channels where all messages are on the left.
+    // Your own messages are always on the right.
+    // In channels, ALL messages are on the left.
+    // In DMs and Groups, others' messages are on the left.
     const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            alignRight && "flex-row-reverse"
+            alignRight ? "flex-row-reverse" : "flex-row"
         )}>
             {/* AVATAR */}
-            {showAvatar && (
+            {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser}>
@@ -552,6 +551,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
+            ) : (
+                <div className="w-10" /> // Spacer to align messages correctly
             )}
 
             {/* Message Bubble */}

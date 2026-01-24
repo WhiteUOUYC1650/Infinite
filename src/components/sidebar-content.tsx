@@ -320,11 +320,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <ScrollArea className="flex-1">
         <SidebarBody>
-            <div className="px-2 py-1">
+            <div className="py-1">
                 <Button
                     variant="ghost"
                     onClick={handleSelectSavedMessages}
-                    className={cn("w-full justify-start h-auto p-2 text-left", selectedId === currentUser.uid && 'bg-accent')}
+                    className={cn("w-full justify-start h-auto px-4 py-2 text-left", selectedId === currentUser.uid && 'bg-accent')}
                 >
                     <div className="flex items-center gap-3 w-full">
                         <Bookmark className="h-5 w-5 text-muted-foreground" />
@@ -334,7 +334,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <Button
                     variant="ghost"
                     onClick={handleSelectGeneralChat}
-                    className={cn("w-full justify-start h-auto p-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-accent')}
+                    className={cn("w-full justify-start h-auto px-4 py-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-accent')}
                 >
                     <div className="flex items-center gap-3 w-full">
                         <Globe className="h-5 w-5 text-muted-foreground" />
@@ -351,10 +351,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             className="w-full"
           >
             <AccordionItem value="direct-messages">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('direct_messages')}
               </AccordionTrigger>
-              <AccordionContent className="p-0">
+              <AccordionContent>
                 <div className="space-y-1">
                   {directMessages.map((chat) => {
                     const otherUserId = chat.members.find(id => id !== currentUser.uid) || chat.members[0];
@@ -375,7 +375,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </AccordionItem>
 
             <AccordionItem value="groups">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('groups')}
               </AccordionTrigger>
               <AccordionContent>
@@ -388,7 +388,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </AccordionItem>
 
             <AccordionItem value="channels">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('channels')}
               </AccordionTrigger>
               <AccordionContent>
@@ -528,7 +528,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
   const { t } = useLanguage();
   if (isLoading || !otherUser) {
     return (
-        <Button variant="ghost" className="w-full justify-start h-auto p-2 text-left">
+        <Button variant="ghost" className="w-full justify-start h-auto px-4 py-2 text-left">
             <div className="flex items-center gap-3 w-full">
                 <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
                 <div className="flex-1 truncate space-y-2">
@@ -548,7 +548,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("w-full justify-start h-auto p-2 text-left", selectedId === item.id && 'bg-accent')}
+        className={cn("w-full justify-start h-auto px-4 py-2 text-left", selectedId === item.id && 'bg-accent')}
         >
         <div className="flex items-center gap-3 w-full">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
@@ -573,7 +573,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("w-full justify-start h-auto p-2 text-left", selectedId === item.id && 'bg-accent')}
+      className={cn("w-full justify-start h-auto px-4 py-2 text-left", selectedId === item.id && 'bg-accent')}
     >
       <div className="flex items-center gap-3 w-full">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
