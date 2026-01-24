@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2 } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -97,13 +97,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { data: liveChatData, loading: chatLoading } = useDoc<Chat>(chatDocRef);
 
   const item = useMemo(() => {
-      return { ...initialItem, ...liveChatData };
+    if (!liveChatData) return initialItem;
+    return { ...initialItem, ...liveChatData };
   }, [initialItem, liveChatData]);
+
+  const isMember = useMemo(() => {
+    if (!item?.members) return false;
+    return item.members.includes(currentUser.uid);
+  }, [item.members, currentUser.uid]);
+
   // --- End live chat data ---
 
   // --- Reset unread count ---
   useEffect(() => {
-    if (db && currentUser?.uid && item.id && item.id !== 'GENERAL_CHAT') {
+    if (db && currentUser?.uid && item.id && item.id !== 'GENERAL_CHAT' && isMember) {
       const unreadCountForCurrentUser = item.unreadCounts?.[currentUser.uid] || 0;
       if (unreadCountForCurrentUser > 0) {
         const chatRef = doc(db, 'chats', item.id);
@@ -114,7 +121,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         });
       }
     }
-  }, [db, currentUser?.uid, item.id, item.unreadCounts]);
+  }, [db, currentUser?.uid, item.id, item.unreadCounts, isMember]);
 
   // --- Optimized User fetching for DM header ---
   const otherUserId = useMemo(() => {
@@ -132,9 +139,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Fetch all members' data ---
   const messagesQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || !isMember) return null;
     return collection(db, 'chats', item.id, 'messages');
-  }, [db, item.id]);
+  }, [db, item.id, isMember]);
 
   const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
@@ -182,7 +189,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return t('offline');
   }
 
-  const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid) || item.id === 'GENERAL_CHAT';
+  const canSendMessage = useMemo(() => {
+    if (!isMember) return false;
+    return item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
+  }, [isMember, item.type, item.ownerId, currentUser.uid]);
+
 
   // --- Auto-scroll ---
   useEffect(() => {
@@ -416,7 +427,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
-            ) : messages && messages.length > 0 ? (
+            ) : isMember && messages && messages.length > 0 ? (
                 <div className="space-y-4 p-4">
                     {messages.map((message) => {
                         const sender = memberDetails[message.senderId];
@@ -428,15 +439,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                 isCurrentUser={message.senderId === currentUser.uid} 
                                 chatType={item.type} 
                                 onAvatarClick={setProfileDialogUser}
-                                isGeneralChat={item.id === 'GENERAL_CHAT'}
                             />
                         );
                     })}
                     <div ref={messagesEndRef} />
                 </div>
             ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground p-4">
-                    {t('no_messages_yet')}
+                <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
+                    {isMember ? (
+                        <p>{t('no_messages_yet')}</p>
+                    ) : (
+                        <>
+                            {item.type === 'group' ? (
+                                <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                            ) : (
+                                <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                            )}
+                            <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
+                            <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -497,7 +519,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, isGeneralChat }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, isGeneralChat: boolean }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     
     const handleAvatarClick = () => {
@@ -506,39 +528,35 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         }
     };
     
-    const showAvatar = !isCurrentUser && (chatType === 'group' || isGeneralChat);
-    const showSpacer = false;
-    const isChannel = chatType === 'channel';
-
-    const isAlignedRight = isCurrentUser && chatType !== 'channel';
+    const showAvatar = !isCurrentUser && chatType === 'group';
 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            isAlignedRight && "flex-row-reverse"
+            isCurrentUser && "flex-row-reverse"
         )}>
             {/* AVATAR OR SPACER */}
-            {(showAvatar || showSpacer) ? (
+            {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
-                    {showAvatar && sender ? (
+                    {sender ? (
                         <button onClick={handleAvatarClick} disabled={!sender}>
                             <UserAvatarWithStatus user={sender} />
                         </button>
                     ) : (
-                        showAvatar && <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
+                        <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : null}
+            ) : !isCurrentUser && <div className="w-10" /> }
 
             {/* Message Bubble */}
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
-                isAlignedRight
+                isCurrentUser
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
             )}>
                 {/* Sender Name: for others in groups/general, and for everyone in channels */}
-                {(isChannel && sender) || (showAvatar && sender) ? (
+                {(chatType === 'channel' && sender) || (showAvatar && sender) ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 

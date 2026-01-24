@@ -126,6 +126,10 @@ export const translations = {
       'clear_history': 'Clear History',
       'group_info': 'Group Info',
       'channel_info': 'Channel Info',
+      'you_left_the_group': 'You have left this group',
+      'you_left_the_group_desc': 'You can no longer see new messages or send messages in this conversation.',
+      'you_left_the_channel': 'You have left this channel',
+      'you_left_the_channel_desc': 'You will no longer receive updates. You can rejoin using the link.',
     },
     ru: {
       'settings': 'Настройки',
@@ -254,6 +258,10 @@ export const translations = {
       'clear_history': 'Очистить историю',
       'group_info': 'Информация о группе',
       'channel_info': 'Информация о канале',
+      'you_left_the_group': 'Вы покинули эту группу',
+      'you_left_the_group_desc': 'Вы больше не можете видеть новые сообщения или отправлять сообщения в этом диалоге.',
+      'you_left_the_channel': 'Вы покинули этот канал',
+      'you_left_the_channel_desc': 'Вы больше не будете получать обновления. Вы можете присоединиться снова по ссылке.',
     }
   };
   
