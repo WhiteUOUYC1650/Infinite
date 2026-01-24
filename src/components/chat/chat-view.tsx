@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { UserProfileDialog } from '../user-profile-dialog';
 
 export function ChatView({ item: initialItem, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
@@ -22,6 +23,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   // --- Refs for height calculation and scrolling ---
   const chatViewRef = useRef<HTMLDivElement>(null);
@@ -145,7 +147,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     return () => {
       resizeObserver.disconnect();
     };
-  }, [canSendMessage]); // Recalculate if footer appears/disappears
+  }, [canSendMessage]);
 
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
@@ -218,25 +220,49 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
-        {item.type === "dm" && otherUser ? (
-          <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
-        ) : (
-          item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />
-        )}
-        <div className={cn("flex-1", item.type === 'dm' && 'ml-3')}>
-          <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
-           <p className="text-sm text-muted-foreground">
-            {item.id === 'GENERAL_CHAT' 
-              ? t('public_chat_description') 
-              : item.type === 'dm'
-                ? otherUser?.id !== currentUser.uid
-                  ? getStatusText(otherUser)
-                  : item.members.length === 1 ? null : t('members_count', {count: item.members?.length || 0})
-                : t('members_count', {count: item.members?.length || 0})}
-          </p>
+        
+        <div className="flex-1 flex items-center min-w-0">
+            {item.type === "dm" ? (
+                otherUser ? ( // If we have the user, show the profile button
+                    <button
+                        className="flex items-center text-left hover:bg-accent p-1 rounded-md -m-1 transition-colors min-w-0"
+                        onClick={() => setIsProfileDialogOpen(true)}
+                        disabled={otherUser.id === currentUser.uid}
+                    >
+                        <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
+                        <div className="ml-3 truncate">
+                            <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                            <p className="text-sm text-muted-foreground truncate">
+                                {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
+                            </p>
+                        </div>
+                    </button>
+                ) : ( // if it's a DM but user is loading, show a skeleton
+                    <div className="flex items-center min-w-0">
+                        <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
+                        <div className="ml-3 space-y-2">
+                            <div className='h-4 w-32 bg-muted rounded animate-pulse' />
+                            <div className='h-3 w-24 bg-muted rounded animate-pulse' />
+                        </div>
+                    </div>
+                )
+            ) : ( // Not a DM, show group/channel info
+                <div className="flex items-center min-w-0">
+                    {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
+                    <div className="truncate">
+                        <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                        <p className="text-sm text-muted-foreground truncate">
+                            {item.id === 'GENERAL_CHAT'
+                                ? t('public_chat_description')
+                                : t('members_count', { count: item.members?.length || 0 })}
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
+
         {item.type === 'dm' && otherUser?.id !== currentUser.uid && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-2">
             <Button variant="ghost" size="icon" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
                 <Phone className="h-5 w-5" />
             </Button>
@@ -296,6 +322,15 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
             </div>
             </form>
         </footer>
+      )}
+
+      {otherUser && (
+        <UserProfileDialog 
+            user={otherUser}
+            open={isProfileDialogOpen}
+            onOpenChange={setIsProfileDialogOpen}
+            onSendMessage={() => setIsProfileDialogOpen(false)}
+        />
       )}
     </div>
   );
