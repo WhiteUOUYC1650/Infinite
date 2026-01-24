@@ -37,7 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
-import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -269,17 +269,23 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 id: chatId,
                 type: 'group',
                 name: 'General Chat',
-                members: [], 
+                members: [currentUser.uid],
                 icon: 'Globe',
             };
             await setDoc(chatRef, {
                 type: 'group',
                 name: 'General Chat',
                 icon: 'Globe',
-                members: [],
+                members: [currentUser.uid],
             });
         } else {
             chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+            if (!chatData.members.includes(currentUser.uid)) {
+                await updateDoc(chatRef, {
+                    members: arrayUnion(currentUser.uid)
+                });
+                chatData.members.push(currentUser.uid);
+            }
         }
 
         handleSelect(chatData);

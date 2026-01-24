@@ -135,53 +135,55 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         )}
        
         <DialogFooter className='!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 pt-4'>
-            {isOwner ? (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                       <Button variant="destructive" disabled={isDeleting}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {isDeleting ? t('deleting') : t('delete_chat')}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t('delete_chat_confirm')}
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting}>
-                            {t('delete')}
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            ) : (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" disabled={isLeaving}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            {isLeaving ? t('leaving') : t('leave_chat')}
-                        </Button>
-                    </AlertDialogTrigger>
-                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving}>
-                            {t('leave')}
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
+            {chat.id !== 'GENERAL_CHAT' && (<>
+                {isOwner ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="destructive" disabled={isDeleting}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {isDeleting ? t('deleting') : t('delete_chat')}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {t('delete_chat_confirm')}
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting}>
+                                {t('delete')}
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" disabled={isLeaving}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                {isLeaving ? t('leaving') : t('leave_chat')}
+                            </Button>
+                        </AlertDialogTrigger>
+                         <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving}>
+                                {t('leave')}
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </>)}
         </DialogFooter>
       </DialogContent>
     </Dialog>

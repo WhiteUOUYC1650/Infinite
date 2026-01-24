@@ -28,8 +28,14 @@ service cloud.firestore {
     match /chats/GENERAL_CHAT {
       // Any signed-in user can read or create the general chat document.
       allow read, create: if isSignedIn();
-      // Any signed-in user can update the `lastMessage` field.
-      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']);
+      // Any signed-in user can update the `lastMessage` or add themselves to `members`.
+      allow update: if isSignedIn() && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+          request.resource.data.members.size() >= resource.data.members.size()
+        )
+      );
       allow delete: if false;
     }
 
