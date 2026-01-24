@@ -528,34 +528,33 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    const showAvatar = (chatType === 'group' || chatType === 'channel') && !isCurrentUser;
+    // Corrected Logic: Avatar is ONLY shown for other users in a group chat.
+    const showAvatar = chatType === 'group' && !isCurrentUser;
 
-    // Your own messages are always on the right.
-    // In channels, ALL messages are on the left.
-    // In DMs and Groups, others' messages are on the left.
+    // Corrected Logic: Your own messages are on the right, EXCEPT in channels where all messages are on the left.
     const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
         <div className={cn(
-            "flex items-start gap-3",
+            "flex items-end gap-3", // Use items-end for better vertical alignment with the bubble content
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
-            {/* AVATAR */}
-            {showAvatar ? (
+            {/* AVATAR LOGIC */}
+            {/* The avatar container is rendered only when `showAvatar` is true. This removes all unwanted margins. */}
+            {showAvatar && (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser}>
                             <UserAvatarWithStatus user={sender} />
                         </button>
                     ) : (
+                        // Skeleton loader for the avatar
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : (
-                <div className="w-10" /> // Spacer to align messages correctly
             )}
 
-            {/* Message Bubble */}
+            {/* MESSAGE BUBBLE */}
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
@@ -573,7 +572,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         </div>
     );
 }
-
-    
-
-    
