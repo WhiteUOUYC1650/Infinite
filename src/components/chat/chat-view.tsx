@@ -15,6 +15,7 @@ import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
+import { ChatProfileDialog } from './chat-profile-dialog';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -76,6 +77,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
+  const [showChatProfile, setShowChatProfile] = useState(false);
 
   // --- Refs for height calculation and scrolling ---
   const chatViewRef = useRef<HTMLDivElement>(null);
@@ -90,7 +92,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     return doc(db, 'chats', initialItem.id);
   }, [db, initialItem.id]);
 
-  const { data: liveChatData } = useDoc<Chat>(chatDocRef);
+  const { data: liveChatData, loading: chatLoading } = useDoc<Chat>(chatDocRef);
 
   const item = useMemo(() => {
       return { ...initialItem, ...liveChatData };
@@ -136,13 +138,13 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
 
   const messageSenderIds = useMemo(() => {
-    if (item.id !== 'GENERAL_CHAT' || !messages) return [];
+    if (!messages) return [];
     const ids = messages.map(m => m.senderId);
     return Array.from(new Set(ids));
-  }, [item.id, messages]);
+  }, [messages]);
 
   const allUserIdsToFetch = useMemo(() => {
-      const combined = [...item.members, ...messageSenderIds];
+      const combined = [...(item.members || []), ...messageSenderIds];
       return Array.from(new Set(combined));
   }, [item.members, messageSenderIds]);
 
@@ -181,7 +183,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     }
   }, [messages, messagesLoading]);
 
-  const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
+  const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid) || item.id === 'GENERAL_CHAT';
 
   // --- Dynamic Height Calculation ---
   useLayoutEffect(() => {
@@ -273,6 +275,8 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     });
   };
 
+  const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
+
   return (
     <div ref={chatViewRef} className="flex flex-col h-full bg-background overflow-hidden">
       {/* Chat Header */}
@@ -307,7 +311,11 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                     </div>
                 )
             ) : ( // Not a DM, show group/channel info
-                <div className="flex items-center min-w-0">
+                 <button 
+                    className="flex items-center text-left hover:bg-accent p-1 rounded-md -m-1 transition-colors min-w-0"
+                    onClick={() => setShowChatProfile(true)}
+                    disabled={item.id === 'GENERAL_CHAT'}
+                >
                     {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
                     <div className="truncate">
                         <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
@@ -317,7 +325,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                                 : t('members_count', { count: item.members?.length || 0 })}
                         </p>
                     </div>
-                </div>
+                </button>
             )}
         </div>
 
@@ -335,7 +343,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message List */}
       <div ref={messagesContainerRef} className="overflow-y-auto">
-        {(messagesLoading || (allUserIdsToFetch.length > 0 && membersLoading)) ? (
+        {isLoading ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
@@ -351,6 +359,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                             isCurrentUser={message.senderId === currentUser.uid} 
                             chatType={item.type} 
                             onAvatarClick={setProfileDialogUser}
+                            isGeneralChat={item.id === 'GENERAL_CHAT'}
                         />
                     );
                 })}
@@ -387,11 +396,22 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                     <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
-                  <Send className="h-5 w-5" />
+                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                 </Button>
             </div>
             </form>
         </footer>
+      )}
+
+      {showChatProfile && item.type !== 'dm' && (
+        <ChatProfileDialog 
+            chat={item}
+            members={Object.values(memberDetails).filter(m => item.members.includes(m.id))}
+            currentUser={currentUser}
+            open={showChatProfile}
+            onOpenChange={setShowChatProfile}
+            onCloseChat={onClose}
+        />
       )}
 
       {profileDialogUser && (
@@ -410,12 +430,12 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, isGeneralChat }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, isGeneralChat: boolean }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const showAvatarAndName = !isCurrentUser && chatType === 'group';
+    const showAvatarAndName = !isCurrentUser && (chatType === 'group' || isGeneralChat);
 
     const handleAvatarClick = () => {
-        if (sender) {
+        if (sender && !isCurrentUser) {
             onAvatarClick(sender);
         }
     };
@@ -425,18 +445,18 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-start gap-3",
             (isCurrentUser && chatType !== 'channel') && "flex-row-reverse"
         )}>
-            {showAvatarAndName && sender ? (
+            {(showAvatarAndName && sender) ? (
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
                     <UserAvatarWithStatus user={sender} />
                 </button>
-            ) : (!isCurrentUser && chatType === 'group') ? (
+            ) : (!isCurrentUser && (chatType === 'group' || isGeneralChat)) ? (
                 <div className="w-10 h-10 flex-shrink-0" />
             ): null}
 
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
                  chatType === 'channel'
-                    ? "bg-card text-card-foreground rounded-bl-none"
+                    ? "bg-card text-card-foreground rounded-none"
                     : isCurrentUser
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
