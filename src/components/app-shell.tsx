@@ -5,7 +5,6 @@ import {
   SidebarProvider,
   Sidebar,
   SidebarInset,
-  SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { SidebarContent } from '@/components/sidebar-content';
@@ -42,6 +41,20 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     setSelectedItem(item);
   };
 
+  if (isMobile) {
+    if (!populatedUser) {
+      // You can add a more sophisticated loading screen here
+      return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    }
+
+    if (selectedItem) {
+      return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
+    }
+    
+    return <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={populatedUser} />;
+  }
+
+  // Desktop layout
   return (
     <>
       <Sidebar>
@@ -52,15 +65,10 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
           <ChatView key={selectedItem.id} item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} onSelectChat={handleSelect} />
         ) : (
           <div className="relative flex h-full flex-col items-center justify-center bg-background p-4">
-            {isMobile && (
-              <header className="absolute top-0 left-0 right-0 flex items-center p-4">
-                <SidebarTrigger />
-              </header>
-            )}
             <div className="flex flex-col items-center text-center">
                 <MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} />
                 <h2 className="text-2xl font-bold tracking-tight font-headline">
-                  {selectedItem ? t('loading_chat') : t('chat_not_selected')}
+                  {t('chat_not_selected')}
                 </h2>
             </div>
           </div>
