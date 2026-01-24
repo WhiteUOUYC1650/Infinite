@@ -301,9 +301,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     <>
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold font-headline text-primary">
-            Infinite
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold font-headline text-primary">
+                Infinite
+              </h1>
+              <Badge variant="outline">{t('beta_badge')}</Badge>
+            </div>
             <div className='flex items-center'>
               <Button variant="ghost" size="icon" onClick={() => setShowSearchDialog(true)}>
                   <Search className="h-6 w-6" />

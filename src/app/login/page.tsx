@@ -28,6 +28,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -118,7 +119,10 @@ export default function LoginPage() {
       </div>
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold font-headline text-primary mb-2">Infinite</h1>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold font-headline text-primary">Infinite</h1>
+            <Badge variant="outline">{t('beta_badge')}</Badge>
+          </div>
           <p className="text-muted-foreground">
             {t('login_subtitle')}
           </p>
