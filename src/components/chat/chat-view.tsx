@@ -7,7 +7,7 @@ import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc } from 'firebase/firestore';
-import { useMemo, useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
@@ -78,12 +78,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
-
-  // --- Refs for height calculation and scrolling ---
-  const chatViewRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // --- Get live chat data ---
@@ -187,33 +181,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid) || item.id === 'GENERAL_CHAT';
 
-  // --- Dynamic Height Calculation ---
-  useLayoutEffect(() => {
-    const calculateAndSetHeight = () => {
-      if (chatViewRef.current && headerRef.current && messagesContainerRef.current) {
-        const totalHeight = chatViewRef.current.offsetHeight;
-        const headerHeight = headerRef.current.offsetHeight;
-        const footerHeight = footerRef.current ? footerRef.current.offsetHeight : 0;
-        
-        const messagesHeight = totalHeight - headerHeight - footerHeight;
-        
-        messagesContainerRef.current.style.height = `${messagesHeight}px`;
-      }
-    };
-
-    calculateAndSetHeight();
-
-    const resizeObserver = new ResizeObserver(calculateAndSetHeight);
-    if (chatViewRef.current) {
-      resizeObserver.observe(chatViewRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [canSendMessage]);
-
-    const handleSendMessageToUser = async (targetUser: User) => {
+  const handleSendMessageToUser = async (targetUser: User) => {
     if (!db || !currentUser) return;
 
     // Close the profile dialog
@@ -330,9 +298,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div ref={chatViewRef} className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Chat Header */}
-      <header ref={headerRef} className="flex-shrink-0 flex items-center p-4 border-b">
+      <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
@@ -394,7 +362,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </header>
 
       {/* Message List */}
-      <div ref={messagesContainerRef} className="overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {isLoading ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -426,7 +394,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer ref={footerRef} className="flex-shrink-0 p-4 border-t">
+        <footer className="flex-shrink-0 p-4 border-t">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
@@ -481,7 +449,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, isGeneralChat }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, isGeneralChat: boolean }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const showAvatarAndName = !isCurrentUser && (chatType === 'group' || isGeneralChat);
+    const isChannel = chatType === 'channel';
+
+    const showAvatar = !isCurrentUser && (chatType === 'group' || isGeneralChat) && sender;
 
     const handleAvatarClick = () => {
         if (sender && !isCurrentUser) {
@@ -492,25 +462,37 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     return (
         <div className={cn(
             "flex items-start gap-3",
-             chatType === 'channel' ? '' : (isCurrentUser && "flex-row-reverse")
+            // Right-align current user's messages, except in channels
+            !isChannel && isCurrentUser && "flex-row-reverse"
         )}>
-            {(showAvatarAndName && sender) && (
+            {/* Avatar: only for other users in groups/general chat */}
+            {showAvatar ? (
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
-                    <UserAvatarWithStatus user={sender} />
+                    <UserAvatarWithStatus user={sender!} />
                 </button>
+            ) : (
+                 // In DMs and Channels, we don't want any space.
+                 // In groups, if it's another user, we want space to align with avatars.
+                 !isCurrentUser && !isChannel && (chatType === 'group' || isGeneralChat) && <div className="w-10 flex-shrink-0" />
             )}
 
+            {/* Message Bubble */}
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
-                 chatType === 'channel'
-                    ? "bg-card text-card-foreground"
+                isChannel
+                    ? "bg-card text-card-foreground" // All channel messages are styled the same
                     : isCurrentUser
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {((showAvatarAndName || (chatType === 'channel' && sender?.name))) && sender && (
+                {/* Sender Name: for others in groups/general, and for everyone in channels */}
+                {((chatType === 'group' || isGeneralChat) && !isCurrentUser && sender) && (
                     <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 )}
+                {(isChannel && sender) && (
+                    <p className="font-semibold text-sm mb-1">{sender.name}</p>
+                )}
+
                 <p className="text-sm break-words">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
             </div>
