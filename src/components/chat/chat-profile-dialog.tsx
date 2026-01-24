@@ -116,7 +116,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         {chat.type === 'group' && (
             <div>
                 <h3 className="text-sm font-semibold text-muted-foreground mb-2">{t('members_count', { count: members.length })}</h3>
-                <ScrollArea className="h-32 pr-4">
+                <ScrollArea className="h-24 pr-4">
                     <div className="space-y-2">
                         {members.map(member => (
                             <div key={member.id} className="flex items-center gap-3">
