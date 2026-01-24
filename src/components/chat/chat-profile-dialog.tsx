@@ -113,23 +113,25 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
             </div>
         )}
 
-        <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{t('members_count', { count: members.length })}</h3>
-            <ScrollArea className="h-40 pr-4">
-                <div className="space-y-2">
-                    {members.map(member => (
-                        <div key={member.id} className="flex items-center gap-3">
-                            <UserAvatarWithStatus user={member} />
-                            <div className="flex-1 truncate">
-                                <p className="font-semibold truncate">{member.name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{member.username}</p>
+        {chat.type === 'group' && (
+            <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">{t('members_count', { count: members.length })}</h3>
+                <ScrollArea className="h-32 pr-4">
+                    <div className="space-y-2">
+                        {members.map(member => (
+                            <div key={member.id} className="flex items-center gap-3">
+                                <UserAvatarWithStatus user={member} />
+                                <div className="flex-1 truncate">
+                                    <p className="font-semibold truncate">{member.name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{member.username}</p>
+                                </div>
+                                {chat.ownerId === member.id && <Badge variant="secondary">{t('owner')}</Badge>}
                             </div>
-                            {chat.ownerId === member.id && <Badge variant="secondary">{t('owner')}</Badge>}
-                        </div>
-                    ))}
-                </div>
-            </ScrollArea>
-        </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </div>
+        )}
        
         <DialogFooter className='!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 pt-4'>
             {isOwner ? (
