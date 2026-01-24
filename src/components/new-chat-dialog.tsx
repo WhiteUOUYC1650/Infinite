@@ -22,7 +22,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore } from '@/firebase';
-import { collection, doc, getDoc, runTransaction, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, runTransaction } from 'firebase/firestore';
 import type { AuthenticatedUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -204,48 +204,55 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     if (!db || isCreating || !usernameExists) return;
     setIsCreating(true);
 
+    let chatId = '';
+    let targetUserId = '';
     try {
         const usernameRef = doc(db, 'usernames', values.username);
         const usernameSnap = await getDoc(usernameRef);
 
-        // Final check just in case
         if (!usernameSnap.exists()) {
             dmForm.setError('username', { message: t('user_not_found') });
             setIsCreating(false);
             return;
         }
 
-        const targetUserId = usernameSnap.data().uid;
+        targetUserId = usernameSnap.data().uid;
         
         const members = targetUserId === currentUser.uid
             ? [currentUser.uid]
             : [currentUser.uid, targetUserId].sort();
         
-        const chatId = members.join('_');
-        const chatRef = doc(db, 'chats', chatId);
-
-        const chatSnap = await getDoc(chatRef);
-
-        if (chatSnap.exists()) {
-            toast({ title: t('chat_exists'), description: t('chat_exists_desc') });
-            onOpenChange(false);
-            if(onChatCreated) onChatCreated(chatId);
-            setIsCreating(false);
-            return;
-        }
-
-        await setDoc(chatRef, {
-            type: 'dm',
-            members: members,
-        });
+        chatId = members.join('_');
         
+        await runTransaction(db, async (transaction) => {
+            const chatRef = doc(db, 'chats', chatId);
+            const chatSnap = await transaction.get(chatRef);
+
+            if (chatSnap.exists()) {
+                // Chat already exists, do nothing.
+                return;
+            }
+
+            const newChatData = {
+                type: 'dm' as const,
+                members: members,
+                unreadCounts: members.reduce((acc, memberId) => ({ ...acc, [memberId]: 0 }), {}),
+            };
+            transaction.set(chatRef, newChatData);
+        });
+
         toast({ title: t('dm_success'), description: t('dm_success_desc', { username: values.username })});
         onOpenChange(false);
         if(onChatCreated) onChatCreated(chatId);
 
-    } catch (error) {
-        console.error("Error creating DM:", error);
-        toast({ variant: 'destructive', title: 'Error', description: t('dm_error') });
+    } catch (serverError: any) {
+         console.error("Error creating DM:", serverError);
+         const chatRefPath = `chats/${chatId || [currentUser.uid, targetUserId || 'other_user'].sort().join('_')}`;
+         const permissionError = new FirestorePermissionError({
+             path: chatRefPath,
+             operation: 'write', 
+         });
+         errorEmitter.emit('permission-error', permissionError);
     } finally {
         setIsCreating(false);
     }
@@ -274,7 +281,8 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                 members: [currentUser.uid],
                 icon: 'Users',
                 ownerId: currentUser.uid,
-                link: linkWithPrefix
+                link: linkWithPrefix,
+                unreadCounts: { [currentUser.uid]: 0 },
             };
             
             transaction.set(newChatRef, newGroup);
@@ -323,6 +331,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                 icon: 'Megaphone',
                 ownerId: currentUser.uid,
                 link: linkWithPrefix,
+                unreadCounts: { [currentUser.uid]: 0 },
             };
 
             transaction.set(newChatRef, newChannel);
