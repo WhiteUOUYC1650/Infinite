@@ -45,7 +45,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
@@ -92,7 +92,7 @@ export default function SignUpPage() {
       const usernameRef = doc(db, 'usernames', usernameWithAt);
       const usernameDoc = await getDoc(usernameRef);
       if (usernameDoc.exists()) {
-        form.setError('username', { message: 'This username is already taken.' });
+        form.setError('username', { message: t('username_taken_error') });
         return;
       }
       
@@ -104,7 +104,7 @@ export default function SignUpPage() {
       await runTransaction(db, async (transaction) => {
         const usernameDocInTransaction = await transaction.get(usernameRef);
         if (usernameDocInTransaction.exists()) {
-          throw new Error("Username was just taken. Please choose another.");
+          throw new Error(t('username_just_taken_error'));
         }
         
         transaction.set(usernameRef, { uid: user.uid });
@@ -120,16 +120,16 @@ export default function SignUpPage() {
       router.push('/');
 
     } catch (error: any) {
-        if (auth.currentUser && error.message.includes("Username was just taken")) {
+        if (auth.currentUser && error.message.includes(t('username_just_taken_error'))) {
              await deleteUser(auth.currentUser);
              form.setError('username', { message: error.message });
         } else if (error.code === 'auth/email-already-in-use') {
-            form.setError('email', { message: 'This email is already in use.' });
+            form.setError('email', { message: t('email_in_use_error') });
         } else {
             console.error('Error signing up', error);
             toast({
                 variant: 'destructive',
-                title: 'Sign up failed',
+                title: t('signup_failed_toast_title'),
                 description: error.message || 'An unexpected error occurred.',
             });
         }
@@ -164,9 +164,9 @@ export default function SignUpPage() {
       </div>
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold font-headline text-primary mb-2">Create an Account</h1>
+          <h1 className="text-4xl font-bold font-headline text-primary mb-2">{t('signup_title')}</h1>
           <p className="text-muted-foreground">
-            to start using Infinite messenger.
+            {t('signup_subtitle')}
           </p>
         </div>
         <Form {...form}>
@@ -176,13 +176,13 @@ export default function SignUpPage() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>{t('username_label')}</FormLabel>
                   <FormControl>
                     <div className="relative">
                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
                             @
                         </span>
-                        <Input placeholder="yourname" className="pl-7" {...field} />
+                        <Input placeholder={t('username_placeholder')} className="pl-7" {...field} />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -194,7 +194,7 @@ export default function SignUpPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('email_label')}</FormLabel>
                   <FormControl>
                     <Input placeholder="name@example.com" {...field} />
                   </FormControl>
@@ -207,7 +207,7 @@ export default function SignUpPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t('password_label')}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="********" {...field} />
                   </FormControl>
@@ -216,14 +216,14 @@ export default function SignUpPage() {
               )}
             />
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
+              {form.formState.isSubmitting ? t('creating_account_button') : t('create_account_button')}
             </Button>
           </form>
         </Form>
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{' '}
+          {t('has_account_prompt')}{' '}
           <Link href="/login" className="font-semibold text-primary hover:underline">
-            Sign in
+            {t('sign_in_link')}
           </Link>
         </p>
       </div>

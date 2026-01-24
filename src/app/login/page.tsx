@@ -39,7 +39,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
@@ -84,7 +84,7 @@ export default function LoginPage() {
       console.error('Error signing in', error);
       toast({
         variant: 'destructive',
-        title: 'Sign in failed',
+        title: t('sign_in_failed_toast_title'),
         description: error.message || 'An unexpected error occurred.',
       });
     }
@@ -120,7 +120,7 @@ export default function LoginPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold font-headline text-primary mb-2">Infinite</h1>
           <p className="text-muted-foreground">
-            A modern chat application.
+            {t('login_subtitle')}
           </p>
         </div>
         <Form {...form}>
@@ -130,7 +130,7 @@ export default function LoginPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('email_label')}</FormLabel>
                   <FormControl>
                     <Input placeholder="name@example.com" {...field} />
                   </FormControl>
@@ -143,7 +143,7 @@ export default function LoginPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t('password_label')}</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="********" {...field} />
                   </FormControl>
@@ -152,14 +152,14 @@ export default function LoginPage() {
               )}
             />
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Signing in...' : 'Sign In'}
+              {form.formState.isSubmitting ? t('signing_in_button') : t('sign_in_button')}
             </Button>
           </form>
         </Form>
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
+          {t('no_account_prompt')}{' '}
           <Link href="/signup" className="font-semibold text-primary hover:underline">
-            Sign up
+            {t('sign_up_link')}
           </Link>
         </p>
       </div>

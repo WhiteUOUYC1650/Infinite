@@ -82,7 +82,25 @@ export const translations = {
       'cannot_chat_with_self_dm': 'You can\'t start a DM with yourself here. Use "Saved Messages" instead.',
       'open': 'Open',
       'placeholder_title': 'Coming Soon',
-      'placeholder_description': 'This feature is not yet implemented and will be available in future versions.'
+      'placeholder_description': 'This feature is not yet implemented and will be available in future versions.',
+      'login_subtitle': 'A modern chat application.',
+      'email_label': 'Email',
+      'password_label': 'Password',
+      'sign_in_button': 'Sign In',
+      'signing_in_button': 'Signing in...',
+      'sign_in_failed_toast_title': 'Sign in failed',
+      'no_account_prompt': "Don't have an account?",
+      'sign_up_link': 'Sign up',
+      'signup_title': 'Create an Account',
+      'signup_subtitle': 'to start using Infinite messenger.',
+      'creating_account_button': 'Creating Account...',
+      'create_account_button': 'Create Account',
+      'has_account_prompt': 'Already have an account?',
+      'sign_in_link': 'Sign in',
+      'username_taken_error': 'This username is already taken.',
+      'username_just_taken_error': 'Username was just taken. Please choose another.',
+      'email_in_use_error': 'This email is already in use.',
+      'signup_failed_toast_title': 'Sign up failed'
     },
     ru: {
       'settings': 'Настройки',
@@ -167,7 +185,25 @@ export const translations = {
       'cannot_chat_with_self_dm': 'Вы не можете начать ЛС с собой здесь. Вместо этого используйте "Избранное".',
       'open': 'Открыть',
       'placeholder_title': 'Скоро',
-      'placeholder_description': 'Эта функция еще не реализована и будет доступна в будущих версиях.'
+      'placeholder_description': 'Эта функция еще не реализована и будет доступна в будущих версиях.',
+      'login_subtitle': 'Современное приложение для чата.',
+      'email_label': 'Электронная почта',
+      'password_label': 'Пароль',
+      'sign_in_button': 'Войти',
+      'signing_in_button': 'Вход...',
+      'sign_in_failed_toast_title': 'Ошибка входа',
+      'no_account_prompt': 'Нет аккаунта?',
+      'sign_up_link': 'Зарегистрироваться',
+      'signup_title': 'Создать аккаунт',
+      'signup_subtitle': 'чтобы начать использовать мессенджер Infinite.',
+      'creating_account_button': 'Создание аккаунта...',
+      'create_account_button': 'Создать аккаунт',
+      'has_account_prompt': 'Уже есть аккаунт?',
+      'sign_in_link': 'Войти',
+      'username_taken_error': 'Это имя пользователя уже занято.',
+      'username_just_taken_error': 'Это имя пользователя только что заняли. Пожалуйста, выберите другое.',
+      'email_in_use_error': 'Этот адрес электронной почты уже используется.',
+      'signup_failed_toast_title': 'Ошибка регистрации'
     }
   };
   
