@@ -6,7 +6,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, writeBatch, increment, updateDoc, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -119,15 +119,16 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (!messageContent.trim() || !db) return;
+    if (!messageContent.trim() || !db || isSending) return;
   
     const content = messageContent;
-    setMessageContent('');
-  
-    const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
-  
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
+
+    setMessageContent('');
+    setIsSending(true);
+  
+    const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
   
     const messageData: { [key: string]: any } = {
         senderId: currentUser.uid,
@@ -149,6 +150,8 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
           requestResourceData: messageData,
       });
       errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+      setIsSending(false);
     });
   
     const chatRef = doc(db, 'chats', item.id);
@@ -177,9 +180,9 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
   return (
-    <div className="relative h-full bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Chat Header */}
-      <header className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 border-b bg-background">
+      <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
@@ -211,7 +214,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       </header>
 
       {/* Message List */}
-      <div className="h-full overflow-y-auto pt-20 pb-28" ref={messagesContainerRef}>
+      <div className="flex-1 min-h-0 overflow-y-auto" ref={messagesContainerRef}>
         {loadingMessages ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -231,7 +234,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer className="absolute bottom-0 left-0 right-0 z-10 p-4 border-t bg-background">
+        <footer className="flex-shrink-0 p-4 border-t">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
@@ -252,7 +255,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                     <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
-                  <Send className="h-5 w-5" />
+                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                 </Button>
             </div>
             </form>
