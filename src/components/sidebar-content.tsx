@@ -38,7 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore'; // Import getDocs and where
+import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -141,7 +141,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
   // --- Optimization: Batch fetch user data for DMs ---
-  const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm') || [], [chats]);
+  const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm' && chat.id !== currentUser.uid) || [], [chats, currentUser.uid]);
   const dmUserIds = useMemo(() => {
       return Array.from(new Set(directMessages
           .map(chat => chat.members.find(id => id !== currentUser.uid) || chat.members[0])
@@ -210,6 +210,39 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
   };
 
+  const handleSelectSavedMessages = async () => {
+    if (!db) return;
+    const chatId = currentUser.uid;
+    const chatRef = doc(db, 'chats', chatId);
+
+    try {
+        const chatSnap = await getDoc(chatRef);
+        let chatData: Chat;
+
+        if (!chatSnap.exists()) {
+            chatData = {
+                id: chatId,
+                type: 'dm',
+                members: [currentUser.uid],
+                icon: 'Bookmark',
+            };
+            await setDoc(chatRef, {
+                type: 'dm',
+                members: [currentUser.uid],
+                icon: 'Bookmark',
+            });
+        } else {
+            chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+        }
+
+        handleSelect(chatData);
+
+    } catch (error) {
+        console.error("Error handling Saved Messages:", error);
+    }
+  };
+
+
   return (
     <>
       <SidebarHeader className="p-4">
@@ -230,6 +263,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <ScrollArea className="flex-1">
         <SidebarBody>
+            <div className="px-2 py-1">
+                <Button
+                    variant="ghost"
+                    onClick={handleSelectSavedMessages}
+                    className={cn("w-full justify-start h-auto p-2 text-left", selectedId === currentUser.uid && 'bg-accent')}
+                >
+                    <div className="flex items-center gap-3 w-full">
+                        <Bookmark className="h-5 w-5 text-muted-foreground" />
+                        <p className="font-semibold">{t('saved_messages')}</p>
+                    </div>
+                </Button>
+            </div>
           {chatsLoading ? (
             <div className='p-4'>{t('loading_chats')}</div>
           ) : (
