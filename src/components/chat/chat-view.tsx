@@ -464,10 +464,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const showSpacer = isCurrentUser && (chatType === 'group' || isGeneralChat);
     const isChannel = chatType === 'channel';
 
+    const isAlignedRight = isCurrentUser && chatType !== 'channel';
+
     return (
         <div className={cn(
             "flex items-start gap-3",
-            isCurrentUser && "flex-row-reverse"
+            isAlignedRight && "flex-row-reverse"
         )}>
             {/* AVATAR OR SPACER */}
             {(showAvatar || showSpacer) ? (
@@ -485,7 +487,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             {/* Message Bubble */}
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
-                isCurrentUser
+                isAlignedRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
             )}>
