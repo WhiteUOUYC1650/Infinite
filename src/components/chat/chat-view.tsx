@@ -121,7 +121,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db || isSending) return;
 
@@ -147,27 +147,25 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         timestamp: serverTimestamp(),
     };
     
-    try {
-        const batch = writeBatch(db);
-        const newMessageRef = doc(messagesCollectionRef);
-        
-        batch.set(newMessageRef, messageData);
-        
-        const chatUpdateData: { [key:string]: any } = { 
-            lastMessage: lastMessageData 
-        };
+    const batch = writeBatch(db);
+    const newMessageRef = doc(messagesCollectionRef);
+    
+    batch.set(newMessageRef, messageData);
+    
+    const chatUpdateData: { [key:string]: any } = { 
+        lastMessage: lastMessageData 
+    };
 
-        item.members.forEach(memberId => {
-            if (memberId !== currentUser.uid) {
-                chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
-            }
-        });
-        
-        batch.update(chatRef, chatUpdateData);
-        
-        await batch.commit();
-
-    } catch (serverError: any) {
+    item.members.forEach(memberId => {
+        if (memberId !== currentUser.uid) {
+            chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+        }
+    });
+    
+    batch.update(chatRef, chatUpdateData);
+    
+    batch.commit()
+    .catch((serverError: any) => {
         setMessageContent(content);
 
         console.error("Error sending message: ", serverError);
@@ -177,9 +175,9 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
             requestResourceData: messageData,
         });
         errorEmitter.emit('permission-error', permissionError);
-    } finally {
+    }).finally(() => {
         setIsSending(false);
-    }
+    });
   };
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
