@@ -28,7 +28,9 @@ service cloud.firestore {
       // 1. You can get a chat if it exists and you are a member.
       // 2. You can get your own "Saved Messages" chat.
       // 3. You can check if a DM chat exists before creating it, but only if you are one of the members.
+      // 4. Any signed-in user can read the metadata of public groups and channels.
       allow get: if isSignedIn() && (
+        (resource != null && resource.data.type in ['group', 'channel']) ||
         (resource != null && request.auth.uid in resource.data.members) ||
         (chatId == request.auth.uid) ||
         (resource == null && chatId.split('_').size() == 2 && request.auth.uid in chatId.split('_'))
