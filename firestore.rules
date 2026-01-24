@@ -26,9 +26,9 @@ service cloud.firestore {
 
     match /chats/{chatId} {
       allow get: if isSignedIn() && (
-        (resource != null && request.auth.uid in resource.data.members) || 
-        (chatId == request.auth.uid) || 
-        (chatId.contains(request.auth.uid) && chatId.contains('_'))
+        (resource != null && request.auth.uid in resource.data.members) || // User is a member of an existing chat
+        (chatId == request.auth.uid) || // It's the user's own 'Saved Messages' chat
+        (chatId.split('_').size() == 2 && request.auth.uid in chatId.split('_')) // It's a DM check before creation
       );
       allow list: if isSignedIn() && request.auth.uid in resource.data.members;
 
