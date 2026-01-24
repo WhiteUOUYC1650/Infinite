@@ -21,11 +21,12 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
 
-  // --- Refs for height calculation ---
+  // --- Refs for height calculation and scrolling ---
   const chatViewRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null); // Ref for auto-scrolling
 
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -117,10 +118,10 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   // --- Auto-scroll to bottom ---
   useLayoutEffect(() => {
-    if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView();
     }
-  }, [messages, messagesLoading]);
+  }, [messages]);
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
@@ -257,10 +258,12 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                 {messages.map((message) => (
                     <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
                 ))}
+                <div ref={messagesEndRef} />
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground p-4">
                 {t('no_messages_yet')}
+                <div ref={messagesEndRef} />
             </div>
         )}
       </div>
