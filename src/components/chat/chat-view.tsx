@@ -155,8 +155,10 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         <div className="flex-1">
           <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
           <p className="text-sm text-muted-foreground">
-            {item.type === "dm" && otherUser && otherUser.id !== currentUser.uid
-              ? otherUser.status
+            {item.type === 'dm'
+              ? otherUser && otherUser.id !== currentUser.uid
+                ? otherUser.status
+                : null
               : t('members_count', {count: item.members?.length || 0})}
           </p>
         </div>
@@ -235,9 +237,9 @@ function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, i
   return (
     <div className={cn(
         "flex items-end gap-3", 
-        isCurrentUser && !isChannel && "flex-row-reverse" // Only reverse for non-channel user messages
+        !isChannel && isCurrentUser && "flex-row-reverse"
     )}>
-      {!isCurrentUser && !isChannel && senderName && (
+       {!isCurrentUser && isChannel && senderName && (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -254,14 +256,12 @@ function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, i
       <div
         className={cn(
           "max-w-xs lg:max-w-md p-3 rounded-lg",
-          isChannel 
-            ? "bg-card text-card-foreground rounded-bl-none" // All channel messages have same style
-            : isCurrentUser
-                ? "bg-primary text-primary-foreground rounded-br-none"
-                : "bg-secondary text-secondary-foreground rounded-bl-none"
+          isCurrentUser
+            ? "bg-primary text-primary-foreground rounded-br-none ml-auto"
+            : "bg-card text-card-foreground rounded-bl-none"
         )}
       >
-        {/* No sender name for channels */}
+        {!isCurrentUser && isChannel && <p className="text-xs font-bold mb-1">{senderName}</p>}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
