@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogFooter,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { User } from '@/types';
@@ -52,6 +53,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
+            <DialogTitle className="sr-only">{user.name}'s Profile</DialogTitle>
             <div className='relative mx-auto w-32 h-32'>
                  <Avatar className="w-32 h-32 text-4xl">
                     {user.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
