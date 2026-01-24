@@ -23,7 +23,8 @@ import { useToast } from '@/hooks/use-toast';
 const formSchema = z.object({
   username: z.string()
     .min(4, { message: 'Username must be at least 4 characters.'})
-    .refine(value => !/\s/.test(value), { message: 'Username must not contain spaces.'}),
+    .refine(value => !/\s/.test(value), { message: 'Username must not contain spaces.'})
+    .refine(value => /^[a-zA-Z0-9_]+$/.test(value), { message: 'Username can only contain English letters, numbers, and underscores.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });

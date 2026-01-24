@@ -41,14 +41,16 @@ const dmFormSchema = z.object({
 const groupFormSchema = z.object({
   name: z.string().min(3, { message: 'Group name must be at least 3 characters.' }),
   link: z.string().min(4, { message: 'Link must be at least 4 characters.'})
-        .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'}),
+        .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'})
+        .refine(value => /^[a-zA-Z0-9_]+$/.test(value), { message: 'Link can only contain English letters, numbers, and underscores.'}),
 });
 
 const channelFormSchema = z.object({
     name: z.string().min(3, { message: 'Channel name must be at least 3 characters.' }),
     description: z.string().optional(),
     link: z.string().min(4, { message: 'Link must be at least 4 characters.'})
-        .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'}),
+        .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'})
+        .refine(value => /^[a-zA-Z0-9_]+$/.test(value), { message: 'Link can only contain English letters, numbers, and underscores.'}),
 });
 
 
@@ -139,7 +141,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             groupForm.clearErrors('link');
         }
 
-        if (groupLinkValue && groupLinkValue.length >= 4 && !/\s/.test(groupLinkValue)) {
+        if (groupLinkValue && groupLinkValue.length >= 4 && !/\s/.test(groupLinkValue) && /^[a-zA-Z0-9_]+$/.test(groupLinkValue)) {
             setIsCheckingGroupLink(true);
             groupDebounceTimeout.current = setTimeout(async () => {
                 if (!db) return;
@@ -171,7 +173,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             channelForm.clearErrors('link');
         }
 
-        if (channelLinkValue && channelLinkValue.length >= 4 && !/\s/.test(channelLinkValue)) {
+        if (channelLinkValue && channelLinkValue.length >= 4 && !/\s/.test(channelLinkValue) && /^[a-zA-Z0-9_]+$/.test(channelLinkValue)) {
             setIsCheckingChannelLink(true);
             channelDebounceTimeout.current = setTimeout(async () => {
                 if (!db) return;
