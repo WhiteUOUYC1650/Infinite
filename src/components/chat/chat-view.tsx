@@ -8,7 +8,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, serverTimestamp, writeBatch, increment, updateDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch, increment, updateDoc, Timestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -131,11 +131,13 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
     const chatRef = doc(db, 'chats', item.id);
     const messagesCollectionRef = collection(chatRef, 'messages');
+    
+    const now = Timestamp.now();
 
     const messageData: { [key: string]: any } = {
       senderId: currentUser.uid,
       content: content,
-      timestamp: serverTimestamp(),
+      timestamp: now,
       senderName: currentUser.name || currentUser.username || "User",
     };
 
@@ -147,7 +149,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         content: content,
         senderId: currentUser.uid,
         senderName: currentUser.name || currentUser.username || "User",
-        timestamp: serverTimestamp(),
+        timestamp: now,
     };
     
     const batch = writeBatch(db);
@@ -186,7 +188,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Chat Header */}
       <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
@@ -261,7 +263,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                     <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
-                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  <Send className="h-5 w-5" />
                 </Button>
             </div>
             </form>
