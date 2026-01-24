@@ -34,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -110,6 +110,7 @@ const iconMap = {
     Users,
     Megaphone,
     Bookmark,
+    Globe,
 };
 
 interface SidebarContentProps {
@@ -247,6 +248,42 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
     } catch (error) {
         console.error("Error handling Saved Messages:", error);
+        toast({ title: 'Error', description: 'Could not open Saved Messages.'});
+    }
+  };
+
+  const handleSelectGeneralChat = async () => {
+    if (!db) return;
+    const chatId = 'GENERAL_CHAT';
+    const chatRef = doc(db, 'chats', chatId);
+
+    try {
+        const chatSnap = await getDoc(chatRef);
+        let chatData: Chat;
+
+        if (!chatSnap.exists()) {
+            chatData = {
+                id: chatId,
+                type: 'group',
+                name: 'General Chat',
+                members: [], 
+                icon: 'Globe',
+            };
+            await setDoc(chatRef, {
+                type: 'group',
+                name: 'General Chat',
+                icon: 'Globe',
+                members: [],
+            });
+        } else {
+            chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+        }
+
+        handleSelect(chatData);
+
+    } catch (error) {
+        console.error("Error handling General Chat:", error);
+        toast({ title: 'Error', description: 'Could not open General Chat.' });
     }
   };
 
@@ -280,6 +317,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <div className="flex items-center gap-3 w-full">
                         <Bookmark className="h-5 w-5 text-muted-foreground" />
                         <p className="font-semibold">{t('saved_messages')}</p>
+                    </div>
+                </Button>
+                <Button
+                    variant="ghost"
+                    onClick={handleSelectGeneralChat}
+                    className={cn("w-full justify-start h-auto p-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-accent')}
+                >
+                    <div className="flex items-center gap-3 w-full">
+                        <Globe className="h-5 w-5 text-muted-foreground" />
+                        <p className="font-semibold">{t('general_chat')}</p>
                     </div>
                 </Button>
             </div>

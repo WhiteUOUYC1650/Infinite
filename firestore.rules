@@ -24,6 +24,22 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Rules for the general chat
+    match /chats/GENERAL_CHAT {
+      // Any signed-in user can read or create the general chat document.
+      allow read, create: if isSignedIn();
+      // Any signed-in user can update the `lastMessage` field.
+      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']);
+      allow delete: if false;
+    }
+
+    // Rules for messages in the general chat
+    match /chats/GENERAL_CHAT/messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /chats/{chatId} {
       // 1. You can get a chat if it exists and you are a member.
       // 2. You can get your own "Saved Messages" chat.

@@ -100,7 +100,9 @@ export const translations = {
       'username_taken_error': 'This username is already taken.',
       'username_just_taken_error': 'Username was just taken. Please choose another.',
       'email_in_use_error': 'This email is already in use.',
-      'signup_failed_toast_title': 'Sign up failed'
+      'signup_failed_toast_title': 'Sign up failed',
+      'general_chat': 'General Chat',
+      'public_chat_description': 'Public chat for everyone'
     },
     ru: {
       'settings': 'Настройки',
@@ -203,7 +205,9 @@ export const translations = {
       'username_taken_error': 'Это имя пользователя уже занято.',
       'username_just_taken_error': 'Это имя пользователя только что заняли. Пожалуйста, выберите другое.',
       'email_in_use_error': 'Этот адрес электронной почты уже используется.',
-      'signup_failed_toast_title': 'Ошибка регистрации'
+      'signup_failed_toast_title': 'Ошибка регистрации',
+      'general_chat': 'Общий чат',
+      'public_chat_description': 'Публичный чат для всех'
     }
   };
   

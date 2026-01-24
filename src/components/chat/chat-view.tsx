@@ -45,7 +45,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   // --- Reset unread count ---
   useEffect(() => {
-    if (db && currentUser?.uid && item.id) {
+    if (db && currentUser?.uid && item.id && item.id !== 'GENERAL_CHAT') {
       const unreadCountForCurrentUser = item.unreadCounts?.[currentUser.uid] || 0;
       if (unreadCountForCurrentUser > 0) {
         const chatRef = doc(db, 'chats', item.id);
@@ -114,7 +114,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   // --- Auto-scroll to bottom ---
   useLayoutEffect(() => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && !loadingMessages) {
         messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages, loadingMessages]);
@@ -198,11 +198,13 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         lastMessage: lastMessageData 
     };
   
-    item.members.forEach(memberId => {
-        if (memberId !== currentUser.uid) {
-            chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
-        }
-    });
+    if (item.id !== 'GENERAL_CHAT') {
+      item.members.forEach(memberId => {
+          if (memberId !== currentUser.uid) {
+              chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+          }
+      });
+    }
   
     updateDoc(chatRef, chatUpdateData).catch((error) => {
         console.error("Error updating chat metadata:", error);
@@ -224,11 +226,13 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         <div className={cn("flex-1", item.type === 'dm' && 'ml-3')}>
           <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
            <p className="text-sm text-muted-foreground">
-            {item.type === 'dm'
-              ? otherUser?.id !== currentUser.uid
-                ? getStatusText(otherUser)
-                : item.members.length === 1 ? null : t('members_count', {count: item.members?.length || 0})
-              : t('members_count', {count: item.members?.length || 0})}
+            {item.id === 'GENERAL_CHAT' 
+              ? t('public_chat_description') 
+              : item.type === 'dm'
+                ? otherUser?.id !== currentUser.uid
+                  ? getStatusText(otherUser)
+                  : item.members.length === 1 ? null : t('members_count', {count: item.members?.length || 0})
+                : t('members_count', {count: item.members?.length || 0})}
           </p>
         </div>
         {item.type === 'dm' && otherUser?.id !== currentUser.uid && (
