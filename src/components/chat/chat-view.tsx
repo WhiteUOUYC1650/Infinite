@@ -6,7 +6,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, serverTimestamp, writeBatch, increment, updateDoc, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, increment, updateDoc, Timestamp, addDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -177,9 +177,9 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="relative h-full bg-background">
       {/* Chat Header */}
-      <header className="flex-shrink-0 flex items-center p-4 border-b">
+      <header className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 border-b bg-background">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
@@ -211,7 +211,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       </header>
 
       {/* Message List */}
-      <div className="flex-1 min-h-0 overflow-y-auto" ref={messagesContainerRef}>
+      <div className="h-full overflow-y-auto pt-20 pb-28" ref={messagesContainerRef}>
         {loadingMessages ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -231,7 +231,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer className="flex-shrink-0 p-4 border-t">
+        <footer className="absolute bottom-0 left-0 right-0 z-10 p-4 border-t bg-background">
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
