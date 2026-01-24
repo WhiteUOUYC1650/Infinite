@@ -52,6 +52,7 @@ import {
 import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
 import { useLanguage } from '@/context/language-context';
+import { SearchDialog } from './search-dialog';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -128,6 +129,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false);
 
 
@@ -215,13 +217,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <h1 className="text-2xl font-bold font-headline text-primary">
             Infinite
             </h1>
-            <Button variant="ghost" size="icon" onClick={() => setShowNewChat(true)}>
-                <PlusCircle className="h-6 w-6" />
-            </Button>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t('search')} className="pl-8" />
+            <div className='flex items-center'>
+              <Button variant="ghost" size="icon" onClick={() => setShowSearchDialog(true)}>
+                  <Search className="h-6 w-6" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setShowNewChat(true)}>
+                  <PlusCircle className="h-6 w-6" />
+              </Button>
+            </div>
         </div>
       </SidebarHeader>
 
@@ -378,6 +381,15 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             open={showNewChat}
             onOpenChange={setShowNewChat}
             onChatCreated={handleChatCreated}
+        />
+      )}
+
+      {showSearchDialog && (
+        <SearchDialog
+            currentUser={currentUser}
+            open={showSearchDialog}
+            onOpenChange={setShowSearchDialog}
+            onChatSelected={handleSelect}
         />
       )}
 

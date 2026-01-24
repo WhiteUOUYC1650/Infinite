@@ -23,7 +23,6 @@ import { useToast } from '@/hooks/use-toast';
 const formSchema = z.object({
   username: z.string()
     .min(4, { message: 'Username must be at least 4 characters.'})
-    .refine(value => value.startsWith('@'), { message: "Username must start with '@'." })
     .refine(value => !/\s/.test(value), { message: 'Username must not contain spaces.'}),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
@@ -38,7 +37,7 @@ export default function SignUpPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '@',
+      username: '',
       email: '',
       password: '',
     },
@@ -48,9 +47,10 @@ export default function SignUpPage() {
     if (!auth || !db) return;
 
     form.clearErrors();
+    const usernameWithAt = '@' + values.username;
 
     try {
-      const usernameRef = doc(db, 'usernames', values.username);
+      const usernameRef = doc(db, 'usernames', usernameWithAt);
       const usernameDoc = await getDoc(usernameRef);
       if (usernameDoc.exists()) {
         form.setError('username', { message: 'This username is already taken.' });
@@ -70,8 +70,8 @@ export default function SignUpPage() {
         
         transaction.set(usernameRef, { uid: user.uid });
         transaction.set(userDocRef, {
-          name: values.username,
-          username: values.username,
+          name: usernameWithAt,
+          username: usernameWithAt,
           avatar: `https://i.pravatar.cc/150?u=${user.uid}`,
           status: 'online',
           statusMessage: 'Hey there! I am using Infinite.',
@@ -116,7 +116,12 @@ export default function SignUpPage() {
                 <FormItem>
                   <FormLabel>Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="@yourname" {...field} />
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                            @
+                        </span>
+                        <Input placeholder="yourname" className="pl-7" {...field} />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

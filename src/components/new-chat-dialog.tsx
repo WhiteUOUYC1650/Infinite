@@ -39,13 +39,14 @@ const dmFormSchema = z.object({
 
 const groupFormSchema = z.object({
   name: z.string().min(3, { message: 'Group name must be at least 3 characters.' }),
+  link: z.string().min(4, { message: 'Link must be at least 4 characters.'})
+        .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'}),
 });
 
 const channelFormSchema = z.object({
     name: z.string().min(3, { message: 'Channel name must be at least 3 characters.' }),
     description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-    link: z.string().min(5, { message: 'Link must be at least 4 characters after /C/.'})
-        .refine(value => value.startsWith('/C/'), { message: "Link must start with '/C/'." })
+    link: z.string().min(4, { message: 'Link must be at least 4 characters.'})
         .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'}),
 });
 
@@ -70,12 +71,12 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   const groupForm = useForm<z.infer<typeof groupFormSchema>>({
     resolver: zodResolver(groupFormSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', link: '' },
   });
 
   const channelForm = useForm<z.infer<typeof channelFormSchema>>({
     resolver: zodResolver(channelFormSchema),
-    defaultValues: { name: '', description: '', link: '/C/' },
+    defaultValues: { name: '', description: '', link: '' },
   });
 
   const onDmSubmit = async (values: z.infer<typeof dmFormSchema>) => {
@@ -132,27 +133,27 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const onGroupSubmit = async (values: z.infer<typeof groupFormSchema>) => {
     if (!db || isCreating) return;
     setIsCreating(true);
+    groupForm.clearErrors();
+
+    const linkWithPrefix = '/G/' + values.link;
 
     try {
         await runTransaction(db, async (transaction) => {
-            const newChatRef = doc(collection(db, "chats"));
-            
-            // This is a simplified random link generator. For production, a more robust solution is needed.
-            const link = '/G/' + Math.random().toString(36).substr(2, 8);
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(link));
-
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
             const linkDoc = await transaction.get(linkRef);
+
             if (linkDoc.exists()) {
-                throw new Error(t('link_error'));
+                 throw new Error(t('link_taken'));
             }
 
+            const newChatRef = doc(collection(db, "chats"));
             const newGroup = {
                 type: 'group',
                 name: values.name,
                 members: [currentUser.uid],
                 icon: 'Users',
                 ownerId: currentUser.uid,
-                link: link
+                link: linkWithPrefix
             };
             
             transaction.set(newChatRef, newGroup);
@@ -164,8 +165,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         });
     } catch (error: any) {
         console.error("Error creating group:", error);
-        const isPermissionError = error.name === 'FirestorePermissionError';
-        if (isPermissionError) {
+        if (error.message.includes(t('link_taken'))) {
+            groupForm.setError('link', { message: error.message });
+        } else if (error.name === 'FirestorePermissionError') {
              errorEmitter.emit('permission-error', error);
         } else {
             toast({ variant: 'destructive', title: 'Error', description: error.message || t('group_error') });
@@ -180,9 +182,11 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     setIsCreating(true);
     channelForm.clearErrors();
 
+    const linkWithPrefix = '/C/' + values.link;
+
     try {
         await runTransaction(db, async (transaction) => {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(values.link));
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
             const linkDoc = await transaction.get(linkRef);
 
             if (linkDoc.exists()) {
@@ -197,7 +201,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                 members: [currentUser.uid],
                 icon: 'Megaphone',
                 ownerId: currentUser.uid,
-                link: values.link,
+                link: linkWithPrefix,
             };
 
             transaction.set(newChatRef, newChannel);
@@ -245,7 +249,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             <FormItem>
                             <FormLabel>{t('username_label')}</FormLabel>
                             <FormControl>
-                                <Input placeholder={t('username_placeholder')} {...field} />
+                                <Input placeholder={t('username_placeholder_short')} {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -274,6 +278,24 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             <FormMessage />
                             </FormItem>
                         )}
+                        />
+                         <FormField
+                            control={groupForm.control}
+                            name="link"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{t('group_link_label')}</FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                            /G/
+                                        </span>
+                                        <Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} />
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
                         />
                          <div className='flex justify-end'>
                             <Button type="submit" disabled={isCreating}>
@@ -319,7 +341,12 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             <FormItem>
                             <FormLabel>{t('unique_link_label')}</FormLabel>
                             <FormControl>
-                                <Input placeholder={t('link_placeholder')} {...field} />
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                        /C/
+                                    </span>
+                                    <Input placeholder={t('link_placeholder')} className="pl-9" {...field} />
+                                </div>
                             </FormControl>
                             <FormMessage />
                             </FormItem>
