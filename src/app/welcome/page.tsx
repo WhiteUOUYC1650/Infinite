@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/context/language-context';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Star } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function WelcomePage() {
   const { user, loading } = useUser();
@@ -39,9 +40,12 @@ export default function WelcomePage() {
           <CardDescription>{t('welcome_subtitle')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
-            {t('welcome_message')}
-          </p>
+          <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left">
+            <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
+            <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+              {t('welcome_message')}
+            </AlertDescription>
+          </Alert>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button onClick={() => router.push('/')} size="lg">
