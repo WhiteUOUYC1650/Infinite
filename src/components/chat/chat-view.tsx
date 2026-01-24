@@ -1,8 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
@@ -14,6 +12,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
+import { Textarea } from '@/components/ui/textarea';
 
 export function ChatView({ item: initialItem, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
@@ -110,14 +109,11 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     return t('offline');
   }
 
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
-        }
+    if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -145,7 +141,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     }
   
     addDoc(messagesCollectionRef, messageData).catch((serverError: any) => {
-      setMessageContent(content);
+      setMessageContent(content); // Re-populate the input on error
       console.error("Error sending message: ", serverError);
       const permissionError = new FirestorePermissionError({
           path: messagesCollectionRef.path,
@@ -217,7 +213,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       </header>
 
       {/* Message List */}
-      <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
+      <div className="flex-1 min-h-0 overflow-y-auto" ref={messagesContainerRef}>
         {loadingMessages ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -233,7 +229,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                 {t('no_messages_yet')}
             </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Message Input */}
       {canSendMessage && (
