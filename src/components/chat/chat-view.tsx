@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -85,6 +86,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
+  const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -318,7 +320,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div className="flex flex-col h-svh w-screen bg-background overflow-hidden">
+    <div className={cn("flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       {/* Chat Header */}
       <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
@@ -528,41 +530,38 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    // Corrected Logic: Avatar is ONLY shown for other users in a group chat.
+    // Logic for avatar: only for other users in a group chat.
     const showAvatar = chatType === 'group' && !isCurrentUser;
 
-    // Corrected Logic: Your own messages are on the right, EXCEPT in channels where all messages are on the left.
+    // Logic for alignment: user's own messages are on the right, except in channels where all messages are on the left.
     const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
         <div className={cn(
-            "flex items-end gap-3", // Use items-end for better vertical alignment with the bubble content
+            "flex items-end gap-3",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
-            {/* AVATAR LOGIC */}
-            {/* The avatar container is rendered only when `showAvatar` is true. This removes all unwanted margins. */}
-            {showAvatar && (
+            {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser}>
                             <UserAvatarWithStatus user={sender} />
                         </button>
                     ) : (
-                        // Skeleton loader for the avatar
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
+            ) : (
+                <div className={cn({'w-10': chatType === 'group' && isCurrentUser})} />
             )}
 
-            {/* MESSAGE BUBBLE */}
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {/* Sender Name: Show for other users in groups, and for all users in channels */}
-                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel') && sender ? (
+                {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 
