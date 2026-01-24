@@ -30,7 +30,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useState, useEffect, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Dices } from 'lucide-react';
 
 const dmFormSchema = z.object({
   username: z.string()
@@ -53,6 +53,16 @@ const channelFormSchema = z.object({
         .refine(value => /^[a-zA-Z0-9_]+$/.test(value), { message: 'Link can only contain English letters, numbers, and underscores.'}),
 });
 
+const generateRandomLink = (length: number): string => {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+};
+
 
 interface NewChatDialogProps {
   currentUser: AuthenticatedUser;
@@ -72,6 +82,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   const [isCheckingGroupLink, setIsCheckingGroupLink] = useState(false);
   const [isCheckingChannelLink, setIsCheckingChannelLink] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const groupDebounceTimeout = useRef<NodeJS.Timeout>();
   const channelDebounceTimeout = useRef<NodeJS.Timeout>();
 
@@ -96,6 +107,37 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const dmUsernameValue = dmForm.watch('username');
   const groupLinkValue = groupForm.watch('link');
   const channelLinkValue = channelForm.watch('link');
+
+  const handleGenerateGroupLink = async () => {
+    if (!db) return;
+    setIsGeneratingLink(true);
+    let attempts = 0;
+    const maxAttempts = 10;
+    while (attempts < maxAttempts) {
+        const randomLink = generateRandomLink(8);
+        const linkWithPrefix = '/G/' + randomLink;
+        const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
+        try {
+            const linkSnap = await getDoc(linkRef);
+            if (!linkSnap.exists()) {
+                groupForm.setValue('link', randomLink);
+                groupForm.clearErrors('link');
+                setIsGeneratingLink(false);
+                return;
+            }
+        } catch (error) {
+            console.error("Error checking generated group link", error);
+            break; // Exit loop on error
+        }
+        attempts++;
+    }
+    setIsGeneratingLink(false);
+    toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not generate a unique link automatically. Please enter one manually.",
+    });
+  };
 
   useEffect(() => {
     if (debounceTimeout.current) {
@@ -419,16 +461,21 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             name="link"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>{t('group_link_label')}</FormLabel>
-                                <FormControl>
-                                    <div className="relative">
-                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                                            /G/
-                                        </span>
-                                        <Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} />
+                                    <FormLabel>{t('group_link_label')}</FormLabel>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative flex-1">
+                                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                                /G/
+                                            </span>
+                                            <FormControl>
+                                                <Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} />
+                                            </FormControl>
+                                        </div>
+                                        <Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink}>
+                                            {isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
+                                        </Button>
                                     </div>
-                                </FormControl>
-                                <FormMessage />
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
