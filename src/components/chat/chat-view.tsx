@@ -119,20 +119,20 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (!messageContent.trim() || !db || isSending) return;
+    if (!messageContent.trim() || !db) return;
   
-    setIsSending(true);
     const content = messageContent;
     setMessageContent('');
   
     const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
   
-    const now = Timestamp.now();
+    const now = new Date();
+    const timestamp = Timestamp.fromDate(now);
   
     const messageData: { [key: string]: any } = {
         senderId: currentUser.uid,
         content: content,
-        timestamp: now,
+        timestamp: timestamp,
         senderName: currentUser.name || currentUser.username || "User",
     };
 
@@ -149,8 +149,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
           requestResourceData: messageData,
       });
       errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-      setIsSending(false);
     });
   
     const chatRef = doc(db, 'chats', item.id);
@@ -158,7 +156,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       content: content,
       senderId: currentUser.uid,
       senderName: currentUser.name || currentUser.username || "User",
-      timestamp: now,
+      timestamp: timestamp,
     };
   
     const chatUpdateData: { [key:string]: any } = { 
@@ -179,7 +177,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-full bg-background">
       {/* Chat Header */}
       <header className="flex-shrink-0 flex items-center p-4 border-b">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
