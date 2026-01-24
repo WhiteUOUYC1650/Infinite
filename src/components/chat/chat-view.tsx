@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -528,18 +529,22 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    const showAvatar = !isCurrentUser && (chatType === 'group' || chatType === 'channel');
+    // Avatar is shown for other users in groups, and for all users in channels.
+    const showAvatar = (chatType === 'group' && !isCurrentUser) || chatType === 'channel';
+
+    // Messages are aligned to the right for the current user, except in channels.
+    const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            isCurrentUser && "flex-row-reverse"
+            alignRight && "flex-row-reverse"
         )}>
             {/* AVATAR */}
             {showAvatar && (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
-                        <button onClick={handleAvatarClick} disabled={!sender}>
+                        <button onClick={handleAvatarClick} disabled={isCurrentUser}>
                             <UserAvatarWithStatus user={sender} />
                         </button>
                     ) : (
@@ -551,12 +556,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             {/* Message Bubble */}
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
-                isCurrentUser
+                alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {/* Sender Name: for others in groups/general, and for everyone in channels */}
-                {(chatType === 'channel' && sender) || (showAvatar && sender) ? (
+                {/* Sender Name: Show for other users in groups, and for all users in channels */}
+                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel') && sender ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 
@@ -566,3 +571,5 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         </div>
     );
 }
+
+    
