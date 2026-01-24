@@ -135,7 +135,7 @@ export const translations = {
       'beta_badge': '0.1 Beta',
       'welcome_message': 'Thank you for joining the beta test of our new messenger. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
       'continue_button': 'Continue',
-      'thank_you_beta': 'Thank you for participating in the beta test! Your feedback has been invaluable in shaping the app.',
+      'thank_you_beta': 'Thank you for participating in the beta test!',
     },
     ru: {
       'settings': 'Настройки',
@@ -273,7 +273,7 @@ export const translations = {
       'beta_badge': 'Бета 0.1',
       'welcome_message': 'Спасибо, что присоединились к бета-тестированию нашего нового мессенджера. Мы усердно работаем, чтобы предоставить вам лучший опыт, и ваш отзыв невероятно важен для нас.',
       'continue_button': 'Продолжить',
-      'thank_you_beta': 'Спасибо за участие в бета-тестировании! Ваш отзыв был неоценим в формировании приложения.',
+      'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
     }
   };
   

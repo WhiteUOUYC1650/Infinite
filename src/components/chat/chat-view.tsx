@@ -540,7 +540,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-end gap-3",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
-            {showAvatar && (
+            {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser}>
@@ -550,6 +550,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
+            ) : (
+                !alignRight && <div className="w-10" />
             )}
 
             <div className={cn(

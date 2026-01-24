@@ -439,7 +439,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             )}
             <span className="sr-only">Toggle theme</span>
           </Button>
-           <DropdownMenu>
+           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Cog className="h-5 w-5" />
