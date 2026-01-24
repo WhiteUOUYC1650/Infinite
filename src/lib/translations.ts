@@ -120,6 +120,12 @@ export const translations = {
       'leave_channel_confirm': 'Are you sure you want to leave this channel? You can rejoin later using the link.',
       'account_description_label': 'Account Description',
       'account_description_placeholder': 'A few words about you...',
+      'view_profile': 'View Profile',
+      'audio_call': 'Audio Call',
+      'video_call': 'Video Call',
+      'clear_history': 'Clear History',
+      'group_info': 'Group Info',
+      'channel_info': 'Channel Info',
     },
     ru: {
       'settings': 'Настройки',
@@ -242,6 +248,12 @@ export const translations = {
       'leave_channel_confirm': 'Вы уверены, что хотите покинуть этот канал? Вы сможете присоединиться снова позже по ссылке.',
       'account_description_label': 'Описание аккаунта',
       'account_description_placeholder': 'Пара слов о себе...',
+      'view_profile': 'Посмотреть профиль',
+      'audio_call': 'Аудиозвонок',
+      'video_call': 'Видеозвонок',
+      'clear_history': 'Очистить историю',
+      'group_info': 'Информация о группе',
+      'channel_info': 'Информация о канале',
     }
   };
   

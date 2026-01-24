@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2 } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -16,6 +16,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -351,16 +358,55 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             )}
         </div>
 
-        {item.type === 'dm' && otherUser?.id !== currentUser.uid && (
-            <div className="flex items-center gap-2 ml-2">
-            <Button variant="ghost" size="icon" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
-                <Phone className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
-                <Video className="h-5 w-5" />
-            </Button>
-            </div>
-        )}
+        <div className="flex items-center gap-2 ml-2">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-5 w-5" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    {item.type === 'dm' && otherUser ? (
+                        <>
+                            {otherUser.id !== currentUser.uid ? (
+                                <>
+                                    <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
+                                        <UserIcon className="mr-2 h-4 w-4" />
+                                        <span>{t('view_profile')}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                                        <Phone className="mr-2 h-4 w-4" />
+                                        <span>{t('audio_call')}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                                        <Video className="mr-2 h-4 w-4" />
+                                        <span>{t('video_call')}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>{t('delete_chat')}</span>
+                                    </DropdownMenuItem>
+                                </>
+                            ) : (
+                                <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>{t('clear_history')}</span>
+                                </DropdownMenuItem>
+                            )}
+                        </>
+                    ) : null}
+
+                    {item.type !== 'dm' && (
+                        <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                            <Info className="mr-2 h-4 w-4" />
+                            <span>{item.type === 'group' ? t('group_info') : t('channel_info')}</span>
+                        </DropdownMenuItem>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </header>
 
       {/* Message List */}
