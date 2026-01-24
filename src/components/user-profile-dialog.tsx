@@ -19,7 +19,7 @@ interface UserProfileDialogProps {
   user: User;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSendMessage: () => void;
+  onSendMessage: (user: User) => void;
 }
 
 const statusColors = {
@@ -80,7 +80,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         )}
        
         <DialogFooter className='!justify-center'>
-            <Button onClick={onSendMessage}>
+            <Button onClick={() => onSendMessage(user)}>
             {t('message')}
           </Button>
         </DialogFooter>

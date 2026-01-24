@@ -6,7 +6,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -70,7 +70,7 @@ function useBatchUsers(userIds: string[]) {
 }
 
 
-export function ChatView({ item: initialItem, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
+export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -210,6 +210,56 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       resizeObserver.disconnect();
     };
   }, [canSendMessage]);
+
+    const handleSendMessageToUser = async (targetUser: User) => {
+    if (!db || !currentUser) return;
+
+    // Close the profile dialog
+    setProfileDialogUser(null);
+
+    // Check if we are already in the correct DM chat
+    const members = [currentUser.uid, targetUser.id].sort();
+    const chatId = members.join('_');
+    if (initialItem.id === chatId) {
+      return; // Already in the correct chat, do nothing.
+    }
+
+    const chatRef = doc(db, 'chats', chatId);
+
+    try {
+      const chatSnap = await getDoc(chatRef);
+      let chatData: Chat;
+
+      if (!chatSnap.exists()) {
+        chatData = {
+          id: chatId,
+          type: 'dm',
+          members: members,
+        };
+        await setDoc(chatRef, {
+          type: 'dm',
+          members: members,
+          unreadCounts: members.reduce(
+            (acc, memberId) => ({ ...acc, [memberId]: 0 }),
+            {}
+          ),
+        });
+      } else {
+        chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+      }
+
+      if (onSelectChat) {
+        onSelectChat(chatData as PopulatedChat);
+      }
+    } catch (error) {
+      console.error('Error switching to DM:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not open direct message.',
+      });
+    }
+  };
 
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
@@ -421,9 +471,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
             onOpenChange={(open) => {
                 if(!open) setProfileDialogUser(null);
             }}
-            onSendMessage={() => {
-                setProfileDialogUser(null);
-            }}
+            onSendMessage={handleSendMessageToUser}
         />
       )}
     </div>
@@ -449,14 +497,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
                     <UserAvatarWithStatus user={sender} />
                 </button>
-            ) : (!isCurrentUser && (chatType === 'group' || isGeneralChat)) ? (
-                <div className="w-10 h-10 flex-shrink-0" />
-            ): null}
+            ) : null}
 
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
                  chatType === 'channel'
-                    ? "bg-card text-card-foreground rounded-none"
+                    ? "bg-card text-card-foreground"
                     : isCurrentUser
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
