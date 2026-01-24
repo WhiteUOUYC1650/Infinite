@@ -480,7 +480,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         </div>
       </SidebarFooter>
 
-      <AlertDialog open={showVersion} onOpenChange={setShowVersion}>
+      <AlertDialog open={showVersion} onOpenChange={(open) => { if(!open) setShowVersion(false); }}>
         <AlertDialogContent>
             <AlertDialogHeader>
             <AlertDialogTitle>{t('app_version')}</AlertDialogTitle>
@@ -498,7 +498,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         <EditProfileDialog 
             user={currentUser}
             open={showEditProfile}
-            onOpenChange={setShowEditProfile}
+            onOpenChange={(open) => { if (!open) setShowEditProfile(false); }}
         />
       )}
 
@@ -506,7 +506,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         <NewChatDialog
             currentUser={currentUser}
             open={showNewChat}
-            onOpenChange={setShowNewChat}
+            onOpenChange={(open) => { if (!open) setShowNewChat(false); }}
             onChatCreated={handleChatCreated}
         />
       )}
@@ -515,7 +515,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         <SearchDialog
             currentUser={currentUser}
             open={showSearchDialog}
-            onOpenChange={setShowSearchDialog}
+            onOpenChange={(open) => { if (!open) setShowSearchDialog(false); }}
             onChatSelected={handleSelect}
         />
       )}
