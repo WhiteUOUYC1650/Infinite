@@ -126,7 +126,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
     const timestamp = Timestamp.fromDate(now);
 
     setMessageContent('');
-    setIsSending(true);
   
     const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
   
@@ -150,8 +149,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
           requestResourceData: messageData,
       });
       errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-      setIsSending(false);
     });
   
     const chatRef = doc(db, 'chats', item.id);
