@@ -84,6 +84,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const headerRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -181,11 +182,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Auto-scroll to bottom ---
   useEffect(() => {
-    if (messagesContainerRef.current) {
-        const el = messagesContainerRef.current;
-        el.scrollTop = el.scrollHeight;
-    }
-  }, [messages, messagesLoading]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid) || item.id === 'GENERAL_CHAT';
 
@@ -417,6 +415,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         />
                     );
                 })}
+                <div ref={messagesEndRef} />
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground p-4">
@@ -493,7 +492,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     return (
         <div className={cn(
             "flex items-start gap-3",
-            (isCurrentUser && chatType !== 'channel') && "flex-row-reverse"
+             chatType === 'channel' ? '' : (isCurrentUser && "flex-row-reverse")
         )}>
             {(showAvatarAndName && sender) && (
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
@@ -509,8 +508,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {(showAvatarAndName || (chatType === 'channel' && sender?.name)) && (
-                    <p className="font-semibold text-sm mb-1">{sender!.name}</p>
+                {((showAvatarAndName || (chatType === 'channel' && sender?.name))) && sender && (
+                    <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 )}
                 <p className="text-sm break-words">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
