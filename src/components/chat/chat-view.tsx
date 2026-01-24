@@ -8,7 +8,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, serverTimestamp, writeBatch, increment, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch, increment, updateDoc, Timestamp, addDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -124,64 +124,59 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db || isSending) return;
-
+  
     setIsSending(true);
     const content = messageContent;
-    setMessageContent(''); // Optimistic UI update
-
-    const chatRef = doc(db, 'chats', item.id);
-    const messagesCollectionRef = collection(chatRef, 'messages');
-    
+    setMessageContent('');
+  
+    const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
+  
     const now = Timestamp.now();
-
+  
     const messageData: { [key: string]: any } = {
-      senderId: currentUser.uid,
-      content: content,
-      timestamp: now,
-      senderName: currentUser.name || currentUser.username || "User",
+        senderId: currentUser.uid,
+        content: content,
+        timestamp: now,
+        senderName: currentUser.name || currentUser.username || "User",
     };
 
     if (currentUser.avatar) {
-      messageData.senderAvatar = currentUser.avatar;
+        messageData.senderAvatar = currentUser.avatar;
     }
-
+  
+    addDoc(messagesCollectionRef, messageData).catch((serverError: any) => {
+      setMessageContent(content);
+      console.error("Error sending message: ", serverError);
+      const permissionError = new FirestorePermissionError({
+          path: messagesCollectionRef.path,
+          operation: 'create',
+          requestResourceData: messageData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+      setIsSending(false);
+    });
+  
+    const chatRef = doc(db, 'chats', item.id);
     const lastMessageData = {
-        content: content,
-        senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.username || "User",
-        timestamp: now,
+      content: content,
+      senderId: currentUser.uid,
+      senderName: currentUser.name || currentUser.username || "User",
+      timestamp: now,
     };
-    
-    const batch = writeBatch(db);
-    const newMessageRef = doc(messagesCollectionRef);
-    
-    batch.set(newMessageRef, messageData);
-    
+  
     const chatUpdateData: { [key:string]: any } = { 
         lastMessage: lastMessageData 
     };
-
+  
     item.members.forEach(memberId => {
         if (memberId !== currentUser.uid) {
             chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
         }
     });
-    
-    batch.update(chatRef, chatUpdateData);
-    
-    batch.commit()
-    .catch((serverError: any) => {
-        setMessageContent(content);
-
-        console.error("Error sending message: ", serverError);
-        const permissionError = new FirestorePermissionError({
-            path: messagesCollectionRef.path,
-            operation: 'create',
-            requestResourceData: messageData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-        setIsSending(false);
+  
+    updateDoc(chatRef, chatUpdateData).catch((error) => {
+        console.error("Error updating chat metadata:", error);
     });
   };
 
@@ -222,19 +217,19 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       </header>
 
       {/* Message List */}
-      <ScrollArea className="flex-1 p-4 min-h-0" ref={scrollAreaRef}>
+      <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
         {loadingMessages ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
         ) : messages && messages.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-6 p-4">
                 {messages.map((message) => (
                     <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
                 ))}
             </div>
         ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
+            <div className="flex h-full items-center justify-center text-muted-foreground p-4">
                 {t('no_messages_yet')}
             </div>
         )}
