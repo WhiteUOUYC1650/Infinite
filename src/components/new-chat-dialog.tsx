@@ -409,7 +409,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
           <DialogDescription>{t('new_conversation_desc')}</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="dm" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
                 <TabsTrigger value="dm">{t('direct_message_tab')}</TabsTrigger>
                 <TabsTrigger value="group">{t('new_group_tab')}</TabsTrigger>
                 <TabsTrigger value="channel">{t('new_channel_tab')}</TabsTrigger>
