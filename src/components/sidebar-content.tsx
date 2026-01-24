@@ -348,7 +348,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           <Accordion
             type="multiple"
             defaultValue={['direct-messages', 'groups', 'channels']}
-            className="w-full px-2"
+            className="w-full"
           >
             <AccordionItem value="direct-messages">
               <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-2">
