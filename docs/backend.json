@@ -29,6 +29,10 @@
         "hasSetNickname": {
             "type": "boolean",
             "description": "True if the user has set their nickname at least once."
+        },
+        "lastSeen": {
+            "type": "object",
+            "description": "Server timestamp of when the user was last active."
         }
       },
       "required": ["name", "username", "avatar", "status"]

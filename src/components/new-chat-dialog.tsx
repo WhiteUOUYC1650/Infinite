@@ -27,9 +27,10 @@ import type { AuthenticatedUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
+import { Loader2 } from 'lucide-react';
 
 const dmFormSchema = z.object({
   username: z.string()
@@ -63,6 +64,9 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const { toast } = useToast();
   const { t } = useLanguage();
   const [isCreating, setIsCreating] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameExists, setUsernameExists] = useState(false);
+  const debounceTimeout = useRef<NodeJS.Timeout>();
 
   const dmForm = useForm<z.infer<typeof dmFormSchema>>({
     resolver: zodResolver(dmFormSchema),
@@ -79,15 +83,56 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     defaultValues: { name: '', description: '', link: '' },
   });
 
+  const dmUsernameValue = dmForm.watch('username');
+
+  useEffect(() => {
+    if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+    }
+
+    if (dmUsernameValue && dmUsernameValue.length > 2 && dmUsernameValue.startsWith('@')) {
+        setIsCheckingUsername(true);
+        setUsernameExists(false);
+        dmForm.clearErrors('username');
+        debounceTimeout.current = setTimeout(async () => {
+            if (!db) return;
+            try {
+                const usernameRef = doc(db, 'usernames', dmUsernameValue);
+                const usernameSnap = await getDoc(usernameRef);
+                if (usernameSnap.exists()) {
+                    setUsernameExists(true);
+                } else {
+                    setUsernameExists(false);
+                    dmForm.setError('username', { message: t('user_not_found') });
+                }
+            } catch (error) {
+                setUsernameExists(false);
+            } finally {
+                setIsCheckingUsername(false);
+            }
+        }, 800);
+    } else {
+        setUsernameExists(false);
+        setIsCheckingUsername(false);
+    }
+
+    return () => {
+        if (debounceTimeout.current) {
+            clearTimeout(debounceTimeout.current);
+        }
+    };
+  }, [dmUsernameValue, db, dmForm, t]);
+
+
   const onDmSubmit = async (values: z.infer<typeof dmFormSchema>) => {
-    if (!db || isCreating) return;
+    if (!db || isCreating || !usernameExists) return;
     setIsCreating(true);
-    dmForm.clearErrors();
 
     try {
         const usernameRef = doc(db, 'usernames', values.username);
         const usernameSnap = await getDoc(usernameRef);
 
+        // Final check just in case
         if (!usernameSnap.exists()) {
             dmForm.setError('username', { message: t('user_not_found') });
             setIsCreating(false);
@@ -256,8 +301,10 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                         )}
                         />
                         <div className='flex justify-end'>
-                            <Button type="submit" disabled={isCreating}>
-                                {isCreating ? t('searching') : t('start_chat')}
+                            <Button type="submit" disabled={isCreating || isCheckingUsername || !usernameExists}>
+                                {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
+                                 isCheckingUsername ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
+                                 t('start_chat')}
                             </Button>
                         </div>
                     </form>

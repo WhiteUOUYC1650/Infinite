@@ -34,6 +34,7 @@ export const translations = {
       'group_name_label': 'Group Name',
       'group_name_placeholder': 'e.g. Project Team',
       'creating': 'Creating...',
+      'checking': 'Checking...',
       'create_group': 'Create Group',
       'link_error': 'Failed to generate a unique link. Please try again.',
       'group_success': 'Group "{groupName}" created.',
@@ -74,6 +75,10 @@ export const translations = {
       'join_success_group': 'Successfully joined group.',
       'join_success_channel': 'Successfully joined channel.',
       'join_error': 'Could not join chat.',
+      'online': 'online',
+      'away': 'away',
+      'offline': 'offline',
+      'was_online': 'was online'
     },
     ru: {
       'settings': 'Настройки',
@@ -110,6 +115,7 @@ export const translations = {
       'group_name_label': 'Название группы',
       'group_name_placeholder': 'например, Рабочая группа',
       'creating': 'Создание...',
+      'checking': 'Проверка...',
       'create_group': 'Создать группу',
       'link_error': 'Не удалось создать уникальную ссылку. Попробуйте снова.',
       'group_success': 'Группа "{groupName}" создана.',
@@ -150,6 +156,10 @@ export const translations = {
       'join_success_group': 'Вы успешно присоединились к группе.',
       'join_success_channel': 'Вы успешно присоединились к каналу.',
       'join_error': 'Не удалось присоединиться к чату.',
+      'online': 'в сети',
+      'away': 'не в сети',
+      'offline': 'не в сети',
+      'was_online': 'был(а) в сети'
     }
   };
   

@@ -38,7 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
-import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,7 +60,6 @@ function useBatchUsers(userIds: string[]) {
     const [users, setUsers] = useState<Record<string, User>>({});
     const [loading, setLoading] = useState(true);
 
-    // Sort and stringify to create a stable dependency for useEffect
     const stringifiedUserIds = JSON.stringify(userIds.sort());
 
     useEffect(() => {
@@ -75,7 +74,6 @@ function useBatchUsers(userIds: string[]) {
             const usersCollection = collection(db, 'users');
             const fetchedUsers: Record<string, User> = {};
             
-            // Firestore 'in' queries are limited to 30 elements.
             const chunks: string[][] = [];
             for (let i = 0; i < uniqueUserIds.length; i += 30) {
                 chunks.push(uniqueUserIds.slice(i, i + 30));
@@ -140,7 +138,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
-  // --- Optimization: Batch fetch user data for DMs ---
   const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm' && chat.id !== currentUser.uid) || [], [chats, currentUser.uid]);
   const dmUserIds = useMemo(() => {
       return Array.from(new Set(directMessages
@@ -149,7 +146,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [directMessages, currentUser.uid]);
 
   const { users: dmUsers, loading: usersLoading } = useBatchUsers(dmUserIds);
-  // --- End Optimization ---
 
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
@@ -204,9 +200,20 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
   }
 
-  const handleLogout = () => {
-    if (auth) {
+  const handleLogout = async () => {
+    if (auth && db && currentUser) {
+      const userRef = doc(db, 'users', currentUser.uid);
+      try {
+        await setDoc(userRef, {
+            status: 'offline',
+            lastSeen: serverTimestamp()
+        }, { merge: true });
+      } catch (error) {
+        console.error("Failed to update status on logout:", error);
+      }
       auth.signOut();
+    } else if (auth) {
+        auth.signOut();
     }
   };
 
@@ -347,7 +354,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           )}
           <div className="flex-1 truncate">
             <p className="font-semibold">{currentUser.name || currentUser.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">{currentUser.status || 'online'}</p>
+            <p className="text-xs text-muted-foreground capitalize">{t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
           </div>
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {theme === 'light' ? (
@@ -442,7 +449,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   );
 }
 
-// --- Simplified DMChatItemComponent ---
 function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherUser, isLoading }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, otherUser?: User, isLoading: boolean }) {
   const { t } = useLanguage();
   if (isLoading || !otherUser) {

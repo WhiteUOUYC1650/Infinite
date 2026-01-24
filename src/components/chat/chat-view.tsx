@@ -32,7 +32,6 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   // --- Optimized User fetching for DM header ---
   const otherUserId = useMemo(() => {
     if (item.type !== 'dm') return null;
-    // For DMs, find the other user's ID. For 'Saved Messages', it's the current user's ID.
     return item.members.find((id) => id !== currentUser.uid) || currentUser.uid;
   }, [item, currentUser.uid]);
 
@@ -74,6 +73,21 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     }
     return item.name;
   };
+  
+  const getStatusText = (user: User | null | undefined) => {
+    if (!user) return null;
+    
+    if (user.status === 'offline' && user.lastSeen) {
+      const lastSeenDate = new Date(user.lastSeen.seconds * 1000);
+      return `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
+    }
+    
+    if (user.status === 'online' || user.status === 'away') {
+      return t(user.status);
+    }
+    
+    return t('offline');
+  }
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +111,6 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     const chatRef = doc(db, 'chats', item.id);
     const messagesCollectionRef = collection(chatRef, 'messages');
 
-    // Denormalize sender info into the message for fewer reads
     const messageData = {
       senderId: currentUser.uid,
       content: content,
@@ -115,7 +128,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
     
     try {
         const batch = writeBatch(db);
-        const newMessageRef = doc(messagesCollectionRef); // Create ref with auto-id
+        const newMessageRef = doc(messagesCollectionRef);
         
         batch.set(newMessageRef, messageData);
         batch.update(chatRef, { lastMessage: lastMessageData });
@@ -123,7 +136,6 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         await batch.commit();
 
     } catch (serverError: any) {
-        // Revert optimistic UI on failure
         setMessageContent(content);
 
         console.error("Error sending message: ", serverError);
@@ -154,11 +166,11 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         )}
         <div className="flex-1">
           <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
-          <p className="text-sm text-muted-foreground">
+           <p className="text-sm text-muted-foreground">
             {item.type === 'dm'
-              ? otherUser && otherUser.id !== currentUser.uid
-                ? otherUser.status
-                : null
+              ? otherUser?.id !== currentUser.uid
+                ? getStatusText(otherUser)
+                : item.members.length === 1 ? null : t('members_count', {count: item.members?.length || 0})
               : t('members_count', {count: item.members?.length || 0})}
           </p>
         </div>
@@ -226,7 +238,6 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
   );
 }
 
-// Simplified ChatMessage component that uses denormalized data
 function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type']}) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     const isChannel = chatType === 'channel';
@@ -239,29 +250,15 @@ function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, i
         "flex items-end gap-3", 
         !isChannel && isCurrentUser && "flex-row-reverse"
     )}>
-       {!isCurrentUser && isChannel && senderName && (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Avatar className="h-8 w-8">
-                        {senderAvatar ? <AvatarImage src={senderAvatar} alt={senderName || ''} /> : <AvatarFallback>{senderName?.charAt(0)}</AvatarFallback>}
-                    </Avatar>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>{senderName}</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-      )}
       <div
         className={cn(
           "max-w-xs lg:max-w-md p-3 rounded-lg",
-          isCurrentUser
+          isCurrentUser && chatType !== 'channel'
             ? "bg-primary text-primary-foreground rounded-br-none ml-auto"
             : "bg-card text-card-foreground rounded-bl-none"
         )}
       >
-        {!isCurrentUser && isChannel && <p className="text-xs font-bold mb-1">{senderName}</p>}
+        {!isCurrentUser && isChannel && senderName && <p className="text-xs font-bold mb-1">{senderName}</p>}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
