@@ -194,7 +194,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         ) : (
           item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />
         )}
-        <div className="flex-1">
+        <div className={cn("flex-1", item.type === 'dm' && 'ml-3')}>
           <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
            <p className="text-sm text-muted-foreground">
             {item.type === 'dm'
