@@ -181,7 +181,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
         ) : messages && messages.length > 0 ? (
             <div className="space-y-6">
                 {messages.map((message) => (
-                    <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} chatName={item.name} />
+                    <ChatMessage key={message.id} message={message} isCurrentUser={message.senderId === currentUser.uid} chatType={item.type} />
                 ))}
             </div>
         ) : (
@@ -225,7 +225,7 @@ export function ChatView({ item, onClose, currentUser }: { item: PopulatedChat, 
 }
 
 // Simplified ChatMessage component that uses denormalized data
-function ChatMessage({ message, isCurrentUser, chatType, chatName }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type'], chatName?: string }) {
+function ChatMessage({ message, isCurrentUser, chatType }: { message: Message, isCurrentUser: boolean, chatType: PopulatedChat['type']}) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
     const isChannel = chatType === 'channel';
     
@@ -233,7 +233,10 @@ function ChatMessage({ message, isCurrentUser, chatType, chatName }: { message: 
     const senderAvatar = message.senderAvatar || '';
     
   return (
-    <div className={cn("flex items-end gap-3", isCurrentUser && "flex-row-reverse")}>
+    <div className={cn(
+        "flex items-end gap-3", 
+        isCurrentUser && !isChannel && "flex-row-reverse" // Only reverse for non-channel user messages
+    )}>
       {!isCurrentUser && !isChannel && senderName && (
         <TooltipProvider>
             <Tooltip>
@@ -251,14 +254,14 @@ function ChatMessage({ message, isCurrentUser, chatType, chatName }: { message: 
       <div
         className={cn(
           "max-w-xs lg:max-w-md p-3 rounded-lg",
-          isCurrentUser
-            ? "bg-primary text-primary-foreground rounded-br-none"
-            : isChannel
-                ? "bg-card text-card-foreground rounded-bl-none"
+          isChannel 
+            ? "bg-card text-card-foreground rounded-bl-none" // All channel messages have same style
+            : isCurrentUser
+                ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-secondary text-secondary-foreground rounded-bl-none"
         )}
       >
-        {!isCurrentUser && isChannel && <p className="text-sm font-bold text-primary mb-1">{senderName || chatName}</p>}
+        {/* No sender name for channels */}
         <p className="text-sm">{message.content}</p>
         <p className="text-xs opacity-70 mt-1 text-right">{timestamp}</p>
       </div>
