@@ -80,7 +80,9 @@ export const translations = {
       'offline': 'offline',
       'was_online': 'was online',
       'cannot_chat_with_self_dm': 'You can\'t start a DM with yourself here. Use "Saved Messages" instead.',
-      'open': 'Open'
+      'open': 'Open',
+      'placeholder_title': 'Coming Soon',
+      'placeholder_description': 'This feature is not yet implemented and will be available in future versions.'
     },
     ru: {
       'settings': 'Настройки',
@@ -163,7 +165,9 @@ export const translations = {
       'offline': 'не в сети',
       'was_online': 'был(а) в сети',
       'cannot_chat_with_self_dm': 'Вы не можете начать ЛС с собой здесь. Вместо этого используйте "Избранное".',
-      'open': 'Открыть'
+      'open': 'Открыть',
+      'placeholder_title': 'Скоро',
+      'placeholder_description': 'Эта функция еще не реализована и будет доступна в будущих версиях.'
     }
   };
   

@@ -13,10 +13,12 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { format } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
 export function ChatView({ item: initialItem, onClose, currentUser }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser }) {
   const db = useFirestore();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -118,7 +120,9 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   // --- Auto-scroll to bottom ---
   useLayoutEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
   }, [messages, loadingMessages]);
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
@@ -151,7 +155,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (!messageContent.trim() || !db || isSending) return;
+    if (!messageContent.trim() || !db) return;
   
     setIsSending(true);
     const content = messageContent;
@@ -235,10 +239,10 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
         </div>
         {item.type === 'dm' && otherUser?.id !== currentUser.uid && (
             <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
                 <Phone className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
                 <Video className="h-5 w-5" />
             </Button>
             </div>
@@ -285,7 +289,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
                 disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" type="button">
+                <Button variant="ghost" size="icon" type="button" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
                     <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>

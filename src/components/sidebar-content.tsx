@@ -52,6 +52,7 @@ import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
 import { useLanguage } from '@/context/language-context';
 import { SearchDialog } from './search-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -121,6 +122,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const auth = useAuth();
   const db = useFirestore();
   const { language, setLanguage, t } = useLanguage();
+  const { toast } = useToast();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
@@ -374,8 +376,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                     <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
-                    <DropdownMenuItem>{t('notifications')}</DropdownMenuItem>
-                    <DropdownMenuItem>{t('appearance')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>{t('notifications')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>{t('appearance')}</DropdownMenuItem>
                      <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
                           <Languages className="mr-2 h-4 w-4" />
