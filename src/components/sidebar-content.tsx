@@ -351,7 +351,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             className="w-full"
           >
             <AccordionItem value="direct-messages">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground md:px-4">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('direct_messages')}
               </AccordionTrigger>
               <AccordionContent>
@@ -375,7 +375,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </AccordionItem>
 
             <AccordionItem value="groups">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground md:px-4">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('groups')}
               </AccordionTrigger>
               <AccordionContent>
@@ -388,7 +388,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </AccordionItem>
 
             <AccordionItem value="channels">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground md:px-4">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('channels')}
               </AccordionTrigger>
               <AccordionContent>
