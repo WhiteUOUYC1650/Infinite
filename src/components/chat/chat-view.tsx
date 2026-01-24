@@ -84,8 +84,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const headerRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -140,8 +139,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const messageSenderIds = useMemo(() => {
     if (!messages) return [];
     const ids = messages.map(m => m.senderId);
+    if(item.id === 'GENERAL_CHAT') {
+        // For general chat, we also need to fetch all members who sent a message
+        return Array.from(new Set(ids));
+    }
     return Array.from(new Set(ids));
-  }, [messages]);
+  }, [messages, item.id]);
 
   const allUserIdsToFetch = useMemo(() => {
       const combined = [...(item.members || []), ...messageSenderIds];
@@ -178,8 +181,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Auto-scroll to bottom ---
   useEffect(() => {
-    if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+        const el = messagesContainerRef.current;
+        el.scrollTop = el.scrollHeight;
     }
   }, [messages, messagesLoading]);
 
@@ -413,12 +417,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         />
                     );
                 })}
-                <div ref={messagesEndRef} />
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground p-4">
                 {t('no_messages_yet')}
-                <div ref={messagesEndRef} />
             </div>
         )}
       </div>
@@ -493,12 +495,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             "flex items-start gap-3",
             (isCurrentUser && chatType !== 'channel') && "flex-row-reverse"
         )}>
-            {(showAvatarAndName && sender) ? (
+            {(showAvatarAndName && sender) && (
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
                     <UserAvatarWithStatus user={sender} />
                 </button>
-            ) : (
-                 (chatType === 'dm' || chatType === 'channel') && !isCurrentUser && <div className="w-10 flex-shrink-0" />
             )}
 
             <div className={cn(
