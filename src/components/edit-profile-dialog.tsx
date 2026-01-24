@@ -29,9 +29,11 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import React from 'react';
 import { useLanguage } from '@/context/language-context';
+import { Textarea } from './ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
+  statusMessage: z.string().max(120, { message: 'Status must be 120 characters or less.' }).optional(),
 });
 
 interface EditProfileDialogProps {
@@ -49,6 +51,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: user.name || '',
+      statusMessage: user.statusMessage || '',
     },
   });
 
@@ -56,11 +59,15 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
     if (!db || !user) return;
 
     const userRef = doc(db, 'users', user.uid);
-    const updatedData = { name: values.name, hasSetNickname: true };
+    const updatedData = { 
+        name: values.name, 
+        statusMessage: values.statusMessage,
+        hasSetNickname: true 
+    };
 
     setDoc(userRef, updatedData, { merge: true })
         .then(() => {
-            toast({ title: t('dm_success'), description: t('nickname_update_success') });
+            toast({ title: t('dm_success'), description: t('profile_update_success') });
             onOpenChange(false);
         })
         .catch(async (serverError) => {
@@ -92,6 +99,19 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                   <FormLabel>{t('nickname_label')}</FormLabel>
                   <FormControl>
                     <Input placeholder={t('nickname_placeholder')} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="statusMessage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('account_description_label')}</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder={t('account_description_placeholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
