@@ -43,7 +43,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
   if (isMobile) {
     if (!populatedUser) {
-      // You can add a more sophisticated loading screen here
       return <div className="flex h-screen items-center justify-center">Loading...</div>;
     }
 
@@ -51,7 +50,12 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
       return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     }
     
-    return <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={populatedUser} />;
+    // On mobile, the sidebar content takes the full screen.
+    return (
+        <div className="h-screen w-screen flex flex-col bg-sidebar text-sidebar-foreground">
+            <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={populatedUser} />
+        </div>
+    );
   }
 
   // Desktop layout
