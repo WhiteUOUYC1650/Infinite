@@ -349,7 +349,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <SidebarFooter className="p-2">
         <div className="flex items-center gap-2 p-2">
           {currentUser.uid && currentUser.name && (
-            <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar || '', status: currentUser.status || "online" }} />
+            <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online" }} />
           )}
           <div className="flex-1 truncate">
             <p className="font-semibold">{currentUser.name || currentUser.email}</p>

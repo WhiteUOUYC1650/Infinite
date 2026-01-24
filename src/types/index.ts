@@ -6,7 +6,7 @@ export type User = {
   id: string;
   name: string;
   username: string;
-  avatar: string;
+  avatar?: string;
   status: "online" | "away" | "offline";
   statusMessage?: string;
   hasSetNickname?: boolean;

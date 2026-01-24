@@ -137,7 +137,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
       content: content,
       timestamp: serverTimestamp(),
       senderName: currentUser.name || currentUser.username || "User",
-      senderAvatar: currentUser.avatar || ''
+      senderAvatar: currentUser.avatar
     };
 
     const lastMessageData = {

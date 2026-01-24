@@ -73,7 +73,6 @@ export default function SignUpPage() {
         transaction.set(userDocRef, {
           name: usernameWithAt,
           username: usernameWithAt,
-          avatar: `https://i.pravatar.cc/150?u=${user.uid}`,
           status: 'online',
           statusMessage: 'Hey there! I am using Infinite.',
           hasSetNickname: false
