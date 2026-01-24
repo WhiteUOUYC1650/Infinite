@@ -326,7 +326,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     onClick={handleSelectSavedMessages}
                     className={cn("w-full justify-start h-auto py-2 text-left", selectedId === currentUser.uid && 'bg-accent')}
                 >
-                    <div className="flex items-center gap-3 w-full">
+                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
                         <Bookmark className="h-5 w-5 text-muted-foreground" />
                         <p className="font-semibold">{t('saved_messages')}</p>
                     </div>
@@ -336,7 +336,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     onClick={handleSelectGeneralChat}
                     className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-accent')}
                 >
-                    <div className="flex items-center gap-3 w-full">
+                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
                         <Globe className="h-5 w-5 text-muted-foreground" />
                         <p className="font-semibold">{t('general_chat')}</p>
                     </div>
@@ -439,7 +439,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             )}
             <span className="sr-only">Toggle theme</span>
           </Button>
-           <DropdownMenu>
+           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Cog className="h-5 w-5" />
@@ -523,7 +523,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
   if (isLoading || !otherUser) {
     return (
         <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left">
-            <div className="flex items-center gap-3 w-full">
+            <div className="flex items-center gap-3 w-full px-4 md:px-0">
                 <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
                 <div className="flex-1 truncate space-y-2">
                     <div className='h-4 w-3/4 bg-muted rounded animate-pulse' />
@@ -544,7 +544,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
         onClick={() => onSelect(item)}
         className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-accent')}
         >
-        <div className="flex items-center gap-3 w-full">
+        <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
             <div className="flex-1 truncate">
                 <p className="font-semibold">{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
@@ -569,7 +569,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
       onClick={() => onSelect(item)}
       className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-accent')}
     >
-      <div className="flex items-center gap-3 w-full">
+      <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 truncate">
           <p className="font-semibold">{item.name}</p>

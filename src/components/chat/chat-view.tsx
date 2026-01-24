@@ -372,53 +372,55 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className="flex items-center gap-2 ml-2">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-5 w-5" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    {item.type === 'dm' && otherUser ? (
-                        <>
-                            {otherUser.id !== currentUser.uid ? (
-                                <>
-                                    <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
-                                        <UserIcon className="mr-2 h-4 w-4" />
-                                        <span>{t('view_profile')}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
-                                        <Phone className="mr-2 h-4 w-4" />
-                                        <span>{t('audio_call')}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
-                                        <Video className="mr-2 h-4 w-4" />
-                                        <span>{t('video_call')}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
+            {item.id !== 'GENERAL_CHAT' && (
+                <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {item.type === 'dm' && otherUser ? (
+                            <>
+                                {otherUser.id !== currentUser.uid ? (
+                                    <>
+                                        <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
+                                            <UserIcon className="mr-2 h-4 w-4" />
+                                            <span>{t('view_profile')}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                                            <Phone className="mr-2 h-4 w-4" />
+                                            <span>{t('audio_call')}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                                            <Video className="mr-2 h-4 w-4" />
+                                            <span>{t('video_call')}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>{t('delete_chat')}</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                ) : (
                                     <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>{t('delete_chat')}</span>
+                                        <span>{t('clear_history')}</span>
                                     </DropdownMenuItem>
-                                </>
-                            ) : (
-                                <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>{t('clear_history')}</span>
-                                </DropdownMenuItem>
-                            )}
-                        </>
-                    ) : null}
+                                )}
+                            </>
+                        ) : null}
 
-                    {item.type !== 'dm' && (
-                        <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
-                            <Info className="mr-2 h-4 w-4" />
-                            <span>{item.type === 'group' ? t('group_info') : t('channel_info')}</span>
-                        </DropdownMenuItem>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        {item.type !== 'dm' && (
+                            <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                                <Info className="mr-2 h-4 w-4" />
+                                <span>{item.type === 'group' ? t('group_info') : t('channel_info')}</span>
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
         </div>
       </header>
 
@@ -538,8 +540,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-end gap-3",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
-            {showAvatar && (
-                <div className="w-10 h-10 flex-shrink-0">
+            {showAvatar ? (
+                 <div className="w-10 h-10 flex-shrink-0">
                     {sender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser}>
                             <UserAvatarWithStatus user={sender} />
@@ -547,7 +549,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     ) : (
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
-                </div>
+                 </div>
+            ) : (
+                <div className={cn(chatType === 'group' && isCurrentUser && 'w-10')} />
             )}
 
             <div className={cn(
@@ -555,7 +559,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none",
-                !showAvatar && (chatType === 'group' && isCurrentUser ? 'mr-10' : '')
             )}>
                  {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
