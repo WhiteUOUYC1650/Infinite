@@ -74,7 +74,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
   const { toast } = useToast();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(true);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
 
   // --- Refs for height calculation and scrolling ---
@@ -132,18 +131,11 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db) return null;
-    setLoadingMessages(true);
     return collection(db, 'chats', item.id, 'messages');
   }, [db, item.id]);
 
   const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
   const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
-
-  useEffect(() => {
-      if(!messagesLoading) {
-        setLoadingMessages(false);
-      }
-  }, [messagesLoading]);
 
   const getChatName = () => {
     if (item.type === 'dm') {
@@ -172,10 +164,10 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
   // --- Auto-scroll to bottom ---
   useLayoutEffect(() => {
-    if (messagesEndRef.current && !loadingMessages) {
+    if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
-  }, [messages, loadingMessages]);
+  }, [messages, messagesLoading]);
 
   const canSendMessage = item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
 
@@ -331,7 +323,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
       {/* Message List */}
       <div ref={messagesContainerRef} className="overflow-y-auto">
-        {loadingMessages ? (
+        {messagesLoading ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
@@ -339,8 +331,6 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
             <div className="space-y-4 p-4">
                 {messages.map((message) => {
                     const sender = memberDetails[message.senderId];
-                    if (item.type !== 'dm' && !sender && !membersLoading) return null;
-
                     return (
                         <ChatMessage 
                             key={message.id} 
@@ -410,7 +400,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const isFromOtherUserInGroup = !isCurrentUser && (chatType === 'group' || chatType === 'channel');
+    const showSenderInfoInGroup = !isCurrentUser && chatType === 'group';
 
     const handleAvatarClick = () => {
         if (sender) {
@@ -423,13 +413,15 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-start gap-3",
             isCurrentUser && "flex-row-reverse"
         )}>
-            <div className="w-10 h-10 flex-shrink-0">
-                {isFromOtherUserInGroup && sender && (
-                    <button onClick={handleAvatarClick}>
-                        <UserAvatarWithStatus user={sender} />
-                    </button>
-                )}
-            </div>
+            {!isCurrentUser ? (
+                <div className="w-10 h-10 flex-shrink-0">
+                    {showSenderInfoInGroup && sender && (
+                        <button onClick={handleAvatarClick}>
+                            <UserAvatarWithStatus user={sender} />
+                        </button>
+                    )}
+                </div>
+            ) : null }
 
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
@@ -437,7 +429,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {isFromOtherUserInGroup && sender && (
+                {showSenderInfoInGroup && sender && (
                     <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 )}
                 <p className="text-sm break-words">{message.content}</p>
