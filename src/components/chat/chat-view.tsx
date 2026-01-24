@@ -461,7 +461,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     };
     
     const showAvatar = !isCurrentUser && (chatType === 'group' || isGeneralChat);
-    const showSpacer = isCurrentUser && (chatType === 'group' || isGeneralChat);
+    const showSpacer = false;
     const isChannel = chatType === 'channel';
 
     const isAlignedRight = isCurrentUser && chatType !== 'channel';
