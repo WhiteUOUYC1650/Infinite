@@ -177,9 +177,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }
 
   // --- Auto-scroll to bottom ---
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, messagesLoading]);
 
@@ -497,7 +497,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
                     <UserAvatarWithStatus user={sender} />
                 </button>
-            ) : null}
+            ) : (
+                 (chatType === 'dm' || chatType === 'channel') && !isCurrentUser && <div className="w-10 flex-shrink-0" />
+            )}
 
             <div className={cn(
                 "max-w-xs lg:max-w-md p-3 rounded-lg flex flex-col",
@@ -507,8 +509,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {(showAvatarAndName || (chatType === 'channel')) && sender && (
-                    <p className="font-semibold text-sm mb-1">{sender.name}</p>
+                {(showAvatarAndName || (chatType === 'channel' && sender?.name)) && (
+                    <p className="font-semibold text-sm mb-1">{sender!.name}</p>
                 )}
                 <p className="text-sm break-words">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
