@@ -400,7 +400,7 @@ export function ChatView({ item: initialItem, onClose, currentUser }: { item: Po
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    const showSenderInfoInGroup = !isCurrentUser && chatType === 'group';
+    const showAvatarInGroup = !isCurrentUser && chatType === 'group';
 
     const handleAvatarClick = () => {
         if (sender) {
@@ -413,10 +413,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             "flex items-start gap-3",
             isCurrentUser && "flex-row-reverse"
         )}>
-            {showSenderInfoInGroup && sender ? (
+            {showAvatarInGroup && sender ? (
                 <button onClick={handleAvatarClick} className="w-10 h-10 flex-shrink-0">
                     <UserAvatarWithStatus user={sender} />
                 </button>
+            ) : showAvatarInGroup ? (
+                <div className="w-10 h-10 flex-shrink-0" />
             ) : null}
 
             <div className={cn(
@@ -425,7 +427,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-card text-card-foreground rounded-bl-none"
             )}>
-                {showSenderInfoInGroup && sender && (
+                {showAvatarInGroup && sender && (
                     <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 )}
                 <p className="text-sm break-words">{message.content}</p>
