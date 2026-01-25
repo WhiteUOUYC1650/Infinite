@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { SplashScreen } from '@/components/splash-screen';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { LanguageProvider } from '@/context/language-context';
+import { UpdatePromptProvider } from '@/context/update-prompt-context';
 
 export const metadata: Metadata = {
   title: 'Infinite',
@@ -25,9 +26,11 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <FirebaseClientProvider>
           <LanguageProvider>
-            <SplashScreen />
-            {children}
-            <Toaster />
+            <UpdatePromptProvider>
+              <SplashScreen />
+              {children}
+              <Toaster />
+            </UpdatePromptProvider>
           </LanguageProvider>
         </FirebaseClientProvider>
       </body>

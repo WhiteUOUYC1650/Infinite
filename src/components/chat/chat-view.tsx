@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUpdatePrompt } from '@/context/update-prompt-context';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -82,6 +83,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const db = useFirestore();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { promptUpdate } = useUpdatePrompt();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -389,22 +391,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                             <span>{t('view_profile')}</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                                        <DropdownMenuItem onSelect={promptUpdate}>
                                             <Phone className="mr-2 h-4 w-4" />
                                             <span>{t('audio_call')}</span>
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                                        <DropdownMenuItem onSelect={promptUpdate}>
                                             <Video className="mr-2 h-4 w-4" />
                                             <span>{t('video_call')}</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             <span>{t('delete_chat')}</span>
                                         </DropdownMenuItem>
                                     </>
                                 ) : (
-                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                    <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         <span>{t('clear_history')}</span>
                                     </DropdownMenuItem>
@@ -487,7 +489,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" type="button" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
                     <Paperclip className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
@@ -550,9 +552,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : (
-                null
-            )}
+            ) : chatType === 'group' && !alignRight ? (
+                <div className="w-10 flex-shrink-0" />
+            ) : null}
 
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",

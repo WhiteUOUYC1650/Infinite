@@ -56,6 +56,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { UserProfileCard } from './user-profile-card';
 import { Alert, AlertDescription } from './ui/alert';
+import { useUpdatePrompt } from '@/context/update-prompt-context';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -127,6 +128,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const db = useFirestore();
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
+  const { promptUpdate } = useUpdatePrompt();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
@@ -450,8 +452,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                     <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>{t('notifications')}</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>{t('appearance')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={promptUpdate}>{t('appearance')}</DropdownMenuItem>
                      <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
                           <Languages className="mr-2 h-4 w-4" />

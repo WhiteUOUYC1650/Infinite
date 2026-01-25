@@ -136,6 +136,8 @@ export const translations = {
       'welcome_message': 'Thank you for joining the beta test of our new messenger. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
       'continue_button': 'Continue',
       'thank_you_beta': 'Thank you for participating in the beta test!',
+      'update_required_title': 'Update Required',
+      'update_required_description': 'This feature requires a newer version of the application. Please update to the latest version to get access to new functionalities.',
     },
     ru: {
       'settings': 'Настройки',
@@ -274,6 +276,8 @@ export const translations = {
       'welcome_message': 'Спасибо, что присоединились к бета-тестированию нашего нового мессенджера. Мы усердно работаем, чтобы предоставить вам лучший опыт, и ваш отзыв невероятно важен для нас.',
       'continue_button': 'Продолжить',
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
+      'update_required_title': 'Требуется обновление',
+      'update_required_description': 'Для использования этой функции требуется более новая версия приложения. Пожалуйста, обновитесь до последней версии, чтобы получить доступ к новым функциям.',
     }
   };
   
