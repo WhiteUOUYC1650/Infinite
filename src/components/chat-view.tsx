@@ -551,7 +551,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     )}
                  </div>
             ) : (
-                <div className={cn(chatType === 'group' && isCurrentUser && 'w-10')} />
+                null
             )}
 
             <div className={cn(

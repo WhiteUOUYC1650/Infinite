@@ -551,7 +551,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     )}
                  </div>
             ) : (
-                !alignRight && <div className="w-10" />
+                null
             )}
 
             <div className={cn(
