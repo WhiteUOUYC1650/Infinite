@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/context/language-context';
 import { Loader2, Star } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function WelcomePage() {
   const { user, loading } = useUser();
@@ -30,42 +30,44 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
-      {step === 1 && (
-        <Card className="w-full max-w-lg text-center">
-          <CardHeader>
-            <CardTitle className="text-3xl font-bold font-headline">{t('welcome_title')}</CardTitle>
-            <CardDescription>{t('welcome_subtitle')}</CardDescription>
-          </CardHeader>
-          <CardFooter className="flex justify-center">
-            <Button onClick={() => setStep(2)} size="lg">
-              {t('continue_button')}
-            </Button>
-          </CardFooter>
-        </Card>
+    <div
+      className={cn(
+        'relative flex min-h-screen flex-col items-center justify-center p-8 text-center transition-colors duration-500',
+        step === 1 ? 'bg-[#FF8C00] text-white' : 'bg-[#FFAA00] text-gray-900'
+      )}
+    >
+      {step === 1 ? (
+        <div className="flex flex-col items-center space-y-8">
+          <h1 className="text-5xl font-bold font-headline">{t('welcome_title')}</h1>
+          <p className="text-xl">{t('welcome_subtitle')}</p>
+          <Button
+            onClick={() => setStep(2)}
+            size="lg"
+            className="bg-white text-[#FF8C00] hover:bg-white/90"
+          >
+            {t('continue_button')}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center space-y-8">
+          <Star className="h-16 w-16 text-white" />
+          <h1 className="text-4xl font-bold font-headline">{t('thank_you_beta')}</h1>
+          <p className="max-w-md text-lg">{t('welcome_message')}</p>
+          <Button
+            onClick={() => router.push('/')}
+            size="lg"
+            className="bg-gray-900 text-white hover:bg-gray-800"
+          >
+            {t('continue_button')}
+          </Button>
+        </div>
       )}
 
-      {step === 2 && (
-        <Card className="w-full max-w-lg text-center">
-           <CardHeader>
-               <div className="flex justify-center items-center gap-3">
-                   <Star className="h-8 w-8 text-yellow-500" />
-                   <CardTitle className="text-3xl font-bold font-headline">{t('thank_you_beta')}</CardTitle>
-                </div>
-           </CardHeader>
-           <CardContent>
-                <p className="text-muted-foreground">{t('welcome_message')}</p>
-           </CardContent>
-           <CardFooter className="flex justify-center">
-               <Button onClick={() => router.push('/')} size="lg">
-                   {t('continue_button')}
-               </Button>
-           </CardFooter>
-       </Card>
-     )}
-
-      <div className="absolute bottom-4 right-4">
-        <Badge variant="outline">{t('beta_badge')}</Badge>
+      <div className={cn(
+        'absolute bottom-4 right-4',
+        step === 1 ? 'text-white' : 'text-gray-900'
+      )}>
+        <Badge variant="outline" className="border-current text-current">{t('beta_badge')}</Badge>
       </div>
     </div>
   );
