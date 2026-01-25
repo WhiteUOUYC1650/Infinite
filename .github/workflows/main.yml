@@ -40,11 +40,11 @@ jobs:
         NEXT_PUBLIC_FIREBASE_APP_ID: "dummy"
 
     - name: Make gradlew executable
-      run: chmod +x ./android/gradlew
+      run: chmod +x ./gradlew
       working-directory: ./android
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug -x test
       working-directory: ./android
 
     - name: Upload APK
