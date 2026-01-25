@@ -44,7 +44,7 @@ jobs:
       working-directory: ./android
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug -x test
+      run: ./gradlew clean assembleDebug -x test --no-daemon
       working-directory: ./android
 
     - name: Upload APK
