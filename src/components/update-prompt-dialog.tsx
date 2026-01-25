@@ -14,17 +14,22 @@ import { useLanguage } from "@/context/language-context";
 interface UpdatePromptDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    isUpdateAvailable?: boolean;
 }
 
-export function UpdatePromptDialog({ open, onOpenChange }: UpdatePromptDialogProps) {
+export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = false }: UpdatePromptDialogProps) {
     const { t } = useLanguage();
+    
+    const title = isUpdateAvailable ? t('update_available_title') : t('update_required_title');
+    const description = isUpdateAvailable ? t('update_available_description') : t('update_required_description');
+
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>{t('update_required_title')}</AlertDialogTitle>
+                <AlertDialogTitle>{title}</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {t('update_required_description')}
+                    {description}
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

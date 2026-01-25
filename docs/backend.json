@@ -1,5 +1,17 @@
 {
   "entities": {
+    "AppConfig": {
+        "title": "App Config",
+        "description": "Stores global application configuration.",
+        "type": "object",
+        "properties": {
+            "latest": {
+                "type": "string",
+                "description": "The latest available version of the app (e.g., '0.2')."
+            }
+        },
+        "required": ["latest"]
+    },
     "User": {
       "title": "User",
       "description": "Represents a user in the system.",
@@ -136,6 +148,12 @@
     "providers": ["password"]
   },
   "firestore": {
+    "/config/version": {
+      "schema": {
+        "$ref": "#/backend/entities/AppConfig"
+      },
+      "description": "Stores global application configuration like the latest version."
+    },
     "/users/{userId}": {
       "schema": {
         "$ref": "#/backend/entities/User"

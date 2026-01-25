@@ -138,6 +138,8 @@ export const translations = {
       'thank_you_beta': 'Thank you for participating in the beta test!',
       'update_required_title': 'Update Required',
       'update_required_description': 'This feature requires a newer version of the application. Please update to the latest version to get access to new functionalities.',
+      'update_available_title': 'Update Available',
+      'update_available_description': 'A new version of the app is available. Please update to access the latest features.',
     },
     ru: {
       'settings': 'Настройки',
@@ -278,6 +280,8 @@ export const translations = {
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
       'update_required_title': 'Требуется обновление',
       'update_required_description': 'Для использования этой функции требуется более новая версия приложения. Пожалуйста, обновитесь до последней версии, чтобы получить доступ к новым функциям.',
+      'update_available_title': 'Доступно обновление',
+      'update_available_description': 'Доступна новая версия приложения. Пожалуйста, обновитесь, чтобы получить доступ к последним функциям.',
     }
   };
   
