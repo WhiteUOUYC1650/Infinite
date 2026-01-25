@@ -318,4 +318,3 @@ export const translations = {
           return values[key] !== undefined ? String(values[key]) : match;
       });
   };
-  

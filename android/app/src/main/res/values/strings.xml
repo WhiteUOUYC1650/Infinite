@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Infinite</string>
+    <string name="title_activity_main">Infinite</string>
+    <string name="package_name">com.infinite.chat</string>
+    <string name="custom_url_scheme">com.infinite.chat</string>
+</resources>
