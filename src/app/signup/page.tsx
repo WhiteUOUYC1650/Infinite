@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
-import { doc, getDoc, runTransaction } from 'firebase/firestore';
+import { doc, runTransaction } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -88,30 +88,30 @@ export default function SignUpPage() {
 
     form.clearErrors();
     const usernameWithAt = '@' + values.username;
+    
+    // Hold the created user temporarily for potential cleanup
+    let createdUser: import('firebase/auth').User | null = null;
 
     try {
-      const usernameRef = doc(db, 'usernames', usernameWithAt);
-      const usernameDoc = await getDoc(usernameRef);
-      if (usernameDoc.exists()) {
-        form.setError('username', { message: t('username_taken_error') });
-        return;
-      }
-      
+      // 1. Create the auth user first
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+      createdUser = userCredential.user;
 
-      const userDocRef = doc(db, 'users', user.uid);
-      
+      // 2. Run a transaction to create the firestore documents
       await runTransaction(db, async (transaction) => {
-        const usernameDocInTransaction = await transaction.get(usernameRef);
-        if (usernameDocInTransaction.exists()) {
-          throw new Error(t('username_just_taken_error'));
+        const usernameRef = doc(db, 'usernames', usernameWithAt);
+        const userDocRef = doc(db, 'users', createdUser!.uid);
+
+        const usernameDoc = await transaction.get(usernameRef);
+        if (usernameDoc.exists()) {
+          throw new Error(t('username_taken_error'));
         }
         
-        transaction.set(usernameRef, { uid: user.uid });
+        transaction.set(usernameRef, { uid: createdUser!.uid });
         transaction.set(userDocRef, {
           name: usernameWithAt,
           username: usernameWithAt,
+          avatar: null,
           status: 'online',
           statusMessage: 'Hey there! I am using Infinite.',
           hasSetNickname: false
@@ -121,13 +121,20 @@ export default function SignUpPage() {
       router.push('/welcome');
 
     } catch (error: any) {
-        if (auth.currentUser && error.message.includes(t('username_just_taken_error'))) {
-             await deleteUser(auth.currentUser);
-             form.setError('username', { message: error.message });
-        } else if (error.code === 'auth/email-already-in-use') {
+        // If anything fails, try to clean up the auth user if it was created
+        if (createdUser) {
+            await deleteUser(createdUser).catch(e => {
+                console.error("Failed to clean up orphaned auth user:", e);
+            });
+        }
+
+        if (error.code === 'auth/email-already-in-use') {
             form.setError('email', { message: t('email_in_use_error') });
-        } else {
-            console.error('Error signing up', error);
+        } else if (error.message === t('username_taken_error')) {
+            form.setError('username', { message: t('username_taken_error') });
+        }
+        else {
+            console.error('Error signing up:', error);
             toast({
                 variant: 'destructive',
                 title: t('signup_failed_toast_title'),
