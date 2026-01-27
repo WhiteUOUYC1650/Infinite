@@ -22,31 +22,37 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     const currentTheme = storedTheme && THEMES.includes(storedTheme) ? storedTheme : 'orange';
-    setTheme(currentTheme);
     
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     const initialDarkMode = storedDarkMode === 'dark' || (!storedDarkMode && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    setIsDarkMode(initialDarkMode);
-
-    document.documentElement.classList.toggle('dark', initialDarkMode);
     
+    // Apply classes on initial load
+    document.documentElement.classList.toggle('dark', initialDarkMode);
     THEMES.forEach(t => document.documentElement.classList.remove(`theme-${t}`));
     document.documentElement.classList.add(`theme-${currentTheme}`);
+
+    // Set state after applying classes to avoid flicker
+    setTheme(currentTheme);
+    setIsDarkMode(initialDarkMode);
 
   }, []);
 
   const handleSetTheme = (newTheme: Theme) => {
-    document.documentElement.classList.remove(`theme-${theme}`);
-    document.documentElement.classList.add(`theme-${newTheme}`);
-    setTheme(newTheme);
-    localStorage.setItem('app-color-theme', newTheme);
+    setTheme(prevTheme => {
+      document.documentElement.classList.remove(`theme-${prevTheme}`);
+      document.documentElement.classList.add(`theme-${newTheme}`);
+      localStorage.setItem('app-color-theme', newTheme);
+      return newTheme;
+    });
   };
   
   const toggleTheme = () => {
-    const newIsDarkMode = !isDarkMode;
-    setIsDarkMode(newIsDarkMode);
-    localStorage.setItem('app-theme-mode', newIsDarkMode ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', newIsDarkMode);
+    setIsDarkMode(prevIsDarkMode => {
+      const newIsDarkMode = !prevIsDarkMode;
+      localStorage.setItem('app-theme-mode', newIsDarkMode ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', newIsDarkMode);
+      return newIsDarkMode;
+    });
   }
 
   const value = {

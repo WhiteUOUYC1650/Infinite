@@ -81,7 +81,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const { colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme } = useTheme();
+  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme } = useTheme();
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -392,6 +392,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
            <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -427,11 +431,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                               <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
                               <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={toggleTheme}>
-                            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-                            <span>{isDarkMode ? t('light_mode') : t('dark_mode')}</span>
-                          </DropdownMenuItem>
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                      <DropdownMenuSub>
