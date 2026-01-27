@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const THEMES = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink'] as const;
-
 type Theme = (typeof THEMES)[number];
 
 interface ThemeContextType {
@@ -16,10 +15,13 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Start with default values. These will be used for the server-rendered HTML.
   const [theme, setTheme] = useState<Theme>('orange');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Effect for initial load from localStorage
+  // This effect runs only on the client, after the initial render.
+  // It reads the saved preferences from localStorage and updates the state.
+  // This avoids a server-client mismatch on the first render.
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     if (storedTheme && THEMES.includes(storedTheme)) {
@@ -27,39 +29,37 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
     
     const storedDarkMode = localStorage.getItem('app-theme-mode');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialDarkMode = storedDarkMode ? storedDarkMode === 'dark' : prefersDark;
-    setIsDarkMode(initialDarkMode);
+    if (storedDarkMode) {
+      setIsDarkMode(storedDarkMode === 'dark');
+    } else {
+      // If no preference is stored, use the browser/OS setting.
+      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
   }, []);
 
-  // Effect to apply classes and persist to localStorage
+  // This effect runs whenever the theme or dark mode state changes.
+  // It applies the classes to the HTML element and saves the new preferences to localStorage.
   useEffect(() => {
     const doc = document.documentElement;
-    
-    // Apply dark mode class and persist
-    doc.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
-    
-    // Apply color theme class and persist
-    THEMES.forEach(t => {
-      doc.classList.remove(`theme-${t}`);
-    });
+
+    // Apply color theme
+    THEMES.forEach(t => doc.classList.remove(`theme-${t}`));
     doc.classList.add(`theme-${theme}`);
     localStorage.setItem('app-color-theme', theme);
 
+    // Apply dark mode
+    doc.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
+    
   }, [theme, isDarkMode]);
 
-  const handleSetTheme = (newTheme: Theme) => {
-    setTheme(newTheme);
-  };
-  
   const toggleTheme = () => {
-    setIsDarkMode(prevIsDarkMode => !prevIsDarkMode);
+    setIsDarkMode(prev => !prev);
   }
 
   const value = {
     theme,
-    setTheme: handleSetTheme,
+    setTheme,
     toggleTheme,
     isDarkMode,
   };
