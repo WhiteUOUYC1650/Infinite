@@ -3,12 +3,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,6 +88,46 @@ function AdminPage() {
     }
   };
 
+  const handleDeleteUser = async (userToDelete: User) => {
+    if (!db || !userToDelete.username) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Cannot delete user without a username.',
+        });
+        return;
+    }
+    if (userToDelete.username === '@Infinite') {
+        toast({
+            variant: 'destructive',
+            title: 'Action Not Allowed',
+            description: 'The admin account cannot be deleted.',
+        });
+        return;
+    }
+
+    const userDocRef = doc(db, 'users', userToDelete.id);
+    const usernameDocRef = doc(db, 'usernames', userToDelete.username);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+          transaction.delete(userDocRef);
+          transaction.delete(usernameDocRef);
+      });
+      toast({
+        title: 'User Data Deleted',
+        description: `All Firestore data for ${userToDelete.name} (${userToDelete.username}) has been deleted.`,
+      });
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Could not delete the user data.',
+      });
+    }
+  };
+
   if (isLoading || !isAdmin) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -116,7 +155,7 @@ function AdminPage() {
             <ItemList
               items={users}
               loading={usersLoading}
-              renderItem={(user: User) => <UserItem key={user.id} user={user} />}
+              renderItem={(user: User) => <UserItem key={user.id} user={user} onDelete={handleDeleteUser} />}
             />
           </TabsContent>
           <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
@@ -160,7 +199,9 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user }: { user: User }) {
+function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => void }) {
+  const isAdminUser = user.username === '@Infinite';
+
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
       <Avatar>
@@ -168,7 +209,7 @@ function UserItem({ user }: { user: User }) {
         <AvatarFallback>{user.name?.charAt(0) || <User2 />}</AvatarFallback>
       </Avatar>
       <div className="flex-1 truncate">
-        <p className="font-semibold">{user.name}</p>
+        <p className="font-semibold flex items-center gap-2">{user.name} {isAdminUser && <Badge variant="secondary">Admin</Badge>}</p>
         <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
       <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
@@ -177,6 +218,29 @@ function UserItem({ user }: { user: User }) {
       )}>
           {user.status}
       </Badge>
+       {!isAdminUser && (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="icon">
+                <Trash2 className="h-4 w-4" />
+            </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete all Firestore data for the user "{user.name}" ({user.username}). Note: This does not delete their authentication record from Firebase Auth.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(user)} className={cn(buttonVariants({ variant: "destructive" }))}>
+                Delete User Data
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        )}
     </div>
   );
 }

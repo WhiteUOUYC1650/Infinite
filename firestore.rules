@@ -24,7 +24,7 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) && !('username' in request.writeFields); // Cannot change username
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /usernames/{username} {
@@ -32,7 +32,7 @@ service cloud.firestore {
         allow list: if false;
         allow create: if !exists(/databases/$(database)/documents/usernames/$(username)) && request.resource.data.uid == request.auth.uid;
         allow update: if false;
-        allow delete: if resource.data.uid == request.auth.uid;
+        allow delete: if resource.data.uid == request.auth.uid || isAdmin();
     }
 
     // Rules for the general chat
