@@ -40,20 +40,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     doc.classList.toggle('dark', isDarkMode);
     
     // Apply color theme class
-    // Remove all possible theme classes before adding the new one
     THEMES.forEach(t => {
-      if (doc.classList.contains(`theme-${t}`)) {
-        doc.classList.remove(`theme-${t}`);
-      }
+      doc.classList.remove(`theme-${t}`);
     });
     doc.classList.add(`theme-${theme}`);
     
-    // Persist changes to localStorage
-    localStorage.setItem('app-color-theme', theme);
+    // Persist only the dark mode setting in this effect
     localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
   }, [theme, isDarkMode]);
 
   const handleSetTheme = (newTheme: Theme) => {
+    // Persist theme immediately on change
+    localStorage.setItem('app-color-theme', newTheme);
     setTheme(newTheme);
   };
   
