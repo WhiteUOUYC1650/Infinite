@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.infinite.chat',
-  appName: 'Infinite Chat',
+  appName: 'Infinite',
   webDir: 'out',
   server: {
     androidScheme: 'https'

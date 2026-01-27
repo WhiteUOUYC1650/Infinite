@@ -7,7 +7,7 @@ import { LanguageProvider } from '@/context/language-context';
 import { UpdatePromptProvider } from '@/context/update-prompt-context';
 
 export const metadata: Metadata = {
-  title: 'Infinite Chat',
+  title: 'Infinite',
   description: 'A modern chat application.',
 };
 

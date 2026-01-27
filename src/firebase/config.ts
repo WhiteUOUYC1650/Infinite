@@ -5,10 +5,10 @@
 
 export const firebaseConfig = {
   apiKey: "PASTE_YOUR_API_KEY_HERE",
-  authDomain: "infinite.firebaseapp.com",
-  projectId: "infinite",
-  storageBucket: "infinite.appspot.com",
+  authDomain: "whitegram-16506-pd.firebaseapp.com",
+  projectId: "whitegram-16506-pd",
+  storageBucket: "whitegram-16506-pd.appspot.com",
   messagingSenderId: "PASTE_YOUR_SENDER_ID_HERE",
   appId: "PASTE_YOUR_APP_ID_HERE",
-  databaseURL: "https://infinite.firebaseio.com",
+  databaseURL: "https://whitegram-16506-pd-default-rtdb.firebaseio.com",
 };
