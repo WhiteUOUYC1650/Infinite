@@ -181,43 +181,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  const applyTheme = useCallback((themeToApply: Theme, darkMode: boolean) => {
-    const doc = document.documentElement;
-    doc.classList.toggle('dark', darkMode);
-
-    const themeConfig = THEMES[themeToApply];
-    const colors = darkMode ? themeConfig.dark : themeConfig.light;
-
-    const setProperty = (name: string, value: string) => doc.style.setProperty(name, `hsl(${value})`);
-    
-    // Base colors
-    setProperty('--background', colors.background);
-    setProperty('--card', colors.card);
-    setProperty('--popover', colors.card);
-    setProperty('--secondary', colors.muted);
-    setProperty('--muted', colors.muted);
-    setProperty('--border', colors.border);
-    setProperty('--input', colors.input);
-    
-    // Primary/Accent colors
-    setProperty('--primary', colors.primary);
-    setProperty('--primary-foreground', colors.foreground);
-    setProperty('--accent', colors.primary);
-    setProperty('--accent-foreground', colors.foreground);
-    setProperty('--ring', colors.primary);
-
-    // Sidebar colors
-    setProperty('--sidebar-background', colors.card);
-    setProperty('--sidebar-primary', colors.primary);
-    setProperty('--sidebar-primary-foreground', colors.foreground);
-    setProperty('--sidebar-accent', colors.muted);
-    setProperty('--sidebar-border', colors.border);
-    setProperty('--sidebar-ring', colors.primary);
-
-  }, []);
-
+  // This effect runs once on mount to restore theme from localStorage
   useEffect(() => {
-    // This effect runs once on mount to restore theme from localStorage
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     const storedDarkMode = localStorage.getItem('app-theme-mode');
 
@@ -226,19 +191,47 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     setTheme(initialTheme);
     setIsDarkMode(initialDarkMode);
-    setIsMounted(true);
+    setIsMounted(true); // Signal that the initial theme has been loaded
   }, []);
 
+  // This effect applies the theme whenever it changes, but only after mounting
   useEffect(() => {
-    // This effect applies theme whenever it changes, but only after mounting
     if (isMounted) {
-      applyTheme(theme, isDarkMode);
+      const root = document.documentElement;
+      root.classList.toggle('dark', isDarkMode);
+
+      const themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
+      
+      const varsToSet = {
+        '--background': themeColors.background,
+        '--primary': themeColors.primary,
+        '--primary-foreground': themeColors.foreground,
+        '--card': themeColors.card,
+        '--popover': themeColors.card,
+        '--secondary': themeColors.muted,
+        '--muted': themeColors.muted,
+        '--accent': themeColors.primary,
+        '--accent-foreground': themeColors.foreground,
+        '--border': themeColors.border,
+        '--input': themeColors.input,
+        '--ring': themeColors.primary,
+        '--sidebar-background': themeColors.card,
+        '--sidebar-primary': themeColors.primary,
+        '--sidebar-primary-foreground': themeColors.foreground,
+        '--sidebar-accent': themeColors.muted,
+        '--sidebar-border': themeColors.border,
+        '--sidebar-ring': themeColors.primary,
+      };
+
+      for (const [property, value] of Object.entries(varsToSet)) {
+          root.style.setProperty(property, value);
+      }
     }
-  }, [theme, isDarkMode, isMounted, applyTheme]);
+  }, [theme, isDarkMode, isMounted]);
 
   const handleSetTheme = (newTheme: Theme) => {
-    localStorage.setItem('app-color-theme', newTheme);
     setTheme(newTheme);
+    localStorage.setItem('app-color-theme', newTheme);
   };
 
   const handleToggleTheme = () => {
@@ -256,8 +249,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     isDarkMode,
   };
 
+  // We prevent rendering the children until the theme is mounted to avoid a flash of unstyled content
   if (!isMounted) {
-    return null; // Or a loading skeleton
+    return null;
   }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
