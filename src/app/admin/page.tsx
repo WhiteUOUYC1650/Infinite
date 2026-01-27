@@ -209,7 +209,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
         <AvatarFallback>{user.name?.charAt(0) || <User2 />}</AvatarFallback>
       </Avatar>
       <div className="flex-1 truncate">
-        <p className="font-semibold flex items-center gap-2">{user.name} {isAdminUser && <Badge variant="secondary">Admin</Badge>}</p>
+        <div className="font-semibold flex items-center gap-2">{user.name} {isAdminUser && <Badge variant="secondary">Admin</Badge>}</div>
         <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
       <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
