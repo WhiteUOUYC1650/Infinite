@@ -257,6 +257,7 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
       <div className="flex-1 truncate">
         <p className="font-semibold">{chat.name}</p>
         <p className="text-sm text-muted-foreground">{chat.members?.length || 0} members</p>
+        {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
       <AlertDialog>
         <AlertDialogTrigger asChild>
