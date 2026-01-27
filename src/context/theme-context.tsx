@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const THEMES = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink'] as const;
 
@@ -19,40 +19,46 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('orange');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // Effect for initial load from localStorage
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
-    const currentTheme = storedTheme && THEMES.includes(storedTheme) ? storedTheme : 'orange';
+    if (storedTheme && THEMES.includes(storedTheme)) {
+      setTheme(storedTheme);
+    }
     
     const storedDarkMode = localStorage.getItem('app-theme-mode');
-    const initialDarkMode = storedDarkMode === 'dark' || (!storedDarkMode && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    // Apply classes on initial load
-    document.documentElement.classList.toggle('dark', initialDarkMode);
-    THEMES.forEach(t => document.documentElement.classList.remove(`theme-${t}`));
-    document.documentElement.classList.add(`theme-${currentTheme}`);
-
-    // Set state after applying classes to avoid flicker
-    setTheme(currentTheme);
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialDarkMode = storedDarkMode ? storedDarkMode === 'dark' : prefersDark;
     setIsDarkMode(initialDarkMode);
-
   }, []);
 
-  const handleSetTheme = (newTheme: Theme) => {
-    setTheme(prevTheme => {
-      document.documentElement.classList.remove(`theme-${prevTheme}`);
-      document.documentElement.classList.add(`theme-${newTheme}`);
-      localStorage.setItem('app-color-theme', newTheme);
-      return newTheme;
+  // Effect to apply classes to document when theme or dark mode changes
+  useEffect(() => {
+    const doc = document.documentElement;
+    
+    // Apply dark mode class
+    doc.classList.toggle('dark', isDarkMode);
+    
+    // Apply color theme class
+    // Remove all possible theme classes before adding the new one
+    THEMES.forEach(t => {
+      if (doc.classList.contains(`theme-${t}`)) {
+        doc.classList.remove(`theme-${t}`);
+      }
     });
+    doc.classList.add(`theme-${theme}`);
+    
+    // Persist changes to localStorage
+    localStorage.setItem('app-color-theme', theme);
+    localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
+  }, [theme, isDarkMode]);
+
+  const handleSetTheme = (newTheme: Theme) => {
+    setTheme(newTheme);
   };
   
   const toggleTheme = () => {
-    setIsDarkMode(prevIsDarkMode => {
-      const newIsDarkMode = !prevIsDarkMode;
-      localStorage.setItem('app-theme-mode', newIsDarkMode ? 'dark' : 'light');
-      document.documentElement.classList.toggle('dark', newIsDarkMode);
-      return newIsDarkMode;
-    });
+    setIsDarkMode(prevIsDarkMode => !prevIsDarkMode);
   }
 
   const value = {
