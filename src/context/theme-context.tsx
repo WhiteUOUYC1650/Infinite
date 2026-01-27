@@ -15,30 +15,27 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Start with default values. These will be used for the server-rendered HTML.
-  const [theme, setTheme] = useState<Theme>('orange');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // This effect runs only on the client, after the initial render.
-  // It reads the saved preferences from localStorage and updates the state.
-  // This avoids a server-client mismatch on the first render.
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
-    if (storedTheme && THEMES.includes(storedTheme)) {
-      setTheme(storedTheme);
+  // We initialize state with a function to ensure localStorage is only accessed on the client.
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return 'orange'; // Default for SSR
     }
-    
+    const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
+    return storedTheme && THEMES.includes(storedTheme) ? storedTheme : 'orange';
+  });
+
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+     if (typeof window === 'undefined') {
+      return false; // Default for SSR
+    }
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     if (storedDarkMode) {
-      setIsDarkMode(storedDarkMode === 'dark');
-    } else {
-      // If no preference is stored, use the browser/OS setting.
-      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      return storedDarkMode === 'dark';
     }
-  }, []);
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
-  // This effect runs whenever the theme or dark mode state changes.
-  // It applies the classes to the HTML element and saves the new preferences to localStorage.
+  // This effect runs whenever the theme or dark mode state changes on the client.
   useEffect(() => {
     const doc = document.documentElement;
 
