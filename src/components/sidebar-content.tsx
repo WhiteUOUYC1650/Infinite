@@ -286,7 +286,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <Button
                     variant="ghost"
                     onClick={handleSelectSavedMessages}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === currentUser.uid && 'bg-accent')}
+                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === currentUser.uid && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
                     <div className="flex items-center gap-3 w-full px-4 md:px-0">
                         <Bookmark className="h-5 w-5 text-muted-foreground" />
@@ -296,7 +296,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <Button
                     variant="ghost"
                     onClick={handleSelectGeneralChat}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-accent')}
+                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
                     <div className="flex items-center gap-3 w-full px-4 md:px-0">
                         <Globe className="h-5 w-5 text-muted-foreground" />
@@ -563,7 +563,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-accent')}
+        className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground')}
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
@@ -588,7 +588,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-accent')}
+      className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
