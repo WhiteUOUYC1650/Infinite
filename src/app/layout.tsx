@@ -7,7 +7,7 @@ import { LanguageProvider } from '@/context/language-context';
 import { UpdatePromptProvider } from '@/context/update-prompt-context';
 
 export const metadata: Metadata = {
-  title: 'WhiteGram',
+  title: 'Infinite Chat',
   description: 'A modern chat application.',
 };
 

@@ -120,7 +120,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="text-4xl font-bold font-headline text-primary">WhiteGram</h1>
+            <h1 className="text-4xl font-bold font-headline text-primary">Infinite Chat</h1>
           </div>
           <p className="text-muted-foreground">
             {t('login_subtitle')}

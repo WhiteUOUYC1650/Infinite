@@ -4,11 +4,11 @@
 // https://firebase.google.com/docs/web/setup#get-config
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyA_...real-key-placeholder",
-  authDomain: "infinite-chat.firebaseapp.com",
-  projectId: "infinite-chat",
-  storageBucket: "infinite-chat.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:1234567890abcdef",
-  databaseURL: "https://infinite-chat.firebaseio.com",
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  authDomain: "infinite.firebaseapp.com",
+  projectId: "infinite",
+  storageBucket: "infinite.appspot.com",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID_HERE",
+  appId: "PASTE_YOUR_APP_ID_HERE",
+  databaseURL: "https://infinite.firebaseio.com",
 };

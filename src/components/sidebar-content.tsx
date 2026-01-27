@@ -306,7 +306,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold font-headline text-primary">
-                WhiteGram
+                Infinite Chat
               </h1>
             </div>
             <div className='flex items-center'>

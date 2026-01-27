@@ -1,4 +1,4 @@
-package com.whitegram.app;
+package com.infinite.chat;
 
 import com.getcapacitor.BridgeActivity;
 
