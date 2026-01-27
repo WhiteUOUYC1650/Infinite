@@ -111,9 +111,6 @@ export const translations = {
       'delete_chat': 'Delete Chat',
       'deleting': 'Deleting...',
       'delete': 'Delete',
-      'delete_chat_success': 'The chat has been deleted.',
-      'delete_chat_error': 'Could not delete the chat.',
-      'are_you_sure': 'Are you sure?',
       'delete_chat_confirm': 'This action cannot be undone. This will permanently delete the chat and all of its messages.',
       'leave_group_confirm': 'Are you sure you want to leave this group? You will need to be invited back to rejoin.',
       'leave_channel_confirm': 'Are you sure you want to leave this channel? You can rejoin later using the link.',
@@ -175,7 +172,18 @@ export const translations = {
       'admin_toast_cannot_delete_admin_desc': 'The admin account cannot be deleted.',
       'admin_toast_user_deleted_title': 'User Data Deleted',
       'admin_toast_user_deleted_desc': 'All Firestore data for {name} ({username}) has been deleted.',
-      'admin_toast_delete_user_error_desc': 'Could not delete the user data.'
+      'admin_toast_delete_user_error_desc': 'Could not delete the user data.',
+      'color_theme': 'Color Theme',
+      'orange': 'Orange',
+      'purple': 'Purple',
+      'blue': 'Blue',
+      'gray': 'Gray',
+      'green': 'Green',
+      'red': 'Red',
+      'yellow': 'Yellow',
+      'pink': 'Pink',
+      'light_mode': 'Light Mode',
+      'dark_mode': 'Dark Mode'
     },
     ru: {
       'settings': 'Настройки',
@@ -350,7 +358,18 @@ export const translations = {
       'admin_toast_cannot_delete_admin_desc': 'Аккаунт администратора не может быть удален.',
       'admin_toast_user_deleted_title': 'Данные пользователя удалены',
       'admin_toast_user_deleted_desc': 'Все данные Firestore для {name} ({username}) были удалены.',
-      'admin_toast_delete_user_error_desc': 'Не удалось удалить данные пользователя.'
+      'admin_toast_delete_user_error_desc': 'Не удалось удалить данные пользователя.',
+      'color_theme': 'Цветовая тема',
+      'orange': 'Оранжевый',
+      'purple': 'Фиолетовый',
+      'blue': 'Синий',
+      'gray': 'Серый',
+      'green': 'Зеленый',
+      'red': 'Красный',
+      'yellow': 'Желтый',
+      'pink': 'Розовый',
+      'light_mode': 'Светлая тема',
+      'dark_mode': 'Темная тема'
     }
   };
   

@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/form';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { Sun, Moon, Languages } from 'lucide-react';
 import {
@@ -30,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { useTheme } from '@/context/theme-context';
 
 const formSchema = z.object({
   username: z.string()
@@ -45,34 +45,8 @@ export default function SignUpPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { isDarkMode, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    const initialTheme =
-      storedTheme === 'dark' ||
-      (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-        ? 'dark'
-        : 'light';
-    setTheme(initialTheme);
-    if (initialTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('theme', newTheme);
-    setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -176,10 +150,10 @@ export default function SignUpPage() {
         </DropdownMenu>
 
         <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {theme === 'light' ? (
-            <Sun className="h-5 w-5" />
-          ) : (
+          {isDarkMode ? (
             <Moon className="h-5 w-5" />
+          ) : (
+            <Sun className="h-5 w-5" />
           )}
           <span className="sr-only">Toggle theme</span>
         </Button>

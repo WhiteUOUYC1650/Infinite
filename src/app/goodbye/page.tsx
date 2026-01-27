@@ -4,7 +4,6 @@ import { useLanguage } from '@/context/language-context';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Infinity as InfinityIcon, Languages, Sun, Moon } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,37 +11,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTheme } from '@/context/theme-context';
 
 export default function GoodbyePage() {
   const { language, setLanguage, t } = useLanguage();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    const initialTheme =
-      storedTheme === 'dark' ||
-      (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-        ? 'dark'
-        : 'light';
-    setTheme(initialTheme);
-    if (initialTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('theme', newTheme);
-    setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
+  const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-center p-8 relative">
@@ -62,10 +35,10 @@ export default function GoodbyePage() {
         </DropdownMenu>
 
         <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {theme === 'light' ? (
-            <Sun className="h-5 w-5" />
-          ) : (
+          {isDarkMode ? (
             <Moon className="h-5 w-5" />
+          ) : (
+            <Sun className="h-5 w-5" />
           )}
           <span className="sr-only">Toggle theme</span>
         </Button>

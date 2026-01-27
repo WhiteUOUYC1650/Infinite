@@ -34,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield, Paintbrush } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -59,6 +59,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { UserProfileCard } from './user-profile-card';
 import { Alert, AlertDescription } from './ui/alert';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
+import { useTheme } from '@/context/theme-context';
 
 const iconMap = {
     Users,
@@ -80,7 +81,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme } = useTheme();
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -111,32 +112,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group') || [], [chats]);
   const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel') || [], [chats]);
 
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    const initialTheme =
-      storedTheme === 'dark' ||
-      (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-        ? 'dark'
-        : 'light';
-    setTheme(initialTheme);
-    if (initialTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('theme', newTheme);
-    setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-  
   const handleSelect = (item: Chat) => {
     const iconName = item.icon as keyof typeof iconMap | undefined;
     const populatedItem: PopulatedChat = {
@@ -417,14 +392,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === 'light' ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-            <span className="sr-only">Toggle theme</span>
-          </Button>
            <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -443,7 +410,30 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={promptUpdate}>{t('appearance')}</DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                          <Paintbrush className="mr-2 h-4 w-4" />
+                          <span>{t('appearance')}</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                          <DropdownMenuLabel>{t('color_theme')}</DropdownMenuLabel>
+                          <DropdownMenuRadioGroup value={colorTheme} onValueChange={(value) => setColorTheme(value as any)}>
+                              <DropdownMenuRadioItem value="orange">{t('orange')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="purple">{t('purple')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="blue">{t('blue')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="gray">{t('gray')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="green">{t('green')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="red">{t('red')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={toggleTheme}>
+                            {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                            <span>{isDarkMode ? t('light_mode') : t('dark_mode')}</span>
+                          </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                      <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
                           <Languages className="mr-2 h-4 w-4" />
