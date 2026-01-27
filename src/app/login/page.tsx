@@ -83,10 +83,28 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error('Error signing in', error);
+      let description = t('unexpected_error');
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            description = t('invalid_credentials_error');
+            break;
+          case 'auth/user-disabled':
+            description = t('user_disabled_error');
+            break;
+          case 'auth/invalid-email':
+            description = t('invalid_email_error');
+            break;
+          default:
+            description = error.message;
+        }
+      }
       toast({
         variant: 'destructive',
         title: t('sign_in_failed_toast_title'),
-        description: error.message || 'An unexpected error occurred.',
+        description: description,
       });
     }
   };

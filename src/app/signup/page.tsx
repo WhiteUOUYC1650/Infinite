@@ -121,26 +121,40 @@ export default function SignUpPage() {
       router.push('/welcome');
 
     } catch (error: any) {
-        // If anything fails, try to clean up the auth user if it was created
         if (createdUser) {
             await deleteUser(createdUser).catch(e => {
                 console.error("Failed to clean up orphaned auth user:", e);
             });
         }
 
-        if (error.code === 'auth/email-already-in-use') {
-            form.setError('email', { message: t('email_in_use_error') });
-        } else if (error.message === t('username_taken_error')) {
+        console.error('Error signing up:', error);
+
+        // Handle specific errors as form errors first
+        if (error.message === t('username_taken_error')) {
             form.setError('username', { message: t('username_taken_error') });
+            return;
         }
-        else {
-            console.error('Error signing up:', error);
-            toast({
-                variant: 'destructive',
-                title: t('signup_failed_toast_title'),
-                description: error.message || 'An unexpected error occurred.',
-            });
+
+        if (error.code) {
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    form.setError('email', { message: t('email_in_use_error') });
+                    return;
+                case 'auth/invalid-email':
+                    form.setError('email', { message: t('invalid_email_error') });
+                    return;
+                case 'auth/weak-password':
+                    form.setError('password', { message: t('weak_password_error') });
+                    return;
+            }
         }
+        
+        // Fallback to a generic toast for other errors
+        toast({
+            variant: 'destructive',
+            title: t('signup_failed_toast_title'),
+            description: error.message || t('unexpected_error'),
+        });
     }
   };
 

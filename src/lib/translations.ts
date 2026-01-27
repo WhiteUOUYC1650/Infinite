@@ -140,6 +140,11 @@ export const translations = {
       'update_required_description': 'This feature requires a newer version of the application. Please update to the latest version to get access to new functionalities.',
       'update_available_title': 'Update Available',
       'update_available_description': 'A new version of the app is available. Please update to access the latest features.',
+      'invalid_credentials_error': 'Invalid email or password. Please check your credentials and try again.',
+      'user_disabled_error': 'This account has been disabled.',
+      'invalid_email_error': 'The email address is not a valid format.',
+      'unexpected_error': 'An unexpected error occurred. Please try again.',
+      'weak_password_error': 'Password is too weak. It must be at least 6 characters long.',
     },
     ru: {
       'settings': 'Настройки',
@@ -282,6 +287,11 @@ export const translations = {
       'update_required_description': 'Для использования этой функции требуется более новая версия приложения. Пожалуйста, обновитесь до последней версии, чтобы получить доступ к новым функциям.',
       'update_available_title': 'Доступно обновление',
       'update_available_description': 'Доступна новая версия приложения. Пожалуйста, обновитесь, чтобы получить доступ к последним функциям.',
+      'invalid_credentials_error': 'Неверный адрес электронной почты или пароль. Пожалуйста, проверьте свои данные и попробуйте еще раз.',
+      'user_disabled_error': 'Эта учетная запись была отключена.',
+      'invalid_email_error': 'Неверный формат адреса электронной почты.',
+      'unexpected_error': 'Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз.',
+      'weak_password_error': 'Пароль слишком слабый. Он должен содержать не менее 6 символов.',
     }
   };
   
