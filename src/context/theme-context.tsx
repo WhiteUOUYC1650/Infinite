@@ -15,47 +15,54 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('orange');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // 1. Initialize state with defaults for server render and initial client render to avoid hydration errors.
+  const [theme, setThemeInternal] = useState<Theme>('orange');
+  const [isDarkMode, setIsDarkModeInternal] = useState(false);
 
-  // This effect runs once on mount on the client-side to get the stored theme from localStorage.
-  // This avoids hydration mismatch errors by ensuring the server and initial client render are the same (using default values),
-  // and then immediately updating to the user's preference.
+  // 2. On the client side, after the component mounts, read the saved preferences from localStorage.
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     if (storedTheme && THEMES.includes(storedTheme)) {
-      setTheme(storedTheme);
+      setThemeInternal(storedTheme);
     }
     
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     if (storedDarkMode) {
-      setIsDarkMode(storedDarkMode === 'dark');
+      setIsDarkModeInternal(storedDarkMode === 'dark');
     } else {
-      // Fallback to user's system preference if nothing is stored
-      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      // Fallback to the user's system preference if nothing is stored.
+      setIsDarkModeInternal(window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
-  }, []);
+  }, []); // The empty dependency array ensures this effect runs only once on mount.
 
-  // This effect runs whenever the theme or dark mode state changes.
-  // It applies the theme to the document and saves the preference to localStorage.
+  // 3. This effect is responsible *only* for applying the current theme state to the DOM.
   useEffect(() => {
     const doc = document.documentElement;
     
-    // Apply color theme
+    // Remove all old theme classes and add the current one.
     THEMES.forEach(t => doc.classList.remove(`theme-${t}`));
     doc.classList.add(`theme-${theme}`);
-    localStorage.setItem('app-color-theme', theme);
     
-    // Apply dark mode
+    // Apply or remove the 'dark' class.
     doc.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
-
   }, [theme, isDarkMode]);
 
-  const toggleTheme = () => {
-    setIsDarkMode(prev => !prev);
+  // 4. Create wrapper functions for setting state that *also* write the new preference to localStorage.
+  // This ensures the preference is saved as soon as the user makes a change.
+  const setTheme = (newTheme: Theme) => {
+    localStorage.setItem('app-color-theme', newTheme); // Save preference.
+    setThemeInternal(newTheme); // Update the component's state.
   };
 
+  const toggleTheme = () => {
+    setIsDarkModeInternal(prev => {
+      const newIsDarkMode = !prev;
+      localStorage.setItem('app-theme-mode', newIsDarkMode ? 'dark' : 'light'); // Save preference.
+      return newIsDarkMode; // Update the component's state.
+    });
+  };
+
+  // 5. Provide the state and the setter functions to the rest of the app.
   const value = {
     theme,
     setTheme,
