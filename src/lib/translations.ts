@@ -145,6 +145,10 @@ export const translations = {
       'invalid_email_error': 'The email address is not a valid format.',
       'unexpected_error': 'An unexpected error occurred. Please try again.',
       'weak_password_error': 'Password is too weak. It must be at least 6 characters long.',
+      'edit': 'Edit',
+      'edit_chat_title': 'Edit Chat Info',
+      'chat_update_success': 'Chat info updated successfully.',
+      'chat_update_error': 'Failed to update chat info.',
     },
     ru: {
       'settings': 'Настройки',
@@ -292,6 +296,10 @@ export const translations = {
       'invalid_email_error': 'Неверный формат адреса электронной почты.',
       'unexpected_error': 'Произошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз.',
       'weak_password_error': 'Пароль слишком слабый. Он должен содержать не менее 6 символов.',
+      'edit': 'Редактировать',
+      'edit_chat_title': 'Изменить информацию о чате',
+      'chat_update_success': 'Информация о чате успешно обновлена.',
+      'chat_update_error': 'Не удалось обновить информацию о чате.',
     }
   };
   
