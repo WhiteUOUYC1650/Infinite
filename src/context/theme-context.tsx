@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink';
 
@@ -14,6 +14,9 @@ const THEMES: Record<Theme, any> = {
       muted: '30 50% 88%',
       border: '30 30% 82%',
       input: '30 30% 87%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '30 50% 88%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '25 95% 53%',
@@ -23,6 +26,9 @@ const THEMES: Record<Theme, any> = {
       muted: '20 10% 20%',
       border: '20 10% 25%',
       input: '20 10% 25%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '30 50% 88%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   purple: {
@@ -34,6 +40,9 @@ const THEMES: Record<Theme, any> = {
       muted: '259 50% 90%',
       border: '259 30% 85%',
       input: '259 30% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '259 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '259 87% 66%',
@@ -43,6 +52,9 @@ const THEMES: Record<Theme, any> = {
       muted: '259 10% 22%',
       border: '259 10% 27%',
       input: '259 10% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '259 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   blue: {
@@ -54,6 +66,9 @@ const THEMES: Record<Theme, any> = {
       muted: '217 50% 90%',
       border: '217 30% 85%',
       input: '217 30% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '217 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '217 91% 55%',
@@ -63,6 +78,9 @@ const THEMES: Record<Theme, any> = {
       muted: '217 10% 22%',
       border: '217 10% 27%',
       input: '217 10% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '217 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   gray: {
@@ -74,6 +92,9 @@ const THEMES: Record<Theme, any> = {
       muted: '220 10% 90%',
       border: '220 10% 85%',
       input: '220 10% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '220 10% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '220 9% 55%',
@@ -83,6 +104,9 @@ const THEMES: Record<Theme, any> = {
       muted: '220 5% 22%',
       border: '220 5% 27%',
       input: '220 5% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '220 10% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   green: {
@@ -94,6 +118,9 @@ const THEMES: Record<Theme, any> = {
       muted: '145 25% 90%',
       border: '145 20% 85%',
       input: '145 20% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '145 25% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '145 63% 37%',
@@ -103,6 +130,9 @@ const THEMES: Record<Theme, any> = {
       muted: '145 10% 22%',
       border: '145 10% 27%',
       input: '145 10% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '145 25% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   red: {
@@ -114,6 +144,9 @@ const THEMES: Record<Theme, any> = {
       muted: '0 50% 90%',
       border: '0 30% 85%',
       input: '0 30% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '0 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '0 84% 55%',
@@ -123,6 +156,9 @@ const THEMES: Record<Theme, any> = {
       muted: '0 10% 22%',
       border: '0 10% 27%',
       input: '0 10% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '0 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   yellow: {
@@ -134,6 +170,9 @@ const THEMES: Record<Theme, any> = {
       muted: '48 50% 90%',
       border: '48 30% 85%',
       input: '48 30% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '48 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '48 96% 53%',
@@ -143,6 +182,9 @@ const THEMES: Record<Theme, any> = {
       muted: '48 10% 22%',
       border: '48 10% 27%',
       input: '48 10% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '48 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
   pink: {
@@ -154,6 +196,9 @@ const THEMES: Record<Theme, any> = {
       muted: '327 50% 90%',
       border: '327 30% 85%',
       input: '327 30% 88%',
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: '327 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
     dark: {
       primary: '327 86% 59%',
@@ -163,6 +208,9 @@ const THEMES: Record<Theme, any> = {
       muted: '327 10% 22%',
       border: '327 10% 27%',
       input: '327 10% 27%',
+      sidebarForeground: '30 71% 92%',
+      sidebarAccent: '327 50% 90%',
+      sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
 };
@@ -181,25 +229,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  // This effect runs once on mount to restore theme from localStorage
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     const storedDarkMode = localStorage.getItem('app-theme-mode');
 
-    const initialTheme = storedTheme && THEMES[storedTheme] ? storedTheme : 'orange';
-    const initialDarkMode = storedDarkMode ? storedDarkMode === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (storedTheme && THEMES[storedTheme]) {
+      setTheme(storedTheme);
+    }
     
-    setTheme(initialTheme);
-    setIsDarkMode(initialDarkMode);
-    setIsMounted(true); // Signal that the initial theme has been loaded
+    if (storedDarkMode) {
+      setIsDarkMode(storedDarkMode === 'dark');
+    } else {
+      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    
+    setIsMounted(true);
   }, []);
 
-  // This effect applies the theme whenever it changes, but only after mounting
   useEffect(() => {
     if (isMounted) {
       const root = document.documentElement;
       root.classList.toggle('dark', isDarkMode);
-
+      localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
+      
       const themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
       
       const varsToSet = {
@@ -216,9 +268,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         '--input': themeColors.input,
         '--ring': themeColors.primary,
         '--sidebar-background': themeColors.card,
+        '--sidebar-foreground': themeColors.sidebarForeground,
         '--sidebar-primary': themeColors.primary,
         '--sidebar-primary-foreground': themeColors.foreground,
-        '--sidebar-accent': themeColors.muted,
+        '--sidebar-accent': themeColors.sidebarAccent,
+        '--sidebar-accent-foreground': themeColors.sidebarAccentForeground,
         '--sidebar-border': themeColors.border,
         '--sidebar-ring': themeColors.primary,
       };
@@ -235,11 +289,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleToggleTheme = () => {
-    setIsDarkMode(prev => {
-      const newIsDarkMode = !prev;
-      localStorage.setItem('app-theme-mode', newIsDarkMode ? 'dark' : 'light');
-      return newIsDarkMode;
-    });
+    setIsDarkMode(prev => !prev);
   };
 
   const value = {
@@ -249,7 +299,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     isDarkMode,
   };
 
-  // We prevent rendering the children until the theme is mounted to avoid a flash of unstyled content
   if (!isMounted) {
     return null;
   }
