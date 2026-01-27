@@ -557,19 +557,20 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
 
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
+  const isSelected = selectedId === item.id;
 
   return (
     <Button
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+        className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground')}
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
-            <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
+            <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
             <div className="flex-1 truncate">
                 <p className="font-semibold">{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
-                {item.lastMessage?.content && <p className={cn("text-xs truncate", selectedId === item.id ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{item.lastMessage.content}</p>}
+                {item.lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{item.lastMessage.content}</p>}
             </div>
             {unreadCount > 0 && (
                 <Badge className="bg-primary">{unreadCount}</Badge>
@@ -583,18 +584,19 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   const lastMessage = item.lastMessage as { senderName?: string, content?: string };
   const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
+  const isSelected = selectedId === item.id;
 
   return (
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("w-full justify-start h-auto py-2 text-left", selectedId === item.id && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+      className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 truncate">
           <p className="font-semibold">{item.name}</p>
-          {lastMessage?.content && <p className={cn("text-xs truncate", selectedId === item.id ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
+          {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
         {unreadCount > 0 && (
             <Badge className="bg-primary">{unreadCount}</Badge>
