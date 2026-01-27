@@ -2,74 +2,170 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const THEMES = {
+type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink';
+
+const THEMES: Record<Theme, any> = {
   orange: {
-    light: '25 95% 53%',
-    dark: '25 95% 53%',
-    foreground: '25 85% 95%',
-    darkForeground: '25 85% 95%',
-    lightBackground: '30 71% 92%',
-    darkBackground: '20 10% 10%',
+    light: {
+      primary: '25 95% 53%',
+      foreground: '25 85% 95%',
+      background: '30 71% 92%',
+      card: '30 71% 95%',
+      muted: '30 50% 88%',
+      border: '30 30% 82%',
+      input: '30 30% 87%',
+    },
+    dark: {
+      primary: '25 95% 53%',
+      foreground: '25 85% 95%',
+      background: '20 10% 10%',
+      card: '20 10% 12%',
+      muted: '20 10% 20%',
+      border: '20 10% 25%',
+      input: '20 10% 25%',
+    },
   },
   purple: {
-    light: '259 87% 66%',
-    dark: '259 87% 66%',
-    foreground: '259 85% 95%',
-    darkForeground: '259 85% 95%',
-    lightBackground: '259 60% 94%',
-    darkBackground: '259 15% 12%',
+    light: {
+      primary: '259 87% 66%',
+      foreground: '259 85% 95%',
+      background: '259 60% 94%',
+      card: '259 60% 96%',
+      muted: '259 50% 90%',
+      border: '259 30% 85%',
+      input: '259 30% 88%',
+    },
+    dark: {
+      primary: '259 87% 66%',
+      foreground: '259 85% 95%',
+      background: '259 15% 12%',
+      card: '259 15% 14%',
+      muted: '259 10% 22%',
+      border: '259 10% 27%',
+      input: '259 10% 27%',
+    },
   },
   blue: {
-    light: '217 91% 60%',
-    dark: '217 91% 55%',
-    foreground: '217 83% 98%',
-    darkForeground: '217 83% 98%',
-    lightBackground: '217 60% 94%',
-    darkBackground: '217 15% 12%',
+    light: {
+      primary: '217 91% 60%',
+      foreground: '217 83% 98%',
+      background: '217 60% 94%',
+      card: '217 60% 96%',
+      muted: '217 50% 90%',
+      border: '217 30% 85%',
+      input: '217 30% 88%',
+    },
+    dark: {
+      primary: '217 91% 55%',
+      foreground: '217 83% 98%',
+      background: '217 15% 12%',
+      card: '217 15% 14%',
+      muted: '217 10% 22%',
+      border: '217 10% 27%',
+      input: '217 10% 27%',
+    },
   },
   gray: {
-    light: '220 9% 45%',
-    dark: '220 9% 55%',
-    foreground: '220 15% 98%',
-    darkForeground: '220 20% 10%',
-    lightBackground: '220 10% 94%',
-    darkBackground: '220 5% 12%',
+    light: {
+      primary: '220 9% 45%',
+      foreground: '220 15% 98%',
+      background: '220 10% 94%',
+      card: '220 10% 96%',
+      muted: '220 10% 90%',
+      border: '220 10% 85%',
+      input: '220 10% 88%',
+    },
+    dark: {
+      primary: '220 9% 55%',
+      foreground: '220 20% 10%',
+      background: '220 5% 12%',
+      card: '220 5% 14%',
+      muted: '220 5% 22%',
+      border: '220 5% 27%',
+      input: '220 5% 27%',
+    },
   },
   green: {
-    light: '145 63% 42%',
-    dark: '145 63% 37%',
-    foreground: '145 76% 98%',
-    darkForeground: '145 76% 98%',
-    lightBackground: '145 30% 94%',
-    darkBackground: '145 15% 12%',
+    light: {
+      primary: '145 63% 42%',
+      foreground: '145 76% 98%',
+      background: '145 30% 94%',
+      card: '145 30% 96%',
+      muted: '145 25% 90%',
+      border: '145 20% 85%',
+      input: '145 20% 88%',
+    },
+    dark: {
+      primary: '145 63% 37%',
+      foreground: '145 76% 98%',
+      background: '145 15% 12%',
+      card: '145 15% 14%',
+      muted: '145 10% 22%',
+      border: '145 10% 27%',
+      input: '145 10% 27%',
+    },
   },
   red: {
-    light: '0 84% 60%',
-    dark: '0 84% 55%',
-    foreground: '0 72% 98%',
-    darkForeground: '0 72% 98%',
-    lightBackground: '0 60% 94%',
-    darkBackground: '0 15% 12%',
+    light: {
+      primary: '0 84% 60%',
+      foreground: '0 72% 98%',
+      background: '0 60% 94%',
+      card: '0 60% 96%',
+      muted: '0 50% 90%',
+      border: '0 30% 85%',
+      input: '0 30% 88%',
+    },
+    dark: {
+      primary: '0 84% 55%',
+      foreground: '0 72% 98%',
+      background: '0 15% 12%',
+      card: '0 15% 14%',
+      muted: '0 10% 22%',
+      border: '0 10% 27%',
+      input: '0 10% 27%',
+    },
   },
   yellow: {
-    light: '48 96% 53%',
-    dark: '48 96% 53%',
-    foreground: '48 96% 10%',
-    darkForeground: '48 96% 10%',
-    lightBackground: '48 60% 94%',
-    darkBackground: '48 15% 12%',
+    light: {
+      primary: '48 96% 53%',
+      foreground: '48 96% 10%',
+      background: '48 60% 94%',
+      card: '48 60% 96%',
+      muted: '48 50% 90%',
+      border: '48 30% 85%',
+      input: '48 30% 88%',
+    },
+    dark: {
+      primary: '48 96% 53%',
+      foreground: '48 96% 10%',
+      background: '48 15% 12%',
+      card: '48 15% 14%',
+      muted: '48 10% 22%',
+      border: '48 10% 27%',
+      input: '48 10% 27%',
+    },
   },
   pink: {
-    light: '327 86% 59%',
-    dark: '327 86% 59%',
-    foreground: '327 85% 95%',
-    darkForeground: '327 85% 95%',
-    lightBackground: '327 60% 94%',
-    darkBackground: '327 15% 12%',
+    light: {
+      primary: '327 86% 59%',
+      foreground: '327 85% 95%',
+      background: '327 60% 94%',
+      card: '327 60% 96%',
+      muted: '327 50% 90%',
+      border: '327 30% 85%',
+      input: '327 30% 88%',
+    },
+    dark: {
+      primary: '327 86% 59%',
+      foreground: '327 85% 95%',
+      background: '327 15% 12%',
+      card: '327 15% 14%',
+      muted: '327 10% 22%',
+      border: '327 10% 27%',
+      input: '327 10% 27%',
+    },
   },
-} as const;
-
-type Theme = keyof typeof THEMES;
+};
 
 interface ThemeContextType {
   theme: Theme;
@@ -81,60 +177,71 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('orange');
+  const [theme, setTheme] = useState<Theme>('orange');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
-    const storedDarkMode = localStorage.getItem('app-theme-mode');
-
-    if (storedTheme && THEMES[storedTheme]) {
-      setThemeState(storedTheme);
-    }
-    
-    if (storedDarkMode) {
-      setIsDarkMode(storedDarkMode === 'dark');
-    } else {
-      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
-    setIsMounted(true);
-  }, []);
 
   const applyTheme = useCallback((themeToApply: Theme, darkMode: boolean) => {
     const doc = document.documentElement;
     doc.classList.toggle('dark', darkMode);
 
-    const colorMode = darkMode ? 'dark' : 'light';
-    const themeColors = THEMES[themeToApply];
+    const themeConfig = THEMES[themeToApply];
+    const colors = darkMode ? themeConfig.dark : themeConfig.light;
+
+    const setProperty = (name: string, value: string) => doc.style.setProperty(name, `hsl(${value})`);
     
-    const primaryColor = themeColors[colorMode];
-    const foregroundColor = darkMode ? themeColors.darkForeground : themeColors.foreground;
-    const backgroundColor = darkMode ? themeColors.darkBackground : themeColors.lightBackground;
+    // Base colors
+    setProperty('--background', colors.background);
+    setProperty('--card', colors.card);
+    setProperty('--popover', colors.card);
+    setProperty('--secondary', colors.muted);
+    setProperty('--muted', colors.muted);
+    setProperty('--border', colors.border);
+    setProperty('--input', colors.input);
     
-    doc.style.setProperty('--primary', primaryColor);
-    doc.style.setProperty('--primary-foreground', foregroundColor);
-    doc.style.setProperty('--accent', primaryColor);
-    doc.style.setProperty('--accent-foreground', foregroundColor);
-    doc.style.setProperty('--ring', primaryColor);
-    doc.style.setProperty('--sidebar-primary', primaryColor);
-    doc.style.setProperty('--sidebar-primary-foreground', foregroundColor);
-    doc.style.setProperty('--sidebar-ring', primaryColor);
-    doc.style.setProperty('--background', backgroundColor);
+    // Primary/Accent colors
+    setProperty('--primary', colors.primary);
+    setProperty('--primary-foreground', colors.foreground);
+    setProperty('--accent', colors.primary);
+    setProperty('--accent-foreground', colors.foreground);
+    setProperty('--ring', colors.primary);
+
+    // Sidebar colors
+    setProperty('--sidebar-background', colors.card);
+    setProperty('--sidebar-primary', colors.primary);
+    setProperty('--sidebar-primary-foreground', colors.foreground);
+    setProperty('--sidebar-accent', colors.muted);
+    setProperty('--sidebar-border', colors.border);
+    setProperty('--sidebar-ring', colors.primary);
+
   }, []);
 
   useEffect(() => {
+    // This effect runs once on mount to restore theme from localStorage
+    const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
+    const storedDarkMode = localStorage.getItem('app-theme-mode');
+
+    const initialTheme = storedTheme && THEMES[storedTheme] ? storedTheme : 'orange';
+    const initialDarkMode = storedDarkMode ? storedDarkMode === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    setTheme(initialTheme);
+    setIsDarkMode(initialDarkMode);
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // This effect applies theme whenever it changes, but only after mounting
     if (isMounted) {
       applyTheme(theme, isDarkMode);
     }
   }, [theme, isDarkMode, isMounted, applyTheme]);
 
-  const setTheme = (newTheme: Theme) => {
+  const handleSetTheme = (newTheme: Theme) => {
     localStorage.setItem('app-color-theme', newTheme);
-    setThemeState(newTheme);
+    setTheme(newTheme);
   };
 
-  const toggleTheme = () => {
+  const handleToggleTheme = () => {
     setIsDarkMode(prev => {
       const newIsDarkMode = !prev;
       localStorage.setItem('app-theme-mode', newIsDarkMode ? 'dark' : 'light');
@@ -144,13 +251,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     theme,
-    setTheme,
-    toggleTheme,
+    setTheme: handleSetTheme,
+    toggleTheme: handleToggleTheme,
     isDarkMode,
   };
 
   if (!isMounted) {
-    return null;
+    return null; // Or a loading skeleton
   }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
