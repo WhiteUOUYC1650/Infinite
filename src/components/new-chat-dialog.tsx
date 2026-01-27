@@ -403,150 +403,152 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{t('new_conversation')}</DialogTitle>
           <DialogDescription>{t('new_conversation_desc')}</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="dm" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
-                <TabsTrigger value="dm">{t('direct_message_tab')}</TabsTrigger>
-                <TabsTrigger value="group">{t('new_group_tab')}</TabsTrigger>
-                <TabsTrigger value="channel">{t('new_channel_tab')}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="dm">
-                <Form {...dmForm}>
-                    <form onSubmit={dmForm.handleSubmit(onDmSubmit)} className="space-y-4 pt-4">
-                        <FormField
-                        control={dmForm.control}
-                        name="username"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t('username_label')}</FormLabel>
-                            <FormControl>
-                                <Input placeholder={t('username_placeholder_short')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <div className='flex justify-end'>
-                            <Button type="submit" disabled={isCreating || isCheckingUsername || !usernameExists}>
-                                {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
-                                 isCheckingUsername ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
-                                 t('start_chat')}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </TabsContent>
-            <TabsContent value="group">
-                 <Form {...groupForm}>
-                    <form onSubmit={groupForm.handleSubmit(onGroupSubmit)} className="space-y-4 pt-4">
-                        <FormField
-                        control={groupForm.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t('group_name_label')}</FormLabel>
-                            <FormControl>
-                                <Input placeholder={t('group_name_placeholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                         <FormField
+        <div className="-mx-6 flex-1 overflow-y-auto px-6">
+            <Tabs defaultValue="dm" className="w-full pt-2">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10 sticky top-0 bg-background z-10">
+                    <TabsTrigger value="dm">{t('direct_message_tab')}</TabsTrigger>
+                    <TabsTrigger value="group">{t('new_group_tab')}</TabsTrigger>
+                    <TabsTrigger value="channel">{t('new_channel_tab')}</TabsTrigger>
+                </TabsList>
+                <TabsContent value="dm">
+                    <Form {...dmForm}>
+                        <form onSubmit={dmForm.handleSubmit(onDmSubmit)} className="space-y-4 pt-4">
+                            <FormField
+                            control={dmForm.control}
+                            name="username"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{t('username_label')}</FormLabel>
+                                <FormControl>
+                                    <Input placeholder={t('username_placeholder_short')} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <div className='flex justify-end'>
+                                <Button type="submit" disabled={isCreating || isCheckingUsername || !usernameExists}>
+                                    {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
+                                    isCheckingUsername ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
+                                    t('start_chat')}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </TabsContent>
+                <TabsContent value="group">
+                    <Form {...groupForm}>
+                        <form onSubmit={groupForm.handleSubmit(onGroupSubmit)} className="space-y-4 pt-4">
+                            <FormField
                             control={groupForm.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{t('group_name_label')}</FormLabel>
+                                <FormControl>
+                                    <Input placeholder={t('group_name_placeholder')} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                                control={groupForm.control}
+                                name="link"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t('group_link_label')}</FormLabel>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative flex-1">
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                                    /G/
+                                                </span>
+                                                <FormControl>
+                                                    <Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} />
+                                                </FormControl>
+                                            </div>
+                                            <Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink}>
+                                                {isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className='flex justify-end'>
+                                <Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid}>
+                                    {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
+                                    isCheckingGroupLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
+                                    t('create_group')}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </TabsContent>
+                <TabsContent value="channel">
+                    <Form {...channelForm}>
+                        <form onSubmit={channelForm.handleSubmit(onChannelSubmit)} className="space-y-4 pt-4">
+                            <FormField
+                            control={channelForm.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{t('channel_name_label')}</FormLabel>
+                                <FormControl>
+                                    <Input placeholder={t('channel_name_placeholder')} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={channelForm.control}
+                            name="description"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{t('description_label')}</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder={t('description_placeholder')} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={channelForm.control}
                             name="link"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>{t('group_link_label')}</FormLabel>
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative flex-1">
-                                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                                                /G/
-                                            </span>
-                                            <FormControl>
-                                                <Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} />
-                                            </FormControl>
-                                        </div>
-                                        <Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink}>
-                                            {isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
-                                        </Button>
+                                <FormLabel>{t('unique_link_label')}</FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                            /C/
+                                        </span>
+                                        <Input placeholder={t('link_placeholder')} className="pl-9" {...field} />
                                     </div>
-                                    <FormMessage />
+                                </FormControl>
+                                <FormMessage />
                                 </FormItem>
                             )}
-                        />
-                         <div className='flex justify-end'>
-                            <Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid}>
-                                {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
-                                 isCheckingGroupLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
-                                 t('create_group')}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </TabsContent>
-             <TabsContent value="channel">
-                 <Form {...channelForm}>
-                    <form onSubmit={channelForm.handleSubmit(onChannelSubmit)} className="space-y-4 pt-4">
-                        <FormField
-                        control={channelForm.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t('channel_name_label')}</FormLabel>
-                            <FormControl>
-                                <Input placeholder={t('channel_name_placeholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={channelForm.control}
-                        name="description"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t('description_label')}</FormLabel>
-                            <FormControl>
-                                <Textarea placeholder={t('description_placeholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={channelForm.control}
-                        name="link"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t('unique_link_label')}</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                                        /C/
-                                    </span>
-                                    <Input placeholder={t('link_placeholder')} className="pl-9" {...field} />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                         <div className='flex justify-end'>
-                            <Button type="submit" disabled={isCreating || isCheckingChannelLink || !channelForm.formState.isValid}>
-                                {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
-                                 isCheckingChannelLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> :
-                                 t('create_channel')}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </TabsContent>
-        </Tabs>
+                            />
+                            <div className='flex justify-end'>
+                                <Button type="submit" disabled={isCreating || isCheckingChannelLink || !channelForm.formState.isValid}>
+                                    {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
+                                    isCheckingChannelLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> :
+                                    t('create_channel')}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </TabsContent>
+            </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );

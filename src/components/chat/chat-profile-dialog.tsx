@@ -148,44 +148,46 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm flex flex-col max-h-[90vh]">
         {isEditing ? (
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSaveChanges)}>
+                <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden">
                     <DialogHeader>
                         <DialogTitle>{t('edit_chat_title')}</DialogTitle>
                     </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{chat.type === 'group' ? t('group_name_label') : t('channel_name_label')}</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        {(chat.type === 'channel' || chat.type === 'group') && (
+                    <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6">
+                        <div className="space-y-4">
                             <FormField
                                 control={form.control}
-                                name="description"
+                                name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>{t('description_label')}</FormLabel>
+                                        <FormLabel>{chat.type === 'group' ? t('group_name_label') : t('channel_name_label')}</FormLabel>
                                         <FormControl>
-                                            <Textarea {...field} />
+                                            <Input {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                        )}
+                            {(chat.type === 'channel' || chat.type === 'group') && (
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('description_label')}</FormLabel>
+                                            <FormControl>
+                                                <Textarea {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                        </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="mt-auto pt-4 border-t -mx-6 px-6 pb-0">
                         <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button>
                         <Button type="submit" disabled={isSaving}>
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -206,38 +208,40 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                         </Avatar>
                     </div>
                 </DialogHeader>
-                <div className="text-center py-4">
-                    <h2 className="text-2xl font-bold font-headline">{chat.name}</h2>
-                    <p className="text-muted-foreground">{chat.link}</p>
-                </div>
-
-                {chat.description && (
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm">{chat.description}</p>
+                <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6 space-y-4">
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold font-headline">{chat.name}</h2>
+                        <p className="text-muted-foreground">{chat.link}</p>
                     </div>
-                )}
 
-                {(chat.type === 'group' || chat.type === 'channel') && (
-                    <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">{t('members_count', { count: members.length })}</h3>
-                        <ScrollArea className="h-24 pr-4">
-                            <div className="space-y-2">
-                                {members.map(member => (
-                                    <div key={member.id} className="flex items-center gap-3">
-                                        <UserAvatarWithStatus user={member} />
-                                        <div className="flex-1 truncate">
-                                            <p className="font-semibold truncate">{member.name}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{member.username}</p>
+                    {chat.description && (
+                        <div className="text-center p-4 bg-muted/50 rounded-lg">
+                            <p className="text-sm">{chat.description}</p>
+                        </div>
+                    )}
+
+                    {(chat.type === 'group' || chat.type === 'channel') && (
+                        <div>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{t('members_count', { count: members.length })}</h3>
+                            <ScrollArea className="h-auto max-h-48 pr-4">
+                                <div className="space-y-2">
+                                    {members.map(member => (
+                                        <div key={member.id} className="flex items-center gap-3">
+                                            <UserAvatarWithStatus user={member} />
+                                            <div className="flex-1 truncate">
+                                                <p className="font-semibold truncate">{member.name}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{member.username}</p>
+                                            </div>
+                                            {chat.ownerId === member.id && <Badge variant="secondary">{t('owner')}</Badge>}
                                         </div>
-                                        {chat.ownerId === member.id && <Badge variant="secondary">{t('owner')}</Badge>}
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                )}
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    )}
+                </div>
             
-                <DialogFooter className='!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 pt-4'>
+                <DialogFooter className='!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 pt-4 mt-auto border-t -mx-6 px-6 pb-0'>
                     {isOwner && chat.id !== 'GENERAL_CHAT' && chat.type !== 'dm' && (
                         <Button variant="outline" onClick={() => setIsEditing(true)}>
                             <Pencil className="mr-2 h-4 w-4" />
