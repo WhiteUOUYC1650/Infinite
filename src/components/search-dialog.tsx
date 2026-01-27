@@ -19,9 +19,9 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { arrayUnion, collection, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import type { AuthenticatedUser, Chat, PopulatedChat, User } from '@/types';
+import { useFirestore } from '@/firebase';
+import { arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import type { AuthenticatedUser, Chat, User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -30,7 +30,6 @@ import { useLanguage } from '@/context/language-context';
 import { Loader2, Search, Users, Megaphone } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
-import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from './ui/avatar';
 
 
@@ -67,12 +66,12 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
     setResults([]);
     searchForm.clearErrors();
 
-    const { query } = values;
+    const { query: searchQuery } = values;
 
     try {
         let foundResults: SearchResult[] = [];
-        if (query.startsWith('@')) {
-            const usernameRef = doc(db, 'usernames', query);
+        if (searchQuery.startsWith('@')) {
+            const usernameRef = doc(db, 'usernames', searchQuery);
             const usernameSnap = await getDoc(usernameRef);
             if (usernameSnap.exists()) {
                 const userRef = doc(db, 'users', usernameSnap.data().uid);
@@ -81,8 +80,8 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     foundResults.push({ type: 'user', data: { id: userSnap.id, ...userSnap.data() } as User });
                 }
             }
-        } else if (query.startsWith('/C/') || query.startsWith('/G/')) {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(query));
+        } else if (searchQuery.startsWith('/C/') || searchQuery.startsWith('/G/')) {
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(searchQuery));
             const linkSnap = await getDoc(linkRef);
             if (linkSnap.exists()) {
                 const chatRef = doc(db, 'chats', linkSnap.data().chatId);
@@ -91,6 +90,19 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     foundResults.push({ type: 'chat', data: { id: chatSnap.id, ...chatSnap.data() } as Chat});
                 }
             }
+        } else {
+            // Search for groups and channels by name
+            const chatsCollection = collection(db, 'chats');
+            const nameQuery = query(
+                chatsCollection, 
+                where('type', 'in', ['group', 'channel']),
+                where('name', '>=', searchQuery),
+                where('name', '<=', searchQuery + '\uf8ff')
+            );
+            const querySnapshot = await getDocs(nameQuery);
+            querySnapshot.forEach((doc) => {
+                foundResults.push({ type: 'chat', data: { id: doc.id, ...doc.data() } as Chat });
+            });
         }
 
         setResults(foundResults);
@@ -99,9 +111,13 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
             searchForm.setError('query', { message: t('no_results_found') });
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Search error:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong during search.'})
+        if (error.code === 'failed-precondition') {
+             toast({ variant: 'destructive', title: 'Search Error', description: 'The necessary search index is being created. Please try again in a few minutes.'})
+        } else {
+             toast({ variant: 'destructive', title: 'Error', description: 'Something went wrong during search.'})
+        }
     } finally {
         setIsLoading(false);
     }
