@@ -13,7 +13,7 @@ export type User = {
   lastSeen?: Timestamp;
 };
 
-export type AuthenticatedUser = FirebaseUser & Partial<User>;
+export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };
 
 export type Message = {
   id: string;

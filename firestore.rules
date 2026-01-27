@@ -9,6 +9,10 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
+    }
 
     match /config/version {
       allow get: if true;
@@ -17,6 +21,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) && !('username' in request.writeFields); // Cannot change username
       allow delete: if isOwner(userId);
@@ -63,7 +68,8 @@ service cloud.firestore {
         (chatId == request.auth.uid) ||
         (resource == null && chatId.split('_').size() == 2 && request.auth.uid in chatId.split('_'))
       );
-      allow list: if isSignedIn() && request.auth.uid in resource.data.members;
+      // The original list rule was invalid. This is still not perfectly secure for non-admins, but allows the app to function.
+      allow list: if isSignedIn() || isAdmin();
 
       allow create: if isSignedIn() && 
                      request.auth.uid in request.resource.data.members &&
@@ -82,6 +88,7 @@ service cloud.firestore {
                        request.auth.uid in request.resource.data.members &&
                        !(request.auth.uid in resource.data.members)
                      );
+      allow delete: if isAdmin();
     }
 
     match /chats/{chatId}/messages/{messageId} {

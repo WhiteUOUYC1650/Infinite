@@ -34,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2 } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -436,6 +436,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                     <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
+                    {currentUser.isAdmin && (
+                        <DropdownMenuItem onSelect={() => router.push('/admin')}>
+                            <Shield className="mr-2 h-4 w-4" />
+                            <span>Admin Panel</span>
+                        </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
                     <DropdownMenuItem onSelect={promptUpdate}>{t('appearance')}</DropdownMenuItem>
                      <DropdownMenuSub>

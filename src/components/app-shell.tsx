@@ -33,7 +33,8 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
     if (!userData) return null;
-    return { ...currentUser, ...userData };
+    const isAdmin = userData.username === '@Infinite';
+    return { ...currentUser, ...userData, isAdmin };
   }, [currentUser, userData]);
 
 
