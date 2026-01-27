@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -116,21 +116,21 @@ function AdminPage() {
             <ItemList
               items={users}
               loading={usersLoading}
-              renderItem={(user: User) => <UserItem user={user} />}
+              renderItem={(user: User) => <UserItem key={user.id} user={user} />}
             />
           </TabsContent>
           <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
             <ItemList
               items={groups}
               loading={chatsLoading}
-              renderItem={(chat: Chat) => <ChatItem chat={chat} onDelete={handleDeleteChat} />}
+              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} />}
             />
           </TabsContent>
           <TabsContent value="channels" className="flex-1 overflow-auto mt-4">
             <ItemList
               items={channels}
               loading={chatsLoading}
-              renderItem={(chat: Chat) => <ChatItem chat={chat} onDelete={handleDeleteChat} />}
+              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} />}
             />
           </TabsContent>
         </Tabs>
