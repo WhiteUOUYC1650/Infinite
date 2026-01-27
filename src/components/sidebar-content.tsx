@@ -36,8 +36,8 @@ import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status'
 import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth, useCollection, useFirestore } from '@/firebase';
-import { collection, getDocs, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,58 +57,6 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { UserProfileCard } from './user-profile-card';
 import { Alert, AlertDescription } from './ui/alert';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
-
-// --- New Optimized Hook for fetching users in batches ---
-function useBatchUsers(userIds: string[]) {
-    const db = useFirestore();
-    const [users, setUsers] = useState<Record<string, User>>({});
-    const [loading, setLoading] = useState(true);
-
-    const stringifiedUserIds = JSON.stringify(userIds.sort());
-
-    useEffect(() => {
-        const uniqueUserIds = JSON.parse(stringifiedUserIds);
-        if (!db || uniqueUserIds.length === 0) {
-            setLoading(false);
-            return;
-        }
-
-        const fetchUsers = async () => {
-            setLoading(true);
-            const usersCollection = collection(db, 'users');
-            const fetchedUsers: Record<string, User> = {};
-            
-            const chunks: string[][] = [];
-            for (let i = 0; i < uniqueUserIds.length; i += 30) {
-                chunks.push(uniqueUserIds.slice(i, i + 30));
-            }
-
-            try {
-                const querySnapshots = await Promise.all(chunks.map(chunk => {
-                    const q = query(usersCollection, where('__name__', 'in', chunk));
-                    return getDocs(q);
-                }));
-
-                querySnapshots.forEach(snapshot => {
-                    snapshot.forEach(doc => {
-                        fetchedUsers[doc.id] = { id: doc.id, ...doc.data() } as User;
-                    });
-                });
-                setUsers(fetchedUsers);
-            } catch (error) {
-                console.error("Error fetching users in batch:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [db, stringifiedUserIds]);
-
-    return { users, loading };
-}
-
 
 const iconMap = {
     Users,
@@ -147,14 +95,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
   const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm' && chat.id !== currentUser.uid) || [], [chats, currentUser.uid]);
-  const dmUserIds = useMemo(() => {
-      return Array.from(new Set(directMessages
-          .map(chat => chat.members.find(id => id !== currentUser.uid) || chat.members[0])
-          .filter((id): id is string => !!id)));
-  }, [directMessages, currentUser.uid]);
-
-  const { users: dmUsers, loading: usersLoading } = useBatchUsers(dmUserIds);
-
+  
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
         setShowEditProfile(true);
@@ -362,13 +303,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     const otherUserId = chat.members.find(id => id !== currentUser.uid) || chat.members[0];
                     return (
                         <DMChatItemComponent
-                        key={chat.id}
-                        item={chat}
-                        onSelect={handleSelect}
-                        selectedId={selectedId}
-                        currentUserId={currentUser.uid}
-                        otherUser={dmUsers[otherUserId]}
-                        isLoading={usersLoading}
+                            key={chat.id}
+                            item={chat}
+                            onSelect={handleSelect}
+                            selectedId={selectedId}
+                            currentUserId={currentUser.uid}
+                            otherUserId={otherUserId}
                         />
                     );
                   })}
@@ -526,8 +466,17 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   );
 }
 
-function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherUser, isLoading }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, otherUser?: User, isLoading: boolean }) {
+function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, otherUserId: string }) {
   const { t } = useLanguage();
+  const db = useFirestore();
+
+  const otherUserDocRef = useMemoFirebase(() => {
+    if (!db) return null;
+    return doc(db, 'users', otherUserId);
+  }, [db, otherUserId]);
+
+  const { data: otherUser, loading: isLoading } = useDoc<User>(otherUserDocRef);
+
   if (isLoading || !otherUser) {
     return (
         <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left">
