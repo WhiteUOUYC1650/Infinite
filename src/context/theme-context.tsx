@@ -32,26 +32,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setIsDarkMode(initialDarkMode);
   }, []);
 
-  // Effect to apply classes to document when theme or dark mode changes
+  // Effect to apply classes and persist to localStorage
   useEffect(() => {
     const doc = document.documentElement;
     
-    // Apply dark mode class
+    // Apply dark mode class and persist
     doc.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
     
-    // Apply color theme class
+    // Apply color theme class and persist
     THEMES.forEach(t => {
       doc.classList.remove(`theme-${t}`);
     });
     doc.classList.add(`theme-${theme}`);
-    
-    // Persist only the dark mode setting in this effect
-    localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('app-color-theme', theme);
+
   }, [theme, isDarkMode]);
 
   const handleSetTheme = (newTheme: Theme) => {
-    // Persist theme immediately on change
-    localStorage.setItem('app-color-theme', newTheme);
     setTheme(newTheme);
   };
   
