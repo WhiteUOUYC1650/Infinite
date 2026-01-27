@@ -19,14 +19,15 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) && !('username' in request.writeFields); // Cannot change username
-      allow delete: if false;
+      allow delete: if isOwner(userId);
     }
 
     match /usernames/{username} {
-      allow get: if true; // Allow checking for username availability before signup
-      allow list: if false;
-      allow create: if !exists(/databases/$(database)/documents/usernames/$(username)) && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+        allow get: if true; // Allow checking for username availability before signup
+        allow list: if false;
+        allow create: if !exists(/databases/$(database)/documents/usernames/$(username)) && request.resource.data.uid == request.auth.uid;
+        allow update: if false;
+        allow delete: if resource.data.uid == request.auth.uid;
     }
 
     // Rules for the general chat

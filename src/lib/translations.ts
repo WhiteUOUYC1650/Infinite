@@ -149,6 +149,15 @@ export const translations = {
       'edit_chat_title': 'Edit Chat Info',
       'chat_update_success': 'Chat info updated successfully.',
       'chat_update_error': 'Failed to update chat info.',
+      'delete_account': 'Delete Account',
+      'delete_account_confirm_title': 'Are you absolutely sure?',
+      'delete_account_confirm_desc': 'This action is permanent and cannot be undone. All your data, messages, and profile information will be deleted forever.',
+      'deleting_account': 'Deleting Account...',
+      'delete_account_success': 'Your account has been deleted.',
+      'delete_account_error': 'There was an error deleting your account.',
+      'goodbye_title': 'Goodbye',
+      'goodbye_message': "Your account has been successfully deleted. We're sorry to see you go.",
+      're_register_link': 'Re-register'
     },
     ru: {
       'settings': 'Настройки',
@@ -300,6 +309,15 @@ export const translations = {
       'edit_chat_title': 'Изменить информацию о чате',
       'chat_update_success': 'Информация о чате успешно обновлена.',
       'chat_update_error': 'Не удалось обновить информацию о чате.',
+      'delete_account': 'Удалить аккаунт',
+      'delete_account_confirm_title': 'Вы абсолютно уверены?',
+      'delete_account_confirm_desc': 'Это действие необратимо. Все ваши данные, сообщения и информация профиля будут удалены навсегда.',
+      'deleting_account': 'Удаление аккаунта...',
+      'delete_account_success': 'Ваш аккаунт был удален.',
+      'delete_account_error': 'Произошла ошибка при удалении вашего аккаунта.',
+      'goodbye_title': 'До свидания',
+      'goodbye_message': 'Ваш аккаунт был успешно удален. Нам жаль, что вы уходите.',
+      're_register_link': 'Зарегистрироваться снова'
     }
   };
   

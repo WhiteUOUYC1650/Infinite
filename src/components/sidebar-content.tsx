@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -34,10 +34,12 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
+import { deleteUser } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +76,7 @@ interface SidebarContentProps {
 export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarContentProps) {
   const auth = useAuth();
   const db = useFirestore();
+  const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
@@ -85,6 +88,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false);
   const [showUserProfilePopover, setShowUserProfilePopover] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
 
   const chatsQuery = useMemo(() => {
@@ -163,6 +168,45 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       auth.signOut();
     } else if (auth) {
         auth.signOut();
+    }
+  };
+  
+  const handleDeleteAccount = async () => {
+    if (!auth || !db || !currentUser?.username) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete account. User data is missing.' });
+        return;
+    }
+    
+    setIsDeleting(true);
+
+    const userToDelete = auth.currentUser;
+    if (!userToDelete) {
+        setIsDeleting(false);
+        return;
+    }
+
+    const usernameToDelete = currentUser.username;
+    
+    try {
+        await runTransaction(db, async (transaction) => {
+            const userDocRef = doc(db, 'users', userToDelete.uid);
+            const usernameDocRef = doc(db, 'usernames', usernameToDelete);
+            transaction.delete(userDocRef);
+            transaction.delete(usernameDocRef);
+        });
+
+        await deleteUser(userToDelete);
+        
+        router.push('/goodbye');
+
+    } catch (error: any) {
+        console.error("Error deleting account:", error);
+        toast({
+            variant: 'destructive',
+            title: t('delete_account_error'),
+            description: error.message || t('unexpected_error')
+        });
+        setIsDeleting(false);
     }
   };
 
@@ -413,6 +457,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <span>{t('version')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>{t('delete_account')}</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>{t('logout')}</span>
@@ -438,6 +486,27 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </Alert>
             <AlertDialogFooter className='mt-4'>
             <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>{t('delete_account_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+                {t('delete_account_confirm_desc')}
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+                onClick={handleDeleteAccount} 
+                disabled={isDeleting}
+                className={cn(buttonVariants({ variant: "destructive" }))}
+            >
+                {isDeleting ? t('deleting_account') : t('delete_account')}
+            </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
