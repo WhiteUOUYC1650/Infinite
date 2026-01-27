@@ -1,15 +1,15 @@
 {
   "project_info": {
     "project_number": "123456789012",
-    "project_id": "infinite-chat",
-    "storage_bucket": "infinite-chat.appspot.com"
+    "project_id": "whitegram-16506-pd",
+    "storage_bucket": "whitegram-16506-pd.appspot.com"
   },
   "client": [
     {
       "client_info": {
         "mobilesdk_app_id": "1:123456789012:android:1234567890abcdef",
         "android_client_info": {
-          "package_name": "com.infinite.chat"
+          "package_name": "com.whitegram.app"
         }
       },
       "oauth_client": [],

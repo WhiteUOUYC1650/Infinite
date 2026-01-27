@@ -113,7 +113,7 @@ export default function SignUpPage() {
           username: usernameWithAt,
           avatar: null,
           status: 'online',
-          statusMessage: 'Hey there! I am using Infinite.',
+          statusMessage: 'Hey there! I am using WhiteGram.',
           hasSetNickname: false
         });
       });
@@ -173,7 +173,7 @@ export default function SignUpPage() {
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="text-4xl font-bold font-headline text-primary">Infinite</h1>
+            <h1 className="text-4xl font-bold font-headline text-primary">WhiteGram</h1>
           </div>
           <p className="text-muted-foreground">
             {t('signup_subtitle')}
