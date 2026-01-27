@@ -139,7 +139,7 @@ function AdminPage() {
   return (
     <div className="flex h-screen flex-col bg-background">
       <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b px-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-bold font-headline">Admin Panel</h1>
