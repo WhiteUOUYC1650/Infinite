@@ -75,15 +75,15 @@ function AdminPage() {
     try {
       await deleteDoc(chatRef);
       toast({
-        title: 'Success',
-        description: `Chat (${chatId}) has been deleted.`,
+        title: t('admin_toast_success_title'),
+        description: t('admin_toast_chat_deleted_desc', { chatId }),
       });
     } catch (error: any) {
       console.error('Error deleting chat:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Could not delete the chat.',
+        title: t('admin_toast_error_title'),
+        description: error.message || t('admin_toast_delete_chat_error_desc'),
       });
     }
   };
@@ -92,16 +92,16 @@ function AdminPage() {
     if (!db || !userToDelete.username) {
         toast({
             variant: 'destructive',
-            title: 'Error',
-            description: 'Cannot delete user without a username.',
+            title: t('admin_toast_error_title'),
+            description: t('admin_toast_delete_user_no_username_desc'),
         });
         return;
     }
     if (userToDelete.username === '@Infinite') {
         toast({
             variant: 'destructive',
-            title: 'Action Not Allowed',
-            description: 'The admin account cannot be deleted.',
+            title: t('admin_toast_action_not_allowed_title'),
+            description: t('admin_toast_cannot_delete_admin_desc'),
         });
         return;
     }
@@ -115,15 +115,15 @@ function AdminPage() {
           transaction.delete(usernameDocRef);
       });
       toast({
-        title: 'User Data Deleted',
-        description: `All Firestore data for ${userToDelete.name} (${userToDelete.username}) has been deleted.`,
+        title: t('admin_toast_user_deleted_title'),
+        description: t('admin_toast_user_deleted_desc', { name: userToDelete.name, username: userToDelete.username }),
       });
     } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Could not delete the user data.',
+        title: t('admin_toast_error_title'),
+        description: error.message || t('admin_toast_delete_user_error_desc'),
       });
     }
   };
@@ -142,14 +142,14 @@ function AdminPage() {
         <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold font-headline">Admin Panel</h1>
+        <h1 className="text-xl font-bold font-headline">{t('admin_panel_title')}</h1>
       </header>
       <main className="flex-1 p-4 overflow-hidden">
         <Tabs defaultValue="users" className="flex h-full flex-col">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="users">Users ({users?.length || 0})</TabsTrigger>
-            <TabsTrigger value="groups">Groups ({groups.length || 0})</TabsTrigger>
-            <TabsTrigger value="channels">Channels ({channels.length || 0})</TabsTrigger>
+            <TabsTrigger value="users">{t('admin_users_tab')} ({users?.length || 0})</TabsTrigger>
+            <TabsTrigger value="groups">{t('admin_groups_tab')} ({groups.length || 0})</TabsTrigger>
+            <TabsTrigger value="channels">{t('admin_channels_tab')} ({channels.length || 0})</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="flex-1 overflow-auto mt-4">
             <ItemList
@@ -185,6 +185,7 @@ interface ItemListProps<T> {
   renderItem: (item: T) => React.ReactNode;
 }
 function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
+  const { t } = useLanguage();
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -193,7 +194,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
     );
   }
   if (!items || items.length === 0) {
-    return <p className="text-center text-muted-foreground">No items found.</p>;
+    return <p className="text-center text-muted-foreground">{t('admin_no_items')}</p>;
   }
   return <div className="space-y-2">{items.map(renderItem)}</div>;
 }
@@ -201,6 +202,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 // --- List Item Components ---
 function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => void }) {
   const isAdminUser = user.username === '@Infinite';
+  const { t } = useLanguage();
 
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
@@ -209,7 +211,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
         <AvatarFallback>{user.name?.charAt(0) || <User2 />}</AvatarFallback>
       </Avatar>
       <div className="flex-1 truncate">
-        <div className="font-semibold flex items-center gap-2">{user.name} {isAdminUser && <Badge variant="secondary">Admin</Badge>}</div>
+        <div className="font-semibold flex items-center gap-2">{user.name} {isAdminUser && <Badge variant="secondary">{t('admin_badge')}</Badge>}</div>
         <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
       <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
@@ -227,15 +229,15 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
             </AlertDialogTrigger>
             <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete all Firestore data for the user "{user.name}" ({user.username}). Note: This does not delete their authentication record from Firebase Auth.
+                {t('admin_delete_user_confirm_desc', { name: user.name, username: user.username })}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onDelete(user)} className={cn(buttonVariants({ variant: "destructive" }))}>
-                Delete User Data
+                {t('admin_delete_user_button')}
                 </AlertDialogAction>
             </AlertDialogFooter>
             </AlertDialogContent>
@@ -247,6 +249,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
 
 function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => void }) {
   const Icon = chat.type === 'group' ? Users : Megaphone;
+  const { t } = useLanguage();
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
       <Avatar>
@@ -256,7 +259,7 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
       </Avatar>
       <div className="flex-1 truncate">
         <p className="font-semibold">{chat.name}</p>
-        <p className="text-sm text-muted-foreground">{chat.members?.length || 0} members</p>
+        <p className="text-sm text-muted-foreground">{t('members_count', { count: chat.members?.length || 0 })}</p>
         {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
       <AlertDialog>
@@ -267,15 +270,15 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the chat "{chat.name}" and all of its messages.
+              {t('admin_delete_chat_confirm_desc', { name: chat.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => onDelete(chat.id)} className={cn(buttonVariants({ variant: "destructive" }))}>
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
