@@ -569,7 +569,7 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
             <div className="flex-1 truncate">
                 <p className="font-semibold">{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
-                {item.lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{item.lastMessage.content}</p>}
+                {item.lastMessage?.content && <p className={cn("text-xs truncate", selectedId === item.id ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{item.lastMessage.content}</p>}
             </div>
             {unreadCount > 0 && (
                 <Badge className="bg-primary">{unreadCount}</Badge>
@@ -594,7 +594,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 truncate">
           <p className="font-semibold">{item.name}</p>
-          {lastMessage?.content && <p className="text-xs text-muted-foreground truncate">{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
+          {lastMessage?.content && <p className={cn("text-xs truncate", selectedId === item.id ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
         {unreadCount > 0 && (
             <Badge className="bg-primary">{unreadCount}</Badge>
