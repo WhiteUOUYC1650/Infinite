@@ -116,14 +116,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const botMessages = useMemo(() => {
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
-        return otherUserId && dmUsers[otherUserId]?.isBot;
+        if (!otherUserId) return false;
+        const otherUser = dmUsers[otherUserId];
+        return otherUser && (otherUser.isBot || otherUser.username === '@Infinite');
     });
   }, [directMessages, dmUsers, currentUser.uid]);
 
   const userDirectMessages = useMemo(() => {
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
-        return !otherUserId || !dmUsers[otherUserId]?.isBot;
+        if (!otherUserId) return true;
+        const otherUser = dmUsers[otherUserId];
+        return !otherUser || !(otherUser.isBot || otherUser.username === '@Infinite');
     });
   }, [directMessages, dmUsers, currentUser.uid]);
 
@@ -348,9 +352,23 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <>
                       <DMChatItemSkeleton />
                     </>
-                  ) : botMessages.map((chat) => (
-                    <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
-                  ))}
+                  ) : botMessages.length > 0 ? (
+                    botMessages.map((chat) => {
+                      const otherUserId = chat.members.find(id => id !== currentUser.uid);
+                      const otherUser = otherUserId ? dmUsers[otherUserId] : null;
+                      if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
+
+                      return (
+                        <DMChatItemComponent
+                          key={chat.id}
+                          item={chat}
+                          otherUser={otherUser}
+                          onSelect={handleSelect}
+                          selectedId={selectedId}
+                          currentUserId={currentUser.uid}
+                        />
+                      );
+                  })) : null}
                 </div>
               </AccordionContent>
             </AccordionItem>

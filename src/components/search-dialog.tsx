@@ -101,17 +101,37 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                 }
             }
         } else {
-            // Search for groups and channels by name
+            const searchPromises = [];
+
+            // Search chats by name
             const chatsCollection = collection(db, 'chats');
-            const nameQuery = query(
-                chatsCollection, 
+            const chatNameQuery = query(
+                chatsCollection,
                 where('type', 'in', ['group', 'channel']),
                 where('name', '>=', searchQuery),
                 where('name', '<=', searchQuery + '\uf8ff')
             );
-            const querySnapshot = await getDocs(nameQuery);
-            querySnapshot.forEach((doc) => {
+            searchPromises.push(getDocs(chatNameQuery));
+
+            // Search users by name
+            const usersCollection = collection(db, 'users');
+            const userNameQuery = query(
+                usersCollection,
+                where('name', '>=', searchQuery),
+                where('name', '<=', searchQuery + '\uf8ff')
+            );
+            searchPromises.push(getDocs(userNameQuery));
+            
+            const [chatSnapshots, userSnapshots] = await Promise.all(searchPromises);
+
+            chatSnapshots.forEach((doc) => {
                 foundResults.push({ type: 'chat', data: { id: doc.id, ...doc.data() } as Chat });
+            });
+
+            userSnapshots.forEach((doc) => {
+                if (!foundResults.some(r => r.type === 'user' && r.data.id === doc.id)) {
+                    foundResults.push({ type: 'user', data: { id: doc.id, ...doc.data() } as User });
+                }
             });
         }
 
