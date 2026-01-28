@@ -37,7 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield, Paintbrush, HelpCircle, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import {
@@ -97,6 +97,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [isDeleting, setIsDeleting] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
 
+  const [infiniteBot, setInfiniteBot] = useState<User | null>(null);
+  const [isBotLoading, setIsBotLoading] = useState(true);
 
   const chatsQuery = useMemo(() => {
     if (!db) return null;
@@ -113,31 +115,59 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   const { users: dmUsers, loading: dmUsersLoading } = useBatchUsers(allDmUserIds);
 
-  const botMessages = useMemo(() => {
+  const otherBotMessages = useMemo(() => {
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
         if (!otherUserId) return false;
+        if (infiniteBot && otherUserId === infiniteBot.id) return false;
+        
         const otherUser = dmUsers[otherUserId];
-        return otherUser && (otherUser.isBot || otherUser.username === '@Infinite');
+        return otherUser && otherUser.isBot;
     });
-  }, [directMessages, dmUsers, currentUser.uid]);
+  }, [directMessages, dmUsers, currentUser.uid, infiniteBot]);
 
   const userDirectMessages = useMemo(() => {
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
         if (!otherUserId) return true;
+        if (infiniteBot && otherUserId === infiniteBot.id) return false;
         const otherUser = dmUsers[otherUserId];
-        return !otherUser || !(otherUser.isBot || otherUser.username === '@Infinite');
+        return !otherUser || !otherUser.isBot;
     });
-  }, [directMessages, dmUsers, currentUser.uid]);
+  }, [directMessages, dmUsers, currentUser.uid, infiniteBot]);
 
-  
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
         setShowEditProfile(true);
         setEditProfileInitiallyShown(true);
     }
   }, [currentUser, editProfileInitiallyShown]);
+
+  useEffect(() => {
+    const findBot = async () => {
+        if (!db) return;
+        setIsBotLoading(true);
+        try {
+            const usersRef = collection(db, 'users');
+            const botQuery = query(usersRef, where("username", "==", "@Infinite"));
+            const botQuerySnapshot = await getDocs(botQuery);
+
+            if (!botQuerySnapshot.empty) {
+                const botDoc = botQuerySnapshot.docs[0];
+                setInfiniteBot({ id: botDoc.id, ...botDoc.data() } as User);
+            } else {
+                setInfiniteBot(null);
+            }
+        } catch (error) {
+            console.error("Error finding Infinite bot:", error);
+            setInfiniteBot(null);
+        } finally {
+            setIsBotLoading(false);
+        }
+    };
+    findBot();
+  }, [db]);
+
 
   const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group') || [], [chats]);
   const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel') || [], [chats]);
@@ -289,6 +319,48 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
   };
 
+  const handleSelectInfiniteBot = async () => {
+    if (!db || !infiniteBot) {
+        toast({
+            variant: 'destructive',
+            title: 'Bot not found',
+            description: 'The Infinite bot account may not have been created yet.'
+        });
+        return;
+    }
+    const chatId = [currentUser.uid, infiniteBot.id].sort().join('_');
+    const chatRef = doc(db, 'chats', chatId);
+
+    try {
+        const chatSnap = await getDoc(chatRef);
+        let chatData: Chat;
+
+        if (!chatSnap.exists()) {
+            chatData = {
+                id: chatId,
+                type: 'dm',
+                members: [currentUser.uid, infiniteBot.id],
+                icon: 'Bot',
+            };
+            await setDoc(chatRef, {
+                type: 'dm',
+                members: [currentUser.uid, infiniteBot.id],
+                icon: 'Bot',
+            });
+        } else {
+            chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+        }
+        handleSelect(chatData);
+    } catch(error) {
+        console.error("Error creating chat with bot:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not open a chat with the bot.'
+        });
+    }
+  };
+
 
   return (
     <>
@@ -348,27 +420,46 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-1">
-                  {dmUsersLoading ? (
-                    <>
-                      <DMChatItemSkeleton />
-                    </>
-                  ) : botMessages.length > 0 ? (
-                    botMessages.map((chat) => {
-                      const otherUserId = chat.members.find(id => id !== currentUser.uid);
-                      const otherUser = otherUserId ? dmUsers[otherUserId] : null;
-                      if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
+                    {isBotLoading ? (
+                        <DMChatItemSkeleton />
+                    ) : infiniteBot ? (
+                        <Button
+                            variant="ghost"
+                            onClick={handleSelectInfiniteBot}
+                            className={cn("w-full justify-start h-auto py-2 text-left", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                        >
+                            <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                                <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
+                                <div className="flex-1 truncate">
+                                    <p className={cn("font-semibold", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
+                                </div>
+                            </div>
+                        </Button>
+                    ) : (
+                        <div className='px-4 text-xs text-muted-foreground'>{t('no_bots_found')}</div>
+                    )}
 
-                      return (
-                        <DMChatItemComponent
-                          key={chat.id}
-                          item={chat}
-                          otherUser={otherUser}
-                          onSelect={handleSelect}
-                          selectedId={selectedId}
-                          currentUserId={currentUser.uid}
-                        />
-                      );
-                  })) : null}
+                    {dmUsersLoading ? null : (otherBotMessages.length > 0 && <Separator className="my-1" />)}
+
+                    {dmUsersLoading ? (
+                        otherBotMessages.length > 0 && <DMChatItemSkeleton />
+                    ) : otherBotMessages.length > 0 ? (
+                        otherBotMessages.map((chat) => {
+                        const otherUserId = chat.members.find(id => id !== currentUser.uid);
+                        const otherUser = otherUserId ? dmUsers[otherUserId] : null;
+                        if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
+
+                        return (
+                            <DMChatItemComponent
+                            key={chat.id}
+                            item={chat}
+                            otherUser={otherUser}
+                            onSelect={handleSelect}
+                            selectedId={selectedId}
+                            currentUserId={currentUser.uid}
+                            />
+                        );
+                    })) : null}
                 </div>
               </AccordionContent>
             </AccordionItem>
