@@ -183,7 +183,8 @@ export const translations = {
       'yellow': 'Yellow',
       'pink': 'Pink',
       'light_mode': 'Light Mode',
-      'dark_mode': 'Dark Mode'
+      'dark_mode': 'Dark Mode',
+      'markdown_help': 'Markdown Help',
     },
     ru: {
       'settings': 'Настройки',
@@ -369,7 +370,8 @@ export const translations = {
       'yellow': 'Желтый',
       'pink': 'Розовый',
       'light_mode': 'Светлая тема',
-      'dark_mode': 'Темная тема'
+      'dark_mode': 'Темная тема',
+      'markdown_help': 'Справка по Markdown',
     }
   };
   

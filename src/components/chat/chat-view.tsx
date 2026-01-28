@@ -320,6 +320,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         console.error("Error updating chat metadata:", error);
     });
   };
+  
+  const handleMarkdownHelp = () => {
+    window.open('https://www.markdownguide.org/basic-syntax/', '_blank', 'noopener,noreferrer');
+  };
 
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
@@ -494,7 +498,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
                     <Paperclip className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" type="button" onClick={promptUpdate} title="Markdown is supported">
+                <Button variant="ghost" size="icon" type="button" onClick={handleMarkdownHelp} title={t('markdown_help')}>
                     <Text className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
