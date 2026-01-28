@@ -112,7 +112,9 @@ service cloud.firestore {
     match /botLinks/{linkId} {
       allow get: if true;
       allow list: if false;
-      allow create: if isAdmin();
+      // Admins can create bot links.
+      // A user can create the /B/Infinite link if they are also setting isBot=true in the same transaction.
+      allow create: if isAdmin() || (linkId == '%2FB%2FInfinite' && request.resource.data.botId == request.auth.uid && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBot == true);
       allow update, delete: if isAdmin();
     }
   }
