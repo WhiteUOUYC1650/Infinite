@@ -23,6 +23,7 @@ export type Message = {
   sender?: User; // hydrated sender
   senderName?: string;
   senderAvatar?: string;
+  type?: 'user' | 'announcement';
 };
 
 export type Chat = {

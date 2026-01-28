@@ -77,6 +77,19 @@
         "timestamp": {
           "type": "object",
           "description": "The server timestamp when the message was created."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["user", "announcement"],
+          "description": "The type of message. 'user' is a standard message, 'announcement' is a system message styled as from a bot."
+        },
+        "senderName": {
+            "type": "string",
+            "description": "Display name of the sender, used for bot messages."
+        },
+        "senderAvatar": {
+            "type": "string",
+            "description": "Avatar URL of the sender, used for bot messages."
         }
       },
       "required": ["senderId", "content", "timestamp"]

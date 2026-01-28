@@ -4,7 +4,8 @@ import { AppShell } from '@/components/app-shell';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, query, where, collection, getDocs, addDoc, Timestamp, updateDoc, increment } from 'firebase/firestore';
+import type { User } from '@/types';
 
 export default function Home() {
   const { user, loading } = useUser();
@@ -26,6 +27,58 @@ export default function Home() {
 
     // Set user to online when they connect
     setDoc(userRef, { status: 'online' }, { merge: true });
+
+    // --- Bot Login Message Logic ---
+    const KEY_HAS_LOGGED_IN_BEFORE = `hasLoggedInBefore-${user.uid}`;
+    const hasLoggedInBefore = localStorage.getItem(KEY_HAS_LOGGED_IN_BEFORE);
+
+    const sendLoginMessage = async () => {
+        if (!db) return;
+        try {
+            const usersRef = collection(db, 'users');
+            const botQuery = query(usersRef, where("username", "==", "@Infinite"));
+            const botQuerySnapshot = await getDocs(botQuery);
+
+            if (!botQuerySnapshot.empty) {
+                const botDoc = botQuerySnapshot.docs[0];
+                const botId = botDoc.id;
+                const botData = botDoc.data() as User;
+
+                const members = [user.uid, botId].sort();
+                const chatId = members.join('_');
+                const chatRef = doc(db, 'chats', chatId);
+
+                const chatSnap = await getDoc(chatRef);
+                if (!chatSnap.exists()) {
+                    await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: { [user.uid]: 1 } });
+                } else {
+                    await updateDoc(chatRef, { [`unreadCounts.${user.uid}`]: increment(1) });
+                }
+
+                const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
+                const loginMessage = {
+                    senderId: user.uid,
+                    type: 'announcement',
+                    content: 'Welcome back!',
+                    timestamp: Timestamp.now(),
+                    senderName: botData.name,
+                    senderAvatar: botData.avatar || null
+                };
+                const msgRef = await addDoc(messagesCollectionRef, loginMessage);
+                await updateDoc(chatRef, { lastMessage: { ...loginMessage, id: msgRef.id } });
+            }
+        } catch (e) {
+            console.error("Failed to send bot login message", e);
+        }
+    };
+
+    if (hasLoggedInBefore) {
+        sendLoginMessage();
+    } else {
+        localStorage.setItem(KEY_HAS_LOGGED_IN_BEFORE, 'true');
+    }
+    // --- End Bot Login Message Logic ---
+
 
     const handleVisibilityChange = () => {
       if (!auth.currentUser) return;

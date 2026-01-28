@@ -279,6 +279,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         content: contentForMessage,
         timestamp: timestamp,
         senderName: currentUser.name || currentUser.username || "User",
+        type: 'user',
     };
 
     if (currentUser.avatar) {
@@ -486,6 +487,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 rows={1}
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                    }
+                }}
                 disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -529,16 +536,29 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
-    
+    const fromBot = message.type === 'announcement';
+    const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
+
     const handleAvatarClick = () => {
+        if (fromBot) return; // Don't open profile for bot
         if (sender && !isCurrentUser) {
             onAvatarClick(sender);
         }
     };
     
-    const showAvatar = chatType === 'group' && !isCurrentUser;
-    const alignRight = isCurrentUser && chatType !== 'channel';
+    const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
 
+    // Create a fake User object for the bot from the message data
+    const botUser: User | undefined = fromBot ? {
+        id: 'INFINITE_BOT',
+        name: message.senderName || 'Infinite',
+        username: '@Infinite',
+        avatar: message.senderAvatar,
+        status: 'online',
+    } : undefined;
+
+    const displaySender = fromBot ? botUser : sender;
+    
     return (
         <div className={cn(
             "flex items-end gap-3",
@@ -546,9 +566,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         )}>
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
-                    {sender ? (
-                        <button onClick={handleAvatarClick} disabled={isCurrentUser}>
-                            <UserAvatarWithStatus user={sender} />
+                    {displaySender ? (
+                        <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot}>
+                            <UserAvatarWithStatus user={displaySender} />
                         </button>
                     ) : (
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
@@ -564,8 +584,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                 ? "bg-primary text-white rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none",
             )}>
-                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
-                     <p className="font-semibold text-sm mb-1">{sender.name}</p>
+                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
+                     <p className="font-semibold text-sm mb-1">{displaySender.name}</p>
                 ): null}
 
                 <div className={cn(
