@@ -484,12 +484,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 rows={1}
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(e);
-                    }
-                }}
                 disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
