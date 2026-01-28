@@ -82,7 +82,7 @@ export default function SignUpPage() {
           throw new Error(t('username_taken_error'));
         }
         
-        const isBotUser = usernameWithAt === '@Infinite';
+        const isBotUser = usernameWithAt === '@InfiniteBot';
 
         transaction.set(usernameRef, { uid: createdUser!.uid });
         transaction.set(userDocRef, {
@@ -93,7 +93,7 @@ export default function SignUpPage() {
           statusMessage: isBotUser 
             ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!' 
             : 'Hey there! I am using Infinite.',
-          hasSetNickname: isBotUser ? true : false,
+          hasSetNickname: true,
           isBot: isBotUser,
         });
 
@@ -105,47 +105,51 @@ export default function SignUpPage() {
 
       // START: Bot welcome message logic
       try {
-        if (usernameWithAt !== '@Infinite') {
+        const isBotUser = usernameWithAt === '@InfiniteBot';
+        if (!isBotUser) {
           // 1. Find the bot user
-          const usersRef = collection(db, 'users');
-          const botQuery = query(usersRef, where("username", "==", "@Infinite"));
-          const botQuerySnapshot = await getDocs(botQuery);
+          const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+          const botLinkSnap = await getDoc(botLinkRef);
       
-          if (!botQuerySnapshot.empty) {
-              const botDoc = botQuerySnapshot.docs[0];
-              const botId = botDoc.id;
-              const botData = botDoc.data() as User;
-      
-              // 2. Create the DM chat
-              const newUserId = createdUser!.uid;
-              const members = [newUserId, botId].sort();
-              const chatId = members.join('_');
-              const chatRef = doc(db, 'chats', chatId);
-              
-              const chatSnap = await getDoc(chatRef);
-              if (!chatSnap.exists()) {
-                  await setDoc(chatRef, {
-                      type: 'dm',
-                      members: members,
-                      unreadCounts: { [newUserId]: 1, [botId]: 0 },
-                      icon: 'Bot',
-                  });
+          if (botLinkSnap.exists()) {
+              const botId = botLinkSnap.data().botId;
+              const botUserRef = doc(db, 'users', botId);
+              const botUserSnap = await getDoc(botUserRef);
+
+              if (botUserSnap.exists()) {
+                const botData = botUserSnap.data() as User;
+        
+                // 2. Create the DM chat
+                const newUserId = createdUser!.uid;
+                const members = [newUserId, botId].sort();
+                const chatId = members.join('_');
+                const chatRef = doc(db, 'chats', chatId);
+                
+                const chatSnap = await getDoc(chatRef);
+                if (!chatSnap.exists()) {
+                    await setDoc(chatRef, {
+                        type: 'dm',
+                        members: members,
+                        unreadCounts: { [newUserId]: 1, [botId]: 0 },
+                        icon: 'Bot',
+                    });
+                }
+                
+                // 3. Send the welcome message
+                const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
+                const welcomeMessage = {
+                    senderId: newUserId, // Must be current user to pass security rules
+                    type: 'announcement',
+                    content: 'Welcome to Infinite!',
+                    timestamp: Timestamp.now(),
+                    senderName: botData.name, // Display bot's name
+                    senderAvatar: botData.avatar || null // Display bot's avatar
+                };
+                const msgRef = await addDoc(messagesCollectionRef, welcomeMessage);
+                
+                // 4. Update lastMessage for the new chat
+                await updateDoc(chatRef, { lastMessage: { ...welcomeMessage, id: msgRef.id } });
               }
-              
-              // 3. Send the welcome message
-              const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
-              const welcomeMessage = {
-                  senderId: newUserId, // Must be current user to pass security rules
-                  type: 'announcement',
-                  content: 'Welcome to Infinite!',
-                  timestamp: Timestamp.now(),
-                  senderName: botData.name, // Display bot's name
-                  senderAvatar: botData.avatar || null // Display bot's avatar
-              };
-              const msgRef = await addDoc(messagesCollectionRef, welcomeMessage);
-              
-              // 4. Update lastMessage for the new chat
-              await updateDoc(chatRef, { lastMessage: { ...welcomeMessage, id: msgRef.id } });
           }
         }
       } catch (botError) {

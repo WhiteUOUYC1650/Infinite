@@ -148,13 +148,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         if (!db) return;
         setIsBotLoading(true);
         try {
-            const usersRef = collection(db, 'users');
-            const botQuery = query(usersRef, where("username", "==", "@Infinite"));
-            const botQuerySnapshot = await getDocs(botQuery);
+            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+            const botLinkSnap = await getDoc(botLinkRef);
 
-            if (!botQuerySnapshot.empty) {
-                const botDoc = botQuerySnapshot.docs[0];
-                setInfiniteBot({ id: botDoc.id, ...botDoc.data() } as User);
+            if (botLinkSnap.exists()) {
+                const botId = botLinkSnap.data().botId;
+                const botUserRef = doc(db, 'users', botId);
+                const botUserSnap = await getDoc(botUserRef);
+                if (botUserSnap.exists()) {
+                    setInfiniteBot({ id: botUserSnap.id, ...botUserSnap.data() } as User);
+                } else {
+                    setInfiniteBot(null);
+                }
             } else {
                 setInfiniteBot(null);
             }

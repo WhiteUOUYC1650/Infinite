@@ -35,37 +35,39 @@ export default function Home() {
     const sendLoginMessage = async () => {
         if (!db) return;
         try {
-            const usersRef = collection(db, 'users');
-            const botQuery = query(usersRef, where("username", "==", "@Infinite"));
-            const botQuerySnapshot = await getDocs(botQuery);
+            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+            const botLinkSnap = await getDoc(botLinkRef);
 
-            if (!botQuerySnapshot.empty) {
-                const botDoc = botQuerySnapshot.docs[0];
-                const botId = botDoc.id;
-                const botData = botDoc.data() as User;
+            if (botLinkSnap.exists()) {
+                const botId = botLinkSnap.data().botId;
+                const botUserRef = doc(db, 'users', botId);
+                const botUserSnap = await getDoc(botUserRef);
 
-                const members = [user.uid, botId].sort();
-                const chatId = members.join('_');
-                const chatRef = doc(db, 'chats', chatId);
+                if (botUserSnap.exists()) {
+                    const botData = botUserSnap.data() as User;
+                    const members = [user.uid, botId].sort();
+                    const chatId = members.join('_');
+                    const chatRef = doc(db, 'chats', chatId);
 
-                const chatSnap = await getDoc(chatRef);
-                if (!chatSnap.exists()) {
-                    await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: { [user.uid]: 1 }, icon: 'Bot' });
-                } else {
-                    await updateDoc(chatRef, { [`unreadCounts.${user.uid}`]: increment(1) });
+                    const chatSnap = await getDoc(chatRef);
+                    if (!chatSnap.exists()) {
+                        await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: { [user.uid]: 1 }, icon: 'Bot' });
+                    } else {
+                        await updateDoc(chatRef, { [`unreadCounts.${user.uid}`]: increment(1) });
+                    }
+
+                    const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
+                    const loginMessage = {
+                        senderId: user.uid,
+                        type: 'announcement',
+                        content: 'Welcome back!',
+                        timestamp: Timestamp.now(),
+                        senderName: botData.name,
+                        senderAvatar: botData.avatar || null
+                    };
+                    const msgRef = await addDoc(messagesCollectionRef, loginMessage);
+                    await updateDoc(chatRef, { lastMessage: { ...loginMessage, id: msgRef.id } });
                 }
-
-                const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
-                const loginMessage = {
-                    senderId: user.uid,
-                    type: 'announcement',
-                    content: 'Welcome back!',
-                    timestamp: Timestamp.now(),
-                    senderName: botData.name,
-                    senderAvatar: botData.avatar || null
-                };
-                const msgRef = await addDoc(messagesCollectionRef, loginMessage);
-                await updateDoc(chatRef, { lastMessage: { ...loginMessage, id: msgRef.id } });
             }
         } catch (e) {
             console.error("Failed to send bot login message", e);
