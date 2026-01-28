@@ -134,6 +134,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const getStatusText = (user: User | null | undefined) => {
     if (!user) return null;
+
+    if (user.isBot) {
+      return t('bot_status');
+    }
     
     if (user.status === 'offline' && user.lastSeen) {
       const lastSeenDate = new Date(user.lastSeen.seconds * 1000);

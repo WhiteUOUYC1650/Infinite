@@ -191,6 +191,7 @@ export const translations = {
       'faq_markdown_q': 'How do I format messages with Markdown?',
       'faq_markdown_a': 'Infinite supports basic Markdown for text formatting. Here are some examples:\n\n- `*italic*` or `_italic_` for *italic text*\n- `**bold**` or `__bold__` for **bold text**\n- `~~strikethrough~~` for ~~strikethrough~~\n- `[link text](https://example.com)` for hyperlinks\n- For bulleted lists, start a line with `-` or `*`\n- For numbered lists, start a line with `1.`\n\nFor a full guide, visit the [Markdown Guide](https://www.markdownguide.org/basic-syntax/).',
       'no_bots_found': 'No bots found. The @Infinite bot may not have been created yet.',
+      'bot_status': 'bot',
     },
     ru: {
       'settings': 'Настройки',
@@ -384,6 +385,7 @@ export const translations = {
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
       'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__жирный__` для **жирного текста**\n- `~~зачеркнутый~~` для ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdownguide.org/basic-syntax/).',
       'no_bots_found': 'Боты не найдены. Возможно, бот @Infinite еще не создан.',
+      'bot_status': 'бот',
     }
   };
   
