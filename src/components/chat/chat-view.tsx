@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Text } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -27,6 +27,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { FaqDialog } from '../faq-dialog';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -90,6 +91,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
+  const [showFaqDialog, setShowFaqDialog] = useState(false);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -523,6 +525,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             onSendMessage={handleSendMessageToUser}
         />
       )}
+
+    <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
     </div>
   );
 }
@@ -561,7 +565,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
-                ? "bg-primary text-primary-foreground rounded-br-none"
+                ? "bg-primary text-white rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none",
             )}>
                  {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
