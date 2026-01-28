@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
+import { Badge } from '@/components/ui/badge';
 
 interface UserProfileDialogProps {
   user: User;
@@ -68,7 +69,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
             </div>
         </DialogHeader>
         <div className="text-center py-4">
-            <h2 className="text-2xl font-bold font-headline">{user.name}</h2>
+            <div className="flex items-center justify-center gap-2">
+                <h2 className="text-2xl font-bold font-headline">{user.name}</h2>
+                {user.isBot && <Badge variant="secondary">BOT</Badge>}
+            </div>
             <p className="text-muted-foreground">{user.username}</p>
             <p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
         </div>
@@ -80,9 +84,9 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         )}
        
         <DialogFooter className='!justify-center'>
-            <Button onClick={() => onSendMessage(user)}>
-            {t('message')}
-          </Button>
+            <Button onClick={() => onSendMessage(user)} disabled={user.isBot}>
+                {t('message')}
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

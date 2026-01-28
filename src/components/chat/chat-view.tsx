@@ -28,6 +28,7 @@ import { useUpdatePrompt } from '@/context/update-prompt-context';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FaqDialog } from '../faq-dialog';
+import { Badge } from '../ui/badge';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -489,7 +490,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onChange={(e) => setMessageContent(e.target.value)}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
                         handleSendMessage(e);
                     }
                 }}
@@ -555,6 +555,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         username: '@Infinite',
         avatar: message.senderAvatar,
         status: 'online',
+        isBot: true,
     } : undefined;
 
     const displaySender = fromBot ? botUser : sender;
@@ -585,7 +586,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                 : "bg-card text-card-foreground rounded-bl-none",
             )}>
                  {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                     <p className="font-semibold text-sm mb-1">{displaySender.name}</p>
+                     <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                        {displaySender.name}
+                        {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
+                    </p>
                 ): null}
 
                 <div className={cn(

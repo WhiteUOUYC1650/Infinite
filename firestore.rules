@@ -108,5 +108,12 @@ service cloud.firestore {
       allow create: if isSignedIn(); // Relies on client transaction
       allow update, delete: if false;
     }
+
+    match /botLinks/{linkId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
   }
 }

@@ -10,6 +10,7 @@ export type User = {
   status: "online" | "away" | "offline";
   statusMessage?: string;
   hasSetNickname?: boolean;
+  isBot?: boolean;
   lastSeen?: Timestamp;
 };
 

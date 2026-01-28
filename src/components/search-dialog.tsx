@@ -31,6 +31,7 @@ import { Loader2, Search, Users, Megaphone } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { Badge } from './ui/badge';
 
 
 const searchFormSchema = z.object({
@@ -80,14 +81,23 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     foundResults.push({ type: 'user', data: { id: userSnap.id, ...userSnap.data() } as User });
                 }
             }
-        } else if (searchQuery.startsWith('/C/') || searchQuery.startsWith('/G/')) {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(searchQuery));
+        } else if (searchQuery.startsWith('/C/') || searchQuery.startsWith('/G/') || searchQuery.startsWith('/B/')) {
+            const linkCollection = searchQuery.startsWith('/B/') ? 'botLinks' : 'chatLinks';
+            const linkRef = doc(db, linkCollection, encodeURIComponent(searchQuery));
             const linkSnap = await getDoc(linkRef);
             if (linkSnap.exists()) {
-                const chatRef = doc(db, 'chats', linkSnap.data().chatId);
-                const chatSnap = await getDoc(chatRef);
-                if (chatSnap.exists()) {
-                    foundResults.push({ type: 'chat', data: { id: chatSnap.id, ...chatSnap.data() } as Chat});
+                if (linkCollection === 'botLinks') {
+                    const botUserRef = doc(db, 'users', linkSnap.data().botId);
+                    const botUserSnap = await getDoc(botUserRef);
+                    if (botUserSnap.exists()) {
+                        foundResults.push({ type: 'user', data: { id: botUserSnap.id, ...botUserSnap.data() } as User });
+                    }
+                } else {
+                    const chatRef = doc(db, 'chats', linkSnap.data().chatId);
+                    const chatSnap = await getDoc(chatRef);
+                    if (chatSnap.exists()) {
+                        foundResults.push({ type: 'chat', data: { id: chatSnap.id, ...chatSnap.data() } as Chat});
+                    }
                 }
             }
         } else {
@@ -213,9 +223,12 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                                </Avatar>
                            )}
                            <div className="flex-1">
-                                <p className="font-semibold">{result.data.name}</p>
+                                <p className="font-semibold flex items-center gap-2">
+                                    {result.data.name}
+                                    {result.type === 'user' && (result.data as User).isBot && <Badge variant="secondary">BOT</Badge>}
+                                </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {result.type === 'user' ? result.data.username : result.data.link}
+                                    {result.type === 'user' ? (result.data as User).username : result.data.link}
                                 </p>
                            </div>
                            {result.type === 'user' && result.data.id !== currentUser.uid && (

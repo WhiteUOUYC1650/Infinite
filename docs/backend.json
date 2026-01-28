@@ -42,6 +42,10 @@
             "type": "boolean",
             "description": "True if the user has set their nickname at least once."
         },
+        "isBot": {
+            "type": "boolean",
+            "description": "True if the user is a bot account."
+        },
         "lastSeen": {
             "type": "object",
             "description": "Server timestamp of when the user was last active."
@@ -155,6 +159,18 @@
           }
       },
       "required": ["chatId"]
+    },
+    "BotLink": {
+      "title": "Bot Link",
+      "description": "Maps a unique bot link to a user ID to enforce uniqueness.",
+      "type": "object",
+      "properties": {
+          "botId": {
+              "type": "string",
+              "description": "The user ID of the bot associated with this link."
+          }
+      },
+      "required": ["botId"]
     }
   },
   "auth": {
@@ -196,6 +212,12 @@
         "$ref": "#/backend/entities/ChatLink"
       },
       "description": "Used to enforce unique links for groups and channels."
+    },
+    "/botLinks/{linkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/BotLink"
+      },
+      "description": "Used to enforce unique links for bots."
     }
   }
 }

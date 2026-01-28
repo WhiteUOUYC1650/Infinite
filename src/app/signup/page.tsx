@@ -89,7 +89,8 @@ export default function SignUpPage() {
           avatar: null,
           status: 'online',
           statusMessage: 'Hey there! I am using Infinite.',
-          hasSetNickname: false
+          hasSetNickname: false,
+          isBot: false,
         });
       });
 
