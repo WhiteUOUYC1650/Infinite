@@ -264,7 +264,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!messageContent.trim() || !db) return;
   
     setIsSending(true);
-    const content = messageContent;
+    const originalContent = messageContent;
+    const contentForMessage = originalContent.replace(/\n/g, '  \n');
+    const contentForPreview = originalContent.split('\n')[0];
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
 
@@ -274,7 +276,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
     const messageData: { [key: string]: any } = {
         senderId: currentUser.uid,
-        content: content,
+        content: contentForMessage,
         timestamp: timestamp,
         senderName: currentUser.name || currentUser.username || "User",
     };
@@ -285,7 +287,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
     addDoc(messagesCollectionRef, messageData)
       .catch((serverError: any) => {
-        setMessageContent(content); // Re-populate the input on error
+        setMessageContent(originalContent); // Re-populate the input on error
         console.error("Error sending message: ", serverError);
         const permissionError = new FirestorePermissionError({
             path: messagesCollectionRef.path,
@@ -300,7 +302,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
     const chatRef = doc(db, 'chats', item.id);
     const lastMessageData = {
-      content: content,
+      content: contentForPreview,
       senderId: currentUser.uid,
       senderName: currentUser.name || currentUser.username || "User",
       timestamp: timestamp,
@@ -568,9 +570,14 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
 
                 <div className={cn(
                     "text-sm break-words prose prose-sm max-w-none prose-p:my-0 prose-headings:my-2",
-                    alignRight ? "prose-invert" : "dark:prose-invert"
+                    alignRight ? "prose-invert text-white" : "dark:prose-invert"
                 )}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            a: ({...props}) => <a className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props} />
+                        }}
+                    >
                         {message.content}
                     </ReactMarkdown>
                 </div>
