@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Text } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -15,7 +15,7 @@ import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
-import { ChatProfileDialog } from './chat-profile-dialog';
+import { ChatProfileDialog } from './chat/chat-profile-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUpdatePrompt } from '@/context/update-prompt-context';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -82,6 +85,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const db = useFirestore();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { promptUpdate } = useUpdatePrompt();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -372,53 +376,55 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className="flex items-center gap-2 ml-2">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-5 w-5" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    {item.type === 'dm' && otherUser ? (
-                        <>
-                            {otherUser.id !== currentUser.uid ? (
-                                <>
-                                    <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
-                                        <UserIcon className="mr-2 h-4 w-4" />
-                                        <span>{t('view_profile')}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
-                                        <Phone className="mr-2 h-4 w-4" />
-                                        <span>{t('audio_call')}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
-                                        <Video className="mr-2 h-4 w-4" />
-                                        <span>{t('video_call')}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+            {item.id !== 'GENERAL_CHAT' && (
+                <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {item.type === 'dm' && otherUser ? (
+                            <>
+                                {otherUser.id !== currentUser.uid ? (
+                                    <>
+                                        <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
+                                            <UserIcon className="mr-2 h-4 w-4" />
+                                            <span>{t('view_profile')}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={promptUpdate}>
+                                            <Phone className="mr-2 h-4 w-4" />
+                                            <span>{t('audio_call')}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={promptUpdate}>
+                                            <Video className="mr-2 h-4 w-4" />
+                                            <span>{t('video_call')}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>{t('delete_chat')}</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                ) : (
+                                    <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>{t('delete_chat')}</span>
+                                        <span>{t('clear_history')}</span>
                                     </DropdownMenuItem>
-                                </>
-                            ) : (
-                                <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>{t('clear_history')}</span>
-                                </DropdownMenuItem>
-                            )}
-                        </>
-                    ) : null}
+                                )}
+                            </>
+                        ) : null}
 
-                    {item.type !== 'dm' && (
-                        <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
-                            <Info className="mr-2 h-4 w-4" />
-                            <span>{item.type === 'group' ? t('group_info') : t('channel_info')}</span>
-                        </DropdownMenuItem>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        {item.type !== 'dm' && (
+                            <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                                <Info className="mr-2 h-4 w-4" />
+                                <span>{item.type === 'group' ? t('group_info') : t('channel_info')}</span>
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
         </div>
       </header>
 
@@ -472,7 +478,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
-                className="pr-24 py-3 resize-none"
+                className="pr-36 py-3 resize-none"
                 rows={1}
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
@@ -485,8 +491,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" type="button" onClick={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}>
+                <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
                     <Paperclip className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" type="button" onClick={promptUpdate} title="Markdown is supported">
+                    <Text className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
                   {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
@@ -496,14 +505,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </footer>
       )}
 
-      <ChatProfileDialog 
-          chat={item}
-          members={Object.values(memberDetails).filter(m => item.members.includes(m.id))}
-          currentUser={currentUser}
-          open={showChatProfile && item.type !== 'dm'}
-          onOpenChange={setShowChatProfile}
-          onCloseChat={onClose}
-      />
+      {showChatProfile && item.type !== 'dm' && (
+        <ChatProfileDialog 
+            chat={item}
+            members={Object.values(memberDetails).filter(m => item.members.includes(m.id))}
+            currentUser={currentUser}
+            open={showChatProfile}
+            onOpenChange={setShowChatProfile}
+            onCloseChat={onClose}
+        />
+      )}
 
       {profileDialogUser && (
         <UserProfileDialog 
@@ -528,11 +539,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         }
     };
     
-    // Logic for avatar: only for other users in a group chat.
     const showAvatar = chatType === 'group' && !isCurrentUser;
-    const showSenderName = (chatType === 'group' && !isCurrentUser) || chatType === 'channel';
-
-    // Your messages are always on the right, except in channels.
     const alignRight = isCurrentUser && chatType !== 'channel';
 
     return (
@@ -550,21 +557,29 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : (
-                null
-            )}
+            ) : chatType === 'group' && !alignRight ? (
+                <div className="w-10 flex-shrink-0" />
+            ) : null}
 
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
-                : "bg-card text-card-foreground rounded-bl-none"
+                : "bg-card text-card-foreground rounded-bl-none",
             )}>
-                {showSenderName && sender ? (
+                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel')) && sender ? (
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 
-                <p className="text-sm break-words">{message.content}</p>
+                <div className={cn(
+                    "text-sm break-words prose prose-sm max-w-none prose-p:my-0 prose-headings:my-2",
+                    alignRight ? "prose-invert" : "dark:prose-invert"
+                )}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                    </ReactMarkdown>
+                </div>
+                
                 <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
             </div>
         </div>
