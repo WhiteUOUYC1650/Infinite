@@ -590,9 +590,9 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   );
 }
 
-function DMChatItemSkeleton({ key }: { key?: string }) {
+function DMChatItemSkeleton() {
     return (
-        <div className={cn(buttonVariants({variant: "ghost"}), "w-full justify-start h-auto py-2 text-left pointer-events-none")} key={key}>
+        <div className={cn(buttonVariants({variant: "ghost"}), "w-full justify-start h-auto py-2 text-left pointer-events-none")}>
             <div className="flex items-center gap-3 w-full px-4 md:px-0">
                 <Skeleton className='w-10 h-10 rounded-full' />
                 <div className="flex-1 truncate space-y-2">
