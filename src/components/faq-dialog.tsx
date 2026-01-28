@@ -32,7 +32,26 @@ export function FaqDialog({ open, onOpenChange }: FaqDialogProps) {
       question: t('faq_markdown_q'),
       answer: t('faq_markdown_a'),
     },
-    // You can add more FAQs here in the future
+    {
+      question: t('faq_create_chat_q'),
+      answer: t('faq_create_chat_a'),
+    },
+    {
+      question: t('faq_invite_q'),
+      answer: t('faq_invite_a'),
+    },
+    {
+      question: t('faq_edit_profile_q'),
+      answer: t('faq_edit_profile_a'),
+    },
+    {
+      question: t('faq_bot_q'),
+      answer: t('faq_bot_a'),
+    },
+    {
+      question: t('faq_security_q'),
+      answer: t('faq_security_a'),
+    },
   ];
 
   return (
