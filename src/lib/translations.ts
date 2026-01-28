@@ -184,7 +184,11 @@ export const translations = {
       'pink': 'Pink',
       'light_mode': 'Light Mode',
       'dark_mode': 'Dark Mode',
-      'markdown_help': 'Markdown Help',
+      'help': 'Help & FAQ',
+      'faq_title': 'Frequently Asked Questions',
+      'faq_desc': 'Find answers to common questions about Infinite.',
+      'faq_markdown_q': 'How do I format messages with Markdown?',
+      'faq_markdown_a': 'Infinite supports basic Markdown for text formatting. Here are some examples:\n\n- `*italic*` or `_italic_` for *italic text*\n- `**bold**` or `__bold__` for **bold text**\n- `~~strikethrough~~` for ~~strikethrough~~\n- `[link text](https://example.com)` for hyperlinks\n- For bulleted lists, start a line with `-` or `*`\n- For numbered lists, start a line with `1.`\n\nFor a full guide, visit the [Markdown Guide](https://www.markdownguide.org/basic-syntax/).',
     },
     ru: {
       'settings': 'Настройки',
@@ -371,7 +375,11 @@ export const translations = {
       'pink': 'Розовый',
       'light_mode': 'Светлая тема',
       'dark_mode': 'Темная тема',
-      'markdown_help': 'Справка по Markdown',
+      'help': 'Помощь и FAQ',
+      'faq_title': 'Часто задаваемые вопросы',
+      'faq_desc': 'Найдите ответы на распространенные вопросы об Infinite.',
+      'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
+      'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__жирный__` для **жирного текста**\n- `~~зачеркнутый~~` для ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdownguide.org/basic-syntax/).',
     }
   };
   

@@ -34,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield, Paintbrush } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield, Paintbrush, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -60,6 +60,7 @@ import { UserProfileCard } from './user-profile-card';
 import { Alert, AlertDescription } from './ui/alert';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { useTheme } from '@/context/theme-context';
+import { FaqDialog } from './faq-dialog';
 
 const iconMap = {
     Users,
@@ -91,6 +92,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showUserProfilePopover, setShowUserProfilePopover] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showFaqDialog, setShowFaqDialog] = useState(false);
 
 
   const chatsQuery = useMemo(() => {
@@ -447,6 +449,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                   </DropdownMenuSub>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    <span>{t('help')}</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setShowVersion(true)}>
                     <Info className="mr-2 h-4 w-4" />
                     <span>{t('version')}</span>
@@ -524,6 +530,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           open={showSearchDialog}
           onOpenChange={setShowSearchDialog}
           onChatSelected={handleSelect}
+      />
+
+      <FaqDialog
+        open={showFaqDialog}
+        onOpenChange={setShowFaqDialog}
       />
 
     </>

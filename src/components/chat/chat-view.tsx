@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Text } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
@@ -321,10 +321,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     });
   };
   
-  const handleMarkdownHelp = () => {
-    window.open('https://www.markdownguide.org/basic-syntax/', '_blank', 'noopener,noreferrer');
-  };
-
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
@@ -482,7 +478,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <form onSubmit={handleSendMessage} className="relative">
             <Textarea
                 placeholder={t('message_placeholder')}
-                className="pr-36 py-3 resize-none"
+                className="pr-24 py-3 resize-none"
                 rows={1}
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
@@ -497,9 +493,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
                     <Paperclip className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" type="button" onClick={handleMarkdownHelp} title={t('markdown_help')}>
-                    <Text className="h-5 w-5" />
                 </Button>
                 <Button size="icon" type="submit" disabled={isSending}>
                   {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
