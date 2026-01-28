@@ -82,16 +82,25 @@ export default function SignUpPage() {
           throw new Error(t('username_taken_error'));
         }
         
+        const isBotUser = usernameWithAt === '@Infinite';
+
         transaction.set(usernameRef, { uid: createdUser!.uid });
         transaction.set(userDocRef, {
-          name: usernameWithAt,
+          name: isBotUser ? 'Infinite' : usernameWithAt,
           username: usernameWithAt,
           avatar: null,
           status: 'online',
-          statusMessage: 'Hey there! I am using Infinite.',
-          hasSetNickname: false,
-          isBot: false,
+          statusMessage: isBotUser 
+            ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!' 
+            : 'Hey there! I am using Infinite.',
+          hasSetNickname: isBotUser ? true : false,
+          isBot: isBotUser,
         });
+
+        if (isBotUser) {
+            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+            transaction.set(botLinkRef, { botId: createdUser!.uid });
+        }
       });
 
       // START: Bot welcome message logic
