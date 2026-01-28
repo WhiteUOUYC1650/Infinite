@@ -29,6 +29,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const { t } = useLanguage();
 
   const getStatusText = (user: AuthenticatedUser) => {
+    if (user.isBot) return '';
     if (!user.status) return '';
     const statusKey = statusTranslations[user.status] || 'offline';
     let statusText = t(statusKey);
@@ -48,7 +49,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                 {user.avatar ? <AvatarImage src={user.avatar} alt={user.name || ''} /> : null}
                 <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
             </Avatar>
-            {user.status && (
+            {user.status && !user.isBot && (
                 <span
                     className={cn(
                     "absolute bottom-1 right-1 block h-4 w-4 rounded-full ring-2 ring-background",
@@ -59,7 +60,11 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
         </div>
         <div className="text-center">
             <h2 className="text-xl font-bold font-headline">{user.name}</h2>
-            <p className="text-muted-foreground text-sm">{user.username}</p>
+            {user.isBot ? (
+                <p className="text-muted-foreground text-sm">/B/Infinite</p>
+            ) : (
+                <p className="text-muted-foreground text-sm">{user.username}</p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
         </div>
 

@@ -54,6 +54,7 @@ export default function LoginPage() {
     if (!auth) return;
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
+      sessionStorage.setItem('justLoggedIn', 'true');
       router.push('/');
     } catch (error: any) {
       console.error('Error signing in', error);

@@ -39,6 +39,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const { t } = useLanguage();
 
   const getStatusText = (user: User) => {
+    if (user.isBot) return '';
     const statusKey = statusTranslations[user.status] || 'offline';
     let statusText = t(statusKey);
     
@@ -60,12 +61,14 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     {user.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
                     <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <span
-                    className={cn(
-                    "absolute bottom-2 right-2 block h-5 w-5 rounded-full ring-4 ring-background",
-                    statusColors[user.status]
-                    )}
-                />
+                {!user.isBot && user.status && (
+                    <span
+                        className={cn(
+                        "absolute bottom-2 right-2 block h-5 w-5 rounded-full ring-4 ring-background",
+                        statusColors[user.status]
+                        )}
+                    />
+                )}
             </div>
         </DialogHeader>
         <div className="text-center py-4">
@@ -73,7 +76,11 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                 <h2 className="text-2xl font-bold font-headline">{user.name}</h2>
                 {user.isBot && <Badge variant="secondary">BOT</Badge>}
             </div>
-            <p className="text-muted-foreground">{user.username}</p>
+            {user.isBot ? (
+                <p className="text-muted-foreground">/B/Infinite</p>
+            ) : (
+                <p className="text-muted-foreground">{user.username}</p>
+            )}
             <p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
         </div>
 
