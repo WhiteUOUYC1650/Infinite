@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // --- New Optimized Hook for fetching users in batches ---
 function useBatchUsers(userIds: string[]) {
@@ -566,7 +568,15 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                      <p className="font-semibold text-sm mb-1">{sender.name}</p>
                 ): null}
 
-                <p className="text-sm break-words">{message.content}</p>
+                <div className="text-sm break-words prose prose-sm prose-white max-w-none 
+                    prose-p:my-0 prose-headings:my-2 prose-a:text-inherit hover:prose-a:text-inherit 
+                    prose-strong:text-inherit prose-em:text-inherit prose-code:text-inherit 
+                    prose-blockquote:text-inherit prose-ol:text-inherit prose-ul:text-inherit">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                    </ReactMarkdown>
+                </div>
+                
                 <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
             </div>
         </div>
