@@ -50,7 +50,7 @@ export default function Home() {
 
                 const chatSnap = await getDoc(chatRef);
                 if (!chatSnap.exists()) {
-                    await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: { [user.uid]: 1 } });
+                    await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: { [user.uid]: 1 }, icon: 'Bot' });
                 } else {
                     await updateDoc(chatRef, { [`unreadCounts.${user.uid}`]: increment(1) });
                 }

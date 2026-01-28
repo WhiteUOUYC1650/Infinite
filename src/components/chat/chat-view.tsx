@@ -5,7 +5,7 @@ import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/ty
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Text } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -29,58 +29,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FaqDialog } from '../faq-dialog';
 import { Badge } from '../ui/badge';
-
-// --- New Optimized Hook for fetching users in batches ---
-function useBatchUsers(userIds: string[]) {
-    const db = useFirestore();
-    const [users, setUsers] = useState<Record<string, User>>({});
-    const [loading, setLoading] = useState(true);
-
-    const stringifiedUserIds = JSON.stringify(userIds.sort());
-
-    useEffect(() => {
-        const uniqueUserIds = JSON.parse(stringifiedUserIds);
-        if (!db || uniqueUserIds.length === 0) {
-            setUsers({});
-            setLoading(false);
-            return;
-        }
-
-        const fetchUsers = async () => {
-            setLoading(true);
-            const usersCollection = collection(db, 'users');
-            const fetchedUsers: Record<string, User> = {};
-            
-            const chunks: string[][] = [];
-            for (let i = 0; i < uniqueUserIds.length; i += 30) {
-                chunks.push(uniqueUserIds.slice(i, i + 30));
-            }
-
-            try {
-                const querySnapshots = await Promise.all(chunks.map(chunk => {
-                    const q = query(usersCollection, where('__name__', 'in', chunk));
-                    return getDocs(q);
-                }));
-
-                querySnapshots.forEach(snapshot => {
-                    snapshot.forEach(doc => {
-                        fetchedUsers[doc.id] = { id: doc.id, ...doc.data() } as User;
-                    });
-                });
-                setUsers(fetchedUsers);
-            } catch (error) {
-                console.error("Error fetching users in batch:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [db, stringifiedUserIds]);
-
-    return { users, loading };
-}
+import { useBatchUsers } from '@/hooks/use-batch-users';
 
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {

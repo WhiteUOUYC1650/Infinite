@@ -118,7 +118,8 @@ export default function SignUpPage() {
                   await setDoc(chatRef, {
                       type: 'dm',
                       members: members,
-                      unreadCounts: { [newUserId]: 1, [botId]: 0 }
+                      unreadCounts: { [newUserId]: 1, [botId]: 0 },
+                      icon: 'Bot',
                   });
               }
               

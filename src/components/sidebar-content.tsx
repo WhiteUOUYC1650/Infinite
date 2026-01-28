@@ -34,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield, Paintbrush, HelpCircle } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Star, Trash2, Shield, Paintbrush, HelpCircle, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -61,12 +61,15 @@ import { Alert, AlertDescription } from './ui/alert';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { useTheme } from '@/context/theme-context';
 import { FaqDialog } from './faq-dialog';
+import { useBatchUsers } from '@/hooks/use-batch-users';
+import { Skeleton } from './ui/skeleton';
 
 const iconMap = {
     Users,
     Megaphone,
     Bookmark,
     Globe,
+    Bot,
 };
 
 interface SidebarContentProps {
@@ -103,6 +106,27 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
   const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm' && chat.id !== currentUser.uid) || [], [chats, currentUser.uid]);
+  
+  const allDmUserIds = useMemo(() => {
+    return Array.from(new Set(directMessages.map(c => c.members.find(m => m !== currentUser.uid)).filter(Boolean) as string[]));
+  }, [directMessages, currentUser.uid]);
+
+  const { users: dmUsers, loading: dmUsersLoading } = useBatchUsers(allDmUserIds);
+
+  const botMessages = useMemo(() => {
+    return directMessages.filter(chat => {
+        const otherUserId = chat.members.find(id => id !== currentUser.uid);
+        return otherUserId && dmUsers[otherUserId]?.isBot;
+    });
+  }, [directMessages, dmUsers, currentUser.uid]);
+
+  const userDirectMessages = useMemo(() => {
+    return directMessages.filter(chat => {
+        const otherUserId = chat.members.find(id => id !== currentUser.uid);
+        return !otherUserId || !dmUsers[otherUserId]?.isBot;
+    });
+  }, [directMessages, dmUsers, currentUser.uid]);
+
   
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
@@ -311,25 +335,50 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           ) : (
           <Accordion
             type="multiple"
-            defaultValue={['direct-messages', 'groups', 'channels']}
+            defaultValue={['bots', 'direct-messages', 'groups', 'channels']}
             className="w-full"
           >
+            <AccordionItem value="bots">
+              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
+                {t('bots')}
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-1">
+                  {dmUsersLoading ? (
+                    <>
+                      <DMChatItemSkeleton />
+                    </>
+                  ) : botMessages.map((chat) => (
+                    <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
             <AccordionItem value="direct-messages">
               <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
                 {t('direct_messages')}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-1">
-                  {directMessages.map((chat) => {
-                    const otherUserId = chat.members.find(id => id !== currentUser.uid) || chat.members[0];
+                  {dmUsersLoading ? (
+                    <>
+                        <DMChatItemSkeleton />
+                        <DMChatItemSkeleton />
+                    </>
+                  ) : userDirectMessages.map((chat) => {
+                    const otherUserId = chat.members.find(id => id !== currentUser.uid);
+                    const otherUser = otherUserId ? dmUsers[otherUserId] : null;
+                    if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
+
                     return (
                         <DMChatItemComponent
                             key={chat.id}
                             item={chat}
+                            otherUser={otherUser}
                             onSelect={handleSelect}
                             selectedId={selectedId}
                             currentUserId={currentUser.uid}
-                            otherUserId={otherUserId}
                         />
                     );
                   })}
@@ -541,31 +590,23 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   );
 }
 
-function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, otherUserId: string }) {
-  const { t } = useLanguage();
-  const db = useFirestore();
-
-  const otherUserDocRef = useMemoFirebase(() => {
-    if (!db) return null;
-    return doc(db, 'users', otherUserId);
-  }, [db, otherUserId]);
-
-  const { data: otherUser, loading: isLoading } = useDoc<User>(otherUserDocRef);
-
-  if (isLoading || !otherUser) {
+function DMChatItemSkeleton({ key }: { key?: string }) {
     return (
-        <Button variant="ghost" className="w-full justify-start h-auto py-2 text-left">
+        <div className={cn(buttonVariants({variant: "ghost"}), "w-full justify-start h-auto py-2 text-left pointer-events-none")} key={key}>
             <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
+                <Skeleton className='w-10 h-10 rounded-full' />
                 <div className="flex-1 truncate space-y-2">
-                    <div className='h-4 w-3/4 bg-muted rounded animate-pulse' />
-                    <div className='h-3 w-1/2 bg-muted rounded animate-pulse' />
+                    <Skeleton className='h-4 w-3/4' />
+                    <Skeleton className='h-3 w-1/2' />
                 </div>
             </div>
-      </Button>
+      </div>
     )
-  }
+}
 
+function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUserId }: { item: Chat, otherUser: User, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
+  const { t } = useLanguage();
+  
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
@@ -575,12 +616,12 @@ function DMChatItemComponent({ item, onSelect, selectedId, currentUserId, otherU
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+        className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
             <div className="flex-1 truncate">
-                <p className="font-semibold">{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
+                <p className={cn("font-semibold", isSelected && "text-sidebar-accent-foreground")}>{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
                 {item.lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{item.lastMessage.content}</p>}
             </div>
             {unreadCount > 0 && (
@@ -601,12 +642,12 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+      className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 truncate">
-          <p className="font-semibold">{item.name}</p>
+          <p className={cn("font-semibold", isSelected && "text-sidebar-accent-foreground")}>{item.name}</p>
           {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
         {unreadCount > 0 && (
