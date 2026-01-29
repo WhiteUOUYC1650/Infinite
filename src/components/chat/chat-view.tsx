@@ -290,6 +290,77 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   };
 
+  const handleInternalLinkClick = async (href: string) => {
+    if (!db || !currentUser) return;
+
+    try {
+        let targetChat: Chat | null = null;
+        const processedHref = href.startsWith('/') ? href : href.toLowerCase();
+
+        if (processedHref.startsWith('@')) {
+            const usernameRef = doc(db, 'usernames', processedHref);
+            const usernameSnap = await getDoc(usernameRef);
+
+            if (usernameSnap.exists()) {
+                const targetUserId = usernameSnap.data().uid;
+
+                if (targetUserId === currentUser.uid) {
+                    const selfChatRef = doc(db, 'chats', currentUser.uid);
+                    const selfChatSnap = await getDoc(selfChatRef);
+                    if (selfChatSnap.exists()) {
+                        targetChat = { id: selfChatSnap.id, ...selfChatSnap.data() } as Chat;
+                    } else {
+                        // Create saved messages chat if it doesn't exist
+                        await setDoc(selfChatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark' });
+                        targetChat = { id: currentUser.uid, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' };
+                    }
+                } else {
+                    const members = [currentUser.uid, targetUserId].sort();
+                    const chatId = members.join('_');
+                    const chatRef = doc(db, 'chats', chatId);
+                    const chatSnap = await getDoc(chatRef);
+                    if (chatSnap.exists()) {
+                        targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+                    } else {
+                        await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: { [currentUser.uid]: 0, [targetUserId]: 0 } });
+                        targetChat = { id: chatId, type: 'dm', members: members, unreadCounts: { [currentUser.uid]: 0, [targetUserId]: 0 } };
+                    }
+                }
+            }
+        } else if (processedHref.startsWith('/G/') || processedHref.startsWith('/C/')) {
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(processedHref));
+            const linkSnap = await getDoc(linkRef);
+            if (linkSnap.exists()) {
+                const chatId = linkSnap.data().chatId;
+                const chatRef = doc(db, 'chats', chatId);
+                const chatSnap = await getDoc(chatRef);
+                if (chatSnap.exists()) {
+                    targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+                }
+            }
+        }
+
+        if (targetChat) {
+            onSelectChat(targetChat as PopulatedChat);
+            if(isMobile) onClose();
+        } else {
+            toast({
+                variant: 'destructive',
+                title: t('no_results_found'),
+                description: t('internal_link_not_found', { link: href }),
+            });
+        }
+    } catch (error) {
+        console.error("Error handling internal link:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: t('dm_error'),
+        });
+    }
+  };
+
+
   const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db) return;
@@ -498,6 +569,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                     onAvatarClick={setProfileDialogUser}
                                     chat={item}
                                     currentUser={currentUser}
+                                    onInternalLinkClick={handleInternalLinkClick}
                                 />
                             </React.Fragment>
                         );
@@ -581,7 +653,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void> }) {
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
     const fromBot = message.type === 'announcement';
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
@@ -632,6 +704,27 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     } : undefined;
 
     const displaySender = fromBot ? botUser : sender;
+
+    const renderLink = ({ href, children, ...props }: any) => {
+        if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
+            const handleClick = (e: React.MouseEvent) => {
+                e.preventDefault();
+                onInternalLinkClick(href);
+            };
+            return (
+                <a href={href} onClick={handleClick} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>
+                    {children}
+                </a>
+            );
+        }
+
+        // External links
+        return (
+            <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>
+                {children}
+            </a>
+        );
+    };
     
     return (
         <div className={cn(
@@ -672,7 +765,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
-                            a: ({...props}) => <a className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props} />
+                            a: renderLink,
                         }}
                     >
                         {message.content}

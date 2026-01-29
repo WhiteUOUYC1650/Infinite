@@ -203,6 +203,7 @@ export const translations = {
       'no_bots_found': 'No bots found. The InfiniteBot account may not have been created yet.',
       'bot_status': 'bot',
       'snowflakes': 'Snowflakes',
+      'internal_link_not_found': 'Could not find a user or chat for "{link}".'
     },
     ru: {
       'settings': 'Настройки',
@@ -408,6 +409,7 @@ export const translations = {
       'no_bots_found': 'Боты не найдены. Возможно, аккаунт InfiniteBot еще не создан.',
       'bot_status': 'бот',
       'snowflakes': 'Снежинки',
+      'internal_link_not_found': 'Не удалось найти пользователя или чат для "{link}".'
     }
   };
   
