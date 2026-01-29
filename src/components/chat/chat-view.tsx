@@ -797,7 +797,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         ): null}
 
                         <div className={cn(
-                            "text-sm break-words prose prose-sm prose-p:my-0 prose-headings:my-2",
+                            "text-sm break-all prose prose-sm",
                             alignRight ? "prose-invert text-white" : "dark:prose-invert"
                         )}>
                             <ReactMarkdown 
