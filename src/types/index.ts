@@ -46,6 +46,7 @@ export type Chat = {
   icon?: string;
   description?: string;
   link?: string;
+  discussionChatId?: string;
 };
 
 export type Channel = Chat & {

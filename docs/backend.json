@@ -165,6 +165,10 @@
         "link": {
           "type": "string",
           "description": "Unique link for a group or channel."
+        },
+        "discussionChatId": {
+          "type": "string",
+          "description": "The ID of the group chat linked to this channel for discussions."
         }
       },
       "required": ["type", "members"]

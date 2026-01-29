@@ -210,6 +210,11 @@ export const translations = {
       'edit_message': 'Edit',
       'delete_message': 'Delete',
       'copy_success_toast': 'Message text copied',
+      'discussion_chat_label': 'Discussion Chat',
+      'select_discussion_chat_placeholder': 'Select a group for discussion',
+      'none_label': 'None',
+      'join_discussion_button': 'Join Discussion',
+      'discussion_chat_not_found': 'The linked discussion chat could not be found.',
     },
     ru: {
       'settings': 'Настройки',
@@ -422,6 +427,11 @@ export const translations = {
       'edit_message': 'Редактировать',
       'delete_message': 'Удалить',
       'copy_success_toast': 'Текст сообщения скопирован',
+      'discussion_chat_label': 'Чат для обсуждений',
+      'select_discussion_chat_placeholder': 'Выберите группу для обсуждения',
+      'none_label': 'Нет',
+      'join_discussion_button': 'Присоединиться к обсуждению',
+      'discussion_chat_not_found': 'Связанный чат для обсуждений не найден.',
     }
   };
   

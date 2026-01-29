@@ -462,6 +462,38 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleReply = (message: Message) => {
     setReplyToMessage(message);
   };
+
+  const handleJoinDiscussion = async (discussionChatId: string) => {
+    if (!db) return;
+    try {
+        const chatRef = doc(db, 'chats', discussionChatId);
+        const chatSnap = await getDoc(chatRef);
+
+        if (chatSnap.exists()) {
+            const targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+            const iconName = targetChat.icon as keyof typeof iconMap | undefined;
+            const populatedChat: PopulatedChat = {
+                ...targetChat,
+                iconComponent: iconName ? iconMap[iconName] : undefined,
+            };
+            onSelectChat(populatedChat);
+            if(isMobile) onClose();
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: t('discussion_chat_not_found'),
+            });
+        }
+    } catch (error) {
+        console.error("Error joining discussion:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not open discussion chat.',
+        });
+    }
+  };
   
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
@@ -518,6 +550,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className="flex items-center gap-2 ml-2">
+            {item.type === 'channel' && item.discussionChatId && (
+                <Button variant="ghost" size="icon" onClick={() => handleJoinDiscussion(item.discussionChatId!)} title={t('join_discussion_button')}>
+                    <Users className="h-5 w-5" />
+                </Button>
+            )}
             {item.id !== 'GENERAL_CHAT' && (
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
@@ -927,5 +964,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
-
-    

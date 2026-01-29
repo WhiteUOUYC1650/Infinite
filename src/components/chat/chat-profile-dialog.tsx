@@ -8,12 +8,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AuthenticatedUser, PopulatedChat, User } from '@/types';
+import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar } from '../ui/avatar';
 import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
@@ -36,6 +36,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -49,6 +50,7 @@ interface ChatProfileDialogProps {
 const chatEditSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
   description: z.string().max(200, 'Description must be 200 characters or less.').optional(),
+  discussionChatId: z.string().optional(),
 });
 
 
@@ -60,6 +62,8 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [ownedGroups, setOwnedGroups] = useState<Chat[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const isOwner = chat.ownerId === currentUser.uid;
 
   const form = useForm<z.infer<typeof chatEditSchema>>({
@@ -67,14 +71,37 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     defaultValues: {
         name: chat.name || '',
         description: chat.description || '',
+        discussionChatId: chat.discussionChatId || '',
     },
   });
+
+  useEffect(() => {
+    if (isEditing && chat.type === 'channel' && db) {
+        const fetchOwnedGroups = async () => {
+            setIsLoadingGroups(true);
+            const groupsCollection = collection(db, 'chats');
+            const q = query(groupsCollection, where('ownerId', '==', currentUser.uid), where('type', '==', 'group'));
+            try {
+                const querySnapshot = await getDocs(q);
+                const groups = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Chat));
+                setOwnedGroups(groups);
+            } catch (error) {
+                console.error("Error fetching owned groups:", error);
+                toast({ variant: 'destructive', title: 'Error', description: "Could not load your groups." });
+            } finally {
+                setIsLoadingGroups(false);
+            }
+        };
+        fetchOwnedGroups();
+    }
+  }, [isEditing, chat.type, db, currentUser.uid, toast]);
 
   useEffect(() => {
     if (open) {
         form.reset({
             name: chat.name || '',
             description: chat.description || '',
+            discussionChatId: chat.discussionChatId || '',
         });
         setIsEditing(false); // Reset editing state when dialog opens
     }
@@ -84,10 +111,11 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     if (!db || !isOwner) return;
     setIsSaving(true);
     const chatRef = doc(db, 'chats', chat.id);
-    const dataToUpdate: { name: string, description?: string } = { name: values.name };
+    const dataToUpdate: { [key: string]: any } = { name: values.name };
 
     if (chat.type === 'channel') {
         dataToUpdate.description = values.description;
+        dataToUpdate.discussionChatId = values.discussionChatId;
     } else if (chat.type === 'group') {
         dataToUpdate.description = values.description;
     }
@@ -180,6 +208,31 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                             <FormControl>
                                                 <Textarea {...field} />
                                             </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                            {chat.type === 'channel' && (
+                                <FormField
+                                    control={form.control}
+                                    name="discussionChatId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('discussion_chat_label')}</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger disabled={isLoadingGroups}>
+                                                        <SelectValue placeholder={t('select_discussion_chat_placeholder')} />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="">{t('none_label')}</SelectItem>
+                                                    {ownedGroups.map(group => (
+                                                        <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                             <FormMessage />
                                         </FormItem>
                                     )}
