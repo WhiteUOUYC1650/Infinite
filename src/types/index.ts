@@ -16,6 +16,12 @@ export type User = {
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };
 
+export type ReplyInfo = {
+    messageId: string;
+    content: string;
+    senderName: string;
+};
+
 export type Message = {
   id: string;
   senderId: string;
@@ -26,6 +32,7 @@ export type Message = {
   senderAvatar?: string;
   type?: 'user' | 'announcement';
   readBy?: string[];
+  replyTo?: ReplyInfo;
 };
 
 export type Chat = {

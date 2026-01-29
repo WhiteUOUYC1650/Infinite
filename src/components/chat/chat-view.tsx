@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -67,6 +67,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -401,8 +402,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (currentUser.avatar) {
         messageData.senderAvatar = currentUser.avatar;
     }
+
+    if (replyToMessage) {
+        messageData.replyTo = {
+            messageId: replyToMessage.id,
+            content: replyToMessage.content,
+            senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
+        };
+    }
   
     addDoc(messagesCollectionRef, messageData)
+      .then(() => {
+        setReplyToMessage(null); // Clear reply state
+      })
       .catch((serverError: any) => {
         setMessageContent(originalContent); // Re-populate the input on error
         console.error("Error sending message: ", serverError);
@@ -440,6 +452,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     updateDoc(chatRef, chatUpdateData).catch((error) => {
         console.error("Error updating chat metadata:", error);
     });
+  };
+  
+  const handleReply = (message: Message) => {
+    setReplyToMessage(message);
   };
   
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
@@ -584,6 +600,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                     currentUser={currentUser}
                                     onInternalLinkClick={handleInternalLinkClick}
                                     promptUpdate={promptUpdate}
+                                    onReply={handleReply}
                                 />
                             </React.Fragment>
                         );
@@ -610,6 +627,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             )}
         </div>
       </div>
+
+        {replyToMessage && (
+            <div className="flex-shrink-0 p-4 pt-0 border-t">
+                <div className="relative rounded-lg bg-accent/50 p-3">
+                    <p className="text-xs font-semibold text-primary">{t('replying_to', { name: replyToMessage.sender?.name || replyToMessage.senderName })}</p>
+                    <p className="text-sm text-muted-foreground truncate">{replyToMessage.content}</p>
+                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyToMessage(null)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        )}
 
       {/* Message Input */}
       {canSendMessage && (
@@ -667,7 +696,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, promptUpdate }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, promptUpdate: () => void }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, promptUpdate, onReply }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, promptUpdate: () => void, onReply: (message: Message) => void }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
@@ -726,6 +755,20 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 errorEmitter.emit('permission-error', permissionError);
             });
     };
+
+    const handleScrollToReply = () => {
+        if (message.replyTo) {
+            const repliedMsgElement = document.getElementById(`message-${message.replyTo.messageId}`);
+            if (repliedMsgElement) {
+                repliedMsgElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                repliedMsgElement.classList.add('bg-primary/10', 'rounded-lg', 'transition-colors', 'duration-1000');
+                setTimeout(() => {
+                    repliedMsgElement.classList.remove('bg-primary/10');
+                }, 2000);
+            }
+        }
+    };
     
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
 
@@ -763,7 +806,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     };
     
     return (
-        <div className={cn(
+        <div id={`message-${message.id}`} className={cn(
             "flex items-end gap-3",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
@@ -781,70 +824,86 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <div className="w-10 flex-shrink-0" />
             ) : null}
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <div className={cn(
-                        "max-w-[85%] min-w-0 p-3 rounded-lg flex flex-col cursor-pointer",
-                        alignRight
-                        ? "bg-primary text-primary-foreground rounded-br-none"
-                        : "bg-card text-card-foreground rounded-bl-none",
-                    )}>
-                        {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                            <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                                {displaySender.name}
-                                {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
-                            </p>
-                        ): null}
-                        <div className="overflow-hidden">
-                            <div className={cn(
-                                "text-sm break-all prose prose-sm max-w-none",
-                                alignRight ? "prose-invert text-white" : "dark:prose-invert"
-                            )}>
-                                <ReactMarkdown 
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        a: renderLink,
-                                    }}
+            <div className="min-w-0">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <div className={cn(
+                            "max-w-full p-3 rounded-lg flex flex-col cursor-pointer",
+                            alignRight
+                            ? "bg-primary text-primary-foreground rounded-br-none"
+                            : "bg-card text-card-foreground rounded-bl-none",
+                        )}>
+                            {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
+                                <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                    {displaySender.name}
+                                    {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
+                                </p>
+                            ): null}
+
+                            {message.replyTo && (
+                                <button 
+                                    onClick={handleScrollToReply}
+                                    className="mb-2 p-2 rounded-md bg-black/5 dark:bg-white/5 w-full text-left hover:bg-black/10 dark:hover:bg-white/10"
                                 >
-                                    {message.content}
-                                </ReactMarkdown>
+                                    <div className="flex items-center gap-2">
+                                        <CornerDownLeft className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-sm text-primary">{message.replyTo.senderName}</p>
+                                            <p className="text-sm text-muted-foreground truncate">{message.replyTo.content}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            )}
+
+                            <div className="overflow-hidden">
+                                <div className={cn(
+                                    "text-sm break-all prose prose-sm max-w-none",
+                                    alignRight ? "prose-invert text-white" : "dark:prose-invert"
+                                )}>
+                                    <ReactMarkdown 
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            a: renderLink,
+                                        }}
+                                    >
+                                        {message.content}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+                            
+                            <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                                <span>{timestamp}</span>
+                                {isCurrentUser && chat.type !== 'channel' && !fromBot && (
+                                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
+                                )}
                             </div>
                         </div>
-                        
-                        <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                            <span>{timestamp}</span>
-                            {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                                <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
-                            )}
-                        </div>
-                    </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
-                    <DropdownMenuItem onSelect={promptUpdate}>
-                        <Reply className="mr-2 h-4 w-4" />
-                        <span>{t('reply')}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleCopy}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        <span>{t('copy_text')}</span>
-                    </DropdownMenuItem>
-                    {isCurrentUser && !fromBot && (
-                        <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={promptUpdate}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>{t('edit_message')}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>{t('delete_message')}</span>
-                            </DropdownMenuItem>
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
+                        <DropdownMenuItem onSelect={() => onReply(message)}>
+                            <Reply className="mr-2 h-4 w-4" />
+                            <span>{t('reply')}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleCopy}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            <span>{t('copy_text')}</span>
+                        </DropdownMenuItem>
+                        {isCurrentUser && !fromBot && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={promptUpdate}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>{t('edit_message')}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>{t('delete_message')}</span>
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
     );
 }
-
-    
