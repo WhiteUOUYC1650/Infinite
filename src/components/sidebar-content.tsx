@@ -730,17 +730,17 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("group w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
+        className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
             <div className="flex-1 min-w-0">
-                <p className={`font-semibold truncate group-hover:overflow-visible ${isSelected ? "text-sidebar-accent-foreground" : ""}`}>
-                    <span className="group-hover:inline-block group-hover:animate-marquee">{isSavedMessages ? t('saved_messages') : otherUser.name}</span>
+                <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
+                    {isSavedMessages ? t('saved_messages') : otherUser.name}
                 </p>
                 {item.lastMessage?.content && 
-                    <p className={`text-xs truncate group-hover:overflow-visible ${isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground"}`}>
-                        <span className="group-hover:inline-block group-hover:animate-marquee">{item.lastMessage.content}</span>
+                    <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                        {item.lastMessage.content}
                     </p>
                 }
             </div>
@@ -762,16 +762,16 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("group w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
+      className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 min-w-0">
-          <p className={`font-semibold truncate group-hover:overflow-visible ${isSelected ? "text-sidebar-accent-foreground" : ""}`}>
-            <span className="group-hover:inline-block group-hover:animate-marquee">{item.name}</span>
+          <p className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
+            {item.name}
           </p>
-          {lastMessage?.content && <p className={`text-xs truncate group-hover:overflow-visible ${isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground"}`}>
-            <span className="group-hover:inline-block group-hover:animate-marquee">{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</span>
+          {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+            {`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}
             </p>
           }
         </div>
