@@ -795,19 +795,20 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                 {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
                             </p>
                         ): null}
-
-                        <div className={cn(
-                            "text-sm break-all prose prose-sm",
-                            alignRight ? "prose-invert text-white" : "dark:prose-invert"
-                        )}>
-                            <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                    a: renderLink,
-                                }}
-                            >
-                                {message.content}
-                            </ReactMarkdown>
+                        <div className="overflow-hidden">
+                            <div className={cn(
+                                "text-sm break-all prose prose-sm max-w-none",
+                                alignRight ? "prose-invert text-white" : "dark:prose-invert"
+                            )}>
+                                <ReactMarkdown 
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        a: renderLink,
+                                    }}
+                                >
+                                    {message.content}
+                                </ReactMarkdown>
+                            </div>
                         </div>
                         
                         <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
@@ -845,3 +846,5 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
+    
