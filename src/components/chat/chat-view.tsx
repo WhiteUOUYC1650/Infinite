@@ -287,7 +287,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
 
       if (onSelectChat) {
-        onSelectChat(chatData as PopulatedChat);
+        const iconName = chatData.icon as keyof typeof iconMap | undefined;
+        const populatedChat: PopulatedChat = {
+            ...chatData,
+            iconComponent: iconName ? iconMap[iconName] : undefined,
+        };
+        onSelectChat(populatedChat);
       }
     } catch (error) {
       console.error('Error switching to DM:', error);
@@ -828,7 +833,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className={cn(
-                            "max-w-full p-3 rounded-lg flex flex-col cursor-pointer",
+                            "max-w-full p-3 rounded-lg flex flex-col cursor-pointer overflow-hidden",
                             alignRight
                             ? "bg-primary text-primary-foreground rounded-br-none"
                             : "bg-card text-card-foreground rounded-bl-none",
@@ -841,15 +846,30 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                             ): null}
 
                             {message.replyTo && (
-                                <button 
+                                <button
                                     onClick={handleScrollToReply}
-                                    className="mb-2 p-2 rounded-md bg-black/5 dark:bg-white/5 w-full text-left hover:bg-black/10 dark:hover:bg-white/10"
+                                    className={cn(
+                                        "mb-2 p-2 rounded-md w-full text-left transition-colors",
+                                        alignRight
+                                            ? "bg-black/10 hover:bg-black/20"
+                                            : "bg-muted hover:bg-muted/80"
+                                    )}
                                 >
                                     <div className="flex items-center gap-2">
-                                        <CornerDownLeft className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-sm text-primary">{message.replyTo.senderName}</p>
-                                            <p className="text-sm text-muted-foreground truncate">{message.replyTo.content}</p>
+                                            <p className={cn(
+                                                "font-semibold text-sm",
+                                                alignRight
+                                                    ? "text-primary-foreground/90"
+                                                    : "text-primary"
+                                            )}>{message.replyTo.senderName}</p>
+                                            <p className={cn(
+                                                "text-sm truncate",
+                                                alignRight
+                                                    ? "text-primary-foreground/70"
+                                                    : "text-muted-foreground"
+                                            )}>{message.replyTo.content}</p>
                                         </div>
                                     </div>
                                 </button>
@@ -907,3 +927,5 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
+    
