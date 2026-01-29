@@ -614,7 +614,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     <span>{timestamp}</span>
                     {isCurrentUser && chat.type !== 'channel' && !fromBot && (
                         isRead ? (
-                            <CheckCheck className="h-4 w-4 text-read-receipt" />
+                            <CheckCheck className="h-4 w-4" />
                         ) : (
                             <Check className="h-4 w-4" />
                         )
