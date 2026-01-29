@@ -6,6 +6,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { LanguageProvider } from '@/context/language-context';
 import { UpdatePromptProvider } from '@/context/update-prompt-context';
 import { ThemeProvider } from '@/context/theme-context';
+import { Snowfall } from '@/components/ui/snowfall';
 
 export const metadata: Metadata = {
   title: 'Infinite',
@@ -28,6 +29,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <LanguageProvider>
             <ThemeProvider>
+              <Snowfall />
               <UpdatePromptProvider>
                 <SplashScreen />
                 {children}

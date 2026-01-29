@@ -63,6 +63,8 @@ import { useTheme } from '@/context/theme-context';
 import { FaqDialog } from './faq-dialog';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { Skeleton } from './ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const iconMap = {
     Users,
@@ -85,7 +87,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme } = useTheme();
+  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes } = useTheme();
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -431,9 +433,9 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         <Button
                             variant="ghost"
                             onClick={handleSelectInfiniteBot}
-                            className={cn("w-full justify-start h-auto py-2 text-left", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                            className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                         >
-                            <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                            <div className="flex items-center gap-3 w-full px-4 md:px-0 relative">
                                 <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
                                 <div className="flex-1 min-w-0">
                                     <p className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
@@ -596,6 +598,17 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                               <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
                               <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
+                          <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Label htmlFor="snow-switch" className="flex w-full cursor-pointer items-center justify-between">
+                                    <span>{t('snowflakes')}</span>
+                                    <Switch
+                                        id="snow-switch"
+                                        checked={showSnowflakes}
+                                        onCheckedChange={toggleSnowflakes}
+                                    />
+                                </Label>
+                            </DropdownMenuItem>
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                      <DropdownMenuSub>
@@ -730,11 +743,11 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("relative w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
+        className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
         >
-        <div className="flex items-center gap-3 w-full px-4 md:px-0 pr-8">
+        <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
                 <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
                     {isSavedMessages ? t('saved_messages') : otherUser.name}
                 </p>
@@ -762,11 +775,11 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("relative w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
+      className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
     >
-      <div className="flex items-center gap-3 w-full px-4 md:px-0 pr-8">
+      <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <p className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
             {item.name}
           </p>

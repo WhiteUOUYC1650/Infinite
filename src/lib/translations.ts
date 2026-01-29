@@ -202,6 +202,7 @@ export const translations = {
       'faq_bot_a': "The 'Infinite' bot is an official automated assistant. It sends you a welcome message when you first sign up and greets you when you log in. In the future, it may also send important announcements or provide helpful tips.",
       'no_bots_found': 'No bots found. The InfiniteBot account may not have been created yet.',
       'bot_status': 'bot',
+      'snowflakes': 'Snowflakes',
     },
     ru: {
       'settings': 'Настройки',
@@ -406,6 +407,7 @@ export const translations = {
       'faq_bot_a': "Бот 'Infinite' — это официальный автоматизированный помощник. Он отправляет вам приветственное сообщение при первой регистрации и приветствует вас при входе в систему. В будущем он также может отправлять важные объявления или полезные советы.",
       'no_bots_found': 'Боты не найдены. Возможно, аккаунт InfiniteBot еще не создан.',
       'bot_status': 'бот',
+      'snowflakes': 'Снежинки',
     }
   };
   

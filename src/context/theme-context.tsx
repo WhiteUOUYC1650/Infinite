@@ -220,6 +220,8 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   isDarkMode: boolean;
+  showSnowflakes: boolean;
+  toggleSnowflakes: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -227,11 +229,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('orange');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showSnowflakes, setShowSnowflakes] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     const storedDarkMode = localStorage.getItem('app-theme-mode');
+    const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -243,6 +247,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
     
+    if (storedSnowflakes) {
+      setShowSnowflakes(storedSnowflakes === 'true');
+    }
+
     setIsMounted(true);
   }, []);
 
@@ -292,11 +300,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setIsDarkMode(prev => !prev);
   };
 
+  const handleToggleSnowflakes = () => {
+    setShowSnowflakes(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-snowflakes-mode', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
     toggleTheme: handleToggleTheme,
     isDarkMode,
+    showSnowflakes,
+    toggleSnowflakes: handleToggleSnowflakes,
   };
 
   if (!isMounted) {
