@@ -450,12 +450,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
             if (discussionChatSnap.exists()) {
                 const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-                // We send the same message data. The sender is still the channel owner.
-                batch.set(newMessageInDiscussionRef, messageData);
+                
+                // Create a new message object for the discussion group to post on behalf of the channel
+                const forwardedMessageData = {
+                    ...messageData,
+                    type: 'announcement', // This makes it render differently
+                    senderName: item.name, // The name of the channel
+                    senderAvatar: 'is_channel_message', // A special flag to render the channel icon
+                };
+                batch.set(newMessageInDiscussionRef, forwardedMessageData);
 
                 const discussionChatData = discussionChatSnap.data();
-                const discussionUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
+                
+                // The last message preview should also reflect that it came from the channel
+                const discussionLastMessageData = {
+                    ...lastMessageData,
+                    senderName: item.name,
+                };
+
+                const discussionUpdateData: { [key: string]: any } = { lastMessage: discussionLastMessageData };
                 discussionChatData.members.forEach((memberId: string) => {
+                    // We still increment unread counts for members of the discussion group
                     if (memberId !== currentUser.uid) {
                         discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
                     }
@@ -766,6 +781,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const { toast } = useToast();
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
     const fromBot = message.type === 'announcement';
+    const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
 
     const otherUserId = useMemo(() => {
@@ -878,7 +894,15 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot}>
-                            <UserAvatarWithStatus user={displaySender} />
+                           {isFromChannel ? (
+                                <Avatar className="h-10 w-10">
+                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary">
+                                        <Megaphone className="h-5 w-5 text-secondary-foreground" />
+                                    </div>
+                                </Avatar>
+                            ) : (
+                                <UserAvatarWithStatus user={displaySender} />
+                            )}
                         </button>
                     ) : (
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
@@ -900,7 +924,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                             {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
                                 <p className="font-semibold text-sm mb-1 flex items-center gap-2">
                                     {displaySender.name}
-                                    {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
+                                    {isFromChannel ? (
+                                        <Badge variant="secondary">{t('channel_badge')}</Badge>
+                                    ) : (
+                                        displaySender.isBot && <Badge variant="secondary">BOT</Badge>
+                                    )}
                                 </p>
                             ): null}
 
