@@ -784,7 +784,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <div className={cn(
-                        "max-w-[85%] p-3 rounded-lg flex flex-col cursor-pointer overflow-hidden",
+                        "max-w-[85%] min-w-0 p-3 rounded-lg flex flex-col cursor-pointer",
                         alignRight
                         ? "bg-primary text-primary-foreground rounded-br-none"
                         : "bg-card text-card-foreground rounded-bl-none",
