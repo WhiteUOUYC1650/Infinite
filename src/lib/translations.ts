@@ -203,7 +203,12 @@ export const translations = {
       'no_bots_found': 'No bots found. The InfiniteBot account may not have been created yet.',
       'bot_status': 'bot',
       'snowflakes': 'Snowflakes',
-      'internal_link_not_found': 'Could not find a user or chat for "{link}".'
+      'internal_link_not_found': 'Could not find a user or chat for "{link}".',
+      'reply': 'Reply',
+      'copy_text': 'Copy Text',
+      'edit_message': 'Edit',
+      'delete_message': 'Delete',
+      'copy_success_toast': 'Message text copied',
     },
     ru: {
       'settings': 'Настройки',
@@ -409,7 +414,12 @@ export const translations = {
       'no_bots_found': 'Боты не найдены. Возможно, аккаунт InfiniteBot еще не создан.',
       'bot_status': 'бот',
       'snowflakes': 'Снежинки',
-      'internal_link_not_found': 'Не удалось найти пользователя или чат для "{link}".'
+      'internal_link_not_found': 'Не удалось найти пользователя или чат для "{link}".',
+      'reply': 'Ответить',
+      'copy_text': 'Копировать текст',
+      'edit_message': 'Редактировать',
+      'delete_message': 'Удалить',
+      'copy_success_toast': 'Текст сообщения скопирован',
     }
   };
   

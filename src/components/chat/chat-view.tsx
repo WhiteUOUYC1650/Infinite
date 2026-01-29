@@ -669,6 +669,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, promptUpdate }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, promptUpdate: () => void }) {
     const db = useFirestore();
+    const { t } = useLanguage();
     const { toast } = useToast();
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
     const fromBot = message.type === 'announcement';
@@ -709,7 +710,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
     const handleCopy = () => {
         navigator.clipboard.writeText(message.content);
-        toast({ title: 'Message text copied' });
+        toast({ title: t('copy_success_toast') });
     }
 
     const handleDelete = () => {
@@ -796,7 +797,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         ): null}
 
                         <div className={cn(
-                            "text-sm break-words prose prose-sm max-w-none prose-p:my-0 prose-headings:my-2",
+                            "text-sm break-words prose prose-sm prose-p:my-0 prose-headings:my-2",
                             alignRight ? "prose-invert text-white" : "dark:prose-invert"
                         )}>
                             <ReactMarkdown 
@@ -820,22 +821,22 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
                     <DropdownMenuItem onSelect={promptUpdate}>
                         <Reply className="mr-2 h-4 w-4" />
-                        <span>Reply</span>
+                        <span>{t('reply')}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={handleCopy}>
                         <Copy className="mr-2 h-4 w-4" />
-                        <span>Copy Text</span>
+                        <span>{t('copy_text')}</span>
                     </DropdownMenuItem>
                     {isCurrentUser && !fromBot && (
                         <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onSelect={promptUpdate}>
                                 <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit</span>
+                                <span>{t('edit_message')}</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
+                                <span>{t('delete_message')}</span>
                             </DropdownMenuItem>
                         </>
                     )}
