@@ -41,7 +41,6 @@ body {
     --sidebar-accent-foreground: 20 14.3% 4.1%;
     --sidebar-border: 30 30% 82%;
     --sidebar-ring: 25 95% 53%;
-    --read-receipt: 217 91% 60%;
   }
 
   .dark {
@@ -77,7 +76,6 @@ body {
     --sidebar-accent-foreground: 30 71% 92%;
     --sidebar-border: 20 10% 25%;
     --sidebar-ring: 25 95% 53%;
-    --read-receipt: 217 91% 60%;
   }
 }
 

@@ -17,6 +17,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '30 50% 88%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '25 95% 53%',
@@ -29,6 +30,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '30 50% 88%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
   purple: {
@@ -43,6 +45,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '259 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '259 87% 66%',
@@ -55,6 +58,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '259 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
   blue: {
@@ -69,6 +73,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '217 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '48 96% 53%',
     },
     dark: {
       primary: '217 91% 55%',
@@ -81,6 +86,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '217 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '48 96% 53%',
     },
   },
   gray: {
@@ -95,6 +101,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '220 10% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '220 9% 55%',
@@ -107,6 +114,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '220 10% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
   green: {
@@ -121,6 +129,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '145 25% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '145 63% 37%',
@@ -133,6 +142,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '145 25% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
   red: {
@@ -147,6 +157,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '0 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '0 84% 55%',
@@ -159,6 +170,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '0 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
   yellow: {
@@ -173,6 +185,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '48 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '48 96% 53%',
@@ -185,6 +198,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '48 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
   pink: {
@@ -199,6 +213,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '20 14.3% 20.1%',
       sidebarAccent: '327 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
     dark: {
       primary: '327 86% 59%',
@@ -211,6 +226,7 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '327 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+      readReceipt: '217 91% 60%',
     },
   },
 };
@@ -275,6 +291,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         '--sidebar-accent-foreground': themeColors.sidebarAccentForeground,
         '--sidebar-border': themeColors.border,
         '--sidebar-ring': themeColors.primary,
+        '--read-receipt': themeColors.readReceipt,
       };
 
       for (const [property, value] of Object.entries(varsToSet)) {

@@ -612,7 +612,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 
                 <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
                     <span>{timestamp}</span>
-                    {isCurrentUser && chat.type !== 'channel' && (
+                    {isCurrentUser && chat.type !== 'channel' && !fromBot && (
                         isRead ? (
                             <CheckCheck className="h-4 w-4 text-read-receipt" />
                         ) : (
