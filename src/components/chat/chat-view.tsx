@@ -523,7 +523,16 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     }, [chat, currentUser.uid]);
 
     const isRead = useMemo(() => {
-        if (!isCurrentUser || !message.readBy || message.readBy.length === 0) return false;
+        if (!isCurrentUser) return false;
+
+        // If a message was sent before read receipts were implemented, it won't
+        // have a `readBy` field. We'll treat these as "read" to avoid confusion.
+        if (message.readBy === undefined) {
+            return true;
+        }
+        
+        if (!message.readBy || message.readBy.length === 0) return false;
+
         if (chat.type === 'dm') {
             return otherUserId ? message.readBy.includes(otherUserId) : false;
         }
