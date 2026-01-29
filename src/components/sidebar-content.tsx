@@ -734,7 +734,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
                 <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
                 {item.lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{item.lastMessage.content}</p>}
             </div>
@@ -760,7 +760,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>{item.name}</p>
           {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
