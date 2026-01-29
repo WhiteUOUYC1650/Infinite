@@ -7,10 +7,10 @@ import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion } from 'firebase/firestore';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -32,9 +32,25 @@ import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 
 
+function DateSeparator({ date }: { date: string }) {
+  return (
+    <div className="relative my-4" data-date-separator={date}>
+      <div className="absolute inset-0 flex items-center" aria-hidden="true">
+        <div className="w-full border-t" />
+      </div>
+      <div className="relative flex justify-center">
+        <span className="bg-background px-3 text-sm font-medium text-muted-foreground">
+          {date}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
   const [messageContent, setMessageContent] = useState('');
@@ -45,6 +61,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [stickyDate, setStickyDate] = useState<string | null>(null);
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -183,6 +201,42 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, item, chatLoading, messagesLoading, membersLoading]);
+
+  // --- Sticky Date Header Logic ---
+    const handleScroll = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const { scrollTop } = container;
+        const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
+        
+        let currentStickyDate: string | null = null;
+        
+        if (dateSeparators.length > 0 && scrollTop < dateSeparators[0].offsetTop) {
+            currentStickyDate = dateSeparators[0].dataset.dateSeparator || null;
+        } else {
+            for (let i = 0; i < dateSeparators.length; i++) {
+                const separator = dateSeparators[i];
+                if (separator.offsetTop <= scrollTop + 40) { // 40px offset for the sticky header itself
+                    currentStickyDate = separator.dataset.dateSeparator || null;
+                } else {
+                    break;
+                }
+            }
+        }
+        setStickyDate(currentStickyDate);
+
+    }, []);
+
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        container.addEventListener('scroll', handleScroll);
+        handleScroll(); // Initial check
+
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [handleScroll, messages]); // Rerun if messages change
 
 
   const handleSendMessageToUser = async (targetUser: User) => {
@@ -412,30 +466,44 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       {/* Message List */}
       <div className="flex-1 relative min-h-0">
-        <div className="absolute inset-0 overflow-y-auto">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
             ) : isMember && messages && messages.length > 0 ? (
+                <>
+                {stickyDate && (
+                    <div className="sticky top-0 z-10 flex justify-center py-2 bg-background/80 backdrop-blur-sm pointer-events-none">
+                        <Badge variant="secondary">{stickyDate}</Badge>
+                    </div>
+                )}
                 <div className="space-y-4 p-4">
-                    {messages.map((message) => {
+                    {messages.map((message, index) => {
                         const sender = memberDetails[message.senderId];
+                        const messageDate = new Date(message.timestamp.seconds * 1000);
+                        const prevMessage = messages[index - 1];
+                        const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
+                        const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
+
                         return (
-                            <ChatMessage 
-                                key={message.id} 
-                                message={message} 
-                                sender={sender}
-                                isCurrentUser={message.senderId === currentUser.uid} 
-                                chatType={item.type} 
-                                onAvatarClick={setProfileDialogUser}
-                                chat={item}
-                                currentUser={currentUser}
-                            />
+                            <React.Fragment key={message.id}>
+                                {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
+                                <ChatMessage 
+                                    message={message} 
+                                    sender={sender}
+                                    isCurrentUser={message.senderId === currentUser.uid} 
+                                    chatType={item.type} 
+                                    onAvatarClick={setProfileDialogUser}
+                                    chat={item}
+                                    currentUser={currentUser}
+                                />
+                            </React.Fragment>
                         );
                     })}
                     <div ref={messagesEndRef} />
                 </div>
+                </>
             ) : (
                 <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
                     {isMember ? (
@@ -613,11 +681,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
                     <span>{timestamp}</span>
                     {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                        isRead ? (
-                            <CheckCheck className="h-4 w-4" />
-                        ) : (
-                            <Check className="h-4 w-4" />
-                        )
+                        <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
                     )}
                 </div>
             </div>
