@@ -730,7 +730,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
+        className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
@@ -756,7 +756,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
+      className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
