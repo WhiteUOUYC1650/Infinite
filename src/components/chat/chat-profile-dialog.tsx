@@ -115,7 +115,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
     if (chat.type === 'channel') {
         dataToUpdate.description = values.description;
-        dataToUpdate.discussionChatId = values.discussionChatId;
+        dataToUpdate.discussionChatId = values.discussionChatId === 'none' ? '' : values.discussionChatId;
     } else if (chat.type === 'group') {
         dataToUpdate.description = values.description;
     }
@@ -227,7 +227,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="">{t('none_label')}</SelectItem>
+                                                    <SelectItem value="none">{t('none_label')}</SelectItem>
                                                     {ownedGroups.map(group => (
                                                         <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
                                                     ))}
