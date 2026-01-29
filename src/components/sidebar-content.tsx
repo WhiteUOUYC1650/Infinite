@@ -435,8 +435,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         >
                             <div className="flex items-center gap-3 w-full px-4 md:px-0">
                                 <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
-                                <div className="flex-1 truncate">
-                                    <p className={cn("font-semibold", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
                                 </div>
                             </div>
                         </Button>
@@ -734,8 +734,8 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
-            <div className="flex-1 truncate">
-                <p className={cn("font-semibold", isSelected && "text-sidebar-accent-foreground")}>{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
+            <div className="flex-1 min-w-0">
+                <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>{isSavedMessages ? t('saved_messages') : otherUser.name}</p>
                 {item.lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{item.lastMessage.content}</p>}
             </div>
             {unreadCount > 0 && (
@@ -760,8 +760,8 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
-        <div className="flex-1 truncate">
-          <p className={cn("font-semibold", isSelected && "text-sidebar-accent-foreground")}>{item.name}</p>
+        <div className="flex-1 min-w-0">
+          <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>{item.name}</p>
           {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>{`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}</p>}
         </div>
         {unreadCount > 0 && (
