@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck, Bookmark, Globe, Bot } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -47,6 +47,14 @@ function DateSeparator({ date }: { date: string }) {
     </div>
   );
 }
+
+const iconMap = {
+    Users,
+    Megaphone,
+    Bookmark,
+    Globe,
+    Bot,
+};
 
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
@@ -341,7 +349,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
 
         if (targetChat) {
-            onSelectChat(targetChat as PopulatedChat);
+            const iconName = targetChat.icon as keyof typeof iconMap | undefined;
+            const populatedChat: PopulatedChat = {
+                ...targetChat,
+                iconComponent: iconName ? iconMap[iconName] : undefined,
+            };
+            onSelectChat(populatedChat);
             if(isMobile) onClose();
         } else {
             toast({
