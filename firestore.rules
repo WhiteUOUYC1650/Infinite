@@ -54,7 +54,11 @@ service cloud.firestore {
     match /chats/GENERAL_CHAT/messages/{messageId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if isSignedIn() &&
+                     request.auth.uid in get(/databases/$(database)/documents/chats/GENERAL_CHAT).data.members &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) &&
+                     request.resource.data.readBy.toSet().difference(resource.data.readBy.toSet()).hasOnly([request.auth.uid]);
+      allow delete: if false;
     }
 
     match /chats/{chatId} {
@@ -99,7 +103,11 @@ service cloud.firestore {
                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
                      (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId);
                      
-      allow update, delete: if false;
+      allow update: if isSignedIn() &&
+                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) &&
+                     request.resource.data.readBy.toSet().difference(resource.data.readBy.toSet()).hasOnly([request.auth.uid]);
+      allow delete: if false;
     }
 
     match /chatLinks/{linkId} {

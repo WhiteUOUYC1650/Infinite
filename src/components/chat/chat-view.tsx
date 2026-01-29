@@ -2,11 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Text } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -66,6 +66,56 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- End live chat data ---
 
+  // --- Fetch messages and members ---
+  const messagesQuery = useMemoFirebase(() => {
+    if (!db || !isMember) return null;
+    return collection(db, 'chats', item.id, 'messages');
+  }, [db, item.id, isMember]);
+
+  const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
+  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
+  
+  const allUserIdsToFetch = useMemo(() => {
+    const ids = new Set<string>(item.members || []);
+    messages?.forEach(m => ids.add(m.senderId));
+    return Array.from(ids);
+  }, [item.members, messages]);
+
+  const { users: memberDetails, loading: membersLoading } = useBatchUsers(allUserIdsToFetch);
+
+
+  // --- Read Receipts Logic ---
+  useEffect(() => {
+    if (!db || !isMember || !messages || messages.length === 0) return;
+
+    const markMessagesAsRead = async () => {
+      const batch = writeBatch(db);
+      let updatesMade = 0;
+
+      messages.forEach(message => {
+        if (message.senderId !== currentUser.uid && !message.readBy?.includes(currentUser.uid)) {
+          const messageRef = doc(db, 'chats', item.id, 'messages', message.id);
+          batch.update(messageRef, {
+            readBy: arrayUnion(currentUser.uid)
+          });
+          updatesMade++;
+        }
+      });
+
+      if (updatesMade > 0) {
+        try {
+          await batch.commit();
+        } catch (error) {
+          console.error("Error marking messages as read:", error);
+        }
+      }
+    };
+
+    markMessagesAsRead();
+
+  }, [db, isMember, messages, currentUser.uid, item.id]);
+
+
   // --- Reset unread count ---
   useEffect(() => {
     if (db && currentUser?.uid && item.id && item.id !== 'GENERAL_CHAT' && isMember) {
@@ -87,39 +137,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return item.members.find((id) => id !== currentUser.uid) || currentUser.uid;
   }, [item, currentUser.uid]);
 
-  const otherUserDocRef = useMemoFirebase(() => {
-    if (!db || !otherUserId) return null;
-    return doc(db, 'users', otherUserId);
-  }, [db, otherUserId]);
-
-  const { data: otherUser } = useDoc<User>(otherUserDocRef);
+  const otherUser = useMemo(() => {
+    if (!otherUserId || !memberDetails) return null;
+    return memberDetails[otherUserId] || null;
+  }, [otherUserId, memberDetails]);
   // --- End Optimization ---
-
-  // --- Fetch all members' data ---
-  const messagesQuery = useMemoFirebase(() => {
-    if (!db || !isMember) return null;
-    return collection(db, 'chats', item.id, 'messages');
-  }, [db, item.id, isMember]);
-
-  const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
-  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
-
-  const messageSenderIds = useMemo(() => {
-    if (!messages) return [];
-    const ids = messages.map(m => m.senderId);
-    if(item.id === 'GENERAL_CHAT') {
-        // For general chat, we also need to fetch all members who sent a message
-        return Array.from(new Set(ids));
-    }
-    return Array.from(new Set(ids));
-  }, [messages, item.id]);
-
-  const allUserIdsToFetch = useMemo(() => {
-      const combined = [...(item.members || []), ...messageSenderIds];
-      return Array.from(new Set(combined));
-  }, [item.members, messageSenderIds]);
-
-  const { users: memberDetails, loading: membersLoading } = useBatchUsers(allUserIdsToFetch);
 
 
   const getChatName = () => {
@@ -234,6 +256,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         timestamp: timestamp,
         senderName: currentUser.name || currentUser.username || "User",
         type: 'user',
+        readBy: [],
     };
 
     if (currentUser.avatar) {
@@ -406,6 +429,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                 isCurrentUser={message.senderId === currentUser.uid} 
                                 chatType={item.type} 
                                 onAvatarClick={setProfileDialogUser}
+                                chat={item}
+                                currentUser={currentUser}
                             />
                         );
                     })}
@@ -487,10 +512,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void }) {
-    const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'dd.MM.yyyy, HH:mm') : '';
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser }) {
+    const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
     const fromBot = message.type === 'announcement';
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
+
+    const otherUserId = useMemo(() => {
+        if (chat.type !== 'dm') return null;
+        return chat.members.find((id) => id !== currentUser.uid);
+    }, [chat, currentUser.uid]);
+
+    const isRead = useMemo(() => {
+        if (!isCurrentUser || !message.readBy || message.readBy.length === 0) return false;
+        if (chat.type === 'dm') {
+            return otherUserId ? message.readBy.includes(otherUserId) : false;
+        }
+        if (chat.type === 'group') {
+            return message.readBy.some(readerId => readerId !== currentUser.uid);
+        }
+        return false;
+    }, [message.readBy, chat.type, currentUser.uid, otherUserId, isCurrentUser]);
+
 
     const handleAvatarClick = () => {
         if (fromBot) return; // Don't open profile for bot
@@ -505,7 +547,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
     const botUser: User | undefined = fromBot ? {
         id: 'INFINITE_BOT',
         name: message.senderName || 'Infinite',
-        username: '@Infinite',
+        username: '@InfiniteBot',
         avatar: message.senderAvatar,
         status: 'online',
         isBot: true,
@@ -535,7 +577,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
             <div className={cn(
                 "max-w-[85%] p-3 rounded-lg flex flex-col",
                 alignRight
-                ? "bg-primary text-white rounded-br-none"
+                ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none",
             )}>
                  {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
@@ -559,7 +601,16 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
                     </ReactMarkdown>
                 </div>
                 
-                <p className="text-xs opacity-70 mt-1 text-right self-end">{timestamp}</p>
+                <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                    <span>{timestamp}</span>
+                    {isCurrentUser && chat.type !== 'channel' && (
+                        isRead ? (
+                            <CheckCheck className="h-4 w-4 text-read-receipt" />
+                        ) : (
+                            <Check className="h-4 w-4" />
+                        )
+                    )}
+                </div>
             </div>
         </div>
     );

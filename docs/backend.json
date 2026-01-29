@@ -94,6 +94,11 @@
         "senderAvatar": {
             "type": "string",
             "description": "Avatar URL of the sender, used for bot messages."
+        },
+        "readBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of user IDs who have read the message."
         }
       },
       "required": ["senderId", "content", "timestamp"]

@@ -25,6 +25,7 @@ export type Message = {
   senderName?: string;
   senderAvatar?: string;
   type?: 'user' | 'announcement';
+  readBy?: string[];
 };
 
 export type Chat = {
