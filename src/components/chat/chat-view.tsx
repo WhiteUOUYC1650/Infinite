@@ -3,11 +3,11 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck, Bookmark, Globe, Bot } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -583,6 +583,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                     chat={item}
                                     currentUser={currentUser}
                                     onInternalLinkClick={handleInternalLinkClick}
+                                    promptUpdate={promptUpdate}
                                 />
                             </React.Fragment>
                         );
@@ -666,7 +667,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void> }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, promptUpdate }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, promptUpdate: () => void }) {
+    const db = useFirestore();
+    const { toast } = useToast();
     const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
     const fromBot = message.type === 'announcement';
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
@@ -702,6 +705,25 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         if (sender && !isCurrentUser) {
             onAvatarClick(sender);
         }
+    };
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(message.content);
+        toast({ title: 'Message text copied' });
+    }
+
+    const handleDelete = () => {
+        if (!db) return;
+        const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
+        deleteDoc(messageRef)
+            .catch((serverError: any) => {
+                console.error("Error deleting message: ", serverError);
+                const permissionError = new FirestorePermissionError({
+                    path: messageRef.path,
+                    operation: 'delete',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
     
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
@@ -758,40 +780,67 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <div className="w-10 flex-shrink-0" />
             ) : null}
 
-            <div className={cn(
-                "max-w-[85%] p-3 rounded-lg flex flex-col",
-                alignRight
-                ? "bg-primary text-primary-foreground rounded-br-none"
-                : "bg-card text-card-foreground rounded-bl-none",
-            )}>
-                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                     <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                        {displaySender.name}
-                        {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
-                    </p>
-                ): null}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <div className={cn(
+                        "max-w-[85%] p-3 rounded-lg flex flex-col cursor-pointer",
+                        alignRight
+                        ? "bg-primary text-primary-foreground rounded-br-none"
+                        : "bg-card text-card-foreground rounded-bl-none",
+                    )}>
+                        {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
+                            <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                                {displaySender.name}
+                                {displaySender.isBot && <Badge variant="secondary">BOT</Badge>}
+                            </p>
+                        ): null}
 
-                <div className={cn(
-                    "text-sm break-words prose prose-sm max-w-none prose-p:my-0 prose-headings:my-2",
-                    alignRight ? "prose-invert text-white" : "dark:prose-invert"
-                )}>
-                    <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                            a: renderLink,
-                        }}
-                    >
-                        {message.content}
-                    </ReactMarkdown>
-                </div>
-                
-                <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                    <span>{timestamp}</span>
-                    {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                        <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
+                        <div className={cn(
+                            "text-sm break-words prose prose-sm max-w-none prose-p:my-0 prose-headings:my-2",
+                            alignRight ? "prose-invert text-white" : "dark:prose-invert"
+                        )}>
+                            <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    a: renderLink,
+                                }}
+                            >
+                                {message.content}
+                            </ReactMarkdown>
+                        </div>
+                        
+                        <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                            <span>{timestamp}</span>
+                            {isCurrentUser && chat.type !== 'channel' && !fromBot && (
+                                <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
+                            )}
+                        </div>
+                    </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
+                    <DropdownMenuItem onSelect={promptUpdate}>
+                        <Reply className="mr-2 h-4 w-4" />
+                        <span>Reply</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleCopy}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        <span>Copy Text</span>
+                    </DropdownMenuItem>
+                    {isCurrentUser && !fromBot && (
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={promptUpdate}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                            </DropdownMenuItem>
+                        </>
                     )}
-                </div>
-            </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 }
