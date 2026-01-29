@@ -730,9 +730,9 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
+        className={cn("relative w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
         >
-        <div className="flex items-center gap-3 w-full px-4 md:px-0">
+        <div className="flex items-center gap-3 w-full px-4 md:px-0 pr-8">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
             <div className="flex-1 min-w-0">
                 <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
@@ -744,10 +744,10 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                     </p>
                 }
             </div>
-            {unreadCount > 0 && (
-                <Badge className="bg-primary">{unreadCount}</Badge>
-            )}
         </div>
+        {unreadCount > 0 && (
+            <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary">{unreadCount}</Badge>
+        )}
     </Button>
   );
 }
@@ -762,9 +762,9 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
+      className={cn("relative w-full justify-start h-auto py-2 text-left", isSelected && 'bg-sidebar-accent')}
     >
-      <div className="flex items-center gap-3 w-full px-4 md:px-0">
+      <div className="flex items-center gap-3 w-full px-4 md:px-0 pr-8">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 min-w-0">
           <p className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
@@ -775,10 +775,10 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
             </p>
           }
         </div>
-        {unreadCount > 0 && (
-            <Badge className="bg-primary">{unreadCount}</Badge>
-        )}
       </div>
+      {unreadCount > 0 && (
+          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary">{unreadCount}</Badge>
+      )}
     </Button>
   );
 }
