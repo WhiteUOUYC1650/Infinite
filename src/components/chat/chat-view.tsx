@@ -380,21 +380,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
 
-  const handleSendMessage = (e: React.FormEvent | React.KeyboardEvent) => {
+  const handleSendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!messageContent.trim() || !db) return;
-  
+
     setIsSending(true);
     const originalContent = messageContent;
+    const originalReplyTo = replyToMessage;
     const contentForMessage = originalContent.replace(/\n/g, '  \n');
     const contentForPreview = originalContent.split('\n')[0];
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
 
     setMessageContent('');
-  
-    const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
-  
+    setReplyToMessage(null); // Optimistically clear reply state
+
     const messageData: { [key: string]: any } = {
         senderId: currentUser.uid,
         content: contentForMessage,
@@ -415,48 +415,70 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
         };
     }
-  
-    addDoc(messagesCollectionRef, messageData)
-      .then(() => {
-        setReplyToMessage(null); // Clear reply state
-      })
-      .catch((serverError: any) => {
+
+    const batch = writeBatch(db);
+
+    try {
+        // --- Write to current chat ---
+        const newMessageInCurrentChatRef = doc(collection(db, 'chats', item.id, 'messages'));
+        batch.set(newMessageInCurrentChatRef, messageData);
+
+        const currentChatRef = doc(db, 'chats', item.id);
+        const lastMessageData = {
+            content: contentForPreview,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username || "User",
+            timestamp: timestamp,
+        };
+        const currentChatUpdateData: { [key:string]: any } = {
+            lastMessage: lastMessageData
+        };
+        if (item.id !== 'GENERAL_CHAT') {
+            item.members.forEach(memberId => {
+                if (memberId !== currentUser.uid) {
+                    currentChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        batch.update(currentChatRef, currentChatUpdateData);
+
+
+        // --- If it's a channel with a discussion chat, forward the message ---
+        if (item.type === 'channel' && item.discussionChatId) {
+            const discussionChatRef = doc(db, 'chats', item.discussionChatId);
+            const discussionChatSnap = await getDoc(discussionChatRef); // Read before batch write
+
+            if (discussionChatSnap.exists()) {
+                const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+                // We send the same message data. The sender is still the channel owner.
+                batch.set(newMessageInDiscussionRef, messageData);
+
+                const discussionChatData = discussionChatSnap.data();
+                const discussionUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
+                discussionChatData.members.forEach((memberId: string) => {
+                    if (memberId !== currentUser.uid) {
+                        discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
+                    }
+                });
+                batch.update(discussionChatRef, discussionUpdateData);
+            }
+        }
+        
+        await batch.commit();
+
+    } catch (serverError: any) {
         setMessageContent(originalContent); // Re-populate the input on error
+        setReplyToMessage(originalReplyTo); // Restore reply state on error
         console.error("Error sending message: ", serverError);
         const permissionError = new FirestorePermissionError({
-            path: messagesCollectionRef.path,
+            path: `chats/${item.id}/messages`,
             operation: 'create',
             requestResourceData: messageData,
         });
         errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
+    } finally {
         setIsSending(false);
-      });
-  
-    const chatRef = doc(db, 'chats', item.id);
-    const lastMessageData = {
-      content: contentForPreview,
-      senderId: currentUser.uid,
-      senderName: currentUser.name || currentUser.username || "User",
-      timestamp: timestamp,
-    };
-  
-    const chatUpdateData: { [key:string]: any } = { 
-        lastMessage: lastMessageData 
-    };
-  
-    if (item.id !== 'GENERAL_CHAT') {
-      item.members.forEach(memberId => {
-          if (memberId !== currentUser.uid) {
-              chatUpdateData[`unreadCounts.${memberId}`] = increment(1);
-          }
-      });
     }
-  
-    updateDoc(chatRef, chatUpdateData).catch((error) => {
-        console.error("Error updating chat metadata:", error);
-    });
   };
   
   const handleReply = (message: Message) => {
@@ -870,7 +892,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className={cn(
-                            "max-w-full p-3 rounded-lg flex flex-col cursor-pointer overflow-hidden",
+                            "max-w-full p-3 rounded-lg flex flex-col cursor-pointer",
                             alignRight
                             ? "bg-primary text-primary-foreground rounded-br-none"
                             : "bg-card text-card-foreground rounded-bl-none",
@@ -911,7 +933,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                     </div>
                                 </button>
                             )}
-
                             <div className="overflow-hidden">
                                 <div className={cn(
                                     "text-sm break-all prose prose-sm max-w-none",
