@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, Check, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -647,64 +647,66 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       {/* Message List Area */}
       <div className="relative flex-1 min-h-0">
-          {/* Sticky Date Header */}
-          {stickyDate && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
-                  <Badge variant="secondary">{stickyDate}</Badge>
-              </div>
-          )}
-          {/* Scrollable Content */}
-          <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
-              {isLoading ? (
-                  <div className="flex h-full items-center justify-center">
-                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  </div>
-              ) : isMember && messages && messages.length > 0 ? (
-                  <div className="space-y-4 p-4">
-                      {messages.map((message, index) => {
-                          const sender = memberDetails[message.senderId];
-                          const messageDate = new Date(message.timestamp.seconds * 1000);
-                          const prevMessage = messages[index - 1];
-                          const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
-                          const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
-
-                          return (
-                              <React.Fragment key={message.id}>
-                                  {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                  <ChatMessage 
-                                      message={message} 
-                                      sender={sender}
-                                      isCurrentUser={message.senderId === currentUser.uid} 
-                                      chatType={item.type} 
-                                      onAvatarClick={setProfileDialogUser}
-                                      chat={item}
-                                      currentUser={currentUser}
-                                      onInternalLinkClick={handleInternalLinkClick}
-                                      promptUpdate={promptUpdate}
-                                      onReply={handleReply}
-                                  />
-                              </React.Fragment>
-                          );
-                      })}
-                      <div ref={messagesEndRef} />
-                  </div>
-              ) : (
-                  <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
-                      {isMember ? (
-                          <p>{t('no_messages_yet')}</p>
-                      ) : (
-                          <>
-                              {item.type === 'group' ? (
-                                  <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                              ) : (
-                                  <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                              )}
-                              <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
-                              <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
-                          </>
-                      )}
+          <div className="absolute inset-0 flex flex-col">
+              {/* Sticky Date Header */}
+              {stickyDate && (
+                  <div className="flex-shrink-0 flex justify-center py-2 pointer-events-none">
+                      <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
+              {/* Scrollable Content */}
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
+                  {isLoading ? (
+                      <div className="flex h-full items-center justify-center">
+                          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                      </div>
+                  ) : isMember && messages && messages.length > 0 ? (
+                      <div className="space-y-4 p-4">
+                          {messages.map((message, index) => {
+                              const sender = memberDetails[message.senderId];
+                              const messageDate = new Date(message.timestamp.seconds * 1000);
+                              const prevMessage = messages[index - 1];
+                              const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
+                              const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
+
+                              return (
+                                  <React.Fragment key={message.id}>
+                                      {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
+                                      <ChatMessage 
+                                          message={message} 
+                                          sender={sender}
+                                          isCurrentUser={message.senderId === currentUser.uid} 
+                                          chatType={item.type} 
+                                          onAvatarClick={setProfileDialogUser}
+                                          chat={item}
+                                          currentUser={currentUser}
+                                          onInternalLinkClick={handleInternalLinkClick}
+                                          promptUpdate={promptUpdate}
+                                          onReply={handleReply}
+                                      />
+                                  </React.Fragment>
+                              );
+                          })}
+                          <div ref={messagesEndRef} />
+                      </div>
+                  ) : (
+                      <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
+                          {isMember ? (
+                              <p>{t('no_messages_yet')}</p>
+                          ) : (
+                              <>
+                                  {item.type === 'group' ? (
+                                      <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                                  ) : (
+                                      <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                                  )}
+                                  <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
+                                  <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
+                              </>
+                          )}
+                      </div>
+                  )}
+              </div>
           </div>
       </div>
 
@@ -1094,3 +1096,5 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
+    
