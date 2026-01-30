@@ -646,67 +646,65 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </header>
 
       {/* Message List Area */}
-      <div className="flex-1 relative min-h-0">
-          <div className='relative h-full'>
-            {/* Sticky Date Header */}
-            {stickyDate && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
-                    <Badge variant="secondary">{stickyDate}</Badge>
-                </div>
-            )}
-            {/* Scrollable Content */}
-            <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
-                {isLoading ? (
-                    <div className="flex h-full items-center justify-center">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    </div>
-                ) : isMember && messages && messages.length > 0 ? (
-                    <div className="space-y-4 p-4">
-                        {messages.map((message, index) => {
-                            const sender = memberDetails[message.senderId];
-                            const messageDate = new Date(message.timestamp.seconds * 1000);
-                            const prevMessage = messages[index - 1];
-                            const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
-                            const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
+      <div className="relative flex-1 min-h-0">
+          {/* Sticky Date Header */}
+          {stickyDate && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
+                  <Badge variant="secondary">{stickyDate}</Badge>
+              </div>
+          )}
+          {/* Scrollable Content */}
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
+              {isLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  </div>
+              ) : isMember && messages && messages.length > 0 ? (
+                  <div className="space-y-4 p-4">
+                      {messages.map((message, index) => {
+                          const sender = memberDetails[message.senderId];
+                          const messageDate = new Date(message.timestamp.seconds * 1000);
+                          const prevMessage = messages[index - 1];
+                          const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
+                          const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
 
-                            return (
-                                <React.Fragment key={message.id}>
-                                    {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                    <ChatMessage 
-                                        message={message} 
-                                        sender={sender}
-                                        isCurrentUser={message.senderId === currentUser.uid} 
-                                        chatType={item.type} 
-                                        onAvatarClick={setProfileDialogUser}
-                                        chat={item}
-                                        currentUser={currentUser}
-                                        onInternalLinkClick={handleInternalLinkClick}
-                                        promptUpdate={promptUpdate}
-                                        onReply={handleReply}
-                                    />
-                                </React.Fragment>
-                            );
-                        })}
-                        <div ref={messagesEndRef} />
-                    </div>
-                ) : (
-                    <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
-                        {isMember ? (
-                            <p>{t('no_messages_yet')}</p>
-                        ) : (
-                            <>
-                                {item.type === 'group' ? (
-                                    <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                                ) : (
-                                    <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                                )}
-                                <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
-                                <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
-                            </>
-                        )}
-                    </div>
-                )}
-            </div>
+                          return (
+                              <React.Fragment key={message.id}>
+                                  {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
+                                  <ChatMessage 
+                                      message={message} 
+                                      sender={sender}
+                                      isCurrentUser={message.senderId === currentUser.uid} 
+                                      chatType={item.type} 
+                                      onAvatarClick={setProfileDialogUser}
+                                      chat={item}
+                                      currentUser={currentUser}
+                                      onInternalLinkClick={handleInternalLinkClick}
+                                      promptUpdate={promptUpdate}
+                                      onReply={handleReply}
+                                  />
+                              </React.Fragment>
+                          );
+                      })}
+                      <div ref={messagesEndRef} />
+                  </div>
+              ) : (
+                  <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
+                      {isMember ? (
+                          <p>{t('no_messages_yet')}</p>
+                      ) : (
+                          <>
+                              {item.type === 'group' ? (
+                                  <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                              ) : (
+                                  <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                              )}
+                              <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
+                              <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
+                          </>
+                      )}
+                  </div>
+              )}
           </div>
       </div>
 
@@ -792,7 +790,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const startPos = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
-        // Cleanup timer on component unmount
+        // Cleanup timer on component unmount to prevent memory leaks
         return () => {
             if (pressTimer.current) {
                 clearTimeout(pressTimer.current);
@@ -801,23 +799,31 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     }, []);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        // Only listen for primary button (left-click or touch)
         if (e.button !== 0 || isMenuOpen) return;
 
         startPos.current = { x: e.clientX, y: e.clientY };
         
+        // Clear any existing timer
+        if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
+        }
+
         pressTimer.current = setTimeout(() => {
+            // If the timer completes, open the menu
             setIsMenuOpen(true);
             pressTimer.current = null;
-        }, 1000); // 1-second delay for long press
+        }, 1000); // 1-second delay
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        // If a timer is active, check for movement to cancel it
         if (pressTimer.current) {
             const dx = Math.abs(e.clientX - startPos.current.x);
             const dy = Math.abs(e.clientY - startPos.current.y);
             
-            // If pointer moves more than a few pixels, it's a scroll, so cancel the long press
-            if (dx > 5 || dy > 5) {
+            // If pointer moves more than 10 pixels, it's a scroll, so cancel the long press
+            if (dx > 10 || dy > 10) {
                 clearTimeout(pressTimer.current);
                 pressTimer.current = null;
             }
@@ -831,10 +837,18 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             pressTimer.current = null;
         }
     };
+    
+    // Also cancel if the pointer leaves the element, e.g., dragging off
+    const handlePointerLeave = () => {
+        if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
+            pressTimer.current = null;
+        }
+    };
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        // Clear any pending long-press timer
+        // Clear any pending long-press timer, as right-click should be instant
         if (pressTimer.current) {
             clearTimeout(pressTimer.current);
             pressTimer.current = null;
@@ -978,6 +992,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
+                            onPointerLeave={handlePointerLeave}
                             onContextMenu={handleContextMenu}
                             className={cn(
                             "max-w-full p-3 rounded-lg flex flex-col cursor-default",
