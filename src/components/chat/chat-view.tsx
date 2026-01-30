@@ -653,7 +653,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
             ) : isMember && messages && messages.length > 0 ? (
-                <>
+                <div className="relative">
                 {stickyDate && (
                     <div className="sticky top-0 z-10 flex justify-center py-2 bg-background/80 backdrop-blur-sm pointer-events-none">
                         <Badge variant="secondary">{stickyDate}</Badge>
@@ -687,7 +687,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     })}
                     <div ref={messagesEndRef} />
                 </div>
-                </>
+                </div>
             ) : (
                 <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
                     {isMember ? (
