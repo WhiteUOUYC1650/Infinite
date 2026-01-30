@@ -224,7 +224,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         let currentStickyDate: string | null = null;
         
         if (dateSeparators.length > 0 && scrollTop < dateSeparators[0].offsetTop) {
-            currentStickyDate = dateSeparators[0].dataset.dateSeparator || null;
+            currentStickyDate = null
         } else {
             for (let i = 0; i < dateSeparators.length; i++) {
                 const separator = dateSeparators[i];
@@ -645,67 +645,67 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
       </header>
 
-      {/* Message List */}
+      {/* Message List Area */}
       <div className="flex-1 relative min-h-0">
-        <div className="relative h-full">
-            {stickyDate && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
-                    <Badge variant="secondary">{stickyDate}</Badge>
-                </div>
-            )}
-            <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
-                {isLoading ? (
-                    <div className="flex h-full items-center justify-center">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    </div>
-                ) : isMember && messages && messages.length > 0 ? (
-                    <div className="space-y-4 p-4">
-                        {messages.map((message, index) => {
-                            const sender = memberDetails[message.senderId];
-                            const messageDate = new Date(message.timestamp.seconds * 1000);
-                            const prevMessage = messages[index - 1];
-                            const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
-                            const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
+          {/* Sticky Date Header */}
+          {stickyDate && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
+                  <Badge variant="secondary">{stickyDate}</Badge>
+              </div>
+          )}
+          {/* Scrollable Content */}
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
+              {isLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  </div>
+              ) : isMember && messages && messages.length > 0 ? (
+                  <div className="space-y-4 p-4">
+                      {messages.map((message, index) => {
+                          const sender = memberDetails[message.senderId];
+                          const messageDate = new Date(message.timestamp.seconds * 1000);
+                          const prevMessage = messages[index - 1];
+                          const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
+                          const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
 
-                            return (
-                                <React.Fragment key={message.id}>
-                                    {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                    <ChatMessage 
-                                        message={message} 
-                                        sender={sender}
-                                        isCurrentUser={message.senderId === currentUser.uid} 
-                                        chatType={item.type} 
-                                        onAvatarClick={setProfileDialogUser}
-                                        chat={item}
-                                        currentUser={currentUser}
-                                        onInternalLinkClick={handleInternalLinkClick}
-                                        promptUpdate={promptUpdate}
-                                        onReply={handleReply}
-                                    />
-                                </React.Fragment>
-                            );
-                        })}
-                        <div ref={messagesEndRef} />
-                    </div>
-                ) : (
-                    <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
-                        {isMember ? (
-                            <p>{t('no_messages_yet')}</p>
-                        ) : (
-                            <>
-                                {item.type === 'group' ? (
-                                    <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                                ) : (
-                                    <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                                )}
-                                <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
-                                <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
-                            </>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
+                          return (
+                              <React.Fragment key={message.id}>
+                                  {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
+                                  <ChatMessage 
+                                      message={message} 
+                                      sender={sender}
+                                      isCurrentUser={message.senderId === currentUser.uid} 
+                                      chatType={item.type} 
+                                      onAvatarClick={setProfileDialogUser}
+                                      chat={item}
+                                      currentUser={currentUser}
+                                      onInternalLinkClick={handleInternalLinkClick}
+                                      promptUpdate={promptUpdate}
+                                      onReply={handleReply}
+                                  />
+                              </React.Fragment>
+                          );
+                      })}
+                      <div ref={messagesEndRef} />
+                  </div>
+              ) : (
+                  <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
+                      {isMember ? (
+                          <p>{t('no_messages_yet')}</p>
+                      ) : (
+                          <>
+                              {item.type === 'group' ? (
+                                  <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                              ) : (
+                                  <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                              )}
+                              <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
+                              <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
+                          </>
+                      )}
+                  </div>
+              )}
+          </div>
       </div>
 
         {replyToMessage && (
@@ -790,9 +790,17 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const startPos = useRef({ x: 0, y: 0 });
     const isScrolling = useRef(false);
 
+    useEffect(() => {
+        // Cleanup timer on component unmount
+        return () => {
+            if (pressTimer.current) {
+                clearTimeout(pressTimer.current);
+            }
+        };
+    }, []);
+
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // Only for left click (main button)
-        if (e.button !== 0) return;
+        if (e.button !== 0 || isMenuOpen) return;
 
         startPos.current = { x: e.clientX, y: e.clientY };
         isScrolling.current = false;
@@ -802,7 +810,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 setIsMenuOpen(true);
             }
             pressTimer.current = null;
-        }, 1000); // 1 second
+        }, 1000);
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -810,7 +818,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const dx = Math.abs(e.clientX - startPos.current.x);
             const dy = Math.abs(e.clientY - startPos.current.y);
             
-            // If moved more than a few pixels, consider it a scroll
             if (dx > 5 || dy > 5) {
                 isScrolling.current = true;
                 if (pressTimer.current) {
@@ -821,21 +828,19 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         }
     };
 
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        // If the timer is still active, it means it was a short press.
+    const handlePointerUp = () => {
         if (pressTimer.current) {
             clearTimeout(pressTimer.current);
             pressTimer.current = null;
-            // If it wasn't a scroll, prevent the default "click" behavior.
-            if (!isScrolling.current) {
-                e.preventDefault();
-            }
         }
     };
 
-    // This handles right-click for desktop
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
+        if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
+            pressTimer.current = null;
+        }
         setIsMenuOpen(true);
     };
 
