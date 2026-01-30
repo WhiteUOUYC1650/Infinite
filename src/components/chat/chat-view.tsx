@@ -647,18 +647,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       {/* Message List */}
       <div className="flex-1 relative min-h-0">
+        {stickyDate && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
+                <Badge variant="secondary">{stickyDate}</Badge>
+            </div>
+        )}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
             ) : isMember && messages && messages.length > 0 ? (
-                <div className="relative">
-                {stickyDate && (
-                    <div className="sticky top-0 z-10 flex justify-center py-2 bg-background/80 backdrop-blur-sm pointer-events-none">
-                        <Badge variant="secondary">{stickyDate}</Badge>
-                    </div>
-                )}
                 <div className="space-y-4 p-4">
                     {messages.map((message, index) => {
                         const sender = memberDetails[message.senderId];
@@ -686,7 +685,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         );
                     })}
                     <div ref={messagesEndRef} />
-                </div>
                 </div>
             ) : (
                 <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
