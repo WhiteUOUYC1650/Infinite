@@ -987,10 +987,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
-                        <DropdownMenuItem onSelect={() => onReply(message)}>
-                            <Reply className="mr-2 h-4 w-4" />
-                            <span>{t('reply')}</span>
-                        </DropdownMenuItem>
+                        {chatType !== 'channel' && (
+                            <DropdownMenuItem onSelect={() => onReply(message)}>
+                                <Reply className="mr-2 h-4 w-4" />
+                                <span>{t('reply')}</span>
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onSelect={handleCopy}>
                             <Copy className="mr-2 h-4 w-4" />
                             <span>{t('copy_text')}</span>
