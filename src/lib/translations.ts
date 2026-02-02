@@ -14,7 +14,7 @@ export const translations = {
       'loading_chats': 'Loading chats...',
       'saved_messages': 'Saved Messages',
       'app_version': 'App Version',
-      'version_info': 'You are currently running version 0.2 (Beta) of Infinite messenger.',
+      'version_info': 'You are currently running version 0.2 Beta of Infinite messenger.',
       'ok': 'OK',
       'new_conversation': 'New Conversation',
       'new_conversation_desc': 'Start a new direct message, group discussion, or broadcast channel.',
@@ -216,6 +216,7 @@ export const translations = {
       'join_discussion_button': 'Join Discussion',
       'discussion_chat_not_found': 'The linked discussion chat could not be found.',
       'channel_badge': 'CHANNEL',
+      'edited': 'edited'
     },
     ru: {
       'settings': 'Настройки',
@@ -434,6 +435,7 @@ export const translations = {
       'join_discussion_button': 'Присоединиться к обсуждению',
       'discussion_chat_not_found': 'Связанный чат для обсуждений не найден.',
       'channel_badge': 'КАНАЛ',
+      'edited': 'изменено'
     }
   };
   

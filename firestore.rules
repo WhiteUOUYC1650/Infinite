@@ -118,7 +118,10 @@ service cloud.firestore {
                      
       allow update: if isSignedIn() &&
                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
-                     'readBy' in request.writeFields && request.writeFields.size() == 1;
+                     (
+                       ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
+                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']))
+                     );
       allow delete: if resource.data.senderId == request.auth.uid;
     }
 

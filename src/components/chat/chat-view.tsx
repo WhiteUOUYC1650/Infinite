@@ -8,7 +8,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIc
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -69,6 +69,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showChatProfile, setShowChatProfile] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -499,6 +500,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const handleReply = (message: Message) => {
     setReplyToMessage(message);
+    setEditingMessage(null);
   };
 
   const handleJoinDiscussion = async (discussionChatId: string) => {
@@ -681,8 +683,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           chat={item}
                                           currentUser={currentUser}
                                           onInternalLinkClick={handleInternalLinkClick}
-                                          promptUpdate={promptUpdate}
                                           onReply={handleReply}
+                                          editingMessage={editingMessage}
+                                          setEditingMessage={setEditingMessage}
                                       />
                                   </React.Fragment>
                               );
@@ -710,17 +713,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
       </div>
 
-        {replyToMessage && (
+        {(replyToMessage || editingMessage) && (
             <div className="flex-shrink-0 p-4 pt-0 border-t">
                 <div className="relative rounded-lg bg-accent/50 p-3">
-                    <p className="text-xs font-semibold text-primary">{t('replying_to', { name: replyToMessage.sender?.name || replyToMessage.senderName })}</p>
-                    <p className="text-sm text-muted-foreground truncate">{replyToMessage.content}</p>
-                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyToMessage(null)}>
+                    <p className="text-xs font-semibold text-primary">
+                        {editingMessage ? t('edit_message') : t('replying_to', { name: replyToMessage?.sender?.name || replyToMessage?.senderName })}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate">
+                        {editingMessage ? editingMessage.content : replyToMessage?.content}
+                    </p>
+                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => {
+                        setReplyToMessage(null);
+                        setEditingMessage(null);
+                    }}>
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
         )}
+
 
       {/* Message Input */}
       {canSendMessage && (
@@ -778,60 +789,72 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, promptUpdate, onReply }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, promptUpdate: () => void, onReply: (message: Message) => void }) {
+function ChatMessage({ 
+    message, 
+    sender, 
+    isCurrentUser, 
+    chatType, 
+    onAvatarClick, 
+    chat, 
+    currentUser, 
+    onInternalLinkClick, 
+    onReply,
+    editingMessage,
+    setEditingMessage
+}: { 
+    message: Message, 
+    sender?: User, 
+    isCurrentUser: boolean, 
+    chatType: PopulatedChat['type'], 
+    onAvatarClick: (user: User) => void, 
+    chat: PopulatedChat, 
+    currentUser: AuthenticatedUser, 
+    onInternalLinkClick: (href: string) => Promise<void>,
+    onReply: (message: Message) => void,
+    editingMessage: Message | null,
+    setEditingMessage: (message: Message | null) => void,
+}) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
-    const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
-    const fromBot = message.type === 'announcement';
-    const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
-    const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
-
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const pressTimer = useRef<NodeJS.Timeout | null>(null);
-    const startPos = useRef({ x: 0, y: 0 });
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [editText, setEditText] = useState(message.content);
 
-    const clearLongPressTimer = useCallback(() => {
-        if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-            pressTimer.current = null;
+    const isEditing = editingMessage?.id === message.id;
+
+    useEffect(() => {
+        if (message.content) {
+            setEditText(message.content.replace(/  \n/g, '\n'));
         }
-    }, []);
+    }, [message.content]);
 
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (e.button !== 0 || isMenuOpen) return;
-        startPos.current = { x: e.clientX, y: e.clientY };
-        clearLongPressTimer();
-        pressTimer.current = setTimeout(() => {
-            setIsMenuOpen(true);
-            pressTimer.current = null;
-        }, 1000);
-    };
+    const handleSaveEdit = async () => {
+        if (!db || !editText.trim()) return;
 
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (pressTimer.current) {
-            const dx = Math.abs(e.clientX - startPos.current.x);
-            const dy = Math.abs(e.clientY - startPos.current.y);
-            if (dx > 10 || dy > 10) {
-                clearLongPressTimer();
-            }
+        setIsSavingEdit(true);
+        const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
+
+        try {
+            await updateDoc(messageRef, {
+                content: editText.replace(/\n/g, '  \n'),
+                editedAt: serverTimestamp(),
+            });
+            setEditingMessage(null);
+        } catch (serverError) {
+            const permissionError = new FirestorePermissionError({
+                path: messageRef.path,
+                operation: 'update',
+                requestResourceData: { content: editText },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } finally {
+            setIsSavingEdit(false);
         }
-    };
-
-    const handlePointerUp = () => {
-        clearLongPressTimer();
     };
     
-    useEffect(() => {
-        return () => {
-            clearLongPressTimer();
-        };
-    }, [clearLongPressTimer]);
-
-
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        clearLongPressTimer();
         setIsMenuOpen(true);
     };
 
@@ -842,15 +865,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
     const isRead = useMemo(() => {
         if (!isCurrentUser) return false;
-
-        // If a message was sent before read receipts were implemented, it won't
-        // have a `readBy` field. We'll treat these as "read" to avoid confusion.
         if (message.readBy === undefined) {
             return true;
         }
-        
         if (!message.readBy || message.readBy.length === 0) return false;
-
         if (chat.type === 'dm') {
             return otherUserId ? message.readBy.includes(otherUserId) : false;
         }
@@ -892,7 +910,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const repliedMsgElement = document.getElementById(`message-${message.replyTo.messageId}`);
             if (repliedMsgElement) {
                 repliedMsgElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
                 repliedMsgElement.classList.add('bg-primary/10', 'rounded-lg', 'transition-colors', 'duration-1000');
                 setTimeout(() => {
                     repliedMsgElement.classList.remove('bg-primary/10');
@@ -900,10 +917,14 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             }
         }
     };
+
+    const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
+    const fromBot = message.type === 'announcement';
+    const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
+    const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
     
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
 
-    // Create a fake User object for the bot from the message data
     const botUser: User | undefined = fromBot ? {
         id: 'INFINITE_BOT',
         name: message.senderName || 'Infinite',
@@ -928,7 +949,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             );
         }
 
-        // External links
         return (
             <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>
                 {children}
@@ -936,12 +956,81 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         );
     };
     
+    const messageBubbleContent = (
+        <>
+            {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
+                <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                    {displaySender.name}
+                    {isFromChannel ? (
+                        <Badge variant="secondary">{t('channel_badge')}</Badge>
+                    ) : (
+                        displaySender.isBot && <Badge variant="secondary">BOT</Badge>
+                    )}
+                </p>
+            ): null}
+
+            {message.replyTo && (
+                <button
+                    onClick={handleScrollToReply}
+                    className={cn(
+                        "mb-2 p-2 rounded-md w-full text-left transition-colors",
+                        alignRight
+                            ? "bg-black/10 hover:bg-black/20"
+                            : "bg-muted hover:bg-muted/80"
+                    )}
+                >
+                    <div className="flex items-center gap-2">
+                        <CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                            <p className={cn(
+                                "font-semibold text-sm",
+                                alignRight
+                                    ? "text-primary-foreground/90"
+                                    : "text-primary"
+                            )}>{message.replyTo.senderName}</p>
+                            <p className={cn(
+                                "text-sm truncate",
+                                alignRight
+                                    ? "text-primary-foreground/70"
+                                    : "text-muted-foreground"
+                            )}>{message.replyTo.content}</p>
+                        </div>
+                    </div>
+                </button>
+            )}
+            <div className="overflow-hidden">
+                <div className={cn(
+                    "text-sm break-all prose prose-sm max-w-none",
+                    alignRight ? "prose-invert text-white" : "dark:prose-invert"
+                )}>
+                    <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            a: renderLink,
+                        }}
+                    >
+                        {message.content}
+                    </ReactMarkdown>
+                </div>
+            </div>
+            
+            <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                {message.editedAt && <span className="italic">{t('edited')}</span>}
+                <span>{timestamp}</span>
+                {isCurrentUser && chat.type !== 'channel' && !fromBot && (
+                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
+                )}
+            </div>
+        </>
+    );
+
     return (
         <div id={`message-${message.id}`} className={cn(
             "flex items-end gap-3",
-            alignRight ? "flex-row-reverse" : "flex-row"
+            alignRight ? "flex-row-reverse" : "flex-row",
+            isEditing && "w-full"
         )}>
-            {showAvatar ? (
+            {showAvatar && !isEditing ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot}>
@@ -959,95 +1048,45 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : chatType === 'group' && !alignRight ? (
+            ) : chatType === 'group' && !alignRight && !isEditing ? (
                 <div className="w-10 flex-shrink-0" />
             ) : null}
 
-            <div className="min-w-0">
+            <div className={cn("min-w-0", isEditing ? "w-full" : "max-w-[85%]")}>
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUp}
                             onContextMenu={handleContextMenu}
                             className={cn(
-                            "max-w-full p-3 rounded-lg flex flex-col cursor-default",
-                            alignRight
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-card text-card-foreground rounded-bl-none",
+                                "p-3 rounded-lg flex flex-col cursor-default",
+                                !isEditing && (alignRight
+                                ? "bg-primary text-primary-foreground rounded-br-none"
+                                : "bg-card text-card-foreground rounded-bl-none")
                         )}>
-                            {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                                <p className="font-semibold text-sm mb-1 flex items-center gap-2">
-                                    {displaySender.name}
-                                    {isFromChannel ? (
-                                        <Badge variant="secondary">{t('channel_badge')}</Badge>
-                                    ) : (
-                                        displaySender.isBot && <Badge variant="secondary">BOT</Badge>
-                                    )}
-                                </p>
-                            ): null}
-
-                            {message.replyTo && (
-                                <button
-                                    onClick={handleScrollToReply}
-                                    className={cn(
-                                        "mb-2 p-2 rounded-md w-full text-left transition-colors",
-                                        alignRight
-                                            ? "bg-black/10 hover:bg-black/20"
-                                            : "bg-muted hover:bg-muted/80"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                        <div className="min-w-0">
-                                            <p className={cn(
-                                                "font-semibold text-sm",
-                                                alignRight
-                                                    ? "text-primary-foreground/90"
-                                                    : "text-primary"
-                                            )}>{message.replyTo.senderName}</p>
-                                            <p className={cn(
-                                                "text-sm truncate",
-                                                alignRight
-                                                    ? "text-primary-foreground/70"
-                                                    : "text-muted-foreground"
-                                            )}>{message.replyTo.content}</p>
-                                        </div>
+                            {isEditing ? (
+                                <div className='space-y-2'>
+                                    <Textarea
+                                        value={editText}
+                                        onChange={(e) => setEditText(e.target.value)}
+                                        className="text-sm"
+                                        rows={Math.min(10, editText.split('\n').length)}
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <Button variant="ghost" size="sm" onClick={() => setEditingMessage(null)}>{t('cancel')}</Button>
+                                        <Button size="sm" onClick={handleSaveEdit} disabled={isSavingEdit}>
+                                            {isSavingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            {t('save')}
+                                        </Button>
                                     </div>
-                                </button>
-                            )}
-                            <div className="overflow-hidden">
-                                <div className={cn(
-                                    "text-sm break-all prose prose-sm max-w-none",
-                                    alignRight ? "prose-invert text-white" : "dark:prose-invert"
-                                )}>
-                                    <ReactMarkdown 
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            a: renderLink,
-                                        }}
-                                    >
-                                        {message.content}
-                                    </ReactMarkdown>
                                 </div>
-                            </div>
-                            
-                            <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                                <span>{timestamp}</span>
-                                {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
-                                )}
-                            </div>
+                            ) : messageBubbleContent}
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
-                        {chat.type !== 'channel' && (
-                            <DropdownMenuItem onSelect={() => onReply(message)}>
-                                <Reply className="mr-2 h-4 w-4" />
-                                <span>{t('reply')}</span>
-                            </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem onSelect={() => onReply(message)}>
+                            <Reply className="mr-2 h-4 w-4" />
+                            <span>{t('reply')}</span>
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleCopy}>
                             <Copy className="mr-2 h-4 w-4" />
                             <span>{t('copy_text')}</span>
@@ -1055,7 +1094,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         {isCurrentUser && !fromBot && (
                             <>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={promptUpdate}>
+                                <DropdownMenuItem onSelect={() => setEditingMessage(message)}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     <span>{t('edit_message')}</span>
                                 </DropdownMenuItem>
@@ -1073,3 +1112,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 }
 
     
+

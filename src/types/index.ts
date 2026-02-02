@@ -33,6 +33,7 @@ export type Message = {
   type?: 'user' | 'announcement';
   readBy?: string[];
   replyTo?: ReplyInfo;
+  editedAt?: Timestamp;
 };
 
 export type Chat = {

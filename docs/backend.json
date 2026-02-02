@@ -82,6 +82,10 @@
           "type": "object",
           "description": "The server timestamp when the message was created."
         },
+        "editedAt": {
+            "type": "object",
+            "description": "The server timestamp when the message was last edited."
+        },
         "type": {
           "type": "string",
           "enum": ["user", "announcement"],
