@@ -14,6 +14,13 @@ export default function Home() {
   const auth = useAuth();
 
   useEffect(() => {
+    // If an account is being deleted, don't do anything.
+    // The redirect to /goodbye will be handled by the delete function.
+    const isDeleting = sessionStorage.getItem('isDeletingAccount');
+    if (isDeleting) {
+        return;
+    }
+
     if (loading) return;
 
     if (!user) {

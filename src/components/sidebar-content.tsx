@@ -220,10 +220,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
     
     setIsDeleting(true);
+    // Set a flag to prevent the main page from redirecting to /login
+    sessionStorage.setItem('isDeletingAccount', 'true');
 
     const userToDelete = auth.currentUser;
     if (!userToDelete) {
         setIsDeleting(false);
+        sessionStorage.removeItem('isDeletingAccount');
         return;
     }
 
@@ -249,6 +252,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             description: error.message || t('unexpected_error')
         });
         setIsDeleting(false);
+        // Clean up the flag on error
+        sessionStorage.removeItem('isDeletingAccount');
     }
   };
 

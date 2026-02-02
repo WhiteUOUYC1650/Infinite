@@ -12,10 +12,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from '@/context/theme-context';
+import { useEffect } from 'react';
 
 export default function GoodbyePage() {
   const { language, setLanguage, t } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    // Clean up the flag that prevents the redirect to /login
+    sessionStorage.removeItem('isDeletingAccount');
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background text-center p-8 relative">

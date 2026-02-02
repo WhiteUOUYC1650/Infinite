@@ -650,12 +650,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           <div className="absolute inset-0 flex flex-col">
               {/* Sticky Date Header */}
               {stickyDate && (
-                  <div className="flex-shrink-0 flex justify-center py-2 pointer-events-none">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex-shrink-0 flex justify-center py-2 pointer-events-none">
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
               {/* Scrollable Content */}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
+              <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -791,71 +791,47 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const pressTimer = useRef<NodeJS.Timeout | null>(null);
     const startPos = useRef({ x: 0, y: 0 });
 
-    useEffect(() => {
-        // Cleanup timer on component unmount to prevent memory leaks
-        return () => {
-            if (pressTimer.current) {
-                clearTimeout(pressTimer.current);
-            }
-        };
+    const clearLongPressTimer = useCallback(() => {
+        if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
+            pressTimer.current = null;
+        }
     }, []);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // Only listen for primary button (left-click or touch)
         if (e.button !== 0 || isMenuOpen) return;
-
         startPos.current = { x: e.clientX, y: e.clientY };
-        
-        // Clear any existing timer
-        if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-        }
-
+        clearLongPressTimer();
         pressTimer.current = setTimeout(() => {
-            // If the timer completes, open the menu
             setIsMenuOpen(true);
             pressTimer.current = null;
-        }, 1000); // 1-second delay
+        }, 1000);
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        // If a timer is active, check for movement to cancel it
         if (pressTimer.current) {
             const dx = Math.abs(e.clientX - startPos.current.x);
             const dy = Math.abs(e.clientY - startPos.current.y);
-            
-            // If pointer moves more than 10 pixels, it's a scroll, so cancel the long press
             if (dx > 10 || dy > 10) {
-                clearTimeout(pressTimer.current);
-                pressTimer.current = null;
+                clearLongPressTimer();
             }
         }
     };
 
     const handlePointerUp = () => {
-        // If the press is released before the timer fires, cancel it
-        if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-            pressTimer.current = null;
-        }
+        clearLongPressTimer();
     };
     
-    // Also cancel if the pointer leaves the element, e.g., dragging off
-    const handlePointerLeave = () => {
-        if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-            pressTimer.current = null;
-        }
-    };
+    useEffect(() => {
+        return () => {
+            clearLongPressTimer();
+        };
+    }, [clearLongPressTimer]);
+
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        // Clear any pending long-press timer, as right-click should be instant
-        if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-            pressTimer.current = null;
-        }
-        // Open the menu for right-click
+        clearLongPressTimer();
         setIsMenuOpen(true);
     };
 
@@ -994,7 +970,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
-                            onPointerLeave={handlePointerLeave}
                             onContextMenu={handleContextMenu}
                             className={cn(
                             "max-w-full p-3 rounded-lg flex flex-col cursor-default",
