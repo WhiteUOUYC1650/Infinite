@@ -427,6 +427,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         const currentChatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
+            id: newMessageInCurrentChatRef.id,
             content: contentForPreview,
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username || "User",
@@ -467,6 +468,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 // The last message preview should also reflect that it came from the channel
                 const discussionLastMessageData = {
                     ...lastMessageData,
+                    id: newMessageInDiscussionRef.id,
                     senderName: item.name,
                 };
 
@@ -819,15 +821,15 @@ function ChatMessage({
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
-    const [editText, setEditText] = useState(message.content);
+    const [editText, setEditText] = useState('');
 
     const isEditing = editingMessage?.id === message.id;
 
     useEffect(() => {
-        if (message.content) {
+        if (isEditing) {
             setEditText(message.content.replace(/  \n/g, '\n'));
         }
-    }, [message.content]);
+    }, [isEditing, message.content]);
 
     const handleSaveEdit = async () => {
         if (!db || !editText.trim()) return;
@@ -836,10 +838,20 @@ function ChatMessage({
         const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
 
         try {
-            await updateDoc(messageRef, {
+            const updatePayload: { [key: string]: any } = {
                 content: editText.replace(/\n/g, '  \n'),
                 editedAt: serverTimestamp(),
-            });
+            };
+            await updateDoc(messageRef, updatePayload);
+
+            if (chat.lastMessage?.id === message.id) {
+                const chatRef = doc(db, 'chats', chat.id);
+                await updateDoc(chatRef, {
+                    'lastMessage.content': editText.split('\n')[0],
+                    'lastMessage.editedAt': serverTimestamp(),
+                });
+            }
+
             setEditingMessage(null);
         } catch (serverError) {
             const permissionError = new FirestorePermissionError({
@@ -1110,6 +1122,3 @@ function ChatMessage({
         </div>
     );
 }
-
-    
-
