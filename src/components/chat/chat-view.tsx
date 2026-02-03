@@ -505,6 +505,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     setEditingMessage(null);
   };
 
+  const handleSetEditingMessage = (message: Message | null) => {
+    setEditingMessage(message);
+    // If we are starting an edit, cancel any reply.
+    if (message !== null) {
+        setReplyToMessage(null);
+    }
+  };
+
   const handleJoinDiscussion = async (discussionChatId: string) => {
     if (!db) return;
     try {
@@ -687,7 +695,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
                                           editingMessage={editingMessage}
-                                          setEditingMessage={setEditingMessage}
+                                          setEditingMessage={handleSetEditingMessage}
                                       />
                                   </React.Fragment>
                               );
@@ -715,19 +723,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
       </div>
 
-        {(replyToMessage || editingMessage) && (
+        {replyToMessage && (
             <div className="flex-shrink-0 p-4 pt-0 border-t">
                 <div className="relative rounded-lg bg-accent/50 p-3">
                     <p className="text-xs font-semibold text-primary">
-                        {editingMessage ? t('edit_message') : t('replying_to', { name: replyToMessage?.sender?.name || replyToMessage?.senderName })}
+                        {t('replying_to', { name: replyToMessage?.sender?.name || replyToMessage?.senderName })}
                     </p>
                     <p className="text-sm text-muted-foreground truncate">
-                        {editingMessage ? editingMessage.content : replyToMessage?.content}
+                        {replyToMessage.content}
                     </p>
-                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => {
-                        setReplyToMessage(null);
-                        setEditingMessage(null);
-                    }}>
+                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyToMessage(null)}>
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
@@ -1095,10 +1100,12 @@ function ChatMessage({
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
-                        <DropdownMenuItem onSelect={() => onReply(message)}>
-                            <Reply className="mr-2 h-4 w-4" />
-                            <span>{t('reply')}</span>
-                        </DropdownMenuItem>
+                        {chat.type !== 'channel' && (
+                            <DropdownMenuItem onSelect={() => onReply(message)}>
+                                <Reply className="mr-2 h-4 w-4" />
+                                <span>{t('reply')}</span>
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onSelect={handleCopy}>
                             <Copy className="mr-2 h-4 w-4" />
                             <span>{t('copy_text')}</span>
