@@ -216,7 +216,8 @@ export const translations = {
       'join_discussion_button': 'Join Discussion',
       'discussion_chat_not_found': 'The linked discussion chat could not be found.',
       'channel_badge': 'CHANNEL',
-      'edited': 'edited'
+      'edited': 'edited',
+      'editing_message': 'Editing message'
     },
     ru: {
       'settings': 'Настройки',
@@ -435,7 +436,8 @@ export const translations = {
       'join_discussion_button': 'Присоединиться к обсуждению',
       'discussion_chat_not_found': 'Связанный чат для обсуждений не найден.',
       'channel_badge': 'КАНАЛ',
-      'edited': 'изменено'
+      'edited': 'изменено',
+      'editing_message': 'Редактирование сообщения'
     }
   };
   

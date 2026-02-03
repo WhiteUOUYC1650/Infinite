@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -381,11 +381,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   };
 
-
-  const handleSendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async () => {
     if (!messageContent.trim() || !db) return;
-
+  
     setIsSending(true);
     const originalContent = messageContent;
     const originalReplyTo = replyToMessage;
@@ -393,110 +391,108 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const contentForPreview = originalContent.split('\n')[0];
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
-
+  
     setMessageContent('');
     setReplyToMessage(null); // Optimistically clear reply state
-
+  
     const messageData: { [key: string]: any } = {
-        senderId: currentUser.uid,
-        content: contentForMessage,
-        timestamp: timestamp,
-        senderName: currentUser.name || currentUser.username || "User",
-        type: 'user',
-        readBy: [],
+      senderId: currentUser.uid,
+      content: contentForMessage,
+      timestamp: timestamp,
+      senderName: currentUser.name || currentUser.username || 'User',
+      type: 'user',
+      readBy: [],
     };
-
+  
     if (currentUser.avatar) {
-        messageData.senderAvatar = currentUser.avatar;
+      messageData.senderAvatar = currentUser.avatar;
     }
-
+  
     if (replyToMessage) {
-        messageData.replyTo = {
-            messageId: replyToMessage.id,
-            content: replyToMessage.content,
-            senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
-        };
+      messageData.replyTo = {
+        messageId: replyToMessage.id,
+        content: replyToMessage.content,
+        senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
+      };
     }
-
+  
     const batch = writeBatch(db);
-
+  
     try {
-        // --- Write to current chat ---
-        const newMessageInCurrentChatRef = doc(collection(db, 'chats', item.id, 'messages'));
-        batch.set(newMessageInCurrentChatRef, messageData);
-
-        const currentChatRef = doc(db, 'chats', item.id);
-        const lastMessageData = {
-            id: newMessageInCurrentChatRef.id,
-            content: contentForPreview,
-            senderId: currentUser.uid,
-            senderName: currentUser.name || currentUser.username || "User",
-            timestamp: timestamp,
-        };
-        const currentChatUpdateData: { [key:string]: any } = {
-            lastMessage: lastMessageData
-        };
-        if (item.id !== 'GENERAL_CHAT') {
-            item.members.forEach(memberId => {
-                if (memberId !== currentUser.uid) {
-                    currentChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
-                }
-            });
-        }
-        batch.update(currentChatRef, currentChatUpdateData);
-
-
-        // --- If it's a channel with a discussion chat, forward the message ---
-        if (item.type === 'channel' && item.discussionChatId) {
-            const discussionChatRef = doc(db, 'chats', item.discussionChatId);
-            const discussionChatSnap = await getDoc(discussionChatRef); // Read before batch write
-
-            if (discussionChatSnap.exists()) {
-                const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-                
-                // Create a new message object for the discussion group to post on behalf of the channel
-                const forwardedMessageData = {
-                    ...messageData,
-                    type: 'announcement', // This makes it render differently
-                    senderName: item.name, // The name of the channel
-                    senderAvatar: 'is_channel_message', // A special flag to render the channel icon
-                };
-                batch.set(newMessageInDiscussionRef, forwardedMessageData);
-
-                const discussionChatData = discussionChatSnap.data();
-                
-                // The last message preview should also reflect that it came from the channel
-                const discussionLastMessageData = {
-                    ...lastMessageData,
-                    id: newMessageInDiscussionRef.id,
-                    senderName: item.name,
-                };
-
-                const discussionUpdateData: { [key: string]: any } = { lastMessage: discussionLastMessageData };
-                discussionChatData.members.forEach((memberId: string) => {
-                    // We still increment unread counts for members of the discussion group
-                    if (memberId !== currentUser.uid) {
-                        discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
-                    }
-                });
-                batch.update(discussionChatRef, discussionUpdateData);
-            }
-        }
-        
-        await batch.commit();
-
-    } catch (serverError: any) {
-        setMessageContent(originalContent); // Re-populate the input on error
-        setReplyToMessage(originalReplyTo); // Restore reply state on error
-        console.error("Error sending message: ", serverError);
-        const permissionError = new FirestorePermissionError({
-            path: `chats/${item.id}/messages`,
-            operation: 'create',
-            requestResourceData: messageData,
+      // --- Write to current chat ---
+      const newMessageInCurrentChatRef = doc(collection(db, 'chats', item.id, 'messages'));
+      batch.set(newMessageInCurrentChatRef, messageData);
+  
+      const currentChatRef = doc(db, 'chats', item.id);
+      const lastMessageData = {
+        id: newMessageInCurrentChatRef.id,
+        content: contentForPreview,
+        senderId: currentUser.uid,
+        senderName: currentUser.name || currentUser.username || 'User',
+        timestamp: timestamp,
+      };
+      const currentChatUpdateData: { [key: string]: any } = {
+        lastMessage: lastMessageData,
+      };
+      if (item.id !== 'GENERAL_CHAT') {
+        item.members.forEach((memberId) => {
+          if (memberId !== currentUser.uid) {
+            currentChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+          }
         });
-        errorEmitter.emit('permission-error', permissionError);
+      }
+      batch.update(currentChatRef, currentChatUpdateData);
+  
+      // --- If it's a channel with a discussion chat, forward the message ---
+      if (item.type === 'channel' && item.discussionChatId) {
+        const discussionChatRef = doc(db, 'chats', item.discussionChatId);
+        const discussionChatSnap = await getDoc(discussionChatRef); // Read before batch write
+  
+        if (discussionChatSnap.exists()) {
+          const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+  
+          // Create a new message object for the discussion group to post on behalf of the channel
+          const forwardedMessageData = {
+            ...messageData,
+            type: 'announcement', // This makes it render differently
+            senderName: item.name, // The name of the channel
+            senderAvatar: 'is_channel_message', // A special flag to render the channel icon
+          };
+          batch.set(newMessageInDiscussionRef, forwardedMessageData);
+  
+          const discussionChatData = discussionChatSnap.data();
+  
+          // The last message preview should also reflect that it came from the channel
+          const discussionLastMessageData = {
+            ...lastMessageData,
+            id: newMessageInDiscussionRef.id,
+            senderName: item.name,
+          };
+  
+          const discussionUpdateData: { [key: string]: any } = { lastMessage: discussionLastMessageData };
+          discussionChatData.members.forEach((memberId: string) => {
+            // We still increment unread counts for members of the discussion group
+            if (memberId !== currentUser.uid) {
+              discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
+            }
+          });
+          batch.update(discussionChatRef, discussionUpdateData);
+        }
+      }
+  
+      await batch.commit();
+    } catch (serverError: any) {
+      setMessageContent(originalContent); // Re-populate the input on error
+      setReplyToMessage(originalReplyTo); // Restore reply state on error
+      console.error('Error sending message: ', serverError);
+      const permissionError = new FirestorePermissionError({
+        path: `chats/${item.id}/messages`,
+        operation: 'create',
+        requestResourceData: messageData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
     } finally {
-        setIsSending(false);
+      setIsSending(false);
     }
   };
   
@@ -542,6 +538,64 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             title: 'Error',
             description: 'Could not open discussion chat.',
         });
+    }
+  };
+  
+  useEffect(() => {
+    if (editingMessage) {
+        setMessageContent(editingMessage.content.replace(/  \n/g, '\n'));
+    } else {
+        if (!replyToMessage) {
+            setMessageContent('');
+        }
+    }
+  }, [editingMessage, replyToMessage]);
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+  };
+  
+  const handleSaveEdit = async () => {
+    if (!db || !editingMessage || !messageContent.trim()) return;
+
+    setIsSending(true);
+    const messageRef = doc(db, 'chats', item.id, 'messages', editingMessage.id);
+    const newContent = messageContent.replace(/\n/g, '  \n');
+
+    try {
+        const updatePayload: { [key: string]: any } = {
+            content: newContent,
+            editedAt: serverTimestamp(),
+        };
+        await updateDoc(messageRef, updatePayload);
+
+        if (item.lastMessage?.id === editingMessage.id) {
+            const chatRef = doc(db, 'chats', item.id);
+            await updateDoc(chatRef, {
+                'lastMessage.content': messageContent.split('\n')[0],
+                'lastMessage.editedAt': serverTimestamp(),
+            });
+        }
+
+        setEditingMessage(null);
+    } catch (serverError) {
+        const permissionError = new FirestorePermissionError({
+            path: messageRef.path,
+            operation: 'update',
+            requestResourceData: { content: newContent },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    } finally {
+        setIsSending(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    if (editingMessage) {
+        await handleSaveEdit();
+    } else {
+        await handleSendMessage();
     }
   };
   
@@ -694,7 +748,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           currentUser={currentUser}
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
-                                          editingMessage={editingMessage}
                                           setEditingMessage={handleSetEditingMessage}
                                       />
                                   </React.Fragment>
@@ -723,8 +776,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
       </div>
 
-        {replyToMessage && (
-            <div className="flex-shrink-0 p-4 pt-0 border-t">
+      {/* Message Input */}
+      {canSendMessage && (
+        <footer className="flex-shrink-0 p-4 border-t">
+          {editingMessage && (
+            <div className="pb-2">
+              <div className="relative rounded-lg bg-accent/50 p-3">
+                <p className="text-xs font-semibold text-primary">{t('editing_message')}</p>
+                <p className="text-sm text-muted-foreground truncate">{editingMessage.content}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 right-1 h-6 w-6"
+                  onClick={handleCancelEdit}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          {replyToMessage && !editingMessage && (
+            <div className="pb-2">
                 <div className="relative rounded-lg bg-accent/50 p-3">
                     <p className="text-xs font-semibold text-primary">
                         {t('replying_to', { name: replyToMessage?.sender?.name || replyToMessage?.senderName })}
@@ -737,35 +809,40 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </Button>
                 </div>
             </div>
-        )}
+          )}
 
-
-      {/* Message Input */}
-      {canSendMessage && (
-        <footer className="flex-shrink-0 p-4 border-t">
-            <form onSubmit={handleSendMessage} className="relative">
+          <form onSubmit={handleSubmit} className="relative">
             <Textarea
-                placeholder={t('message_placeholder')}
-                className="pr-24 py-3 resize-none"
-                rows={1}
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        handleSendMessage(e);
-                    }
-                }}
-                disabled={isSending}
+              placeholder={t('message_placeholder')}
+              className="pr-24 py-3 resize-none"
+              rows={1}
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  handleSubmit(e);
+                } else if (e.key === 'Escape') {
+                  if (editingMessage) handleCancelEdit();
+                  else if (replyToMessage) setReplyToMessage(null);
+                }
+              }}
+              disabled={isSending}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
-                    <Paperclip className="h-5 w-5" />
-                </Button>
-                <Button size="icon" type="submit" disabled={isSending}>
-                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                </Button>
+              <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
+                <Paperclip className="h-5 w-5" />
+              </Button>
+              <Button size="icon" type="submit" disabled={isSending || !messageContent.trim()}>
+                {isSending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : editingMessage ? (
+                  <Check className="h-5 w-5" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
             </div>
-            </form>
+          </form>
         </footer>
       )}
 
@@ -806,7 +883,6 @@ function ChatMessage({
     currentUser, 
     onInternalLinkClick, 
     onReply,
-    editingMessage,
     setEditingMessage
 }: { 
     message: Message, 
@@ -818,57 +894,12 @@ function ChatMessage({
     currentUser: AuthenticatedUser, 
     onInternalLinkClick: (href: string) => Promise<void>,
     onReply: (message: Message) => void,
-    editingMessage: Message | null,
     setEditingMessage: (message: Message | null) => void,
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isSavingEdit, setIsSavingEdit] = useState(false);
-    const [editText, setEditText] = useState('');
-
-    const isEditing = editingMessage?.id === message.id;
-
-    useEffect(() => {
-        if (isEditing) {
-            setEditText(message.content.replace(/  \n/g, '\n'));
-        }
-    }, [isEditing, message.content]);
-
-    const handleSaveEdit = async () => {
-        if (!db || !editText.trim()) return;
-
-        setIsSavingEdit(true);
-        const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
-
-        try {
-            const updatePayload: { [key: string]: any } = {
-                content: editText.replace(/\n/g, '  \n'),
-                editedAt: serverTimestamp(),
-            };
-            await updateDoc(messageRef, updatePayload);
-
-            if (chat.lastMessage?.id === message.id) {
-                const chatRef = doc(db, 'chats', chat.id);
-                await updateDoc(chatRef, {
-                    'lastMessage.content': editText.split('\n')[0],
-                    'lastMessage.editedAt': serverTimestamp(),
-                });
-            }
-
-            setEditingMessage(null);
-        } catch (serverError) {
-            const permissionError = new FirestorePermissionError({
-                path: messageRef.path,
-                operation: 'update',
-                requestResourceData: { content: editText },
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        } finally {
-            setIsSavingEdit(false);
-        }
-    };
     
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -1044,10 +1075,9 @@ function ChatMessage({
     return (
         <div id={`message-${message.id}`} className={cn(
             "flex items-end gap-3",
-            alignRight ? "flex-row-reverse" : "flex-row",
-            isEditing && "w-full"
+            alignRight ? "flex-row-reverse" : "flex-row"
         )}>
-            {showAvatar && !isEditing ? (
+            {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot}>
@@ -1065,38 +1095,22 @@ function ChatMessage({
                         <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
                  </div>
-            ) : chatType === 'group' && !alignRight && !isEditing ? (
+            ) : chatType === 'group' && !alignRight ? (
                 <div className="w-10 flex-shrink-0" />
             ) : null}
 
-            <div className={cn("min-w-0", isEditing ? "w-full" : "max-w-[85%]")}>
+            <div className={"min-w-0 max-w-[85%]"}>
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
-                                !isEditing && (alignRight
+                                alignRight
                                 ? "bg-primary text-primary-foreground rounded-br-none"
-                                : "bg-card text-card-foreground rounded-bl-none")
+                                : "bg-card text-card-foreground rounded-bl-none"
                         )}>
-                            {isEditing ? (
-                                <div className='space-y-2'>
-                                    <Textarea
-                                        value={editText}
-                                        onChange={(e) => setEditText(e.target.value)}
-                                        className="text-sm"
-                                        rows={Math.min(10, editText.split('\n').length)}
-                                    />
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => setEditingMessage(null)}>{t('cancel')}</Button>
-                                        <Button size="sm" onClick={handleSaveEdit} disabled={isSavingEdit}>
-                                            {isSavingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            {t('save')}
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : messageBubbleContent}
+                           {messageBubbleContent}
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
