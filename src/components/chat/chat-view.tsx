@@ -32,6 +32,7 @@ import remarkGfm from 'remark-gfm';
 import { FaqDialog } from '../faq-dialog';
 import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
+import { VerifiedBadge } from '../ui/verified-badge';
 
 
 function DateSeparator({ date }: { date: string }) {
@@ -983,6 +984,7 @@ function ChatMessage({
     } : undefined;
 
     const displaySender = fromBot ? botUser : sender;
+    const isAdmin = sender?.username === '@Infinite';
 
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
@@ -1009,10 +1011,11 @@ function ChatMessage({
             {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
                 <p className="font-semibold text-sm mb-1 flex items-center gap-2">
                     {displaySender.name}
+                    {isAdmin && <VerifiedBadge />}
                     {isFromChannel ? (
                         <Badge variant="secondary">{t('channel_badge')}</Badge>
                     ) : (
-                        displaySender.isBot && <Badge variant="secondary">BOT</Badge>
+                        displaySender.isBot && !isAdmin && <Badge variant="secondary">BOT</Badge>
                     )}
                 </p>
             ): null}

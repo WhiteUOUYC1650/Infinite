@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
 import { Button } from './ui/button';
+import { VerifiedBadge } from './ui/verified-badge';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -59,7 +60,10 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
             )}
         </div>
         <div className="text-center">
-            <h2 className="text-xl font-bold font-headline">{user.name}</h2>
+            <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
+                {user.name}
+                {user.isAdmin && <VerifiedBadge />}
+            </h2>
             {user.isBot ? (
                 <p className="text-muted-foreground text-sm">/B/Infinite</p>
             ) : (

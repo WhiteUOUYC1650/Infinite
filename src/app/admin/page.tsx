@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
 
 function AdminPage() {
   const { user: authUser, loading: authLoading } = useUser();
@@ -211,7 +212,9 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
         <AvatarFallback>{user.name?.charAt(0) || <User2 />}</AvatarFallback>
       </Avatar>
       <div className="flex-1 truncate">
-        <div className="font-semibold flex items-center gap-2">{user.name} {isAdminUser && <Badge variant="secondary">{t('admin_badge')}</Badge>}</div>
+        <div className="font-semibold flex items-center gap-2">
+            {user.name} {isAdminUser && <VerifiedBadge />}
+        </div>
         <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
       <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
