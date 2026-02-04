@@ -24,7 +24,7 @@ export function VerifiedBadge({ className }: { className?: string }) {
         viewBox="4 4 16 16"
         fill="none"
         stroke="black"
-        strokeWidth="3"
+        strokeWidth="3.2"
         strokeLinecap="round"
         strokeLinejoin="round"
         className="relative w-3/4 h-3/4"
