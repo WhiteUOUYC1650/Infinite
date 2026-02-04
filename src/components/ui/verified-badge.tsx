@@ -21,13 +21,13 @@ export function VerifiedBadge({ className }: { className?: string }) {
       />
       {/* Checkmark on top */}
       <svg
-        viewBox="4 4 16 16"
+        viewBox="0 0 24 24"
         fill="none"
         stroke="black"
-        strokeWidth="3.2"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="relative w-3/4 h-3/4"
+        className="relative w-2/3 h-2/3"
       >
         <path d="M5 13l4 4L19 7" />
       </svg>
