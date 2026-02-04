@@ -3,10 +3,19 @@ import { cn } from "@/lib/utils";
 export function VerifiedBadge({ className }: { className?: string }) {
   return (
     <span className={cn("relative inline-flex items-center justify-center w-5 h-5", className)}>
+      {/* Unicode 8-pointed star character (✳) */}
       <svg viewBox="0 0 24 24" className="absolute w-full h-full" fill="#FFD700">
-        {/* Symmetrical 8-pointed star with rounded corners */}
-        <path d="M12.0001 1.25C11.642 1.25 11.2952 1.39655 11.0435 1.64821L8.8576 3.83411C8.60594 4.08577 8.4604 4.43261 8.4604 4.79075V7.75619C8.4604 8.11433 8.31485 8.46117 8.06319 8.71283L5.8773 10.8987C5.62564 11.1504 5.48009 11.4972 5.48009 11.8554V12.1448C5.48009 12.5029 5.62564 12.8503 5.8773 13.1019L8.06319 15.2878C8.31485 15.5395 8.4604 15.8863 8.4604 16.2445V19.2099C8.4604 19.568 8.60594 19.9149 8.8576 20.1665L11.0435 22.3524C11.2952 22.6041 11.642 22.7506 12.0001 22.7506C12.3582 22.7506 12.705 22.6041 12.9567 22.3524L15.1426 20.1665C15.3943 19.9149 15.5398 19.568 15.5398 19.2099V16.2445C15.5398 15.8863 15.6854 15.5395 15.937 15.2878L18.1229 13.1019C18.3746 12.8503 18.5201 12.5029 18.5201 12.1448V11.8554C18.5201 11.4972 18.3746 11.1504 18.1229 10.8987L15.937 8.71283C15.6854 8.46117 15.5398 8.11433 15.5398 7.75619V4.79075C15.5398 4.43261 15.3943 4.08577 15.1426 3.83411L12.9567 1.64821C12.705 1.39655 12.3582 1.25 12.0001 1.25Z" />
+        <text
+          x="12"
+          y="13" // Adjusted for better vertical alignment
+          fontSize="26"
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          &#10031;
+        </text>
       </svg>
+      {/* Checkmark */}
       <svg viewBox="0 0 24 24" fill="none" className="relative w-full h-full">
         <path d="M9.5 12l2 2 4-4" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
