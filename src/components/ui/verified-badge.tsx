@@ -7,25 +7,29 @@ export function VerifiedBadge({ className }: { className?: string }) {
       <div
         className="absolute w-full h-full"
         style={{
-          backgroundColor: '#FFD700',
+          backgroundColor: 'gold',
           borderRadius: '20%',
-          transform: 'rotate(45deg)',
         }}
       />
       <div
         className="absolute w-full h-full"
         style={{
-          backgroundColor: '#FFD700',
+          backgroundColor: 'gold',
           borderRadius: '20%',
+          transform: 'rotate(45deg)',
         }}
       />
       {/* Checkmark on top */}
       <svg
-        viewBox="0 0 24 24"
+        viewBox="4 4 16 16"
         fill="none"
-        className="relative w-full h-full"
+        stroke="black"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="relative w-3/4 h-3/4"
       >
-        <path d="M9.5 12l2 2 4-4" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 13l4 4L19 7" />
       </svg>
     </span>
   );
