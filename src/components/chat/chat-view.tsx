@@ -1126,6 +1126,7 @@ function ChatMessage({
                             onMouseLeave={handlePressEnd}
                             onTouchStart={handlePressStart}
                             onTouchEnd={handlePressEnd}
+                            onTouchMove={handlePressEnd}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
                                 alignRight
