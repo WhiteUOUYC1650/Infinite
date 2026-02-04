@@ -901,10 +901,24 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const longPressTimer = useRef<NodeJS.Timeout>();
+
+    const handlePressStart = () => {
+        longPressTimer.current = setTimeout(() => {
+            setIsMenuOpen(true);
+        }, 500); // 500ms delay for long press
+    };
+
+    const handlePressEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+        }
+    };
     
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        setIsMenuOpen(true);
+        handlePressEnd(); // Clear potential long press timer
+        setIsMenuOpen(true); // Open menu immediately
     };
 
     const otherUserId = useMemo(() => {
@@ -1107,6 +1121,11 @@ function ChatMessage({
                     <DropdownMenuTrigger asChild>
                         <div
                             onContextMenu={handleContextMenu}
+                            onMouseDown={handlePressStart}
+                            onMouseUp={handlePressEnd}
+                            onMouseLeave={handlePressEnd}
+                            onTouchStart={handlePressStart}
+                            onTouchEnd={handlePressEnd}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
                                 alignRight
