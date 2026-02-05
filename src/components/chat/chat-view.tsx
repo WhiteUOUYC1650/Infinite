@@ -384,7 +384,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const handleSendMessage = async () => {
     if (!messageContent.trim() || !db) return;
-  
+
     setIsSending(true);
     const originalContent = messageContent;
     const originalReplyTo = replyToMessage;
@@ -392,108 +392,143 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const contentForPreview = originalContent.split('\n')[0];
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
-  
+
     setMessageContent('');
-    setReplyToMessage(null); // Optimistically clear reply state
-  
+    setReplyToMessage(null);
+
     const messageData: { [key: string]: any } = {
-      senderId: currentUser.uid,
-      content: contentForMessage,
-      timestamp: timestamp,
-      senderName: currentUser.name || currentUser.username || 'User',
-      type: 'user',
-      readBy: [],
-    };
-  
-    if (currentUser.avatar) {
-      messageData.senderAvatar = currentUser.avatar;
-    }
-  
-    if (replyToMessage) {
-      messageData.replyTo = {
-        messageId: replyToMessage.id,
-        content: replyToMessage.content,
-        senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
-      };
-    }
-  
-    const batch = writeBatch(db);
-  
-    try {
-      // --- Write to current chat ---
-      const newMessageInCurrentChatRef = doc(collection(db, 'chats', item.id, 'messages'));
-      batch.set(newMessageInCurrentChatRef, messageData);
-  
-      const currentChatRef = doc(db, 'chats', item.id);
-      const lastMessageData = {
-        id: newMessageInCurrentChatRef.id,
-        content: contentForPreview,
         senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.username || 'User',
+        content: contentForMessage,
         timestamp: timestamp,
-      };
-      const currentChatUpdateData: { [key: string]: any } = {
-        lastMessage: lastMessageData,
-      };
-      if (item.id !== 'GENERAL_CHAT') {
-        item.members.forEach((memberId) => {
-          if (memberId !== currentUser.uid) {
-            currentChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
-          }
-        });
-      }
-      batch.update(currentChatRef, currentChatUpdateData);
-  
-      // --- If it's a channel with a discussion chat, forward the message ---
-      if (item.type === 'channel' && item.discussionChatId) {
-        const discussionChatRef = doc(db, 'chats', item.discussionChatId);
-        const discussionChatSnap = await getDoc(discussionChatRef); // Read before batch write
-  
-        if (discussionChatSnap.exists()) {
-          const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-  
-          // Create a new message object for the discussion group to post on behalf of the channel
-          const forwardedMessageData = {
-            ...messageData,
-            type: 'announcement', // This makes it render differently
-            senderName: item.name, // The name of the channel
-            senderAvatar: 'is_channel_message', // A special flag to render the channel icon
-          };
-          batch.set(newMessageInDiscussionRef, forwardedMessageData);
-  
-          const discussionChatData = discussionChatSnap.data();
-  
-          // The last message preview should also reflect that it came from the channel
-          const discussionLastMessageData = {
-            ...lastMessageData,
-            id: newMessageInDiscussionRef.id,
-            senderName: item.name,
-          };
-  
-          const discussionUpdateData: { [key: string]: any } = { lastMessage: discussionLastMessageData };
-          discussionChatData.members.forEach((memberId: string) => {
-            // We still increment unread counts for members of the discussion group
-            if (memberId !== currentUser.uid) {
-              discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
+        senderName: currentUser.name || currentUser.username || 'User',
+        type: 'user',
+        readBy: [],
+    };
+
+    if (currentUser.avatar) {
+        messageData.senderAvatar = currentUser.avatar;
+    }
+
+    if (replyToMessage) {
+        messageData.replyTo = {
+            messageId: replyToMessage.id,
+            content: replyToMessage.content,
+            senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
+        };
+    }
+
+    // --- Pre-read data needed for batch ---
+    const isBotChat = otherUser?.username === '@InfiniteBot';
+    let adminId: string | null = null;
+    let feedbackChatId: string | null = null;
+    let feedbackChatExists = false;
+    let discussionChatSnap: any = null;
+
+    try {
+        if (isBotChat) {
+            const adminUsernameSnap = await getDoc(doc(db, 'usernames', '@Infinite'));
+            if (adminUsernameSnap.exists()) {
+                adminId = adminUsernameSnap.data().uid;
+                if (currentUser.uid !== adminId) {
+                    const members = [currentUser.uid, adminId].sort();
+                    feedbackChatId = members.join('_');
+                    const feedbackChatSnap = await getDoc(doc(db, 'chats', feedbackChatId));
+                    feedbackChatExists = feedbackChatSnap.exists();
+                } else {
+                    adminId = null; // Admin is talking to bot, no need to forward
+                }
             }
-          });
-          batch.update(discussionChatRef, discussionUpdateData);
         }
-      }
-  
-      await batch.commit();
+
+        if (item.type === 'channel' && item.discussionChatId) {
+            discussionChatSnap = await getDoc(doc(db, 'chats', item.discussionChatId));
+        }
+
+        // --- All reads are done, start the batch ---
+        const batch = writeBatch(db);
+
+        // 1. Write to current chat
+        const newMessageInCurrentChatRef = doc(collection(db, 'chats', item.id, 'messages'));
+        batch.set(newMessageInCurrentChatRef, messageData);
+
+        const currentChatRef = doc(db, 'chats', item.id);
+        const lastMessageData = {
+            id: newMessageInCurrentChatRef.id,
+            content: contentForPreview,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username || 'User',
+            timestamp: timestamp,
+        };
+        const currentChatUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        if (item.id !== 'GENERAL_CHAT') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
+                    currentChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        batch.update(currentChatRef, currentChatUpdateData);
+
+        // 2. Forward message to admin if it's feedback to the bot
+        if (isBotChat && adminId && feedbackChatId) {
+            const feedbackChatRef = doc(db, 'chats', feedbackChatId);
+            const feedbackMessageRef = doc(collection(db, 'chats', feedbackChatId, 'messages'));
+            
+            batch.set(feedbackMessageRef, messageData);
+
+            const feedbackLastMessageData = {
+                ...lastMessageData,
+                id: feedbackMessageRef.id,
+            };
+            const feedbackUpdateData: { [key: string]: any } = {
+                lastMessage: feedbackLastMessageData,
+                [`unreadCounts.${adminId}`]: increment(1),
+            };
+
+            if (feedbackChatExists) {
+                batch.update(feedbackChatRef, feedbackUpdateData);
+            } else {
+                batch.set(feedbackChatRef, {
+                    type: 'dm',
+                    members: [currentUser.uid, adminId].sort(),
+                    ...feedbackUpdateData,
+                });
+            }
+        }
+
+        // 3. Forward message to discussion group if it's a channel
+        if (item.type === 'channel' && item.discussionChatId && discussionChatSnap?.exists()) {
+            const discussionChatRef = doc(db, 'chats', item.discussionChatId);
+            const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            const forwardedMessageData = { ...messageData, type: 'announcement', senderName: item.name, senderAvatar: 'is_channel_message' };
+            batch.set(newMessageInDiscussionRef, forwardedMessageData);
+
+            const discussionChatData = discussionChatSnap.data();
+            const discussionLastMessageData = { ...lastMessageData, id: newMessageInDiscussionRef.id, senderName: item.name };
+            const discussionUpdateData: { [key: string]: any } = { lastMessage: discussionLastMessageData };
+            discussionChatData.members.forEach((memberId: string) => {
+                if (memberId !== currentUser.uid) {
+                    discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+            batch.update(discussionChatRef, discussionUpdateData);
+        }
+
+        // --- Commit all writes ---
+        await batch.commit();
+
     } catch (serverError: any) {
-      setMessageContent(originalContent); // Re-populate the input on error
-      setReplyToMessage(originalReplyTo); // Restore reply state on error
-      console.error('Error sending message: ', serverError);
-      const permissionError = new FirestorePermissionError({
-        path: `chats/${item.id}/messages`,
-        operation: 'create',
-        requestResourceData: messageData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
+        setMessageContent(originalContent);
+        setReplyToMessage(originalReplyTo);
+        console.error('Error sending message: ', serverError);
+        const permissionError = new FirestorePermissionError({
+            path: `chats/${item.id}/messages`,
+            operation: 'create',
+            requestResourceData: messageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
     } finally {
-      setIsSending(false);
+        setIsSending(false);
     }
   };
   
@@ -614,7 +649,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             {item.type === "dm" ? (
                 otherUser ? ( // If we have the user, show the profile button
                     <button
-                        className="flex items-center text-left hover:bg-accent px-2 py-1 rounded-md -mx-2 -my-1 transition-colors min-w-0"
+                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
                         onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid}
                     >
@@ -640,7 +675,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 )
             ) : ( // Not a DM, show group/channel info
                  <button 
-                    className="flex items-center text-left hover:bg-accent px-2 py-1 rounded-md -mx-2 -my-1 transition-colors min-w-0"
+                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
                     onClick={() => setShowChatProfile(true)}
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
@@ -648,7 +683,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <div className="truncate py-1">
                         <div className="flex items-center gap-2 min-w-0">
                             <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
-                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
+                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
                             {item.id === 'GENERAL_CHAT'
@@ -1039,8 +1074,7 @@ function ChatMessage({
     
     const messageBubbleContent = (
         <>
-            <div className='flex items-center gap-2'>
-              {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
+            {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
                   <div className="font-semibold text-sm mb-1 flex items-center gap-2">
                       <div className="truncate">{displaySender.name}</div>
                       {isVerified && <VerifiedBadge />}
@@ -1051,7 +1085,6 @@ function ChatMessage({
                       )}
                   </div>
               ): null}
-            </div>
 
             {message.replyTo && (
                 <button
