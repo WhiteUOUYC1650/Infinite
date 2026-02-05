@@ -798,10 +798,10 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
             <div className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
                 {item.name}
             </div>
+            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
           </div>
           {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
             {`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}

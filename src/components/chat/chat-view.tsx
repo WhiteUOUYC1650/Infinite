@@ -621,8 +621,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
                         <div className="ml-3 truncate">
                             <div className="flex items-center gap-2 min-w-0">
-                                {otherUser?.username === '@InfiniteBot' && <VerifiedBadge className="shrink-0" />}
                                 <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                                {otherUser?.username === '@InfiniteBot' && <VerifiedBadge className="shrink-0" />}
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
@@ -647,8 +647,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
                     <div className="truncate py-1">
                         <div className="flex items-center gap-2 min-w-0">
-                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                             <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
                             {item.id === 'GENERAL_CHAT'
@@ -908,16 +908,15 @@ function ChatMessage({
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const longPressTimer = useRef<NodeJS.Timeout>();
+    const isMoving = useRef(false);
 
     const handlePressStart = (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
-        // Prevent context menu on touch devices
-        if ('touches' in e) {
-            e.preventDefault();
-        }
-        
+        isMoving.current = false;
         longPressTimer.current = setTimeout(() => {
-            setIsMenuOpen(true);
-        }, 500); // 500ms delay for long press
+            if (!isMoving.current) {
+                setIsMenuOpen(true);
+            }
+        }, 500);
     };
 
     const handlePressEnd = () => {
@@ -927,6 +926,7 @@ function ChatMessage({
     };
     
     const handleMove = () => {
+        isMoving.current = true;
         if (longPressTimer.current) {
             clearTimeout(longPressTimer.current);
         }
