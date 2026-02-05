@@ -645,10 +645,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
                     {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
-                    <div className="truncate">
+                    <div className="truncate py-1">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge />}
+                            <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
                             {item.id === 'GENERAL_CHAT'
@@ -1039,17 +1039,19 @@ function ChatMessage({
     
     const messageBubbleContent = (
         <>
-            {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                <div className="font-semibold text-sm mb-1 flex items-center gap-2">
-                    {displaySender.name}
-                    {isVerified && <VerifiedBadge />}
-                    {isFromChannel ? (
-                        <Badge variant="secondary">{t('channel_badge')}</Badge>
-                    ) : (
-                        displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>
-                    )}
-                </div>
-            ): null}
+            <div className='flex items-center gap-2'>
+              {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
+                  <div className="font-semibold text-sm mb-1 flex items-center gap-2">
+                      {displaySender.name}
+                      {isVerified && <VerifiedBadge />}
+                      {isFromChannel ? (
+                          <Badge variant="secondary">{t('channel_badge')}</Badge>
+                      ) : (
+                          displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>
+                      )}
+                  </div>
+              ): null}
+            </div>
 
             {message.replyTo && (
                 <button
