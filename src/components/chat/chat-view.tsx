@@ -614,15 +614,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             {item.type === "dm" ? (
                 otherUser ? ( // If we have the user, show the profile button
                     <button
-                        className="flex items-center text-left hover:bg-accent p-1 rounded-md -m-1 transition-colors min-w-0"
+                        className="flex items-center text-left hover:bg-accent px-2 py-1 rounded-md -mx-2 -my-1 transition-colors min-w-0"
                         onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid}
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
                         <div className="ml-3 truncate">
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
-                                {otherUser?.username === '@InfiniteBot' && <VerifiedBadge />}
+                            <div className="flex items-center gap-2 min-w-0">
+                                {otherUser?.username === '@InfiniteBot' && <VerifiedBadge className="shrink-0" />}
+                                <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
@@ -640,14 +640,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 )
             ) : ( // Not a DM, show group/channel info
                  <button 
-                    className="flex items-center text-left hover:bg-accent p-1 rounded-md -m-1 transition-colors min-w-0"
+                    className="flex items-center text-left hover:bg-accent px-2 py-1 rounded-md -mx-2 -my-1 transition-colors min-w-0"
                     onClick={() => setShowChatProfile(true)}
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
                     {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
                     <div className="truncate py-1">
-                        <div className="flex items-center gap-2">
-                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge />}
+                        <div className="flex items-center gap-2 min-w-0">
+                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                             <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
@@ -1042,7 +1042,7 @@ function ChatMessage({
             <div className='flex items-center gap-2'>
               {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
                   <div className="font-semibold text-sm mb-1 flex items-center gap-2">
-                      {displaySender.name}
+                      <div className="truncate">{displaySender.name}</div>
                       {isVerified && <VerifiedBadge />}
                       {isFromChannel ? (
                           <Badge variant="secondary">{t('channel_badge')}</Badge>
