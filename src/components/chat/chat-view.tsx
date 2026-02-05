@@ -903,7 +903,12 @@ function ChatMessage({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const longPressTimer = useRef<NodeJS.Timeout>();
 
-    const handlePressStart = () => {
+    const handlePressStart = (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
+        // Prevent context menu on touch devices
+        if ('touches' in e) {
+            e.preventDefault();
+        }
+        
         longPressTimer.current = setTimeout(() => {
             setIsMenuOpen(true);
         }, 500); // 500ms delay for long press
@@ -915,6 +920,12 @@ function ChatMessage({
         }
     };
     
+    const handleMove = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+        }
+    };
+
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         handlePressEnd(); // Clear potential long press timer
@@ -1023,7 +1034,7 @@ function ChatMessage({
     const messageBubbleContent = (
         <>
             {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                <p className="font-semibold text-sm mb-1 flex items-center gap-2">
+                <div className="font-semibold text-sm mb-1 flex items-center gap-2">
                     {displaySender.name}
                     {isAdmin && <VerifiedBadge />}
                     {isFromChannel ? (
@@ -1031,7 +1042,7 @@ function ChatMessage({
                     ) : (
                         displaySender.isBot && !isAdmin && <Badge variant="secondary">BOT</Badge>
                     )}
-                </p>
+                </div>
             ): null}
 
             {message.replyTo && (
@@ -1126,7 +1137,7 @@ function ChatMessage({
                             onMouseLeave={handlePressEnd}
                             onTouchStart={handlePressStart}
                             onTouchEnd={handlePressEnd}
-                            onTouchMove={handlePressEnd}
+                            onTouchMove={handleMove}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
                                 alignRight
