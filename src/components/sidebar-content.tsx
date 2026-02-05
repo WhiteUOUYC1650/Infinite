@@ -443,14 +443,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         <Button
                             variant="ghost"
                             onClick={handleSelectInfiniteBot}
-                            className={cn("w-full justify-start h-auto py-2 text-left overflow-hidden", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                            className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && 'bg-sidebar-accent')}
                         >
-                            <div className="flex items-center gap-3 w-full px-4 md:px-0 relative">
+                            <div className="flex items-center gap-3 w-full px-4 md:px-0">
                                 <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 overflow-hidden">
                                      <div className="flex items-center gap-2">
-                                        <p className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
-                                        <VerifiedBadge className="w-4 h-4" />
+                                        <div className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</div>
+                                        <VerifiedBadge className="w-4 h-4 shrink-0" />
                                     </div>
                                 </div>
                             </div>
@@ -763,10 +763,10 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
             <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-2">
-                    <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
+                    <div className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
                         {isSavedMessages ? t('saved_messages') : otherUser.name}
-                    </p>
-                    {isVerified && <VerifiedBadge className="w-4 h-4" />}
+                    </div>
+                    {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
                 </div>
                 {item.lastMessage?.content && 
                     <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
@@ -798,10 +798,10 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            <p className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
+            <div className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
                 {item.name}
-            </p>
-            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4" />}
+            </div>
+            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
           </div>
           {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
             {`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}

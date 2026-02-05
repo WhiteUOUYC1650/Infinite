@@ -98,7 +98,7 @@ function AdminPage() {
         });
         return;
     }
-    if (userToDelete.username === '@Infinite') {
+    if (userToDelete.username === '@Infinite' || userToDelete.username === '@InfiniteBot') {
         toast({
             variant: 'destructive',
             title: t('admin_toast_action_not_allowed_title'),
@@ -202,7 +202,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 
 // --- List Item Components ---
 function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => void }) {
-  const isAdminUser = user.username === '@Infinite';
+  const isVerifiedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
 
   return (
@@ -213,7 +213,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
       </Avatar>
       <div className="flex-1 truncate">
         <div className="font-semibold flex items-center gap-2">
-            {user.name} {isAdminUser && <VerifiedBadge />}
+            {user.name} {isVerifiedUser && <VerifiedBadge />}
         </div>
         <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
@@ -223,7 +223,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
       )}>
           {user.status}
       </Badge>
-       {!isAdminUser && (
+       {!isVerifiedUser && (
         <AlertDialog>
             <AlertDialogTrigger asChild>
             <Button variant="destructive" size="icon">

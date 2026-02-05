@@ -620,7 +620,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
                         <div className="ml-3 truncate">
-                            <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
+                                {otherUser?.username === '@InfiniteBot' && <VerifiedBadge />}
+                            </div>
                             <p className="text-sm text-muted-foreground truncate">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
                             </p>
@@ -644,7 +647,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
                     <div className="truncate">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                            <h2 className="text-lg font-semibold font-headline">{getChatName()}</h2>
                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge />}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
@@ -1061,18 +1064,18 @@ function ChatMessage({
                     <div className="flex items-center gap-2">
                         <CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0">
-                            <p className={cn(
+                            <div className={cn(
                                 "font-semibold text-sm",
                                 alignRight
                                     ? "text-primary-foreground/90"
                                     : "text-primary"
-                            )}>{message.replyTo.senderName}</p>
-                            <p className={cn(
+                            )}>{message.replyTo.senderName}</div>
+                            <div className={cn(
                                 "text-sm truncate",
                                 alignRight
                                     ? "text-primary-foreground/70"
                                     : "text-muted-foreground"
-                            )}>{message.replyTo.content}</p>
+                            )}>{message.replyTo.content}</div>
                         </div>
                     </div>
                 </button>
