@@ -223,7 +223,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
       )}>
           {user.status}
       </Badge>
-       {!isVerifiedUser && (
+       {!(user.username === '@Infinite' || user.username === '@InfiniteBot') && (
         <AlertDialog>
             <AlertDialogTrigger asChild>
             <Button variant="destructive" size="icon">
@@ -253,6 +253,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
 function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => void }) {
   const Icon = chat.type === 'group' ? Users : Megaphone;
   const { t } = useLanguage();
+  const isVerifiedChat = chat.link === '/G/Infinite' || chat.link === '/C/Infinite';
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
       <Avatar>
@@ -261,13 +262,16 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 truncate">
-        <p className="font-semibold">{chat.name}</p>
+        <div className="font-semibold flex items-center gap-2">
+          {chat.name}
+          {isVerifiedChat && <VerifiedBadge />}
+        </div>
         <p className="text-sm text-muted-foreground">{t('members_count', { count: chat.members?.length || 0 })}</p>
         {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="destructive" size="icon">
+          <Button variant="destructive" size="icon" disabled={isVerifiedChat}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </AlertDialogTrigger>
