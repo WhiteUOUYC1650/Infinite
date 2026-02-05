@@ -643,7 +643,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 >
                     {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
                     <div className="truncate">
-                        <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge />}
+                        </div>
                         <p className="text-sm text-muted-foreground truncate">
                             {item.id === 'GENERAL_CHAT'
                                 ? t('public_chat_description')
@@ -1009,7 +1012,7 @@ function ChatMessage({
     } : undefined;
 
     const displaySender = fromBot ? botUser : sender;
-    const isAdmin = sender?.username === '@Infinite';
+    const isVerified = sender?.username === '@Infinite' || sender?.username === '@InfiniteBot';
 
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
@@ -1036,11 +1039,11 @@ function ChatMessage({
             {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
                 <div className="font-semibold text-sm mb-1 flex items-center gap-2">
                     {displaySender.name}
-                    {isAdmin && <VerifiedBadge />}
+                    {isVerified && <VerifiedBadge />}
                     {isFromChannel ? (
                         <Badge variant="secondary">{t('channel_badge')}</Badge>
                     ) : (
-                        displaySender.isBot && !isAdmin && <Badge variant="secondary">BOT</Badge>
+                        displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>
                     )}
                 </div>
             ): null}

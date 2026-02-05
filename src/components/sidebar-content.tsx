@@ -65,6 +65,7 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { Skeleton } from './ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { VerifiedBadge } from './ui/verified-badge';
 
 const iconMap = {
     Users,
@@ -414,7 +415,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 >
                     <div className="flex items-center gap-3 w-full px-4 md:px-0">
                         <Globe className="h-5 w-5 text-muted-foreground" />
-                        <p className="font-semibold">{t('general_chat')}</p>
+                        <div className="flex items-center gap-2">
+                           <p className="font-semibold">{t('general_chat')}</p>
+                           {/* This is a placeholder for a potential global verified chat */}
+                           {/* <VerifiedBadge className="w-4 h-4" /> */}
+                        </div>
                     </div>
                 </Button>
             </div>
@@ -443,7 +448,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                             <div className="flex items-center gap-3 w-full px-4 md:px-0 relative">
                                 <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
                                 <div className="flex-1 min-w-0">
-                                    <p className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
+                                     <div className="flex items-center gap-2">
+                                        <p className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</p>
+                                        <VerifiedBadge className="w-4 h-4" />
+                                    </div>
                                 </div>
                             </div>
                         </Button>
@@ -742,6 +750,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
+  const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot';
 
   return (
     <Button
@@ -753,9 +762,12 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
             <div className="flex-1 min-w-0 overflow-hidden">
-                <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
-                    {isSavedMessages ? t('saved_messages') : otherUser.name}
-                </p>
+                <div className="flex items-center gap-2">
+                    <p className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
+                        {isSavedMessages ? t('saved_messages') : otherUser.name}
+                    </p>
+                    {isVerified && <VerifiedBadge className="w-4 h-4" />}
+                </div>
                 {item.lastMessage?.content && 
                     <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
                         {item.lastMessage.content}
@@ -785,9 +797,12 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
         {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <p className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
-            {item.name}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
+                {item.name}
+            </p>
+            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4" />}
+          </div>
           {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
             {`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}
             </p>

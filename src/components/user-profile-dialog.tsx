@@ -75,14 +75,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         <div className="text-center py-4">
             <div className="flex items-center justify-center gap-2">
                 <h2 className="text-2xl font-bold font-headline">{user.name}</h2>
-                {user.username === '@Infinite' && <VerifiedBadge />}
-                {user.isBot && user.username !== '@Infinite' && <Badge variant="secondary">BOT</Badge>}
+                {(user.username === '@Infinite' || user.username === '@InfiniteBot') && <VerifiedBadge />}
+                {user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}
             </div>
-            {user.isBot ? (
-                <p className="text-muted-foreground">/B/Infinite</p>
-            ) : (
-                <p className="text-muted-foreground">{user.username}</p>
-            )}
+            <p className="text-muted-foreground">{user.username}</p>
             <p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
         </div>
 

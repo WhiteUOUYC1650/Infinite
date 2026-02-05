@@ -37,6 +37,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { VerifiedBadge } from '../ui/verified-badge';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -263,7 +264,10 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6 space-y-4">
                     <div className="text-center">
-                        <h2 className="text-2xl font-bold font-headline">{chat.name}</h2>
+                        <div className="flex items-center justify-center gap-2">
+                            <h2 className="text-2xl font-bold font-headline">{chat.name}</h2>
+                            {(chat.link === '/G/Infinite' || chat.link === '/C/Infinite') && <VerifiedBadge />}
+                        </div>
                         <p className="text-muted-foreground">{chat.link}</p>
                     </div>
 
