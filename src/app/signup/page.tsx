@@ -290,7 +290,7 @@ export default function SignUpPage() {
         </p>
       </div>
        <div className="absolute bottom-4 right-4">
-        <Badge variant="outline">1.0.0</Badge>
+        <Badge variant="outline">{t('beta_badge')}</Badge>
       </div>
     </div>
   );

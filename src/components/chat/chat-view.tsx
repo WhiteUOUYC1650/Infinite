@@ -662,14 +662,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       if (!file.type.startsWith('image/')) {
-        toast({ variant: 'destructive', title: 'Invalid file type', description: 'Please select an image.' });
+        toast({ variant: 'destructive', title: t('invalid_file_type'), description: t('select_an_image') });
         return;
       }
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
             variant: 'destructive',
-            title: 'Image too large',
-            description: 'Please select an image smaller than 5MB.',
+            title: t('image_too_large'),
+            description: t('select_smaller_image_5mb'),
         });
         return;
       }
@@ -956,15 +956,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <div className="flex flex-col">
                             <Button variant="ghost" className="justify-start" onClick={() => fileInputRef.current?.click()}>
                                 <ImageIcon className="mr-2 h-4 w-4" />
-                                <span>Photo</span>
+                                <span>{t('photo')}</span>
                             </Button>
                             <Button variant="ghost" className="justify-start" disabled>
                                 <VideoIcon className="mr-2 h-4 w-4" />
-                                <span>Video</span>
+                                <span>{t('video')}</span>
                             </Button>
                              <Button variant="ghost" className="justify-start" disabled>
                                 <MusicIcon className="mr-2 h-4 w-4" />
-                                <span>Music</span>
+                                <span>{t('music')}</span>
                             </Button>
                         </div>
                     </PopoverContent>
