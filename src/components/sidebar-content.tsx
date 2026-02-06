@@ -66,6 +66,7 @@ import { Skeleton } from './ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { VerifiedBadge } from './ui/verified-badge';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const iconMap = {
     Users,
@@ -795,7 +796,15 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
       className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
-        {Icon && <Icon className="h-5 w-5 text-muted-foreground" />}
+        <Avatar className="h-10 w-10">
+            {item.avatar ? (
+                <AvatarImage src={item.avatar} alt={item.name} />
+            ) : (
+                <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
+                    {Icon && <Icon className="h-5 w-5" />}
+                </AvatarFallback>
+            )}
+        </Avatar>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
             <div className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>

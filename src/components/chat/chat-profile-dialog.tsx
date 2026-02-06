@@ -6,11 +6,12 @@ import {
   DialogHeader,
   DialogFooter,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { Avatar } from '../ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs } from 'firebase/firestore';
@@ -29,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -38,6 +39,13 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { VerifiedBadge } from '../ui/verified-badge';
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PixelCrop,
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -52,7 +60,77 @@ const chatEditSchema = z.object({
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
   description: z.string().max(200, 'Description must be 200 characters or less.').optional(),
   discussionChatId: z.string().optional(),
+  avatar: z.string().optional(),
 });
+
+// Helper to center the crop
+function centerAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number
+) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight
+    ),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
+// Helper to get the cropped image data URL
+async function getCroppedImg(
+  image: HTMLImageElement,
+  crop: PixelCrop
+): Promise<string> {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('No 2d context');
+  }
+
+  const pixelRatio = window.devicePixelRatio;
+  canvas.width = crop.width * pixelRatio;
+  canvas.height = crop.height * pixelRatio;
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  ctx.imageSmoothingQuality = 'high';
+
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(reader.result as string));
+      reader.addEventListener('error', (error) => reject(error));
+      reader.readAsDataURL(blob);
+    }, 'image/jpeg');
+  });
+}
 
 
 export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChange, onCloseChat }: ChatProfileDialogProps) {
@@ -67,12 +145,21 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const isOwner = chat.ownerId === currentUser.uid;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null | undefined>(chat.avatar);
+  const [imageToCrop, setImageToCrop] = useState('');
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isCropping, setIsCropping] = useState(false);
+
   const form = useForm<z.infer<typeof chatEditSchema>>({
     resolver: zodResolver(chatEditSchema),
     defaultValues: {
         name: chat.name || '',
         description: chat.description || '',
         discussionChatId: chat.discussionChatId || '',
+        avatar: chat.avatar || '',
     },
   });
 
@@ -103,16 +190,71 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
             name: chat.name || '',
             description: chat.description || '',
             discussionChatId: chat.discussionChatId || '',
+            avatar: chat.avatar || '',
         });
+        setAvatarPreview(chat.avatar);
+        setImageToCrop('');
         setIsEditing(false); // Reset editing state when dialog opens
     }
   }, [chat, form, open]);
+  
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+            variant: 'destructive',
+            title: 'Image too large',
+            description: 'Please select an image smaller than 2MB.',
+        });
+        return;
+      }
+      setCrop(undefined) // Makes crop preview update between images.
+      const reader = new FileReader();
+      reader.addEventListener('load', () =>
+        setImageToCrop(reader.result?.toString() || ''),
+      )
+      reader.readAsDataURL(file)
+    }
+  };
+
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height, 1 / 1));
+  }
+
+  const handleCropConfirm = async () => {
+    if (!completedCrop || !imgRef.current) {
+        toast({ variant: 'destructive', title: 'Crop Error', description: 'Could not process the crop.' });
+        return;
+    }
+    setIsCropping(true);
+    try {
+        const croppedImageUrl = await getCroppedImg(imgRef.current, completedCrop);
+        setAvatarPreview(croppedImageUrl);
+        form.setValue('avatar', croppedImageUrl, { shouldValidate: true });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Crop Error', description: 'An error occurred while cropping.' });
+    } finally {
+        setImageToCrop('');
+        setIsCropping(false);
+    }
+  };
+
 
   const handleSaveChanges = async (values: z.infer<typeof chatEditSchema>) => {
     if (!db || !isOwner) return;
     setIsSaving(true);
     const chatRef = doc(db, 'chats', chat.id);
-    const dataToUpdate: { [key: string]: any } = { name: values.name };
+    const dataToUpdate: { [key: string]: any } = { 
+        name: values.name,
+        avatar: values.avatar,
+    };
 
     if (chat.type === 'channel') {
         dataToUpdate.description = values.description;
@@ -174,11 +316,45 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
   }
 
   const Icon = chat.type === 'group' ? Users : Megaphone;
+  
+  const cropperContent = (
+    <>
+        <DialogHeader>
+            <DialogTitle>Crop your new avatar</DialogTitle>
+            <DialogDescription>Adjust the selection to crop your image. It will be a 1:1 square.</DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-center">
+            <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={1}
+                minWidth={100}
+                minHeight={100}
+            >
+                <img
+                    ref={imgRef}
+                    alt="Crop me"
+                    src={imageToCrop}
+                    onLoad={onImageLoad}
+                    style={{ maxHeight: '60vh' }}
+                />
+            </ReactCrop>
+        </div>
+        <DialogFooter>
+            <Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button>
+            <Button onClick={handleCropConfirm} disabled={isCropping}>
+                {isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Crop & Save
+            </Button>
+        </DialogFooter>
+    </>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm flex flex-col max-h-[90vh]">
-        {isEditing ? (
+        {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden">
                     <DialogHeader>
@@ -186,6 +362,32 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6">
                         <div className="space-y-4">
+                            <div className="flex justify-center">
+                              <div className="relative">
+                                <button type="button" onClick={handleAvatarClick} className="rounded-full">
+                                    <Avatar className="h-24 w-24">
+                                        <AvatarImage src={avatarPreview || undefined} />
+                                        <AvatarFallback><Icon className="h-12 w-12" /></AvatarFallback>
+                                    </Avatar>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleAvatarClick}
+                                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <FormControl>
+                                  <Input
+                                    type="file"
+                                    accept="image/png, image/jpeg, image/gif"
+                                    className="hidden"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                  />
+                                </FormControl>
+                              </div>
+                            </div>
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -256,9 +458,13 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     <DialogTitle className="sr-only">{chat.name}'s Profile</DialogTitle>
                     <div className='relative mx-auto w-32 h-32'>
                         <Avatar className="w-32 h-32 text-4xl">
-                            <div className="flex h-full w-full items-center justify-center bg-secondary">
-                                <Icon className="h-16 w-16 text-secondary-foreground" />
-                            </div>
+                           {chat.avatar ? (
+                                <AvatarImage src={chat.avatar} alt={chat.name} />
+                           ) : (
+                                <AvatarFallback>
+                                    <Icon className="h-16 w-16" />
+                                </AvatarFallback>
+                           )}
                         </Avatar>
                     </div>
                 </DialogHeader>

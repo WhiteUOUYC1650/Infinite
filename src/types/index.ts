@@ -45,6 +45,7 @@ export type Chat = {
   lastMessage?: Omit<Message, 'sender'>;
   unreadCounts?: { [userId: string]: number };
   icon?: string;
+  avatar?: string;
   description?: string;
   link?: string;
   discussionChatId?: string;

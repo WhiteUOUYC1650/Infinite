@@ -87,6 +87,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const item = useMemo(() => {
     if (!liveChatData) return initialItem;
+    // important to merge with iconComponent
     return { ...initialItem, ...liveChatData };
   }, [initialItem, liveChatData]);
 
@@ -679,7 +680,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     onClick={() => setShowChatProfile(true)}
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
-                    {item.iconComponent && <item.iconComponent className="h-8 w-8 mr-3 text-muted-foreground" />}
+                    <Avatar className="h-10 w-10 mr-3">
+                        {item.avatar ? (
+                            <AvatarImage src={item.avatar} alt={item.name} />
+                        ) : (
+                            <AvatarFallback>
+                                {item.iconComponent && <item.iconComponent className="h-5 w-5" />}
+                            </AvatarFallback>
+                        )}
+                    </Avatar>
                     <div className="truncate py-1">
                         <div className="flex items-center gap-2 min-w-0">
                             <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>

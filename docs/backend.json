@@ -151,6 +151,10 @@
           "type": "string",
           "description": "Name of the lucide-react icon for the chat."
         },
+        "avatar": {
+            "type": "string",
+            "description": "URL to the chat's avatar image, in Base64 data URI format."
+        },
         "description": {
             "type": "string",
             "description": "Description for a channel."
