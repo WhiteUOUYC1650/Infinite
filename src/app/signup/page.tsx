@@ -84,11 +84,9 @@ export default function SignUpPage() {
         
         const isBotUser = usernameWithAt === '@InfiniteBot';
 
-        transaction.set(usernameRef, { uid: createdUser!.uid });
         transaction.set(userDocRef, {
           name: isBotUser ? 'Infinite' : usernameWithAt,
           username: usernameWithAt,
-          avatar: null,
           status: 'online',
           statusMessage: isBotUser 
             ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!' 
@@ -292,7 +290,7 @@ export default function SignUpPage() {
         </p>
       </div>
        <div className="absolute bottom-4 right-4">
-        <Badge variant="outline">{t('beta_badge')}</Badge>
+        <Badge variant="outline">0.2 Beta</Badge>
       </div>
     </div>
   );
