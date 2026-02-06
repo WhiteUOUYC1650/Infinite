@@ -67,7 +67,7 @@ export default function WelcomePage() {
         'absolute bottom-4 right-4',
         step === 1 ? 'text-white' : 'text-gray-900'
       )}>
-        <Badge variant="outline" className="border-current text-current">{t('beta_badge')}</Badge>
+        <Badge variant="outline" className="border-current text-current">1.0.0</Badge>
       </div>
     </div>
   );

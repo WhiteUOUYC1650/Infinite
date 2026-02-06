@@ -31,7 +31,15 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Pencil } from 'lucide-react';
+import { Loader2, Pencil } from 'lucide-react';
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PixelCrop,
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
@@ -45,12 +53,89 @@ interface EditProfileDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Helper to center the crop
+function centerAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number
+) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight
+    ),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
+// Helper to get the cropped image data URL
+async function getCroppedImg(
+  image: HTMLImageElement,
+  crop: PixelCrop
+): Promise<string> {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('No 2d context');
+  }
+
+  const pixelRatio = window.devicePixelRatio;
+  canvas.width = crop.width * pixelRatio;
+  canvas.height = crop.height * pixelRatio;
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  ctx.imageSmoothingQuality = 'high';
+
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(reader.result as string));
+      reader.addEventListener('error', (error) => reject(error));
+      reader.readAsDataURL(blob);
+    }, 'image/jpeg');
+  });
+}
+
+
 export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialogProps) {
   const db = useFirestore();
   const { toast } = useToast();
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
   const [avatarPreview, setAvatarPreview] = useState<string | null | undefined>(user.avatar);
+  const [imageToCrop, setImageToCrop] = useState('');
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isCropping, setIsCropping] = useState(false);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -70,6 +155,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             avatar: user.avatar || '',
         });
         setAvatarPreview(user.avatar);
+        setImageToCrop(''); // Also reset cropper state
     }
   }, [open, user, form]);
 
@@ -78,8 +164,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
       if (file.size > 2 * 1024 * 1024) { // 2MB limit
         toast({
             variant: 'destructive',
@@ -88,15 +174,39 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
         });
         return;
       }
+      setCrop(undefined) // Makes crop preview update between images.
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setAvatarPreview(result);
-        form.setValue('avatar', result, { shouldValidate: true });
-      };
-      reader.readAsDataURL(file);
+      reader.addEventListener('load', () =>
+        setImageToCrop(reader.result?.toString() || ''),
+      )
+      reader.readAsDataURL(file)
     }
   };
+
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height, 1 / 1));
+  }
+
+  const handleCropConfirm = async () => {
+    if (!completedCrop || !imgRef.current) {
+        toast({ variant: 'destructive', title: 'Crop Error', description: 'Could not process the crop.' });
+        return;
+    }
+    setIsCropping(true);
+    try {
+        const croppedImageUrl = await getCroppedImg(imgRef.current, completedCrop);
+        setAvatarPreview(croppedImageUrl);
+        form.setValue('avatar', croppedImageUrl, { shouldValidate: true });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Crop Error', description: 'An error occurred while cropping.' });
+    } finally {
+        setImageToCrop('');
+        setIsCropping(false);
+    }
+  };
+
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!db || !user) return;
@@ -124,9 +234,40 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       });
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+  const dialogContent = imageToCrop ? (
+    <>
+        <DialogHeader>
+            <DialogTitle>Crop your new avatar</DialogTitle>
+            <DialogDescription>Adjust the selection to crop your image. It will be a 1:1 square.</DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-center">
+            <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={1}
+                minWidth={100}
+                minHeight={100}
+            >
+                <img
+                    ref={imgRef}
+                    alt="Crop me"
+                    src={imageToCrop}
+                    onLoad={onImageLoad}
+                    style={{ maxHeight: '60vh' }}
+                />
+            </ReactCrop>
+        </div>
+        <DialogFooter>
+            <Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button>
+            <Button onClick={handleCropConfirm} disabled={isCropping}>
+                {isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Crop & Save
+            </Button>
+        </DialogFooter>
+    </>
+  ) : (
+    <>
         <DialogHeader>
           <DialogTitle>{t('edit_profile')}</DialogTitle>
           <DialogDescription>
@@ -199,6 +340,13 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             </DialogFooter>
           </form>
         </Form>
+    </>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {dialogContent}
       </DialogContent>
     </Dialog>
   );
