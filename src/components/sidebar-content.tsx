@@ -611,6 +611,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                               <DropdownMenuRadioItem value="red">{t('red')}</DropdownMenuRadioItem>
                               <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
                               <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="frutiger">{t('frutiger_aero')}</DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
                           <DropdownMenuSeparator />
                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

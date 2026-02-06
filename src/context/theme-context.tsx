@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink';
+type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger';
 
 const THEMES: Record<Theme, any> = {
   orange: {
@@ -211,6 +211,32 @@ const THEMES: Record<Theme, any> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '327 50% 90%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+    },
+  },
+  frutiger: {
+    light: {
+      primary: '205 75% 50%',
+      foreground: '205 75% 95%',
+      background: '180 25% 95%',
+      card: '180 25% 98%',
+      muted: '180 20% 90%',
+      border: '180 20% 85%',
+      input: '180 20% 88%',
+      sidebarForeground: '205 20% 25%',
+      sidebarAccent: '180 20% 90%',
+      sidebarAccentForeground: '205 20% 25%',
+    },
+    dark: {
+      primary: '205 75% 60%',
+      foreground: '205 75% 95%',
+      background: '205 20% 10%',
+      card: '205 20% 12%',
+      muted: '205 15% 20%',
+      border: '205 15% 25%',
+      input: '205 15% 25%',
+      sidebarForeground: '205 20% 92%',
+      sidebarAccent: '205 15% 20%',
+      sidebarAccentForeground: '205 20% 92%',
     },
   },
 };
