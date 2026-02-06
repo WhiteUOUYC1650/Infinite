@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import ReactMarkdown from 'react-markdown';
@@ -71,10 +72,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [imageToSend, setImageToSend] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
   
   // --- Get live chat data ---
@@ -384,18 +387,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const handleSendMessage = async () => {
-    if (!messageContent.trim() || !db) return;
+    if ((!messageContent.trim() && !imageToSend) || !db) return;
 
     setIsSending(true);
     const originalContent = messageContent;
+    const originalImage = imageToSend;
     const originalReplyTo = replyToMessage;
     const contentForMessage = originalContent.replace(/\n/g, '  \n');
-    const contentForPreview = originalContent.split('\n')[0];
+    const contentForPreview = originalImage ? (originalContent || t('image_attachment_placeholder')) : originalContent.split('\n')[0];
+
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
 
     setMessageContent('');
     setReplyToMessage(null);
+    setImageToSend(null);
+
 
     const messageData: { [key: string]: any } = {
         senderId: currentUser.uid,
@@ -405,6 +412,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         type: 'user',
         readBy: [],
     };
+
+    if (originalImage) {
+        messageData.imageUrl = originalImage;
+    }
 
     if (currentUser.avatar) {
         messageData.senderAvatar = currentUser.avatar;
@@ -453,13 +464,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         batch.set(newMessageInCurrentChatRef, messageData);
 
         const currentChatRef = doc(db, 'chats', item.id);
-        const lastMessageData = {
+        const lastMessageData: {[key: string]: any} = {
             id: newMessageInCurrentChatRef.id,
             content: contentForPreview,
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username || 'User',
             timestamp: timestamp,
         };
+        if (originalImage) {
+            lastMessageData.imageUrl = originalImage;
+        }
+
         const currentChatUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
         if (item.id !== 'GENERAL_CHAT') {
             item.members.forEach((memberId) => {
@@ -521,6 +536,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (serverError: any) {
         setMessageContent(originalContent);
         setReplyToMessage(originalReplyTo);
+        setImageToSend(originalImage);
         console.error('Error sending message: ', serverError);
         const permissionError = new FirestorePermissionError({
             path: `chats/${item.id}/messages`,
@@ -543,6 +559,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     // If we are starting an edit, cancel any reply.
     if (message !== null) {
         setReplyToMessage(null);
+        setImageToSend(null);
     }
   };
 
@@ -581,9 +598,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useEffect(() => {
     if (editingMessage) {
         setMessageContent(editingMessage.content.replace(/  \n/g, '\n'));
+        setImageToSend(editingMessage.imageUrl || null);
     } else {
         if (!replyToMessage) {
             setMessageContent('');
+            setImageToSend(null);
         }
     }
   }, [editingMessage, replyToMessage]);
@@ -593,7 +612,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   
   const handleSaveEdit = async () => {
-    if (!db || !editingMessage || !messageContent.trim()) return;
+    if (!db || !editingMessage || (!messageContent.trim() && !imageToSend)) return;
 
     setIsSending(true);
     const messageRef = doc(db, 'chats', item.id, 'messages', editingMessage.id);
@@ -602,14 +621,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         const updatePayload: { [key: string]: any } = {
             content: newContent,
+            imageUrl: imageToSend || null,
             editedAt: serverTimestamp(),
         };
         await updateDoc(messageRef, updatePayload);
 
         if (item.lastMessage?.id === editingMessage.id) {
             const chatRef = doc(db, 'chats', item.id);
+            const contentForPreview = imageToSend ? (messageContent || t('image_attachment_placeholder')) : messageContent.split('\n')[0];
             await updateDoc(chatRef, {
-                'lastMessage.content': messageContent.split('\n')[0],
+                'lastMessage.content': contentForPreview,
+                'lastMessage.imageUrl': imageToSend || null,
                 'lastMessage.editedAt': serverTimestamp(),
             });
         }
@@ -633,6 +655,37 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         await handleSaveEdit();
     } else {
         await handleSendMessage();
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        toast({ variant: 'destructive', title: 'Invalid file type', description: 'Please select an image.' });
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+            variant: 'destructive',
+            title: 'Image too large',
+            description: 'Please select an image smaller than 5MB.',
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if(editingMessage) {
+            setImageToSend(dataUrl);
+        } else {
+            setReplyToMessage(null);
+            setImageToSend(dataUrl);
+        }
+      };
+      reader.readAsDataURL(file);
+      event.target.value = ''; // Reset file input
     }
   };
   
@@ -861,6 +914,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </div>
             </div>
           )}
+          {imageToSend && !editingMessage && (
+            <div className="pb-2">
+                <div className="relative w-fit">
+                    <img src={imageToSend} alt="Preview" className="max-h-24 rounded-lg" />
+                    <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setImageToSend(null)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+          )}
+
 
           <form onSubmit={handleSubmit} className="relative">
             <Textarea
@@ -875,15 +939,38 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 } else if (e.key === 'Escape') {
                   if (editingMessage) handleCancelEdit();
                   else if (replyToMessage) setReplyToMessage(null);
+                  else if (imageToSend) setImageToSend(null);
                 }
               }}
               disabled={isSending}
             />
+             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <Button variant="ghost" size="icon" type="button" onClick={promptUpdate}>
-                <Paperclip className="h-5 w-5" />
-              </Button>
-              <Button size="icon" type="submit" disabled={isSending || !messageContent.trim()}>
+                <Popover>
+                    <PopoverTrigger asChild>
+                         <Button variant="ghost" size="icon" type="button">
+                            <Paperclip className="h-5 w-5" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="end" className="w-auto p-1">
+                        <div className="flex flex-col">
+                            <Button variant="ghost" className="justify-start" onClick={() => fileInputRef.current?.click()}>
+                                <ImageIcon className="mr-2 h-4 w-4" />
+                                <span>Photo</span>
+                            </Button>
+                            <Button variant="ghost" className="justify-start" disabled>
+                                <VideoIcon className="mr-2 h-4 w-4" />
+                                <span>Video</span>
+                            </Button>
+                             <Button variant="ghost" className="justify-start" disabled>
+                                <MusicIcon className="mr-2 h-4 w-4" />
+                                <span>Music</span>
+                            </Button>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+
+              <Button size="icon" type="submit" disabled={isSending || (!messageContent.trim() && !imageToSend)}>
                 {isSending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : editingMessage ? (
@@ -1125,7 +1212,17 @@ function ChatMessage({
                 </button>
             )}
             <div className="overflow-hidden">
-                <div className={cn(
+                {message.imageUrl && (
+                    <div className="relative my-1">
+                        {/* In a real app, you might want a custom image viewer for zooming etc. */}
+                        <img 
+                            src={message.imageUrl} 
+                            alt={t('image_attachment_alt')} 
+                            className="max-w-xs max-h-80 object-cover rounded-lg"
+                        />
+                    </div>
+                )}
+                {message.content && <div className={cn(
                     "text-sm break-all prose prose-sm max-w-none",
                     alignRight ? "prose-invert text-white" : "dark:prose-invert"
                 )}>
@@ -1137,7 +1234,7 @@ function ChatMessage({
                     >
                         {message.content}
                     </ReactMarkdown>
-                </div>
+                </div>}
             </div>
             
             <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>

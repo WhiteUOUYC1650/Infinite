@@ -16,7 +16,8 @@ const UserReportInputSchema = z.object({
   messages: z
     .array(
       z.object({
-        content: z.string(),
+        content: z.string().describe('The text content of the message.'),
+        imageUrl: z.string().optional().describe("Data URI of an image attached to the message. Format: 'data:<mimetype>;base64,<encoded_data>'."),
       })
     )
     .describe('A list of recent messages sent by the user.'),
@@ -49,6 +50,9 @@ const prompt = ai.definePrompt({
   
   Твоя задача — проанализировать эти сообщения на предмет нарушений правил платформы (спам, оскорбления, враждебные высказывания, подозрительная активность) и составить подробный отчет на РУССКОМ ЯЗЫКЕ.
   
+  **Важно:** Текст, начинающийся с собачки \`@\` (например, \`@username\`) или с \`/G/\` или \`/C/\` (например, \`/G/mygroup\`), является внутренней ссылкой на пользователя, группу или канал в мессенджере. Учитывай это при анализе.
+  Проанализируй также прикрепленные изображения на предмет нежелательного контента.
+
   Структура отчета:
   1.  **Краткое резюме**: Общая оценка поведения пользователя в 1-2 предложениях.
   2.  **Анализ сообщений**: Если найдены подозрительные сообщения, процитируй их и объясни, в чем заключается потенциальное нарушение. Если нарушений нет, так и напиши.
@@ -58,7 +62,10 @@ const prompt = ai.definePrompt({
   
   Последние сообщения пользователя для анализа:
   {{#each messages}}
-  - "{{this.content}}"
+  - Сообщение: "{{this.content}}"
+    {{#if this.imageUrl}}
+    Прикрепленное изображение: {{media url=this.imageUrl}}
+    {{/if}}
   {{/each}}`,
 });
 
@@ -69,7 +76,7 @@ const generateUserReportFlow = ai.defineFlow(
     outputSchema: UserReportOutputSchema,
   },
   async (input) => {
-    if (input.messages.length === 0) {
+    if (input.messages.length === 0 || input.messages.every(m => !m.content && !m.imageUrl)) {
       return {
         report: 'Недостаточно данных для анализа: у пользователя нет недавних сообщений.',
       };

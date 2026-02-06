@@ -23,9 +23,10 @@ export type ReplyInfo = {
 };
 
 export type Message = {
-  id: string;
+  id:string;
   senderId: string;
   content: string;
+  imageUrl?: string;
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;

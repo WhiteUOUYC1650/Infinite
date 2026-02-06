@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection, doc, getDoc, deleteDoc, runTransaction, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import type { User, Chat } from '@/types';
+import type { User, Chat, Message } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2, MoreVertical, Bot } from 'lucide-react';
@@ -97,7 +97,13 @@ function AdminPage() {
         const q = query(messagesRef, where('senderId', '==', userToReport.id), orderBy('timestamp', 'desc'), limit(30));
         const querySnapshot = await getDocs(q);
         
-        const messages = querySnapshot.docs.map(doc => ({ content: doc.data().content }));
+        const messages = querySnapshot.docs.map(doc => {
+            const data = doc.data() as Message;
+            return {
+                content: data.content || '',
+                imageUrl: data.imageUrl,
+            };
+        });
 
         if (messages.length === 0) {
             setReportContent('Не найдено сообщений пользователя в общем чате для анализа.');
@@ -409,5 +415,3 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
 }
 
 export default AdminPage;
-
-    
