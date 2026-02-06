@@ -485,7 +485,9 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
                     {(chat.type === 'group' || chat.type === 'channel') && (
                         <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{t('members_count', { count: members.length })}</h3>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                                {t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: members.length })}
+                            </h3>
                             <ScrollArea className="h-auto max-h-48 pr-4">
                                 <div className="space-y-2">
                                     {members.map(member => (

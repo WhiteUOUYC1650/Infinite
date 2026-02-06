@@ -266,7 +266,7 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
           {chat.name}
           {isVerifiedChat && <VerifiedBadge />}
         </div>
-        <p className="text-sm text-muted-foreground">{t('members_count', { count: chat.members?.length || 0 })}</p>
+        <p className="text-sm text-muted-foreground">{t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: chat.members?.length || 0 })}</p>
         {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
       <AlertDialog>

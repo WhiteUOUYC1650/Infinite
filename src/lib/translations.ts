@@ -14,7 +14,7 @@ export const translations = {
       'loading_chats': 'Loading chats...',
       'saved_messages': 'Saved Messages',
       'app_version': 'App Version',
-      'version_info': 'You are currently running version 0.2 Beta of Infinite messenger.',
+      'version_info': 'You are currently running version 1.0.0 of Infinite messenger.',
       'ok': 'OK',
       'new_conversation': 'New Conversation',
       'new_conversation_desc': 'Start a new direct message, group discussion, or broadcast channel.',
@@ -60,6 +60,7 @@ export const translations = {
       'saving': 'Saving...',
       'profile_update_success': 'Your profile has been updated.',
       'members_count': '{count} members',
+      'subscribers_count': '{count} subscribers',
       'loading_chat': 'Loading chat...',
       'chat_not_selected': 'Chat not selected',
       'no_messages_yet': 'There is nothing here yet.',
@@ -129,7 +130,7 @@ export const translations = {
       'you_left_the_channel_desc': 'You will no longer receive updates. You can rejoin using the link.',
       'welcome_title': 'Welcome to Infinite!',
       'welcome_subtitle': 'You are one of the first to experience the future of communication.',
-      'beta_badge': '0.2 Beta',
+      'beta_badge': '1.0.0',
       'welcome_message': 'Thank you for joining the beta test of our new messenger. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
       'continue_button': 'Continue',
       'thank_you_beta': 'Thank you for participating in the beta test!',
@@ -234,7 +235,7 @@ export const translations = {
       'loading_chats': 'Загрузка чатов...',
       'saved_messages': 'Избранное',
       'app_version': 'Версия приложения',
-      'version_info': 'Вы используете версию 0.2 (Бета) мессенджера Infinite.',
+      'version_info': 'Вы используете версию 1.0.0 мессенджера Infinite.',
       'ok': 'OK',
       'new_conversation': 'Новый диалог',
       'new_conversation_desc': 'Начните новое личное сообщение, групповое обсуждение или канал.',
@@ -280,6 +281,7 @@ export const translations = {
       'saving': 'Сохранение...',
       'profile_update_success': 'Ваш профиль обновлен.',
       'members_count': '{count, plural, one {# участник} few {# участника} other {# участников}}',
+      'subscribers_count': '{count, plural, one {# подписчик} few {# подписчика} other {# подписчиков}}',
       'loading_chat': 'Загрузка чата...',
       'chat_not_selected': 'Чат не выбран',
       'no_messages_yet': 'Здесь пока ничего нет.',
@@ -349,7 +351,7 @@ export const translations = {
       'you_left_the_channel_desc': 'Вы больше не будете получать обновления. Вы можете присоединиться снова по ссылке.',
       'welcome_title': 'Добро пожаловать в Infinite!',
       'welcome_subtitle': 'Вы один из первых, кто прикоснулся к будущему общения.',
-      'beta_badge': 'Бета 0.2',
+      'beta_badge': '1.0.0',
       'welcome_message': 'Спасибо, что присоединились к бета-тестированию нашего нового мессенджера. Мы усердно работаем, чтобы предоставить вам лучший опыт, и ваш отзыв невероятно важен для нас.',
       'continue_button': 'Продолжить',
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
@@ -466,14 +468,14 @@ export const translations = {
               const category = pluralRules.select(count);
               switch(category) {
                   case 'one':
-                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник/g, '').trim() || '';
-                      return `${count} участник`;
+                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник|\# подписчик/g, '').trim() || '';
+                      return `${count} ${str.includes('участник') ? 'участник' : 'подписчик'}`;
                   case 'few':
-                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника/g, '').trim() || '';
-                       return `${count} участника`;
+                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника|\# подписчика/g, '').trim() || '';
+                       return `${count} ${str.includes('участника') ? 'участника' : 'подписчика'}`;
                   default:
-                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников/g, '').trim() || '';
-                       return `${count} участников`;
+                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников|\# подписчиков/g, '').trim() || '';
+                       return `${count} ${str.includes('участников') ? 'участников' : 'подписчиков'}`;
               }
           }
       }

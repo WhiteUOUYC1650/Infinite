@@ -697,7 +697,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <p className="text-sm text-muted-foreground truncate">
                             {item.id === 'GENERAL_CHAT'
                                 ? t('public_chat_description')
-                                : t('members_count', { count: item.members?.length || 0 })}
+                                : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })}
                         </p>
                     </div>
                 </button>
