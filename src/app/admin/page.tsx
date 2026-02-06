@@ -3,11 +3,19 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2, MoreVertical, Bot } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +25,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +32,10 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
+
 
 function AdminPage() {
   const { user: authUser, loading: authLoading } = useUser();
@@ -35,6 +46,11 @@ function AdminPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportContent, setReportContent] = useState('');
+  const [reportingUser, setReportingUser] = useState<User | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // --- Auth and Admin Check ---
   useEffect(() => {
@@ -69,7 +85,47 @@ function AdminPage() {
   const groups = useMemo(() => chats?.filter(c => c.type === 'group') || [], [chats]);
   const channels = useMemo(() => chats?.filter(c => c.type === 'channel') || [], [chats]);
 
-  // --- Deletion Logic ---
+  // --- Action Logic ---
+  
+  const handleGenerateReport = async (userToReport: User) => {
+    if (!db) return;
+    setIsGeneratingReport(true);
+    setReportingUser(userToReport);
+    
+    try {
+        const messagesRef = collection(db, 'chats', 'GENERAL_CHAT', 'messages');
+        const q = query(messagesRef, where('senderId', '==', userToReport.id), orderBy('timestamp', 'desc'), limit(30));
+        const querySnapshot = await getDocs(q);
+        
+        const messages = querySnapshot.docs.map(doc => ({ content: doc.data().content }));
+
+        if (messages.length === 0) {
+            setReportContent('Не найдено сообщений пользователя в общем чате для анализа.');
+            setReportDialogOpen(true);
+            setIsGeneratingReport(false);
+            setReportingUser(null);
+            return;
+        }
+
+        const { report } = await generateUserReport({
+            userName: userToReport.name,
+            userUsername: userToReport.username,
+            messages: messages,
+        });
+        setReportContent(report);
+        setReportDialogOpen(true);
+    } catch (error) {
+        console.error("Error generating AI report:", error);
+        toast({
+            variant: "destructive",
+            title: t('admin_toast_error_title'),
+            description: t('ai_report_failed'),
+        });
+    } finally {
+        setIsGeneratingReport(false);
+    }
+  };
+
   const handleDeleteChat = async (chatId: string) => {
     if (!db) return;
     const chatRef = doc(db, 'chats', chatId);
@@ -156,7 +212,7 @@ function AdminPage() {
             <ItemList
               items={users}
               loading={usersLoading}
-              renderItem={(user: User) => <UserItem key={user.id} user={user} onDelete={handleDeleteUser} />}
+              renderItem={(user: User) => <UserItem key={user.id} user={user} onDelete={handleDeleteUser} onGenerateReport={handleGenerateReport} isGenerating={isGeneratingReport} isCurrentUserReport={reportingUser?.id === user.id} />}
             />
           </TabsContent>
           <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
@@ -175,6 +231,26 @@ function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
+      
+      <AlertDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('ai_report_title', { username: reportingUser?.name || '' })}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('ai_report_desc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="prose prose-sm dark:prose-invert max-w-none max-h-[60vh] overflow-y-auto p-1 rounded-md border">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} className="p-4">
+              {reportContent}
+            </ReactMarkdown>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setReportDialogOpen(false); setReportingUser(null); }}>{t('ok')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
@@ -201,9 +277,10 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => void }) {
-  const isVerifiedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
+function UserItem({ user, onDelete, onGenerateReport, isGenerating, isCurrentUserReport }: { user: User; onDelete: (user: User) => void; onGenerateReport: (user: User) => void; isGenerating: boolean; isCurrentUserReport: boolean; }) {
+  const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
@@ -213,7 +290,7 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
       </Avatar>
       <div className="flex-1 truncate">
         <div className="font-semibold flex items-center gap-2">
-            {user.name} {isVerifiedUser && <VerifiedBadge />}
+            {user.name} {isProtectedUser && <VerifiedBadge />}
         </div>
         <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
@@ -223,29 +300,48 @@ function UserItem({ user, onDelete }: { user: User, onDelete: (user: User) => vo
       )}>
           {user.status}
       </Badge>
-       {!(user.username === '@Infinite' || user.username === '@InfiniteBot') && (
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="icon">
-                <Trash2 className="h-4 w-4" />
-            </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                {t('admin_delete_user_confirm_desc', { name: user.name, username: user.username })}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(user)} className={cn(buttonVariants({ variant: "destructive" }))}>
-                {t('admin_delete_user_button')}
-                </AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+       
+      <div className="flex items-center gap-2">
+        {isCurrentUserReport && <Loader2 className="h-4 w-4 animate-spin" />}
+        {!isProtectedUser && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isGenerating}>
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => onGenerateReport(user)} disabled={isGenerating}>
+                <Bot className="mr-2 h-4 w-4" />
+                <span>{t('admin_ai_report_exp')}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>{t('delete')}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
+      </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+            <AlertDialogDescription>
+            {t('admin_delete_user_confirm_desc', { name: user.name, username: user.username })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { onDelete(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
+            {t('admin_delete_user_button')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -254,12 +350,18 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
   const Icon = chat.type === 'group' ? Users : Megaphone;
   const { t } = useLanguage();
   const isVerifiedChat = chat.link === '/G/Infinite' || chat.link === '/C/Infinite';
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
       <Avatar>
-        <AvatarFallback>
-          <Icon className="h-5 w-5 text-muted-foreground" />
-        </AvatarFallback>
+         {chat.avatar ? (
+          <AvatarImage src={chat.avatar} alt={chat.name} />
+        ) : (
+          <AvatarFallback>
+            <Icon className="h-5 w-5 text-muted-foreground" />
+          </AvatarFallback>
+        )}
       </Avatar>
       <div className="flex-1 truncate">
         <div className="font-semibold flex items-center gap-2">
@@ -269,12 +371,24 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
         <p className="text-sm text-muted-foreground">{t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: chat.members?.length || 0 })}</p>
         {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button variant="destructive" size="icon" disabled={isVerifiedChat}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </AlertDialogTrigger>
+      
+      {!isVerifiedChat && (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>{t('delete')}</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
@@ -284,7 +398,7 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onDelete(chat.id)} className={cn(buttonVariants({ variant: "destructive" }))}>
+            <AlertDialogAction onClick={() => {onDelete(chat.id); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
               {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
