@@ -10,7 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const UserReportInputSchema = z.object({
+const UserReportInputSchema = z.object({
   userName: z.string().describe('The name of the user being reported on.'),
   userUsername: z.string().describe('The unique username of the user.'),
   messages: z
@@ -23,7 +23,7 @@ export const UserReportInputSchema = z.object({
 });
 export type UserReportInput = z.infer<typeof UserReportInputSchema>;
 
-export const UserReportOutputSchema = z.object({
+const UserReportOutputSchema = z.object({
   report: z
     .string()
     .describe(
