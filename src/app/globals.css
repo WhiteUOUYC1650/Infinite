@@ -115,7 +115,7 @@ body {
 
 @layer components {
   .theme-frutiger [data-sidebar="sidebar"],
-  .theme-frutiger main[class*="peer-data"] {
+  .theme-frutiger main {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
