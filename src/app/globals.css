@@ -112,3 +112,11 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
+@layer components {
+  .theme-frutiger [data-sidebar="sidebar"],
+  .theme-frutiger main[class*="peer-data"] {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}

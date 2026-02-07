@@ -1,10 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import placeholderImages from '@/lib/placeholder-images.json';
 
 type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger';
 
-const THEMES: Record<Theme, any> = {
+type ThemeColors = { [key: string]: string };
+
+type ThemeConfig = {
+  light: ThemeColors;
+  dark: ThemeColors;
+  backgroundImage?: keyof typeof placeholderImages;
+};
+
+const THEMES: Record<Theme, ThemeConfig> = {
   orange: {
     light: {
       primary: '25 95% 53%',
@@ -217,27 +226,28 @@ const THEMES: Record<Theme, any> = {
     light: {
       primary: '205 80% 55%',
       foreground: '205 50% 98%',
-      background: '130 50% 95%',
-      card: '130 40% 97%',
-      muted: '130 30% 90%',
-      border: '130 20% 85%',
-      input: '130 20% 88%',
+      background: '130 50% 95% / 0.6',
+      card: '130 40% 97% / 0.5',
+      muted: '130 30% 90% / 0.5',
+      border: '130 20% 85% / 0.5',
+      input: '130 20% 88% / 0.5',
       sidebarForeground: '215 25% 25%',
-      sidebarAccent: '130 30% 90%',
+      sidebarAccent: '130 30% 90% / 0.5',
       sidebarAccentForeground: '215 25% 25%',
     },
     dark: {
       primary: '205 80% 60%',
       foreground: '205 50% 98%',
-      background: '140 20% 8%',
-      card: '140 15% 10%',
-      muted: '140 10% 15%',
-      border: '140 10% 20%',
-      input: '140 10% 20%',
+      background: '140 20% 8% / 0.75',
+      card: '140 15% 10% / 0.65',
+      muted: '140 10% 15% / 0.6',
+      border: '140 10% 20% / 0.5',
+      input: '140 10% 20% / 0.6',
       sidebarForeground: '140 20% 95%',
-      sidebarAccent: '140 10% 15%',
+      sidebarAccent: '140 10% 15% / 0.6',
       sidebarAccentForeground: '140 20% 95%',
     },
+    backgroundImage: 'frutiger_aero_background',
   },
 };
 
@@ -283,8 +293,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isMounted) {
       const root = document.documentElement;
+      const body = document.body;
+
       root.classList.toggle('dark', isDarkMode);
       localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
+
+      if (theme === 'frutiger') {
+        root.classList.add('theme-frutiger');
+      } else {
+        root.classList.remove('theme-frutiger');
+      }
+      
+      const themeConfig = THEMES[theme];
+      const bgImageKey = themeConfig.backgroundImage;
+
+      if (bgImageKey && (placeholderImages as any)[bgImageKey]) {
+        body.style.backgroundImage = `url(${(placeholderImages as any)[bgImageKey].url})`;
+        body.style.backgroundSize = 'cover';
+        body.style.backgroundPosition = 'center';
+        body.style.backgroundAttachment = 'fixed';
+      } else {
+        body.style.backgroundImage = 'none';
+      }
       
       const themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
       
@@ -312,7 +342,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       };
 
       for (const [property, value] of Object.entries(varsToSet)) {
-          root.style.setProperty(property, value);
+          if (value) root.style.setProperty(property, value);
       }
     }
   }, [theme, isDarkMode, isMounted]);
