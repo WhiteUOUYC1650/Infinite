@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, query, where, orderBy, limit, getDocs, collectionGroup } from 'firebase/firestore';
 import type { User, Chat, Message } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -94,8 +94,8 @@ function AdminPage() {
     setReportingUser(userToReport);
     
     try {
-        const messagesRef = collection(db, 'chats', 'GENERAL_CHAT', 'messages');
-        const q = query(messagesRef, where('senderId', '==', userToReport.id), orderBy('timestamp', 'desc'), limit(30));
+        const messagesGroupRef = collectionGroup(db, 'messages');
+        const q = query(messagesGroupRef, where('senderId', '==', userToReport.id), orderBy('timestamp', 'desc'), limit(50));
         const querySnapshot = await getDocs(q);
         
         const messages = querySnapshot.docs.map(doc => {
@@ -107,7 +107,7 @@ function AdminPage() {
         });
 
         if (messages.length === 0) {
-            setReportContent('Не найдено сообщений пользователя в общем чате для анализа.');
+            setReportContent('Не найдено сообщений пользователя для анализа.');
             setReportDialogOpen(true);
             setIsGeneratingReport(false);
             setReportingUser(null);
@@ -121,13 +121,21 @@ function AdminPage() {
         });
         setReportContent(report);
         setReportDialogOpen(true);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating AI report:", error);
-        toast({
+        if (error.code === 'failed-precondition') {
+          toast({
             variant: "destructive",
-            title: t('admin_toast_error_title'),
-            description: t('ai_report_failed'),
-        });
+            title: 'AI Report Failed',
+            description: "The necessary search index is being created. Please wait a few minutes and try again.",
+          });
+        } else {
+          toast({
+              variant: "destructive",
+              title: t('admin_toast_error_title'),
+              description: t('ai_report_failed'),
+          });
+        }
     } finally {
         setIsGeneratingReport(false);
     }
@@ -389,7 +397,7 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
         {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
       
-      {!isVerifiedChat && (
+      {!isVerifiedChat && chat.id !== 'GENERAL_CHAT' && (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
