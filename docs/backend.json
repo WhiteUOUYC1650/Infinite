@@ -46,6 +46,10 @@
             "type": "boolean",
             "description": "True if the user is a bot account."
         },
+        "isDeleted": {
+            "type": "boolean",
+            "description": "True if the user account has been deleted/anonymized."
+        },
         "lastSeen": {
             "type": "object",
             "description": "Server timestamp of when the user was last active."

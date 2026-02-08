@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@/types";
 import { cn } from "@/lib/utils";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Ghost } from "lucide-react";
 
 interface UserAvatarWithStatusProps {
   user: User;
@@ -19,6 +19,19 @@ const statusColors = {
 };
 
 export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelected }: UserAvatarWithStatusProps) {
+  if (user?.isDeleted) {
+    return (
+      <Avatar className={cn("h-10 w-10", className)}>
+        <div className={cn(
+            "flex h-full w-full items-center justify-center rounded-full bg-muted",
+             isSelected && "bg-sidebar-primary text-sidebar-primary-foreground"
+        )}>
+          <Ghost className="h-6 w-6" />
+        </div>
+      </Avatar>
+    );
+  }
+
   if (isSavedMessages) {
     return (
       <Avatar className={cn("h-10 w-10", className)}>

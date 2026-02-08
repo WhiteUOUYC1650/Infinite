@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from './ui/verified-badge';
+import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 
 interface UserProfileDialogProps {
   user: User;
@@ -40,7 +41,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const { t } = useLanguage();
 
   const getStatusText = (user: User) => {
-    if (user.isBot) return '';
+    if (user.isBot || user.isDeleted) return '';
     const statusKey = statusTranslations[user.status] || 'offline';
     let statusText = t(statusKey);
     
@@ -52,44 +53,36 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     return statusText;
   }
 
+  const displayName = user.isDeleted ? t('deleted_account') : user.name;
+  const displayUsername = user.isDeleted ? '' : user.username;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-            <DialogTitle className="sr-only">{user.name}'s Profile</DialogTitle>
+            <DialogTitle className="sr-only">{displayName}'s Profile</DialogTitle>
             <div className='relative mx-auto w-32 h-32'>
-                 <Avatar className="w-32 h-32 text-4xl">
-                    {user.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                {!user.isBot && user.status && (
-                    <span
-                        className={cn(
-                        "absolute bottom-2 right-2 block h-5 w-5 rounded-full ring-4 ring-background",
-                        statusColors[user.status]
-                        )}
-                    />
-                )}
+                 <UserAvatarWithStatus user={user} className="w-32 h-32 text-4xl" />
             </div>
         </DialogHeader>
         <div className="text-center py-4">
             <div className="flex items-center justify-center gap-2">
-                <h2 className="text-2xl font-bold font-headline">{user.name}</h2>
-                {(user.username === '@Infinite' || user.username === '@InfiniteBot') && <VerifiedBadge />}
-                {user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}
+                <h2 className="text-2xl font-bold font-headline">{displayName}</h2>
+                {!user.isDeleted && (user.username === '@Infinite' || user.username === '@InfiniteBot') && <VerifiedBadge />}
+                {!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}
             </div>
-            <p className="text-muted-foreground">{user.username}</p>
+            <p className="text-muted-foreground">{displayUsername}</p>
             <p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
         </div>
 
-        {user.statusMessage && (
+        {user.statusMessage && !user.isDeleted && (
              <div className="text-center p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm">{user.statusMessage}</p>
             </div>
         )}
        
         <DialogFooter className='!justify-center'>
-            <Button onClick={() => onSendMessage(user)} disabled={user.isBot}>
+            <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted}>
                 {t('message')}
             </Button>
         </DialogFooter>

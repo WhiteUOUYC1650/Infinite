@@ -12,6 +12,7 @@ export type User = {
   hasSetNickname?: boolean;
   isBot?: boolean;
   lastSeen?: Timestamp;
+  isDeleted?: boolean;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };

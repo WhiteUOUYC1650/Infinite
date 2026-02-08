@@ -222,7 +222,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
     
     setIsDeleting(true);
-    // Set a flag to prevent the main page from redirecting to /login
     sessionStorage.setItem('isDeletingAccount', 'true');
 
     const userToDelete = auth.currentUser;
@@ -238,8 +237,19 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         await runTransaction(db, async (transaction) => {
             const userDocRef = doc(db, 'users', userToDelete.uid);
             const usernameDocRef = doc(db, 'usernames', usernameToDelete);
-            transaction.delete(userDocRef);
-            transaction.delete(usernameDocRef);
+            
+            transaction.update(userDocRef, {
+                name: 'Deleted Account',
+                username: `@deleted_${userToDelete.uid}`,
+                avatar: '',
+                status: 'offline',
+                statusMessage: '',
+                isDeleted: true,
+            });
+
+            if ((await transaction.get(usernameDocRef)).exists()) {
+                transaction.delete(usernameDocRef);
+            }
         });
 
         await deleteUser(userToDelete);
@@ -254,7 +264,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             description: error.message || t('unexpected_error')
         });
         setIsDeleting(false);
-        // Clean up the flag on error
         sessionStorage.removeItem('isDeletingAccount');
     }
   };
@@ -555,11 +564,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 flex-1 truncate p-2 rounded-md hover:bg-sidebar-accent text-left">
                     {currentUser.uid && currentUser.name && (
-                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online" }} />
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted }} />
                     )}
                     <div className="flex-1 truncate">
-                    <p className="font-semibold">{currentUser.name || currentUser.email}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
+                    <p className="font-semibold">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{currentUser.isDeleted ? '' : t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
                     </div>
                 </button>
             </PopoverTrigger>
@@ -753,6 +762,8 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot';
+  const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
+
 
   return (
     <Button
@@ -766,7 +777,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
             <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-2">
                     <div className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
-                        {isSavedMessages ? t('saved_messages') : otherUser.name}
+                        {displayName}
                     </div>
                     {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
                 </div>

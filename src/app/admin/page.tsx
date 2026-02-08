@@ -7,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, query, where, order
 import type { User, Chat, Message } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2, MoreVertical, Bot } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2, MoreVertical, Bot, Ban } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
+import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 
 
 function AdminPage() {
@@ -151,8 +152,8 @@ function AdminPage() {
     }
   };
 
-  const handleDeleteUser = async (userToDelete: User) => {
-    if (!db || !userToDelete.username) {
+  const handleBanUser = async (userToBan: User) => {
+    if (!db || !userToBan.id || !userToBan.username) {
         toast({
             variant: 'destructive',
             title: t('admin_toast_error_title'),
@@ -160,7 +161,7 @@ function AdminPage() {
         });
         return;
     }
-    if (userToDelete.username === '@Infinite' || userToDelete.username === '@InfiniteBot') {
+    if (userToBan.username === '@Infinite' || userToBan.username === '@InfiniteBot') {
         toast({
             variant: 'destructive',
             title: t('admin_toast_action_not_allowed_title'),
@@ -169,24 +170,33 @@ function AdminPage() {
         return;
     }
 
-    const userDocRef = doc(db, 'users', userToDelete.id);
-    const usernameDocRef = doc(db, 'usernames', userToDelete.username);
+    const userDocRef = doc(db, 'users', userToBan.id);
+    const usernameDocRef = doc(db, 'usernames', userToBan.username);
 
     try {
       await runTransaction(db, async (transaction) => {
-          transaction.delete(userDocRef);
-          transaction.delete(usernameDocRef);
+          transaction.update(userDocRef, {
+            name: 'Deleted Account',
+            username: `@deleted_${userToBan.id}`,
+            avatar: '',
+            status: 'offline',
+            statusMessage: '',
+            isDeleted: true,
+          });
+          if ((await transaction.get(usernameDocRef)).exists()){
+            transaction.delete(usernameDocRef);
+          }
       });
       toast({
-        title: t('admin_toast_user_deleted_title'),
-        description: t('admin_toast_user_deleted_desc', { name: userToDelete.name, username: userToDelete.username }),
+        title: t('admin_toast_user_banned_title'),
+        description: t('admin_toast_user_banned_desc', { name: userToBan.name, username: userToBan.username }),
       });
     } catch (error: any) {
-      console.error('Error deleting user:', error);
+      console.error('Error banning user:', error);
       toast({
         variant: 'destructive',
         title: t('admin_toast_error_title'),
-        description: error.message || t('admin_toast_delete_user_error_desc'),
+        description: error.message || t('admin_toast_ban_user_error_desc'),
       });
     }
   };
@@ -218,7 +228,7 @@ function AdminPage() {
             <ItemList
               items={users}
               loading={usersLoading}
-              renderItem={(user: User) => <UserItem key={user.id} user={user} onDelete={handleDeleteUser} onGenerateReport={handleGenerateReport} isGenerating={isGeneratingReport} isCurrentUserReport={reportingUser?.id === user.id} />}
+              renderItem={(user: User) => <UserItem key={user.id} user={user} onBan={handleBanUser} onGenerateReport={handleGenerateReport} isGenerating={isGeneratingReport} isCurrentUserReport={reportingUser?.id === user.id} />}
             />
           </TabsContent>
           <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
@@ -283,33 +293,34 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user, onDelete, onGenerateReport, isGenerating, isCurrentUserReport }: { user: User; onDelete: (user: User) => void; onGenerateReport: (user: User) => void; isGenerating: boolean; isCurrentUserReport: boolean; }) {
+function UserItem({ user, onBan, onGenerateReport, isGenerating, isCurrentUserReport }: { user: User; onBan: (user: User) => void; onGenerateReport: (user: User) => void; isGenerating: boolean; isCurrentUserReport: boolean; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const displayName = user.isDeleted ? t('deleted_account') : user.name;
+  const displayUsername = user.isDeleted ? '' : user.username;
 
   return (
     <div className="flex items-center gap-4 rounded-lg border p-3">
-      <Avatar>
-        <AvatarImage src={user.avatar} />
-        <AvatarFallback>{user.name?.charAt(0) || <User2 />}</AvatarFallback>
-      </Avatar>
+      <UserAvatarWithStatus user={user} />
       <div className="flex-1 truncate">
         <div className="font-semibold flex items-center gap-2">
-            {user.name} {isProtectedUser && <VerifiedBadge />}
+            {displayName} {isProtectedUser && !user.isDeleted && <VerifiedBadge />}
         </div>
-        <p className="text-sm text-muted-foreground">{user.username}</p>
+        <p className="text-sm text-muted-foreground">{displayUsername}</p>
       </div>
-      <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
-          user.status === 'online' && 'bg-green-500',
-          user.status === 'away' && 'bg-yellow-500',
-      )}>
-          {user.status}
-      </Badge>
+      {!user.isDeleted && (
+        <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
+            user.status === 'online' && 'bg-green-500',
+            user.status === 'away' && 'bg-yellow-500',
+        )}>
+            {user.status}
+        </Badge>
+      )}
        
       <div className="flex items-center gap-2">
         {isCurrentUserReport && <Loader2 className="h-4 w-4 animate-spin" />}
-        {!isProtectedUser && (
+        {!isProtectedUser && !user.isDeleted && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isGenerating}>
@@ -324,8 +335,8 @@ function UserItem({ user, onDelete, onGenerateReport, isGenerating, isCurrentUse
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>{t('delete')}</span>
+                <Ban className="mr-2 h-4 w-4" />
+                <span>{t('admin_ban_user_button')}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -337,13 +348,13 @@ function UserItem({ user, onDelete, onGenerateReport, isGenerating, isCurrentUse
           <AlertDialogHeader>
             <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
             <AlertDialogDescription>
-            {t('admin_delete_user_confirm_desc', { name: user.name, username: user.username })}
+            {t('admin_ban_user_confirm_desc', { name: user.name, username: user.username })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { onDelete(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
-            {t('admin_delete_user_button')}
+            <AlertDialogAction onClick={() => { onBan(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
+            {t('admin_ban_user_button')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
 import { Button } from './ui/button';
 import { VerifiedBadge } from './ui/verified-badge';
+import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -30,7 +31,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const { t } = useLanguage();
 
   const getStatusText = (user: AuthenticatedUser) => {
-    if (user.isBot) return '';
+    if (user.isBot || user.isDeleted) return '';
     if (!user.status) return '';
     const statusKey = statusTranslations[user.status] || 'offline';
     let statusText = t(statusKey);
@@ -42,44 +43,36 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
     
     return statusText;
   }
+  
+  const displayName = user.isDeleted ? t('deleted_account') : user.name;
+  const displayUsername = user.isDeleted ? '' : user.username;
 
   return (
     <div className="flex flex-col">
         <div className='relative mx-auto w-24 h-24 mb-4'>
-             <Avatar className="w-24 h-24 text-3xl">
-                {user.avatar ? <AvatarImage src={user.avatar} alt={user.name || ''} /> : null}
-                <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
-            </Avatar>
-            {user.status && !user.isBot && (
-                <span
-                    className={cn(
-                    "absolute bottom-1 right-1 block h-4 w-4 rounded-full ring-2 ring-background",
-                    statusColors[user.status]
-                    )}
-                />
-            )}
+             <UserAvatarWithStatus user={user} className="w-24 h-24 text-3xl" />
         </div>
         <div className="text-center">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
-                {user.name}
+                {displayName}
                 {user.isAdmin && <VerifiedBadge />}
             </h2>
             {user.isBot ? (
                 <p className="text-muted-foreground text-sm">/B/Infinite</p>
             ) : (
-                <p className="text-muted-foreground text-sm">{user.username}</p>
+                <p className="text-muted-foreground text-sm">{displayUsername}</p>
             )}
             <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
         </div>
 
-        {user.statusMessage && (
+        {user.statusMessage && !user.isDeleted && (
              <div className="text-center p-3 mt-4 bg-muted/50 rounded-lg">
                 <p className="text-sm">{user.statusMessage}</p>
             </div>
         )}
        
         <div className='mt-4 flex justify-center'>
-            <Button onClick={onEditProfile}>
+            <Button onClick={onEditProfile} disabled={!!user.isDeleted}>
                 {t('edit_profile')}
             </Button>
         </div>

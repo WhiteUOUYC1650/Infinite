@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -228,6 +228,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const getChatName = () => {
     if (item.type === 'dm') {
+      if (otherUser?.isDeleted) {
+        return t('deleted_account');
+      }
       if (otherUser?.id === currentUser.uid) {
         return t('saved_messages');
       }
@@ -237,7 +240,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   
   const getStatusText = (user: User | null | undefined) => {
-    if (!user) return null;
+    if (!user || user.isDeleted) return null;
 
     if (user.isBot) {
       return t('bot_status');
@@ -257,8 +260,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const canSendMessage = useMemo(() => {
     if (!isMember) return false;
+    if (otherUser?.isDeleted) return false;
     return item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
-  }, [isMember, item.type, item.ownerId, currentUser.uid]);
+  }, [isMember, item.type, item.ownerId, currentUser.uid, otherUser]);
 
 
   // --- Auto-scroll ---
@@ -304,7 +308,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 
   const handleSendMessageToUser = async (targetUser: User) => {
-    if (!db || !currentUser) return;
+    if (!db || !currentUser || targetUser.isDeleted) return;
 
     // Close the profile dialog
     setProfileDialogUser(null);
@@ -777,7 +781,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <button
                         className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
                         onClick={() => setProfileDialogUser(otherUser)}
-                        disabled={otherUser.id === currentUser.uid}
+                        disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
                         <div className="ml-3 truncate">
@@ -847,7 +851,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                             <>
                                 {otherUser.id !== currentUser.uid ? (
                                     <>
-                                        <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
+                                        <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)} disabled={!!otherUser.isDeleted}>
                                             <UserIcon className="mr-2 h-4 w-4" />
                                             <span>{t('view_profile')}</span>
                                         </DropdownMenuItem>
@@ -1172,7 +1176,7 @@ function ChatMessage({
 
 
     const handleAvatarClick = () => {
-        if (fromBot) return; // Don't open profile for bot
+        if (fromBot || (sender && sender.isDeleted)) return;
         if (sender && !isCurrentUser) {
             onAvatarClick(sender);
         }
@@ -1227,7 +1231,9 @@ function ChatMessage({
     } : undefined;
 
     const displaySender = fromBot ? botUser : sender;
-    const isVerified = sender?.username === '@Infinite' || sender?.username === '@InfiniteBot';
+    const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
+    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot');
+
 
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
@@ -1253,7 +1259,7 @@ function ChatMessage({
         <>
             {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
                   <div className="font-semibold text-sm mb-1 flex items-center gap-2">
-                      <div className="truncate">{displaySender.name}</div>
+                      <div className="truncate">{displayName}</div>
                       {isVerified && <VerifiedBadge />}
                       {isFromChannel ? (
                           <Badge variant="secondary">{t('channel_badge')}</Badge>
@@ -1336,7 +1342,7 @@ function ChatMessage({
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
-                        <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot}>
+                        <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot || !!displaySender.isDeleted}>
                            {isFromChannel ? (
                                 <Avatar className="h-10 w-10">
                                     <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary">
@@ -1376,7 +1382,7 @@ function ChatMessage({
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
-                        {chat.type !== 'channel' && (
+                        {chat.type !== 'channel' && !displaySender?.isDeleted && (
                             <DropdownMenuItem onSelect={() => onReply(message)}>
                                 <Reply className="mr-2 h-4 w-4" />
                                 <span>{t('reply')}</span>
