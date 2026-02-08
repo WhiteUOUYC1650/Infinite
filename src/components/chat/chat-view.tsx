@@ -989,13 +989,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </div>
             </div>
           )}
-          {imageToSend && !editingMessage && (
+          {imageToSend && (
             <div className="pb-2">
                 <div className="relative w-fit">
                     <img src={imageToSend} alt="Preview" className="max-h-24 rounded-lg" />
-                    <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setImageToSend(null)}>
-                        <X className="h-4 w-4" />
-                    </Button>
+                     {isSending ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                            <Loader2 className="h-8 w-8 animate-spin text-white" />
+                        </div>
+                    ) : (
+                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setImageToSend(null)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
             </div>
           )}
