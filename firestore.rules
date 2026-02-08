@@ -109,7 +109,7 @@ service cloud.firestore {
     }
 
     match /chats/{chatId}/messages/{messageId} {
-      allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+      allow read: if (isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members) || isAdmin();
       
       allow create: if isSignedIn() && 
                      request.resource.data.senderId == request.auth.uid && 
@@ -122,7 +122,7 @@ service cloud.firestore {
                        ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
                        (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']))
                      );
-      allow delete: if resource.data.senderId == request.auth.uid;
+      allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
 
     match /chatLinks/{linkId} {
