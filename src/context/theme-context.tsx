@@ -242,7 +242,7 @@ const THEMES: Record<Theme, ThemeConfig> = {
     light: {
       primary: '205 80% 55%',
       foreground: '205 50% 98%',
-      background: '0 0% 0% / 0',
+      background: '130 40% 97% / 0.6',
       card: '130 40% 97% / 0.6',
       'sidebar-background': '130 40% 97% / 0.6',
       muted: '130 30% 90% / 0.5',
@@ -255,7 +255,7 @@ const THEMES: Record<Theme, ThemeConfig> = {
     dark: {
       primary: '205 80% 60%',
       foreground: '205 50% 98%',
-      background: '0 0% 0% / 0',
+      background: '140 15% 10% / 0.75',
       card: '140 15% 10% / 0.75',
       'sidebar-background': '140 15% 10% / 0.75',
       muted: '140 10% 15% / 0.6',
@@ -361,6 +361,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       for (const [property, value] of Object.entries(varsToSet)) {
           if (value) root.style.setProperty(property, value);
+      }
+
+      if (theme === 'frutiger') {
+        body.style.backgroundColor = 'transparent';
+      } else {
+        body.style.backgroundColor = '';
       }
     }
   }, [theme, isDarkMode, isMounted]);
