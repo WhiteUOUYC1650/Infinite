@@ -60,6 +60,47 @@ const iconMap = {
     Bot,
 };
 
+const compressImage = (file: File, quality = 0.85, maxDimension = 1920): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height *= maxDimension / width;
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width *= maxDimension / height;
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Could not get canvas context'));
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL(file.type, file.type === 'image/jpeg' ? quality : undefined);
+        resolve(dataUrl);
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
@@ -93,13 +134,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const item = useMemo(() => {
     if (!liveChatData) return initialItem;
     // important to merge with iconComponent
-    return { ...initialItem, ...liveChatData };
-  }, [initialItem, liveChatData]);
+    const newChatData = { ...initialItem, ...liveChatData };
+     if (newChatData.type === 'dm' && newChatData.id === currentUser.uid) {
+      newChatData.icon = 'Bookmark';
+    }
+    return newChatData;
+  }, [initialItem, liveChatData, currentUser.uid]);
 
   const isMember = useMemo(() => {
     if (!item?.members) return false;
     return item.members.includes(currentUser.uid);
-  }, [item.members, currentUser.uid]);
+  }, [item?.members, currentUser.uid]);
 
   // --- End live chat data ---
 
@@ -660,34 +705,56 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
+      event.target.value = ''; // Reset file input
+
       if (!file.type.startsWith('image/')) {
         toast({ variant: 'destructive', title: t('invalid_file_type'), description: t('select_an_image') });
         return;
       }
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({
-            variant: 'destructive',
-            title: t('image_too_large'),
-            description: t('select_smaller_image_5mb'),
-        });
-        return;
-      }
+      
+      const fileSizeInMB = file.size / 1024 / 1024;
+      const COMPRESSION_THRESHOLD_MB = 0.7; // 700KB
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
+      try {
+        let dataUrl: string;
+
+        if (fileSizeInMB > COMPRESSION_THRESHOLD_MB) {
+          dataUrl = await compressImage(file, 0.85, 1920); // quality 0.85, max 1920px
+        } else {
+          dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = e => resolve(e.target?.result as string);
+            reader.onerror = e => reject(e);
+          });
+        }
+        
+        if (dataUrl.length > 950 * 1024) { 
+             toast({
+                variant: 'destructive',
+                title: t('image_too_large'),
+                description: t('image_too_large_compressed'),
+            });
+            return;
+        }
+
         if(editingMessage) {
             setImageToSend(dataUrl);
         } else {
             setReplyToMessage(null);
             setImageToSend(dataUrl);
         }
-      };
-      reader.readAsDataURL(file);
-      event.target.value = ''; // Reset file input
+      } catch(e) {
+        console.error("Error processing image:", e);
+        toast({
+            variant: 'destructive',
+            title: t('image_processing_failed_title'),
+            description: t('image_processing_failed_desc'),
+        });
+      }
     }
   };
   
@@ -698,7 +765,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {/* Chat Header */}
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b",
-          colorTheme === 'frutiger' && 'bg-card'
+          colorTheme === 'frutiger' && (item.type === 'dm' ? 'bg-card/80' : 'bg-card')
       )}>
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
@@ -889,7 +956,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {canSendMessage && (
         <footer className={cn(
             "flex-shrink-0 p-4 border-t",
-            colorTheme === 'frutiger' && 'bg-card'
+            colorTheme === 'frutiger' && 'bg-card/80'
         )}>
           {editingMessage && (
             <div className="pb-2">
@@ -1249,7 +1316,7 @@ function ChatMessage({
                 {message.editedAt && <span className="italic">{t('edited')}</span>}
                 <span>{timestamp}</span>
                 {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
+                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-blue-400" : "text-primary-foreground/30")} />
                 )}
             </div>
         </>

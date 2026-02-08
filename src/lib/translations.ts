@@ -235,6 +235,9 @@ export const translations = {
       'select_an_image': 'Please select an image.',
       'image_too_large': 'Image too large',
       'select_smaller_image_5mb': 'Please select an image smaller than 5MB.',
+      'image_too_large_compressed': 'Even after compression, the image is too large to be sent.',
+      'image_processing_failed_title': 'Image processing failed',
+      'image_processing_failed_desc': 'There was an error preparing your image. Please try another one.',
     },
     ru: {
       'settings': 'Настройки',
@@ -472,6 +475,9 @@ export const translations = {
       'select_an_image': 'Пожалуйста, выберите изображение.',
       'image_too_large': 'Изображение слишком большое',
       'select_smaller_image_5mb': 'Пожалуйста, выберите изображение размером менее 5 МБ.',
+      'image_too_large_compressed': 'Даже после сжатия изображение слишком велико для отправки.',
+      'image_processing_failed_title': 'Ошибка обработки изображения',
+      'image_processing_failed_desc': 'Произошла ошибка при подготовке изображения. Пожалуйста, попробуйте другое.',
     }
   };
   
