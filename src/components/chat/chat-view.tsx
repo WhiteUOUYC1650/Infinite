@@ -34,6 +34,7 @@ import { FaqDialog } from '../faq-dialog';
 import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
+import { useTheme } from '@/context/theme-context';
 
 
 function DateSeparator({ date }: { date: string }) {
@@ -65,6 +66,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
+  const { theme: colorTheme } = useTheme();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -694,7 +696,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   return (
     <div className={cn("flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       {/* Chat Header */}
-      <header className="flex-shrink-0 flex items-center p-4 border-b">
+      <header className={cn(
+          "flex-shrink-0 flex items-center p-4 border-b",
+          colorTheme === 'frutiger' && 'bg-card'
+      )}>
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
         </Button>
@@ -882,7 +887,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer className="flex-shrink-0 p-4 border-t">
+        <footer className={cn(
+            "flex-shrink-0 p-4 border-t",
+            colorTheme === 'frutiger' && 'bg-card'
+        )}>
           {editingMessage && (
             <div className="pb-2">
               <div className="relative rounded-lg bg-accent/50 p-3">
