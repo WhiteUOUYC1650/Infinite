@@ -496,6 +496,9 @@ export const translations = {
   
   // A simple interpolation function
   export const interpolate = (str: string, values: Record<string, any>): string => {
+      if (!str) {
+        return '';
+      }
       // Basic pluralization for Russian 'members'
       if (str.includes('plural') && values.count !== undefined) {
           const count = values.count;
