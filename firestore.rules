@@ -14,6 +14,14 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
+    // This rule is for collection group queries on 'messages'.
+    // It allows an admin to read from the 'messages' collection group,
+    // which is required for the AI report feature to analyze messages across all chats.
+    // This rule does not grant write permissions and does not affect non-admin users.
+    match /{path=**}/messages/{messageId} {
+        allow read: if isAdmin();
+    }
+
     match /config/version {
       allow get: if true;
       allow write: if false;
