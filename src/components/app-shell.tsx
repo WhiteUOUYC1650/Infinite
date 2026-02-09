@@ -44,7 +44,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
   if (isMobile) {
     if (!populatedUser) {
-      return <div className="flex h-screen items-center justify-center">Loading...</div>;
+      return <div className="flex h-svh items-center justify-center">Loading...</div>;
     }
 
     if (selectedItem) {
@@ -53,7 +53,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     
     // On mobile, the sidebar content takes the full screen.
     return (
-        <div className="h-screen w-screen flex flex-col bg-sidebar text-sidebar-foreground">
+        <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
             <SidebarContent onSelect={handleSelect} selectedId={selectedItem?.id} currentUser={populatedUser} />
         </div>
     );

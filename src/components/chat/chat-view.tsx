@@ -261,8 +261,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const canSendMessage = useMemo(() => {
     if (!isMember) return false;
     if (otherUser?.isDeleted) return false;
-    return item.type !== 'channel' || (item.type === 'channel' && item.ownerId === currentUser.uid);
-  }, [isMember, item.type, item.ownerId, currentUser.uid, otherUser]);
+    if (item.type === 'channel' && item.ownerId !== currentUser.uid) {
+        if (item.discussionChatId) return true; // Can send to discussion
+        return false;
+    }
+    return true;
+  }, [isMember, item, currentUser.uid, otherUser]);
 
 
   // --- Auto-scroll ---
@@ -481,14 +485,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
 
     // --- Pre-read data needed for batch ---
-    const isBotChat = otherUser?.username === '@InfiniteBot';
+    const isVeoBotChat = otherUser?.username === '@VeoBot';
+    const isInfiniteBotChat = otherUser?.username === '@InfiniteBot';
     let adminId: string | null = null;
     let feedbackChatId: string | null = null;
     let feedbackChatExists = false;
     let discussionChatSnap: any = null;
 
     try {
-        if (isBotChat) {
+        if (isInfiniteBotChat) {
             const adminUsernameSnap = await getDoc(doc(db, 'usernames', '@Infinite'));
             if (adminUsernameSnap.exists()) {
                 adminId = adminUsernameSnap.data().uid;
@@ -510,34 +515,53 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         // --- All reads are done, start the batch ---
         const batch = writeBatch(db);
 
-        // 1. Write to current chat
-        const newMessageInCurrentChatRef = doc(collection(db, 'chats', item.id, 'messages'));
-        batch.set(newMessageInCurrentChatRef, messageData);
+        const isChannelPost = item.type === 'channel' && item.ownerId === currentUser.uid;
+        const targetChatId = isChannelPost && item.discussionChatId ? item.discussionChatId : item.id;
+        const isForwardingToDiscussion = isChannelPost && item.discussionChatId;
 
-        const currentChatRef = doc(db, 'chats', item.id);
+        // 1. Write to current chat (or discussion chat)
+        const newMessageRef = doc(collection(db, 'chats', targetChatId, 'messages'));
+        if (isForwardingToDiscussion) {
+             const forwardedMessageData = { ...messageData, type: 'announcement', senderName: item.name, senderAvatar: 'is_channel_message' };
+             batch.set(newMessageRef, forwardedMessageData);
+        } else {
+            batch.set(newMessageRef, messageData);
+        }
+        
+
+        const targetChatRef = doc(db, 'chats', targetChatId);
         const lastMessageData: {[key: string]: any} = {
-            id: newMessageInCurrentChatRef.id,
+            id: newMessageRef.id,
             content: contentForPreview,
             senderId: currentUser.uid,
-            senderName: currentUser.name || currentUser.username || 'User',
+            senderName: isForwardingToDiscussion ? item.name : (currentUser.name || currentUser.username || 'User'),
             timestamp: timestamp,
         };
         if (originalImage) {
             lastMessageData.imageUrl = originalImage;
         }
 
-        const currentChatUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.id !== 'GENERAL_CHAT') {
-            item.members.forEach((memberId) => {
+        const targetChatUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        const targetChatDoc = isForwardingToDiscussion ? discussionChatSnap?.data() : item;
+
+        if (targetChatId !== 'GENERAL_CHAT' && targetChatDoc) {
+            targetChatDoc.members.forEach((memberId: string) => {
                 if (memberId !== currentUser.uid) {
-                    currentChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+                    targetChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
                 }
             });
         }
-        batch.update(currentChatRef, currentChatUpdateData);
+        batch.update(targetChatRef, targetChatUpdateData);
+        
+        // Also update the channel's last message if posting to a channel with a discussion group
+        if (isForwardingToDiscussion) {
+            const channelChatRef = doc(db, 'chats', item.id);
+            batch.update(channelChatRef, { lastMessage: lastMessageData });
+        }
+
 
         // 2. Forward message to admin if it's feedback to the bot
-        if (isBotChat && adminId && feedbackChatId) {
+        if (isInfiniteBotChat && adminId && feedbackChatId) {
             const feedbackChatRef = doc(db, 'chats', feedbackChatId);
             const feedbackMessageRef = doc(collection(db, 'chats', feedbackChatId, 'messages'));
             
@@ -545,6 +569,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
             const feedbackLastMessageData = {
                 ...lastMessageData,
+                senderName: currentUser.name || currentUser.username || 'User', // ensure correct sender name
                 id: feedbackMessageRef.id,
             };
             const feedbackUpdateData: { [key: string]: any } = {
@@ -562,27 +587,28 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 });
             }
         }
-
-        // 3. Forward message to discussion group if it's a channel
-        if (item.type === 'channel' && item.discussionChatId && discussionChatSnap?.exists()) {
-            const discussionChatRef = doc(db, 'chats', item.discussionChatId);
-            const newMessageInDiscussionRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-            const forwardedMessageData = { ...messageData, type: 'announcement', senderName: item.name, senderAvatar: 'is_channel_message' };
-            batch.set(newMessageInDiscussionRef, forwardedMessageData);
-
-            const discussionChatData = discussionChatSnap.data();
-            const discussionLastMessageData = { ...lastMessageData, id: newMessageInDiscussionRef.id, senderName: item.name };
-            const discussionUpdateData: { [key: string]: any } = { lastMessage: discussionLastMessageData };
-            discussionChatData.members.forEach((memberId: string) => {
-                if (memberId !== currentUser.uid) {
-                    discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
-                }
-            });
-            batch.update(discussionChatRef, discussionUpdateData);
-        }
-
+        
         // --- Commit all writes ---
         await batch.commit();
+        
+        if (isVeoBotChat && messageData.content.startsWith('/video ')) {
+            // This is a simplified version. In a real app, you would have the bot service listen to new messages.
+            const veoBotId = otherUser?.id;
+            if (veoBotId) {
+                const botResponseRef = doc(collection(db, 'chats', item.id, 'messages'));
+                const thinkingMessage = {
+                     senderId: veoBotId,
+                     type: 'announcement',
+                     content: `Generating video for: "${messageData.content.substring(7)}"`,
+                     timestamp: serverTimestamp(),
+                     senderName: otherUser?.name || 'VeoBot',
+                     senderAvatar: otherUser?.avatar || null,
+                };
+                await setDoc(botResponseRef, thinkingMessage);
+                await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...thinkingMessage, id: botResponseRef.id } });
+            }
+        }
+
 
     } catch (serverError: any) {
         setMessageContent(originalContent);
@@ -714,6 +740,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const file = event.target.files[0];
       event.target.value = ''; // Reset file input
 
+      if (file.type.startsWith('video/')) {
+        toast({ variant: 'destructive', title: 'Video Upload Not Supported', description: 'Video uploads are coming soon!' });
+        return;
+      }
       if (!file.type.startsWith('image/')) {
         toast({ variant: 'destructive', title: t('invalid_file_type'), description: t('select_an_image') });
         return;
@@ -723,6 +753,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const COMPRESSION_THRESHOLD_MB = 0.7; // 700KB
 
       try {
+        setIsSending(true);
         let dataUrl: string;
 
         if (fileSizeInMB > COMPRESSION_THRESHOLD_MB) {
@@ -742,11 +773,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 title: t('image_too_large'),
                 description: t('image_too_large_compressed'),
             });
+            setIsSending(false);
             return;
         }
 
         if(editingMessage) {
             setImageToSend(dataUrl);
+            setIsSending(false);
         } else {
             setReplyToMessage(null);
             setImageToSend(dataUrl);
@@ -758,6 +791,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             title: t('image_processing_failed_title'),
             description: t('image_processing_failed_desc'),
         });
+      } finally {
+        if (!editingMessage) {
+            setIsSending(false);
+        }
       }
     }
   };
@@ -765,7 +802,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div className={cn("flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+    <div className={cn("flex flex-col h-svh bg-background overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]", isMobile ? 'w-screen' : 'w-full')}>
       {/* Chat Header */}
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b",
@@ -787,7 +824,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <div className="ml-3 truncate">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
-                                {otherUser?.username === '@InfiniteBot' && <VerifiedBadge className="shrink-0" />}
+                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
@@ -1029,7 +1066,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               }}
               disabled={isSending}
             />
-             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
+             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*" />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Popover>
                     <PopoverTrigger asChild>
@@ -1232,7 +1269,7 @@ function ChatMessage({
 
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
-    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot');
+    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
 
 
     const renderLink = ({ href, children, ...props }: any) => {
@@ -1299,7 +1336,9 @@ function ChatMessage({
                 </button>
             )}
             <div className="overflow-hidden">
-                {message.imageUrl && (
+                 {message.videoUrl ? (
+                    <video src={message.videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg my-1" />
+                ) : message.imageUrl ? (
                     <div className="relative my-1">
                         {/* In a real app, you might want a custom image viewer for zooming etc. */}
                         <img 
@@ -1308,7 +1347,7 @@ function ChatMessage({
                             className="max-w-xs max-h-80 object-cover rounded-lg"
                         />
                     </div>
-                )}
+                ) : null}
                 {message.content && <div className={cn(
                     "text-sm break-all prose prose-sm max-w-none",
                     alignRight ? "prose-invert text-white" : "dark:prose-invert"

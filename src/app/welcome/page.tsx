@@ -23,7 +23,7 @@ export default function WelcomePage() {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-svh items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
@@ -32,7 +32,7 @@ export default function WelcomePage() {
   return (
     <div
       className={cn(
-        'relative flex min-h-screen flex-col items-center justify-center p-8 text-center transition-colors duration-500',
+        'relative flex min-h-svh flex-col items-center justify-center p-8 text-center transition-colors duration-500 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(2rem+env(safe-area-inset-right))]',
         step === 1 ? 'bg-[#FF8C00] text-white' : 'bg-[#FFAA00] text-gray-900'
       )}
     >

@@ -24,7 +24,7 @@ export default function GoodbyePage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background text-center p-8 relative">
+    <div className="flex min-h-svh flex-col items-center justify-center bg-background text-center p-8 relative pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(2rem+env(safe-area-inset-right))]">
        <div className="absolute top-4 right-4 flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -85,7 +85,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background relative">
+    <div className="flex min-h-svh items-center justify-center bg-background relative pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

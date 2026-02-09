@@ -82,7 +82,7 @@ export default function SignUpPage() {
           throw new Error(t('username_taken_error'));
         }
         
-        const isBotUser = usernameWithAt === '@InfiniteBot';
+        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
 
         transaction.set(userDocRef, {
           name: isBotUser ? 'Infinite' : usernameWithAt,
@@ -96,14 +96,14 @@ export default function SignUpPage() {
         });
 
         if (isBotUser) {
-            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/' + values.username));
             transaction.set(botLinkRef, { botId: createdUser!.uid });
         }
       });
 
       // START: Bot welcome message logic
       try {
-        const isBotUser = usernameWithAt === '@InfiniteBot';
+        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
         if (!isBotUser) {
           // 1. Find the bot user
           const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
@@ -197,7 +197,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background relative">
+    <div className="flex min-h-svh items-center justify-center bg-background relative pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
