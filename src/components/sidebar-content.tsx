@@ -238,6 +238,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             const userDocRef = doc(db, 'users', userToDelete.uid);
             const usernameDocRef = doc(db, 'usernames', usernameToDelete);
             
+            const usernameDoc = await transaction.get(usernameDocRef);
+
             transaction.update(userDocRef, {
                 name: 'Deleted Account',
                 username: `@deleted_${userToDelete.uid}`,
@@ -247,7 +249,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 isDeleted: true,
             });
 
-            if ((await transaction.get(usernameDocRef)).exists()) {
+            if (usernameDoc.exists()) {
                 transaction.delete(usernameDocRef);
             }
         });
@@ -836,3 +838,5 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     </Button>
   );
 }
+
+    

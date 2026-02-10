@@ -183,6 +183,8 @@ function AdminPage() {
 
     try {
       await runTransaction(db, async (transaction) => {
+          const usernameDoc = await transaction.get(usernameDocRef);
+
           transaction.update(userDocRef, {
             name: 'Deleted Account',
             username: `@deleted_${userToBan.id}`,
@@ -191,7 +193,8 @@ function AdminPage() {
             statusMessage: '',
             isDeleted: true,
           });
-          if ((await transaction.get(usernameDocRef)).exists()){
+
+          if (usernameDoc.exists()){
             transaction.delete(usernameDocRef);
           }
       });
@@ -434,3 +437,5 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
 }
 
 export default AdminPage;
+
+    
