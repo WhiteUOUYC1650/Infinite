@@ -35,14 +35,15 @@ service cloud.firestore {
                       // Admin can update anything
                       isAdmin() ||
                       // Owner can update their own profile...
-                      (isOwner(userId) &&
+                      (
+                        isOwner(userId) &&
                         (
-                          // ...if they are not changing their username
-                          !('username' in request.writeFields) ||
-                          // ...OR if they are changing their username as part of account deletion
+                          // ...if they are NOT changing their username
+                          request.resource.data.username == resource.data.username ||
+                          // ...OR if they ARE changing username as part of the specific delete operation
                           (
-                            'username' in request.writeFields &&
                             request.resource.data.isDeleted == true &&
+                            resource.data.isDeleted != true &&
                             request.resource.data.username == '@deleted_' + userId
                           )
                         )
