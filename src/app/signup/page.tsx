@@ -95,6 +95,9 @@ export default function SignUpPage() {
           isBot: isBotUser,
         });
 
+        // Reserve the username
+        transaction.set(usernameRef, { uid: createdUser!.uid });
+
         if (isBotUser) {
             const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/' + values.username));
             transaction.set(botLinkRef, { botId: createdUser!.uid });
