@@ -31,7 +31,22 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && !('username' in request.writeFields); // Cannot change username
+      allow update: if
+                      // Admin can update anything
+                      isAdmin() ||
+                      // Owner can update their own profile...
+                      (isOwner(userId) &&
+                        (
+                          // ...if they are not changing their username
+                          !('username' in request.writeFields) ||
+                          // ...OR if they are changing their username as part of account deletion
+                          (
+                            'username' in request.writeFields &&
+                            request.resource.data.isDeleted == true &&
+                            request.resource.data.username == '@deleted_' + userId
+                          )
+                        )
+                      );
       allow delete: if isOwner(userId) || isAdmin();
     }
 
