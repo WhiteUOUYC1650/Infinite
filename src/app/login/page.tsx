@@ -2,8 +2,9 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +38,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const auth = useAuth();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -51,9 +53,23 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!auth) return;
+    if (!auth || !db) return;
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists() && userDocSnap.data().isDeleted === true) {
+        await auth.signOut();
+        toast({
+          variant: 'destructive',
+          title: t('sign_in_failed_toast_title'),
+          description: t('user_blocked_error'),
+        });
+        return;
+      }
+
       sessionStorage.setItem('justLoggedIn', 'true');
       router.push('/');
     } catch (error: any) {
