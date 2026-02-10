@@ -21,7 +21,7 @@ service cloud.firestore {
     // which is required for the AI report feature to analyze messages across all chats.
     // This rule does not grant write permissions and does not affect non-admin users.
     match /{path=**}/messages/{messageId} {
-        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
+        allow read: if isAdmin();
     }
 
     match /config/version {
@@ -31,7 +31,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
+      allow list: if isAdmin();
       allow create: if isOwner(userId);
       allow update: if
                       // Admin can update anything
