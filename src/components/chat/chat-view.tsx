@@ -514,53 +514,59 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         // --- All reads are done, start the batch ---
         const batch = writeBatch(db);
-
         const isChannelPost = item.type === 'channel' && item.ownerId === currentUser.uid;
-        const targetChatId = isChannelPost && item.discussionChatId ? item.discussionChatId : item.id;
-        const isForwardingToDiscussion = isChannelPost && item.discussionChatId;
 
-        // 1. Write to current chat (or discussion chat)
-        const newMessageRef = doc(collection(db, 'chats', targetChatId, 'messages'));
-        if (isForwardingToDiscussion) {
-             const forwardedMessageData = { ...messageData, type: 'announcement', senderName: item.name, senderAvatar: 'is_channel_message' };
-             batch.set(newMessageRef, forwardedMessageData);
-        } else {
-            batch.set(newMessageRef, messageData);
-        }
-        
+        // Post the message to the primary chat (channel, group, or DM)
+        const primaryMessageRef = doc(collection(db, 'chats', item.id, 'messages'));
+        batch.set(primaryMessageRef, messageData);
 
-        const targetChatRef = doc(db, 'chats', targetChatId);
-        const lastMessageData: {[key: string]: any} = {
-            id: newMessageRef.id,
+        // Update the last message for the primary chat
+        const lastMessageForPrimary: {[key: string]: any} = {
+            id: primaryMessageRef.id,
             content: contentForPreview,
             senderId: currentUser.uid,
-            senderName: isForwardingToDiscussion ? item.name : (currentUser.name || currentUser.username || 'User'),
+            senderName: currentUser.name || currentUser.username || 'User',
             timestamp: timestamp,
         };
-        if (originalImage) {
-            lastMessageData.imageUrl = originalImage;
+         if (originalImage) {
+            lastMessageForPrimary.imageUrl = originalImage;
         }
+        
+        const primaryChatRef = doc(db, 'chats', item.id);
+        const primaryUpdateData: { [key: string]: any } = { lastMessage: lastMessageForPrimary };
 
-        const targetChatUpdateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        const targetChatDoc = isForwardingToDiscussion ? discussionChatSnap?.data() : item;
-
-        if (targetChatId !== 'GENERAL_CHAT' && targetChatDoc) {
-            targetChatDoc.members.forEach((memberId: string) => {
+        // Handle unread counts for DMs and Groups (Channels don't have direct unread counts)
+        if (!isChannelPost && item.id !== 'GENERAL_CHAT') {
+            item.members.forEach((memberId: string) => {
                 if (memberId !== currentUser.uid) {
-                    targetChatUpdateData[`unreadCounts.${memberId}`] = increment(1);
+                    primaryUpdateData[`unreadCounts.${memberId}`] = increment(1);
                 }
             });
         }
-        batch.update(targetChatRef, targetChatUpdateData);
-        
-        // Also update the channel's last message if posting to a channel with a discussion group
-        if (isForwardingToDiscussion) {
-            const channelChatRef = doc(db, 'chats', item.id);
-            batch.update(channelChatRef, { lastMessage: lastMessageData });
+        batch.update(primaryChatRef, primaryUpdateData);
+
+
+        // If it's a channel post with a discussion group, forward the message there
+        if (isChannelPost && item.discussionChatId && discussionChatSnap?.exists()) {
+            const discussionChatRef = discussionChatSnap.ref;
+            const discussionMessageRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            
+            const forwardedMessageData = { ...messageData, type: 'announcement', senderName: item.name, senderAvatar: 'is_channel_message' };
+            batch.set(discussionMessageRef, forwardedMessageData);
+
+            const lastMessageForDiscussion = {
+                ...lastMessageForPrimary,
+                id: discussionMessageRef.id,
+                senderName: item.name // Show channel name
+            };
+            const discussionUpdateData: { [key: string]: any } = { lastMessage: lastMessageForDiscussion };
+            discussionChatSnap.data().members.forEach((memberId: string) => {
+                discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
+            });
+            batch.update(discussionChatRef, discussionUpdateData);
         }
 
-
-        // 2. Forward message to admin if it's feedback to the bot
+        // Forward message to admin if it's feedback to the bot
         if (isInfiniteBotChat && adminId && feedbackChatId) {
             const feedbackChatRef = doc(db, 'chats', feedbackChatId);
             const feedbackMessageRef = doc(collection(db, 'chats', feedbackChatId, 'messages'));
