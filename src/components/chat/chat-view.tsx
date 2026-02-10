@@ -574,7 +574,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             batch.set(feedbackMessageRef, messageData);
 
             const feedbackLastMessageData = {
-                ...lastMessageData,
+                ...lastMessageForPrimary,
                 senderName: currentUser.name || currentUser.username || 'User', // ensure correct sender name
                 id: feedbackMessageRef.id,
             };
@@ -877,6 +877,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className="flex items-center gap-2 ml-2">
+            {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
+              <>
+                <Button variant="ghost" size="icon" onClick={promptUpdate} title={t('audio_call')}>
+                  <Phone className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={promptUpdate} title={t('video_call')}>
+                  <Video className="h-5 w-5" />
+                </Button>
+              </>
+            )}
             {item.type === 'channel' && item.discussionChatId && (
                 <Button variant="ghost" size="icon" onClick={() => handleJoinDiscussion(item.discussionChatId!)} title={t('join_discussion_button')}>
                     <Users className="h-5 w-5" />
@@ -897,15 +907,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                         <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)} disabled={!!otherUser.isDeleted}>
                                             <UserIcon className="mr-2 h-4 w-4" />
                                             <span>{t('view_profile')}</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={promptUpdate}>
-                                            <Phone className="mr-2 h-4 w-4" />
-                                            <span>{t('audio_call')}</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={promptUpdate}>
-                                            <Video className="mr-2 h-4 w-4" />
-                                            <span>{t('video_call')}</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
