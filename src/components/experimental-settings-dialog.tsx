@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -22,7 +21,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -49,15 +48,19 @@ import { EditProfileDialog } from './edit-profile-dialog';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about';
 
-const SettingsItem = ({ label, value, onClick, disabled = false }: { label: string, value?: string, onClick: () => void, disabled?: boolean }) => (
-  <button onClick={onClick} className="flex items-center justify-between w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none" disabled={disabled}>
-    <span className="font-medium">{label}</span>
-    <div className="flex items-center gap-2 text-muted-foreground">
-      {value && <span className='capitalize'>{value}</span>}
-      <ChevronRight className="h-5 w-5" />
-    </div>
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean }) => (
+    <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none" disabled={disabled}>
+        <Icon className="h-6 w-6 mr-4 text-muted-foreground" />
+        <div className="flex-1 flex items-center justify-between">
+            <span className="font-medium">{label}</span>
+            <div className="flex items-center gap-2 text-muted-foreground">
+                {value && <span className='capitalize'>{value}</span>}
+                <ChevronRight className="h-5 w-5" />
+            </div>
+        </div>
   </button>
 );
+
 
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string }) => (
     <div className="flex items-center justify-between w-full p-4">
@@ -68,7 +71,10 @@ const SettingsSwitchItem = ({ label, checked, onCheckedChange, id }: { label: st
 
 
 export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
-  const [page, setPage] = useState<SettingsPage>('main');
+  const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']);
+  const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward');
+  const page = pageHistory[pageHistory.length - 1];
+  
   const [showEditProfile, setShowEditProfile] = useState(false);
   
   const { t, language, setLanguage } = useLanguage();
@@ -81,13 +87,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const navigateTo = (newPage: SettingsPage) => {
+    setAnimationDirection('forward');
+    setPageHistory(prev => [...prev, newPage]);
+  };
+
   const handleBack = () => {
-    if (page === 'theme') {
-      setPage('appearance');
-    } else {
-      setPage('main');
+    if (pageHistory.length > 1) {
+        setAnimationDirection('backward');
+        setPageHistory(prev => prev.slice(0, -1));
     }
   };
+
+  const resetState = () => {
+    setPageHistory(['main']);
+    setAnimationDirection('forward');
+  }
   
   const handleLogout = async () => {
     if (auth && db && currentUser) {
@@ -196,13 +211,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             />
         </div>
         <div className="border-t">
-          <SettingsItem label={t('appearance')} value={theme} onClick={() => setPage('appearance')} />
-          <SettingsItem label={t('language')} value={language.toUpperCase()} onClick={() => setPage('language')} />
-          <SettingsItem label={t('profile')} onClick={() => setPage('account')} />
-          <SettingsItem label={t('help')} onClick={() => setPage('help')} />
-          <SettingsItem label={t('version')} value="0.2.1" onClick={() => setPage('about')} />
+          <SettingsItem icon={Paintbrush} label={t('appearance')} value={theme} onClick={() => navigateTo('appearance')} />
+          <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
+          <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
+          <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
+          <SettingsItem icon={Info} label={t('version')} value="0.2.1" onClick={() => navigateTo('about')} />
           {currentUser.isAdmin && (
-              <SettingsItem label="Admin Panel" onClick={() => router.push('/admin')} />
+              <SettingsItem icon={Shield} label={t('admin_panel_title')} onClick={() => router.push('/admin')} />
           )}
         </div>
       </>
@@ -211,7 +226,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const appearancePageContent = (
       <>
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
-        <SettingsItem label={t('color_theme')} value={theme} onClick={() => setPage('theme')} />
+        <SettingsItem icon={Paintbrush} label={t('color_theme')} value={theme} onClick={() => navigateTo('theme')} />
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
         <SettingsSwitchItem id="experimental-menu-switch" label="Experimental Menu" checked={useExperimentalMenu} onCheckedChange={toggleExperimentalMenu} />
       </>
@@ -303,10 +318,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => setPage('main'), 200); }}>
-      <DialogContent className="max-w-md w-full h-[80svh] flex flex-col p-0 gap-0">
-        <DialogHeader className="flex-row items-center p-4 border-b">
-          {page !== 'main' && (
+    <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
+      <DialogContent className="max-w-md w-full h-[80svh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="flex-row items-center p-4 border-b shrink-0">
+          {pageHistory.length > 1 && (
             <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2">
               <ArrowLeft />
             </Button>
@@ -314,7 +329,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="flex-1">
-            {renderContent()}
+           <div 
+                key={page} 
+                className={cn(
+                    "animate-in fade-in-0 duration-300",
+                    animationDirection === 'forward' ? 'slide-in-from-right-5' : 'slide-in-from-left-5'
+                )}
+            >
+                {renderContent()}
+            </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
@@ -328,7 +351,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
             <AlertDialogHeader>
-            <AlertDialogTitle>{t('delete_account_confirm_title')}</AlertDialogTitle>
+            <AlertDialogTitleComponent>{t('delete_account_confirm_title')}</AlertDialogTitleComponent>
             <AlertDialogDescription>
                 {t('delete_account_confirm_desc')}
             </AlertDialogDescription>

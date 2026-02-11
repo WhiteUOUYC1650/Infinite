@@ -611,7 +611,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         {currentUser.isAdmin && (
                             <DropdownMenuItem onSelect={() => router.push('/admin')}>
                                 <Shield className="mr-2 h-4 w-4" />
-                                <span>Admin Panel</span>
+                                <span>{t('admin_panel_title')}</span>
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
