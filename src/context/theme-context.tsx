@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -294,6 +295,8 @@ interface ThemeContextType {
   isDarkMode: boolean;
   showSnowflakes: boolean;
   toggleSnowflakes: () => void;
+  useExperimentalMenu: boolean;
+  toggleExperimentalMenu: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -302,12 +305,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('orange');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSnowflakes, setShowSnowflakes] = useState(false);
+  const [useExperimentalMenu, setUseExperimentalMenu] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
+    const storedExperimentalMenu = localStorage.getItem('app-experimental-menu');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -321,6 +326,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     if (storedSnowflakes) {
       setShowSnowflakes(storedSnowflakes === 'true');
+    }
+
+    if (storedExperimentalMenu) {
+      setUseExperimentalMenu(storedExperimentalMenu === 'true');
     }
 
     setIsMounted(true);
@@ -406,6 +415,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const handleToggleExperimentalMenu = () => {
+    setUseExperimentalMenu(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-experimental-menu', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -413,6 +430,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     isDarkMode,
     showSnowflakes,
     toggleSnowflakes: handleToggleSnowflakes,
+    useExperimentalMenu,
+    toggleExperimentalMenu: handleToggleExperimentalMenu,
   };
 
   if (!isMounted) {

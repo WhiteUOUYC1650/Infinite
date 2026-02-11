@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -67,6 +68,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { VerifiedBadge } from './ui/verified-badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 
 const iconMap = {
     Users,
@@ -89,7 +91,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes } = useTheme();
+  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, useExperimentalMenu, toggleExperimentalMenu } = useTheme();
   const { setOpenMobile } = useSidebar();
   const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -100,6 +102,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const [infiniteBot, setInfiniteBot] = useState<User | null>(null);
   const [isBotLoading, setIsBotLoading] = useState(true);
@@ -588,88 +591,106 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
-           <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Cog className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end">
-                <DropdownMenuLabel>{t('settings')}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                    <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
-                    {currentUser.isAdmin && (
-                        <DropdownMenuItem onSelect={() => router.push('/admin')}>
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>Admin Panel</span>
-                        </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                          <Paintbrush className="mr-2 h-4 w-4" />
-                          <span>{t('appearance')}</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                          <DropdownMenuLabel>{t('color_theme')}</DropdownMenuLabel>
-                          <DropdownMenuRadioGroup value={colorTheme} onValueChange={(value) => setColorTheme(value as any)}>
-                              <DropdownMenuRadioItem value="orange">{t('orange')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="purple">{t('purple')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="blue">{t('blue')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="gray">{t('gray')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="green">{t('green')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="red">{t('red')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="frutiger">{t('frutiger_aero')}</DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                          <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Label htmlFor="snow-switch" className="flex w-full cursor-pointer items-center justify-between">
-                                    <span>{t('snowflakes')}</span>
-                                    <Switch
-                                        id="snow-switch"
-                                        checked={showSnowflakes}
-                                        onCheckedChange={toggleSnowflakes}
-                                    />
-                                </Label>
+           
+           {useExperimentalMenu ? (
+                <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)}>
+                    <Cog className="h-5 w-5" />
+                </Button>
+            ) : (
+                <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <Cog className="h-5 w-5" />
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="end">
+                    <DropdownMenuLabel>{t('settings')}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                        <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
+                        {currentUser.isAdmin && (
+                            <DropdownMenuItem onSelect={() => router.push('/admin')}>
+                                <Shield className="mr-2 h-4 w-4" />
+                                <span>Admin Panel</span>
                             </DropdownMenuItem>
-                      </DropdownMenuSubContent>
+                        )}
+                        <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
+                        <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            <Paintbrush className="mr-2 h-4 w-4" />
+                            <span>{t('appearance')}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            <DropdownMenuLabel>{t('color_theme')}</DropdownMenuLabel>
+                            <DropdownMenuRadioGroup value={colorTheme} onValueChange={(value) => setColorTheme(value as any)}>
+                                <DropdownMenuRadioItem value="orange">{t('orange')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="purple">{t('purple')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="blue">{t('blue')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="gray">{t('gray')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="green">{t('green')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="red">{t('red')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="frutiger">{t('frutiger_aero')}</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Label htmlFor="snow-switch" className="flex w-full cursor-pointer items-center justify-between">
+                                        <span>{t('snowflakes')}</span>
+                                        <Switch
+                                            id="snow-switch"
+                                            checked={showSnowflakes}
+                                            onCheckedChange={toggleSnowflakes}
+                                        />
+                                    </Label>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Label htmlFor="experimental-menu-switch" className="flex w-full cursor-pointer items-center justify-between">
+                                        <span>Experimental Menu</span>
+                                        <Switch
+                                            id="experimental-menu-switch"
+                                            checked={useExperimentalMenu}
+                                            onCheckedChange={toggleExperimentalMenu}
+                                        />
+                                    </Label>
+                                </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            <Languages className="mr-2 h-4 w-4" />
+                            <span>{t('language')}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
+                                <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuSubContent>
                     </DropdownMenuSub>
-                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                          <Languages className="mr-2 h-4 w-4" />
-                          <span>{t('language')}</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                          <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
-                              <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    <span>{t('help')}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setShowVersion(true)}>
-                    <Info className="mr-2 h-4 w-4" />
-                    <span>{t('version')}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>{t('delete_account')}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>{t('logout')}</span>
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
+                        <HelpCircle className="mr-2 h-4 w-4" />
+                        <span>{t('help')}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowVersion(true)}>
+                        <Info className="mr-2 h-4 w-4" />
+                        <span>{t('version')}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>{t('delete_account')}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>{t('logout')}</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            )}
+
         </div>
       </SidebarFooter>
 
@@ -738,6 +759,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         open={showFaqDialog}
         onOpenChange={setShowFaqDialog}
       />
+
+      {useExperimentalMenu && (
+        <ExperimentalSettingsDialog
+            open={showSettingsDialog}
+            onOpenChange={setShowSettingsDialog}
+            currentUser={currentUser}
+        />
+      )}
 
     </>
   );
