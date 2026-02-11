@@ -45,7 +45,6 @@ service cloud.firestore {
                           // ...OR if they ARE changing username as part of the specific delete operation
                           (
                             request.resource.data.isDeleted == true &&
-                            resource.data.isDeleted != true &&
                             request.resource.data.username == '@deleted_' + userId
                           )
                         )
