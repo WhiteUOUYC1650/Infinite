@@ -122,6 +122,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
+
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -276,6 +279,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Sticky Date Header Logic ---
     const handleScroll = useCallback(() => {
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+        }
+        setIsScrolling(true);
+        scrollTimeoutRef.current = setTimeout(() => {
+            setIsScrolling(false);
+        }, 150); // A short debounce period
+
         const container = scrollContainerRef.current;
         if (!container) return;
 
@@ -307,7 +318,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         container.addEventListener('scroll', handleScroll);
         handleScroll(); // Initial check
 
-        return () => container.removeEventListener('scroll', handleScroll);
+        return () => {
+            container.removeEventListener('scroll', handleScroll);
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
     }, [handleScroll, messages]); // Rerun if messages change
 
 
@@ -973,6 +989,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
                                           setEditingMessage={handleSetEditingMessage}
+                                          isScrolling={isScrolling}
                                       />
                                   </React.Fragment>
                               );
@@ -1151,6 +1168,7 @@ function ChatMessage({
     onInternalLinkClick, 
     onReply,
     setEditingMessage,
+    isScrolling,
 }: { 
     message: Message, 
     sender?: User, 
@@ -1162,42 +1180,22 @@ function ChatMessage({
     onInternalLinkClick: (href: string) => Promise<void>,
     onReply: (message: Message) => void,
     setEditingMessage: (message: Message | null) => void,
+    isScrolling: boolean,
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const pointerStartRef = useRef<{x: number, y: number, time: number} | null>(null);
 
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // Only care about primary button clicks or touches
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        // Don't start if it's a right-click, let onContextMenu handle it
-        if (e.button === 2) return;
-        pointerStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-    };
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!pointerStartRef.current) return;
-
-        const { x, y, time } = pointerStartRef.current;
-        const endX = e.clientX;
-        const endY = e.clientY;
-        const endTime = Date.now();
-
-        const duration = endTime - time;
-        const distance = Math.sqrt(Math.pow(endX - x, 2) + Math.pow(endY - y, 2));
-
-        pointerStartRef.current = null;
-
-        // It's a tap if it's short and didn't move much
-        if (duration < 300 && distance < 10) {
-            // Do not open menu if a link was clicked.
-            if ((e.target as HTMLElement).closest('a')) {
-                return;
-            }
-            setIsMenuOpen(true);
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isScrolling) {
+            return;
         }
+
+        if ((e.target as HTMLElement).closest('a')) {
+            return;
+        }
+        setIsMenuOpen(true);
     };
 
 
@@ -1425,8 +1423,7 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onPointerDown={handlePointerDown}
-                            onPointerUp={handlePointerUp}
+                            onClick={handleClick}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
