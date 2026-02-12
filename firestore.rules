@@ -147,7 +147,7 @@ service cloud.firestore {
                        ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
                        (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']))
                      );
-      allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
+      allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
     }
 
     match /chatLinks/{linkId} {

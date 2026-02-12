@@ -1298,6 +1298,10 @@ function ChatMessage({
             </a>
         );
     };
+
+    const canDeleteMessage = (isCurrentUser && !fromBot) || 
+                             (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') ||
+                             (chat.type === 'group' && chat.ownerId === currentUser.uid);
     
     const messageBubbleContent = (
         <>
@@ -1438,18 +1442,23 @@ function ChatMessage({
                             <Copy className="mr-2 h-4 w-4" />
                             <span>{t('copy_text')}</span>
                         </DropdownMenuItem>
+                        
+                        {(isCurrentUser && !fromBot) || canDeleteMessage ? (
+                          <DropdownMenuSeparator />
+                        ) : null}
+
                         {isCurrentUser && !fromBot && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setEditingMessage(message)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    <span>{t('edit_message')}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    <span>{t('delete_message')}</span>
-                                </DropdownMenuItem>
-                            </>
+                          <DropdownMenuItem onSelect={() => setEditingMessage(message)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>{t('edit_message')}</span>
+                          </DropdownMenuItem>
+                        )}
+
+                        {canDeleteMessage && (
+                           <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>{t('delete_message')}</span>
+                            </DropdownMenuItem>
                         )}
                     </DropdownMenuContent>
                 </DropdownMenu>
