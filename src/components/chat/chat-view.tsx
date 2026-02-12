@@ -1174,17 +1174,12 @@ function ChatMessage({
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;
-        try {
-            (e.target as HTMLElement).setPointerCapture(e.pointerId);
-        } catch (error) {
-            // Ignore if already captured or element is gone
-        }
         posRef.current = { x: e.clientX, y: e.clientY };
         isDraggingRef.current = false;
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!e.buttons) return;
+        if (!e.buttons) return; // Pointer is not down
         const dx = e.clientX - posRef.current.x;
         const dy = e.clientY - posRef.current.y;
         if (Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
@@ -1193,22 +1188,20 @@ function ChatMessage({
     };
 
     const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        try {
-            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-        } catch (error) {
-            // Ignore if already released
-        }
-
         if (isDraggingRef.current) {
-            isDraggingRef.current = false;
-            return;
+            return; // It was a drag, do nothing.
         }
-
         if ((e.target as HTMLElement).closest('a')) {
-            return;
+            return; // It was a click on a link.
         }
-        
         setIsMenuOpen(true);
+    };
+
+    const handlePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+        // If the pointer leaves the element while pressed, it's a scroll/drag.
+        if (e.buttons) {
+            isDraggingRef.current = true;
+        }
     };
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1437,6 +1430,7 @@ function ChatMessage({
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
+                            onPointerLeave={handlePointerLeave}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
