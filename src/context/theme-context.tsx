@@ -353,12 +353,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const bgImageKey = themeConfig.backgroundImage;
 
       if (bgImageKey && (placeholderImages as any)[bgImageKey]) {
-        body.style.backgroundImage = `url(${(placeholderImages as any)[bgImageKey].url})`;
-        body.style.backgroundSize = 'cover';
-        body.style.backgroundPosition = 'center';
-        body.style.backgroundAttachment = 'fixed';
+        root.style.backgroundImage = `url(${(placeholderImages as any)[bgImageKey].url})`;
+        root.style.backgroundSize = 'cover';
+        root.style.backgroundPosition = 'center';
+        root.style.backgroundAttachment = 'fixed';
       } else {
-        body.style.backgroundImage = 'none';
+        root.style.backgroundImage = 'none';
       }
       
       const themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];

@@ -122,20 +122,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
-
-  // --- Scroll detection logic ---
-  const isScrollingRef = useRef(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleContainerScroll = () => {
-      isScrollingRef.current = true;
-      if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-      }
-      scrollTimeoutRef.current = setTimeout(() => {
-          isScrollingRef.current = false;
-      }, 150); // User is considered to have stopped scrolling after 150ms of no scroll events
-  };
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -959,7 +945,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   </div>
               )}
               {/* Scrollable Content */}
-              <div ref={scrollContainerRef} onScroll={handleContainerScroll} className="flex-1 min-h-0 overflow-y-auto">
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -987,7 +973,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
                                           setEditingMessage={handleSetEditingMessage}
-                                          isScrollingRef={isScrollingRef}
                                       />
                                   </React.Fragment>
                               );
@@ -1166,7 +1151,6 @@ function ChatMessage({
     onInternalLinkClick, 
     onReply,
     setEditingMessage,
-    isScrollingRef
 }: { 
     message: Message, 
     sender?: User, 
@@ -1178,24 +1162,44 @@ function ChatMessage({
     onInternalLinkClick: (href: string) => Promise<void>,
     onReply: (message: Message) => void,
     setEditingMessage: (message: Message | null) => void,
-    isScrollingRef: React.RefObject<boolean>
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const pointerStartRef = useRef<{x: number, y: number, time: number} | null>(null);
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        // Do not open menu if a scroll is in progress.
-        if (isScrollingRef.current) {
-            return;
-        }
-        // Do not open menu if a link was clicked.
-        if ((e.target as HTMLElement).closest('a')) {
-            return;
-        }
-        setIsMenuOpen(true);
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        // Only care about primary button clicks or touches
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        // Don't start if it's a right-click, let onContextMenu handle it
+        if (e.button === 2) return;
+        pointerStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
     };
+
+    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!pointerStartRef.current) return;
+
+        const { x, y, time } = pointerStartRef.current;
+        const endX = e.clientX;
+        const endY = e.clientY;
+        const endTime = Date.now();
+
+        const duration = endTime - time;
+        const distance = Math.sqrt(Math.pow(endX - x, 2) + Math.pow(endY - y, 2));
+
+        pointerStartRef.current = null;
+
+        // It's a tap if it's short and didn't move much
+        if (duration < 300 && distance < 10) {
+            // Do not open menu if a link was clicked.
+            if ((e.target as HTMLElement).closest('a')) {
+                return;
+            }
+            setIsMenuOpen(true);
+        }
+    };
+
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         // Prevent the default browser context menu.
@@ -1384,7 +1388,7 @@ function ChatMessage({
                 {message.editedAt && <span className="italic">{t('edited')}</span>}
                 <span>{timestamp}</span>
                 {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
+                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />
                 )}
             </div>
         </>
@@ -1421,7 +1425,8 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onClick={handleClick}
+                            onPointerDown={handlePointerDown}
+                            onPointerUp={handlePointerUp}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
