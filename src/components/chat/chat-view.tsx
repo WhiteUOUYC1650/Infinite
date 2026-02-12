@@ -1167,44 +1167,22 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const isMoving = useRef(false);
-    const interactionStartPos = useRef({ x: 0, y: 0 });
 
-    const handleInteractionStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        isMoving.current = false;
-        const point = 'touches' in e ? e.touches[0] : e;
-        interactionStartPos.current = { x: point.clientX, y: point.clientY };
-    };
-
-    const handleInteractionMove = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if (isMoving.current) return;
-        
-        const point = 'touches' in e ? e.touches[0] : e;
-        if (!point) return;
-
-        const dx = Math.abs(point.clientX - interactionStartPos.current.x);
-        const dy = Math.abs(point.clientY - interactionStartPos.current.y);
-
-        if (dx > 5 || dy > 5) { // 5px threshold for movement to be considered a scroll/drag
-            isMoving.current = true;
-        }
-    };
-
-    const handleInteractionEnd = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if ('button' in e && e.button === 2) {
-            return;
-        }
-        
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Do not open the menu if the user clicked on a link.
+        // The link's own onClick handler will be triggered by the browser.
         if ((e.target as HTMLElement).closest('a')) {
             return;
         }
 
-        if (!isMoving.current) {
-            setIsMenuOpen(true);
-        }
+        // The browser's `onClick` event does not fire if the user is dragging
+        // (e.g., to scroll or select text), so we don't need to check for movement.
+        // We just open the menu.
+        setIsMenuOpen(true);
     };
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Prevent the default browser context menu.
         e.preventDefault();
         setIsMenuOpen(true);
     };
@@ -1426,13 +1404,8 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
+                            onClick={handleClick}
                             onContextMenu={handleContextMenu}
-                            onMouseDown={handleInteractionStart}
-                            onMouseUp={handleInteractionEnd}
-                            onMouseMove={handleInteractionMove}
-                            onTouchStart={handleInteractionStart}
-                            onTouchEnd={handleInteractionEnd}
-                            onTouchMove={handleInteractionMove}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
                                 alignRight
