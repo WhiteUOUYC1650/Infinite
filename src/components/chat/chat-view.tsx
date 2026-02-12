@@ -1167,35 +1167,46 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const longPressTimer = useRef<NodeJS.Timeout>();
     const isMoving = useRef(false);
+    const interactionStartPos = useRef({ x: 0, y: 0 });
 
-    const handlePressStart = (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
+    const handleInteractionStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         isMoving.current = false;
-        longPressTimer.current = setTimeout(() => {
-            if (!isMoving.current) {
-                setIsMenuOpen(true);
-            }
-        }, 500);
+        const point = 'touches' in e ? e.touches[0] : e;
+        interactionStartPos.current = { x: point.clientX, y: point.clientY };
     };
 
-    const handlePressEnd = () => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
+    const handleInteractionMove = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if (isMoving.current) return;
+        
+        const point = 'touches' in e ? e.touches[0] : e;
+        if (!point) return;
+
+        const dx = Math.abs(point.clientX - interactionStartPos.current.x);
+        const dy = Math.abs(point.clientY - interactionStartPos.current.y);
+
+        if (dx > 5 || dy > 5) { // 5px threshold for movement to be considered a scroll/drag
+            isMoving.current = true;
         }
     };
-    
-    const handleMove = () => {
-        isMoving.current = true;
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
+
+    const handleInteractionEnd = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if ('button' in e && e.button === 2) {
+            return;
+        }
+        
+        if ((e.target as HTMLElement).closest('a')) {
+            return;
+        }
+
+        if (!isMoving.current) {
+            setIsMenuOpen(true);
         }
     };
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        handlePressEnd(); // Clear potential long press timer
-        setIsMenuOpen(true); // Open menu immediately
+        setIsMenuOpen(true);
     };
 
     const otherUserId = useMemo(() => {
@@ -1416,12 +1427,12 @@ function ChatMessage({
                     <DropdownMenuTrigger asChild>
                         <div
                             onContextMenu={handleContextMenu}
-                            onMouseDown={handlePressStart}
-                            onMouseUp={handlePressEnd}
-                            onMouseLeave={handlePressEnd}
-                            onTouchStart={handlePressStart}
-                            onTouchEnd={handlePressEnd}
-                            onTouchMove={handleMove}
+                            onMouseDown={handleInteractionStart}
+                            onMouseUp={handleInteractionEnd}
+                            onMouseMove={handleInteractionMove}
+                            onTouchStart={handleInteractionStart}
+                            onTouchEnd={handleInteractionEnd}
+                            onTouchMove={handleInteractionMove}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
                                 alignRight
