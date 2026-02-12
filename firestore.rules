@@ -82,7 +82,7 @@ service cloud.firestore {
       allow update: if isSignedIn() &&
                      request.auth.uid in get(/databases/$(database)/documents/chats/GENERAL_CHAT).data.members &&
                      'readBy' in request.writeFields && request.writeFields.size() == 1;
-      allow delete: if resource.data.senderId == request.auth.uid;
+      allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
 
     match /chats/{chatId} {
