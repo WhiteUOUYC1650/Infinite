@@ -122,6 +122,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
+
+  // --- Scroll detection logic ---
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleContainerScroll = () => {
+      isScrollingRef.current = true;
+      if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+          isScrollingRef.current = false;
+      }, 150); // User is considered to have stopped scrolling after 150ms of no scroll events
+  };
   
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -945,7 +959,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   </div>
               )}
               {/* Scrollable Content */}
-              <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto">
+              <div ref={scrollContainerRef} onScroll={handleContainerScroll} className="flex-1 min-h-0 overflow-y-auto">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -973,6 +987,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
                                           setEditingMessage={handleSetEditingMessage}
+                                          isScrollingRef={isScrollingRef}
                                       />
                                   </React.Fragment>
                               );
@@ -1150,7 +1165,8 @@ function ChatMessage({
     currentUser, 
     onInternalLinkClick, 
     onReply,
-    setEditingMessage
+    setEditingMessage,
+    isScrollingRef
 }: { 
     message: Message, 
     sender?: User, 
@@ -1162,46 +1178,23 @@ function ChatMessage({
     onInternalLinkClick: (href: string) => Promise<void>,
     onReply: (message: Message) => void,
     setEditingMessage: (message: Message | null) => void,
+    isScrollingRef: React.RefObject<boolean>
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const dragThreshold = 10;
-    const posRef = React.useRef({ x: 0, y: 0 });
-    const isDraggingRef = React.useRef(false);
-
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (e.button !== 0) return;
-        posRef.current = { x: e.clientX, y: e.clientY };
-        isDraggingRef.current = false;
-    };
-
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!e.buttons) return; // Pointer is not down
-        const dx = e.clientX - posRef.current.x;
-        const dy = e.clientY - posRef.current.y;
-        if (Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
-            isDraggingRef.current = true;
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Do not open menu if a scroll is in progress.
+        if (isScrollingRef.current) {
+            return;
         }
-    };
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (isDraggingRef.current) {
-            return; // It was a drag, do nothing.
-        }
+        // Do not open menu if a link was clicked.
         if ((e.target as HTMLElement).closest('a')) {
-            return; // It was a click on a link.
+            return;
         }
         setIsMenuOpen(true);
-    };
-
-    const handlePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
-        // If the pointer leaves the element while pressed, it's a scroll/drag.
-        if (e.buttons) {
-            isDraggingRef.current = true;
-        }
     };
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1217,10 +1210,11 @@ function ChatMessage({
 
     const isRead = useMemo(() => {
         if (!isCurrentUser) return false;
-        if (message.readBy === undefined) {
-            return true;
+        
+        if (!message.readBy || !Array.isArray(message.readBy) || message.readBy.length === 0) {
+            return false;
         }
-        if (!message.readBy || message.readBy.length === 0) return false;
+    
         if (chat.type === 'dm') {
             return otherUserId ? message.readBy.includes(otherUserId) : false;
         }
@@ -1390,7 +1384,7 @@ function ChatMessage({
                 {message.editedAt && <span className="italic">{t('edited')}</span>}
                 <span>{timestamp}</span>
                 {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-blue-400" : "text-primary-foreground/30")} />
+                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-primary-foreground/70" : "text-primary-foreground/30")} />
                 )}
             </div>
         </>
@@ -1427,10 +1421,7 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUp}
-                            onPointerLeave={handlePointerLeave}
+                            onClick={handleClick}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
