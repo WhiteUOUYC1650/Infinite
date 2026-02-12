@@ -123,9 +123,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
-  const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -279,14 +276,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Sticky Date Header Logic ---
     const handleScroll = useCallback(() => {
-        if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
-        }
-        setIsScrolling(true);
-        scrollTimeoutRef.current = setTimeout(() => {
-            setIsScrolling(false);
-        }, 150); // A short debounce period
-
         const container = scrollContainerRef.current;
         if (!container) return;
 
@@ -320,9 +309,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         return () => {
             container.removeEventListener('scroll', handleScroll);
-            if (scrollTimeoutRef.current) {
-                clearTimeout(scrollTimeoutRef.current);
-            }
         };
     }, [handleScroll, messages]); // Rerun if messages change
 
@@ -989,7 +975,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
                                           setEditingMessage={handleSetEditingMessage}
-                                          isScrolling={isScrolling}
                                       />
                                   </React.Fragment>
                               );
@@ -1168,7 +1153,6 @@ function ChatMessage({
     onInternalLinkClick, 
     onReply,
     setEditingMessage,
-    isScrolling,
 }: { 
     message: Message, 
     sender?: User, 
@@ -1180,28 +1164,60 @@ function ChatMessage({
     onInternalLinkClick: (href: string) => Promise<void>,
     onReply: (message: Message) => void,
     setEditingMessage: (message: Message | null) => void,
-    isScrolling: boolean,
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const dragState = useRef({
+        isDown: false,
+        startX: 0,
+        startY: 0,
+        isDragging: false
+    });
+    
+    const handlePointerDown = (e: React.PointerEvent) => {
+        if (e.button !== 0) return;
+    
+        dragState.current = {
+            isDown: true,
+            startX: e.clientX,
+            startY: e.clientY,
+            isDragging: false
+        };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (isScrolling) {
-            return;
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!dragState.current.isDown || dragState.current.isDragging) return;
+    
+        const dx = Math.abs(e.clientX - dragState.current.startX);
+        const dy = Math.abs(e.clientY - dragState.current.startY);
+    
+        if (dx > 5 || dy > 5) {
+            dragState.current.isDragging = true;
         }
-
-        if ((e.target as HTMLElement).closest('a')) {
-            return;
+    };
+    
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (!dragState.current.isDown) return;
+        
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    
+        if (!dragState.current.isDragging && !(e.target as HTMLElement).closest('a')) {
+            setIsMenuOpen(true);
         }
-        setIsMenuOpen(true);
+    
+        dragState.current.isDown = false;
+        dragState.current.isDragging = false;
     };
 
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-        // Prevent the default browser context menu.
         e.preventDefault();
+        if (dragState.current.isDragging) {
+            return;
+        }
         setIsMenuOpen(true);
     };
 
@@ -1423,7 +1439,9 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onClick={handleClick}
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
