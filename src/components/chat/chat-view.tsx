@@ -1168,16 +1168,46 @@ function ChatMessage({
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        // Do not open the menu if the user clicked on a link.
-        // The link's own onClick handler will be triggered by the browser.
-        if ((e.target as HTMLElement).closest('a')) {
+    const dragThreshold = 10;
+    const posRef = React.useRef({ x: 0, y: 0 });
+    const isDraggingRef = React.useRef(false);
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (e.button !== 0) return;
+        try {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        } catch (error) {
+            // Ignore if already captured or element is gone
+        }
+        posRef.current = { x: e.clientX, y: e.clientY };
+        isDraggingRef.current = false;
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!e.buttons) return;
+        const dx = e.clientX - posRef.current.x;
+        const dy = e.clientY - posRef.current.y;
+        if (Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
+            isDraggingRef.current = true;
+        }
+    };
+
+    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        try {
+            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+        } catch (error) {
+            // Ignore if already released
+        }
+
+        if (isDraggingRef.current) {
+            isDraggingRef.current = false;
             return;
         }
 
-        // The browser's `onClick` event does not fire if the user is dragging
-        // (e.g., to scroll or select text), so we don't need to check for movement.
-        // We just open the menu.
+        if ((e.target as HTMLElement).closest('a')) {
+            return;
+        }
+        
         setIsMenuOpen(true);
     };
 
@@ -1404,7 +1434,9 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onClick={handleClick}
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
