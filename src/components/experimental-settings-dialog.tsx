@@ -211,7 +211,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             />
         </div>
         <div className="border-t">
-          <SettingsItem icon={Paintbrush} label={t('appearance')} value={theme} onClick={() => navigateTo('appearance')} />
+          <SettingsItem icon={Paintbrush} label={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
           <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
           <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
           <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
@@ -226,9 +226,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const appearancePageContent = (
       <>
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
-        <SettingsItem icon={Paintbrush} label={t('color_theme')} value={theme} onClick={() => navigateTo('theme')} />
+        <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('theme')} />
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
-        <SettingsSwitchItem id="experimental-menu-switch" label="Experimental Menu" checked={useExperimentalMenu} onCheckedChange={toggleExperimentalMenu} />
+        <SettingsSwitchItem id="experimental-menu-switch" label={t('experimental_settings_menu_label')} checked={useExperimentalMenu} onCheckedChange={toggleExperimentalMenu} />
       </>
   );
   
@@ -320,9 +320,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
       <DialogContent className="max-w-md w-full h-[80svh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="flex-row items-center p-4 border-b shrink-0">
+        <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
           {pageHistory.length > 1 && (
-            <Button variant="ghost" size="icon" onClick={handleBack} className="mr-2">
+            <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
               <ArrowLeft />
             </Button>
           )}

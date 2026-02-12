@@ -646,7 +646,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                     <Label htmlFor="experimental-menu-switch" className="flex w-full cursor-pointer items-center justify-between">
-                                        <span>Experimental Menu</span>
+                                        <span>{t('experimental_settings_menu_label')}</span>
                                         <Switch
                                             id="experimental-menu-switch"
                                             checked={useExperimentalMenu}

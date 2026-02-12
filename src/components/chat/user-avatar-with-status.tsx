@@ -47,7 +47,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
   
   return (
     <div className={cn("relative", className)}>
-      <Avatar>
+      <Avatar className="h-full w-full text-inherit">
         {user.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
         <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
             {user.name.charAt(0)}
