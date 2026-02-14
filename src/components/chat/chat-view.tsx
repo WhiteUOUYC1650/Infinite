@@ -1168,45 +1168,6 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
-    const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // Only apply long-press for touch input, and ignore if clicking on a link
-        if (e.pointerType === 'touch' && !(e.target as HTMLElement).closest('a')) {
-            longPressTimer.current = setTimeout(() => {
-                setIsMenuOpen(true);
-                longPressTimer.current = null; // Clean up timer ID
-            }, 500); // 500ms is a standard long-press duration
-        }
-    };
-
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        // If the finger moves while the timer is active, it's a scroll.
-        // Cancel the long-press timer.
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
-        }
-    };
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        // If the finger is lifted before the long-press duration, cancel the timer.
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
-        }
-    };
-
-    const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-        // This handles right-click on desktop and can also be a fallback for long-press on some systems.
-        // We prevent the default browser menu to show our custom one.
-        if ((e.target as HTMLElement).closest('a')) {
-            return; // Don't show menu if clicking a link
-        }
-        e.preventDefault();
-        setIsMenuOpen(true);
-    };
 
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1397,7 +1358,7 @@ function ChatMessage({
 
     return (
         <div id={`message-${message.id}`} className={cn(
-            "flex items-end gap-3",
+            "flex items-end gap-2",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
             {showAvatar ? (
@@ -1422,23 +1383,21 @@ function ChatMessage({
                 <div className="w-10 flex-shrink-0" />
             ) : null}
 
-            <div className={"min-w-0 max-w-[85%]"}>
+            <div className={cn(
+                "min-w-0 max-w-[calc(100%-6rem)] p-3 rounded-lg flex flex-col",
+                alignRight
+                ? "bg-primary text-primary-foreground rounded-br-none"
+                : "bg-card text-card-foreground rounded-bl-none"
+            )}>
+               {messageBubbleContent}
+            </div>
+
+            <div className="flex-shrink-0 self-center">
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
-                        <div
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUp}
-                            onPointerCancel={handlePointerMove}
-                            onContextMenu={handleContextMenu}
-                            className={cn(
-                                "p-3 rounded-lg flex flex-col cursor-default",
-                                alignRight
-                                ? "bg-primary text-primary-foreground rounded-br-none"
-                                : "bg-card text-card-foreground rounded-bl-none"
-                        )}>
-                           {messageBubbleContent}
-                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
                         {chat.type !== 'channel' && !displaySender?.isDeleted && (
