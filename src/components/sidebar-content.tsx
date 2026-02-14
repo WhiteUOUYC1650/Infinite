@@ -463,7 +463,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         >
                             <div className="flex items-center gap-3 w-full px-4 md:px-0">
                                 <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
-                                <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex-1 w-0 min-w-0 overflow-hidden">
                                      <div className="flex items-center gap-2">
                                         <div className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</div>
                                         <VerifiedBadge className="w-4 h-4 shrink-0" />
@@ -812,7 +812,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         >
         <div className="flex items-center gap-3 w-full px-4 md:px-0">
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
-            <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex-1 w-0 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-2">
                     <div className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
                         {displayName}
@@ -847,7 +847,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
       if (senderIsCurrentUser) {
           senderPrefix = `${t('you_message_preview')}: `;
       } else if (lastMessage.senderName) {
-          senderPrefix = `${lastMessage.senderName.split(' ')[0]}: `;
+          senderPrefix = `${lastMessage.senderName}: `;
       }
   }
 
@@ -867,7 +867,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
                 </AvatarFallback>
             )}
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 w-0 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
             <div className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
                 {item.name}
