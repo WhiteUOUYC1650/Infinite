@@ -1169,12 +1169,60 @@ function ChatMessage({
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
-    const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-        e.preventDefault();
-         if ((e.target as HTMLElement).closest('a')) {
-            return;
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+    const startCoords = useRef({ x: 0, y: 0 });
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        // We only want to track the primary pointer (e.g., first finger for touch)
+        if (!e.isPrimary) return;
+        // We handle right-clicks (button 2) via onContextMenu
+        if (e.button === 2) return;
+
+        startCoords.current = { x: e.clientX, y: e.clientY };
+
+        longPressTimer.current = setTimeout(() => {
+            if ((e.target as HTMLElement).closest('a')) return;
+            setIsMenuOpen(true);
+            longPressTimer.current = null;
+        }, 500); // 500ms for a long press
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!e.isPrimary || !longPressTimer.current) return;
+
+        const dx = Math.abs(e.clientX - startCoords.current.x);
+        const dy = Math.abs(e.clientY - startCoords.current.y);
+
+        // If pointer moves more than 10px, it's a scroll, so cancel the long press
+        if (dx > 10 || dy > 10) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
         }
-        setIsMenuOpen(true);
+    };
+
+    const handlePointerUpOrCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!e.isPrimary) return;
+
+        // If the pointer is lifted or the gesture is cancelled, clear the timer
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
+
+    const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+        // This prevents the native context menu from appearing.
+        // It's crucial for both desktop right-click and mobile long-press.
+        e.preventDefault();
+        
+        // If the menu is already open from our custom long-press, do nothing.
+        if (isMenuOpen) return;
+        
+        // For a desktop right-click, we open the menu.
+        if (e.button === 2) {
+            if ((e.target as HTMLElement).closest('a')) return;
+            setIsMenuOpen(true);
+        }
     };
 
     const otherUserId = useMemo(() => {
@@ -1395,6 +1443,10 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUpOrCancel}
+                            onPointerCancel={handlePointerUpOrCancel}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
