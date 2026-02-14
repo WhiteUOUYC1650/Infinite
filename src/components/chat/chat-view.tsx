@@ -1168,6 +1168,21 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [buttonVisible, setButtonVisible] = useState(false);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+    useEffect(() => {
+        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    }, []);
+
+    const handleMessageInteraction = (e: React.MouseEvent) => {
+        if (!isTouchDevice) return;
+        // prevent toggling if a link, the button itself, or the reply box is clicked
+        if (e.target.closest('a, [data-menu-trigger="true"], [data-reply-box="true"]')) {
+            return;
+        }
+        setButtonVisible(v => !v);
+    }
 
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1291,6 +1306,7 @@ function ChatMessage({
 
             {message.replyTo && (
                 <button
+                    data-reply-box="true"
                     onClick={handleScrollToReply}
                     className={cn(
                         "mb-2 p-2 rounded-md w-full text-left transition-colors",
@@ -1357,10 +1373,16 @@ function ChatMessage({
     );
 
     return (
-        <div id={`message-${message.id}`} className={cn(
-            "group flex items-end gap-2",
-            alignRight ? "flex-row-reverse" : "flex-row"
-        )}>
+        <div 
+            id={`message-${message.id}`} 
+            className={cn(
+                "group flex items-end gap-2",
+                alignRight ? "flex-row-reverse" : "flex-row"
+            )}
+            onMouseEnter={!isTouchDevice ? () => setButtonVisible(true) : undefined}
+            onMouseLeave={!isTouchDevice ? () => setButtonVisible(false) : undefined}
+            onClick={handleMessageInteraction}
+        >
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
@@ -1395,7 +1417,16 @@ function ChatMessage({
             <div className="flex-shrink-0 self-center">
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            data-menu-trigger="true"
+                            className={cn("h-8 w-8 transition-opacity", 
+                                buttonVisible
+                                  ? "opacity-100"
+                                  : "opacity-0 pointer-events-none"
+                            )}
+                        >
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
