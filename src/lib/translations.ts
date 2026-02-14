@@ -240,6 +240,7 @@ export const translations = {
       'image_processing_failed_desc': 'There was an error preparing your image. Please try another one.',
       'deleted_account': 'Deleted Account',
       'experimental_settings_menu_label': 'Experimental Settings Menu',
+      'you_message_preview': 'You',
     },
     ru: {
       'settings': 'Настройки',
@@ -482,6 +483,7 @@ export const translations = {
       'image_processing_failed_desc': 'Произошла ошибка при подготовке изображения. Пожалуйста, попробуйте другое.',
       'deleted_account': 'Удалённый аккаунт',
       'experimental_settings_menu_label': 'Экспериментальное меню настроек',
+      'you_message_preview': 'Вы',
     }
   };
   

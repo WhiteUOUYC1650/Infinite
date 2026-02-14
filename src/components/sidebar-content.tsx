@@ -796,7 +796,12 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot';
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   const lastMessageContent = item.lastMessage?.imageUrl ? t('image_attachment_placeholder') : item.lastMessage?.content;
+  const lastMessageSenderIsCurrentUser = item.lastMessage?.senderId === currentUserId;
 
+  let senderPrefix = '';
+  if (lastMessageSenderIsCurrentUser && !isSavedMessages) {
+      senderPrefix = `${t('you_message_preview')}: `;
+  }
 
   return (
     <Button
@@ -816,7 +821,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                 </div>
                 {lastMessageContent && 
                     <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                        {lastMessageContent}
+                       {senderPrefix}{lastMessageContent}
                     </p>
                 }
             </div>
@@ -829,12 +834,22 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
 }
 
 function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
-  const lastMessage = item.lastMessage as { senderName?: string, content?: string, imageUrl?: string };
+  const lastMessage = item.lastMessage as { senderId?: string, senderName?: string, content?: string, imageUrl?: string };
   const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const { t } = useLanguage();
   const lastMessageContent = lastMessage?.imageUrl ? t('image_attachment_placeholder') : lastMessage?.content;
+
+  const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
+  let senderPrefix = '';
+  if (item.type === 'group' && lastMessage) {
+      if (senderIsCurrentUser) {
+          senderPrefix = `${t('you_message_preview')}: `;
+      } else if (lastMessage.senderName) {
+          senderPrefix = `${lastMessage.senderName.split(' ')[0]}: `;
+      }
+  }
 
   return (
     <Button
@@ -861,8 +876,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
           </div>
           {lastMessageContent && (
             <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                {lastMessage.senderName && <span className="font-semibold">{lastMessage.senderName.split(' ')[0]}: </span>}
-                {lastMessageContent}
+                {senderPrefix}{lastMessageContent}
             </p>
           )}
         </div>
