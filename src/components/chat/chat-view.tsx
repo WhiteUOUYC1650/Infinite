@@ -1170,40 +1170,28 @@ function ChatMessage({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-    const startCoords = useRef({ x: 0, y: 0 });
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // We only want to track the primary pointer (e.g., first finger for touch)
-        if (!e.isPrimary) return;
-        // We handle right-clicks (button 2) via onContextMenu
-        if (e.button === 2) return;
-
-        startCoords.current = { x: e.clientX, y: e.clientY };
-
-        longPressTimer.current = setTimeout(() => {
-            if ((e.target as HTMLElement).closest('a')) return;
-            setIsMenuOpen(true);
-            longPressTimer.current = null;
-        }, 500); // 500ms for a long press
+        // Only apply long-press for touch input, and ignore if clicking on a link
+        if (e.pointerType === 'touch' && !(e.target as HTMLElement).closest('a')) {
+            longPressTimer.current = setTimeout(() => {
+                setIsMenuOpen(true);
+                longPressTimer.current = null; // Clean up timer ID
+            }, 500); // 500ms is a standard long-press duration
+        }
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!e.isPrimary || !longPressTimer.current) return;
-
-        const dx = Math.abs(e.clientX - startCoords.current.x);
-        const dy = Math.abs(e.clientY - startCoords.current.y);
-
-        // If pointer moves more than 10px, it's a scroll, so cancel the long press
-        if (dx > 10 || dy > 10) {
+        // If the finger moves while the timer is active, it's a scroll.
+        // Cancel the long-press timer.
+        if (longPressTimer.current) {
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
         }
     };
 
-    const handlePointerUpOrCancel = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!e.isPrimary) return;
-
-        // If the pointer is lifted or the gesture is cancelled, clear the timer
+    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        // If the finger is lifted before the long-press duration, cancel the timer.
         if (longPressTimer.current) {
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
@@ -1211,18 +1199,13 @@ function ChatMessage({
     };
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-        // This prevents the native context menu from appearing.
-        // It's crucial for both desktop right-click and mobile long-press.
-        e.preventDefault();
-        
-        // If the menu is already open from our custom long-press, do nothing.
-        if (isMenuOpen) return;
-        
-        // For a desktop right-click, we open the menu.
-        if (e.button === 2) {
-            if ((e.target as HTMLElement).closest('a')) return;
-            setIsMenuOpen(true);
+        // This handles right-click on desktop and can also be a fallback for long-press on some systems.
+        // We prevent the default browser menu to show our custom one.
+        if ((e.target as HTMLElement).closest('a')) {
+            return; // Don't show menu if clicking a link
         }
+        e.preventDefault();
+        setIsMenuOpen(true);
     };
 
     const otherUserId = useMemo(() => {
@@ -1445,8 +1428,8 @@ function ChatMessage({
                         <div
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUpOrCancel}
-                            onPointerCancel={handlePointerUpOrCancel}
+                            onPointerUp={handlePointerUp}
+                            onPointerCancel={handlePointerMove}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
