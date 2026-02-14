@@ -450,7 +450,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const originalImage = imageToSend;
     const originalReplyTo = replyToMessage;
     const contentForMessage = originalContent.replace(/\n/g, '  \n');
-    const contentForPreview = originalImage ? (originalContent || t('image_attachment_placeholder')) : originalContent.split('\n')[0];
+    const contentForPreview = originalImage ? t('image_attachment_placeholder') : originalContent.split('\n')[0];
 
     const now = new Date();
     const timestamp = Timestamp.fromDate(now);
@@ -712,7 +712,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         if (item.lastMessage?.id === editingMessage.id) {
             const chatRef = doc(db, 'chats', item.id);
-            const contentForPreview = imageToSend ? (messageContent || t('image_attachment_placeholder')) : messageContent.split('\n')[0];
+            const contentForPreview = imageToSend ? t('image_attachment_placeholder') : messageContent.split('\n')[0];
             await updateDoc(chatRef, {
                 'lastMessage.content': contentForPreview,
                 'lastMessage.imageUrl': imageToSend || null,

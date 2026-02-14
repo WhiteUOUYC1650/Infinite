@@ -855,10 +855,12 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
             </div>
             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
           </div>
-          {lastMessage?.content && <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-            {`${lastMessage.senderName?.split(' ')[0]}: ${lastMessage.content}`}
-            </p>
-          }
+          {lastMessage?.content && (
+            <div className={cn("text-xs flex items-center", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                <span className="flex-shrink-0">{lastMessage.senderName?.split(' ')[0]}:&nbsp;</span>
+                <span className="truncate">{lastMessage.content}</span>
+            </div>
+          )}
         </div>
       </div>
       {unreadCount > 0 && (
