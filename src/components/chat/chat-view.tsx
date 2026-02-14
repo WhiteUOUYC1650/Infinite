@@ -1358,7 +1358,7 @@ function ChatMessage({
 
     return (
         <div id={`message-${message.id}`} className={cn(
-            "flex items-end gap-2",
+            "group flex items-end gap-2",
             alignRight ? "flex-row-reverse" : "flex-row"
         )}>
             {showAvatar ? (
@@ -1395,7 +1395,7 @@ function ChatMessage({
             <div className="flex-shrink-0 self-center">
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100">
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
