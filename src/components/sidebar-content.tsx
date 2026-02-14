@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -794,6 +795,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isSelected = selectedId === item.id;
   const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot';
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
+  const lastMessageContent = item.lastMessage?.imageUrl ? t('image_attachment_placeholder') : item.lastMessage?.content;
 
 
   return (
@@ -812,9 +814,9 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                     </div>
                     {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
                 </div>
-                {item.lastMessage?.content && 
+                {lastMessageContent && 
                     <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                        {item.lastMessage.content}
+                        {lastMessageContent}
                     </p>
                 }
             </div>
@@ -827,10 +829,12 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
 }
 
 function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
-  const lastMessage = item.lastMessage as { senderName?: string, content?: string };
+  const lastMessage = item.lastMessage as { senderName?: string, content?: string, imageUrl?: string };
   const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
+  const { t } = useLanguage();
+  const lastMessageContent = lastMessage?.imageUrl ? t('image_attachment_placeholder') : lastMessage?.content;
 
   return (
     <Button
@@ -855,11 +859,11 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
             </div>
             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
           </div>
-          {lastMessage?.content && (
-            <div className={cn("text-xs flex items-center", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                <span className="flex-shrink-0">{lastMessage.senderName?.split(' ')[0]}:&nbsp;</span>
-                <span className="truncate">{lastMessage.content}</span>
-            </div>
+          {lastMessageContent && (
+            <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                {lastMessage.senderName && <span className="font-semibold">{lastMessage.senderName.split(' ')[0]}: </span>}
+                {lastMessageContent}
+            </p>
           )}
         </div>
       </div>
