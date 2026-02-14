@@ -1169,43 +1169,6 @@ function ChatMessage({
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
-    const pointerDownRef = useRef<{ x: number, y: number } | null>(null);
-    const hasDraggedRef = useRef(false);
-
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (e.button !== 0) return;
-        hasDraggedRef.current = false;
-        pointerDownRef.current = { x: e.clientX, y: e.clientY };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    };
-
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (hasDraggedRef.current || !pointerDownRef.current) return;
-
-        const dx = Math.abs(e.clientX - pointerDownRef.current.x);
-        const dy = Math.abs(e.clientY - pointerDownRef.current.y);
-        
-        if (dx > 5 || dy > 5) {
-            hasDraggedRef.current = true;
-        }
-    };
-    
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-        
-        if (hasDraggedRef.current) {
-            pointerDownRef.current = null;
-            return;
-        }
-
-        pointerDownRef.current = null;
-        if ((e.target as HTMLElement).closest('a')) {
-            return;
-        }
-
-        setIsMenuOpen(true);
-    };
-    
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
          if ((e.target as HTMLElement).closest('a')) {
@@ -1432,9 +1395,6 @@ function ChatMessage({
                 <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                     <DropdownMenuTrigger asChild>
                         <div
-                            onPointerDown={handlePointerDown}
-                            onPointerMove={handlePointerMove}
-                            onPointerUp={handlePointerUp}
                             onContextMenu={handleContextMenu}
                             className={cn(
                                 "p-3 rounded-lg flex flex-col cursor-default",
