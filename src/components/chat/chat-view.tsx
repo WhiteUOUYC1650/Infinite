@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
+import { CallDialog } from './call-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
@@ -122,6 +133,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
+
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [isCaller, setIsCaller] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   
 
   // --- Get live chat data ---
@@ -146,6 +161,31 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!item?.members) return false;
     return item.members.includes(currentUser.uid);
   }, [item?.members, currentUser.uid]);
+
+  // --- Call listener ---
+  useEffect(() => {
+    if (!db || item.type !== 'dm') return;
+
+    const callDocRef = doc(db, 'calls', item.id);
+    const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const callData = { id: snapshot.id, ...snapshot.data() } as Call;
+        if (callData.status === 'calling' && callData.calleeId === currentUser.uid) {
+            setIncomingCall(callData);
+        } else if (callData.status === 'ended') {
+            setIncomingCall(null);
+            setShowCallDialog(false);
+        }
+      } else {
+        // Doc deleted or doesn't exist, clean up
+        setIncomingCall(null);
+        setShowCallDialog(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [db, item.id, item.type, currentUser.uid]);
+
 
   // --- End live chat data ---
 
@@ -805,6 +845,42 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
     }
   };
+
+  const handleInitiateCall = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // We got permission, we can close the stream immediately. The dialog will ask for it again.
+        stream.getTracks().forEach(track => track.stop());
+        setIsCaller(true);
+        setShowCallDialog(true);
+    } catch(e) {
+        console.error("Mic permission error", e);
+        toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc')})
+    }
+  };
+
+  const handleAcceptCall = async () => {
+    if (!db || !incomingCall) return;
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        stream.getTracks().forEach(track => track.stop());
+        
+        setIsCaller(false);
+        setShowCallDialog(true);
+        setIncomingCall(null);
+    } catch(e) {
+        console.error("Mic permission error", e);
+        toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc')})
+        handleDeclineCall();
+    }
+  };
+
+  const handleDeclineCall = () => {
+    if (!db || !incomingCall) return;
+    const callDocRef = doc(db, 'calls', incomingCall.id);
+    updateDoc(callDocRef, { status: 'ended' });
+    setIncomingCall(null);
+  };
   
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
@@ -880,7 +956,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         <div className="flex items-center gap-2 ml-2">
             {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
               <>
-                <Button variant="ghost" size="icon" onClick={promptUpdate} title={t('audio_call')}>
+                <Button variant="ghost" size="icon" onClick={handleInitiateCall} title={t('audio_call')}>
                   <Phone className="h-5 w-5" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={promptUpdate} title={t('video_call')}>
@@ -1135,6 +1211,30 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             onSendMessage={handleSendMessageToUser}
         />
       )}
+    
+    {otherUser && <CallDialog 
+        open={showCallDialog} 
+        onOpenChange={setShowCallDialog}
+        chat={item}
+        otherUser={otherUser}
+        currentUser={currentUser}
+        isCaller={isCaller}
+    />}
+
+    <AlertDialog open={!!incomingCall}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>{t('incoming_call')}</AlertDialogTitle>
+            <AlertDialogDescription>
+                {t('is_calling_you', { name: otherUser?.name || '...' })}
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <Button onClick={handleDeclineCall} variant="destructive">{t('decline')}</Button>
+                <Button onClick={handleAcceptCall}>{t('accept')}</Button>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
 
     <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
     </div>
@@ -1168,21 +1268,16 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [buttonVisible, setButtonVisible] = useState(false);
-    const [isTouchDevice, setIsTouchDevice] = useState(false);
+    
+    const [isHovering, setIsHovering] = useState(false);
+    
+    const handleMouseEnter = () => {
+        setIsHovering(true);
+    };
 
-    useEffect(() => {
-        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    }, []);
-
-    const handleMessageInteraction = (e: React.MouseEvent) => {
-        if (!isTouchDevice) return;
-        // prevent toggling if a link, the button itself, or the reply box is clicked
-        if (e.target.closest('a, [data-menu-trigger="true"], [data-reply-box="true"]')) {
-            return;
-        }
-        setButtonVisible(v => !v);
-    }
+    const handleMouseLeave = () => {
+        setIsHovering(false);
+    };
 
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1379,9 +1474,8 @@ function ChatMessage({
                 "group flex items-end gap-2",
                 alignRight ? "flex-row-reverse" : "flex-row"
             )}
-            onMouseEnter={!isTouchDevice ? () => setButtonVisible(true) : undefined}
-            onMouseLeave={!isTouchDevice ? () => setButtonVisible(false) : undefined}
-            onClick={handleMessageInteraction}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
@@ -1422,7 +1516,7 @@ function ChatMessage({
                             size="icon"
                             data-menu-trigger="true"
                             className={cn("h-8 w-8 transition-opacity", 
-                                buttonVisible
+                                isHovering
                                   ? "opacity-100"
                                   : "opacity-0 pointer-events-none"
                             )}

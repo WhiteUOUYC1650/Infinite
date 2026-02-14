@@ -1,3 +1,5 @@
+'use client';
+
 import type { LucideIcon } from "lucide-react";
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { Timestamp } from 'firebase/firestore';
@@ -51,6 +53,17 @@ export type Chat = {
   description?: string;
   link?: string;
   discussionChatId?: string;
+};
+
+export type Call = {
+  id: string;
+  callerId: string;
+  calleeId: string;
+  status: 'calling' | 'active' | 'ended';
+  offer?: RTCSessionDescriptionInit;
+  answer?: RTCSessionDescriptionInit;
+  callerCandidates?: RTCIceCandidateInit[];
+  calleeCandidates?: RTCIceCandidateInit[];
 };
 
 export type Channel = Chat & {

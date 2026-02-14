@@ -23,6 +23,10 @@ service cloud.firestore {
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
+    
+    match /calls/{callId} {
+      allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
+    }
 
     match /config/version {
       allow get: if true;

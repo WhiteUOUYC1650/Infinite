@@ -241,6 +241,15 @@ export const translations = {
       'deleted_account': 'Deleted Account',
       'experimental_settings_menu_label': 'Experimental Settings Menu',
       'you_message_preview': 'You',
+      'incoming_call': 'Incoming Call',
+      'is_calling_you': '{name} is calling you',
+      'accept': 'Accept',
+      'decline': 'Decline',
+      'connecting': 'Connecting...',
+      'connected': 'Connected',
+      'call_ended': 'Call Ended',
+      'microphone_error_title': 'Microphone Error',
+      'microphone_error_desc': 'Could not access your microphone. Please enable microphone access in your browser settings.',
     },
     ru: {
       'settings': 'Настройки',
@@ -484,6 +493,15 @@ export const translations = {
       'deleted_account': 'Удалённый аккаунт',
       'experimental_settings_menu_label': 'Экспериментальное меню настроек',
       'you_message_preview': 'Вы',
+      'incoming_call': 'Входящий звонок',
+      'is_calling_you': '{name} звонит вам',
+      'accept': 'Принять',
+      'decline': 'Отклонить',
+      'connecting': 'Соединение...',
+      'connected': 'Соединено',
+      'call_ended': 'Звонок завершён',
+      'microphone_error_title': 'Ошибка микрофона',
+      'microphone_error_desc': 'Не удалось получить доступ к вашему микрофону. Пожалуйста, разрешите доступ к микрофону в настройках вашего браузера.',
     }
   };
   
