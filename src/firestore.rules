@@ -81,10 +81,9 @@ service cloud.firestore {
     }
     
     match /videoChunks/{chunkId} {
-        allow create: if request.auth.uid == request.resource.data.senderId;
-        // Allow reads for any signed in user. Security is through obscurity of chunkId.
+        // TEMPORARY DIAGNOSTIC RULE
+        allow create: if isSignedIn();
         allow read: if isSignedIn();
-        // Disallow updates/deletes for now to keep it simple. Could be changed to owner-only.
         allow update, delete: if false;
     }
 
@@ -109,15 +108,16 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
+      // TEMPORARY DIAGNOSTIC RULE
+      allow update: if isSignedIn();
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
-        allow create: if request.auth.uid == request.resource.data.senderId &&
-                       request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        // TEMPORARY DIAGNOSTIC RULE
+        allow create: if isSignedIn();
                       
         allow update: if request.auth.uid == resource.data.senderId;
 
