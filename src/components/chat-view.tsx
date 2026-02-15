@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -566,61 +566,38 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
     if (!db) return;
-
-    if (videoFile.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({ variant: 'destructive', title: t('video_too_large'), description: 'Please select a video smaller than 5MB.' });
-        setMessageContent(content);
-        setFileToSend({ file: videoFile, previewUrl: URL.createObjectURL(videoFile), type: 'video'});
-        throw new Error("Video too large");
-    }
+    
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const timestamp = Timestamp.now();
+    
+    const messageData: Omit<Message, 'id'> = {
+        senderId: currentUser.uid,
+        content: content.replace(/\n/g, '  \n'),
+        timestamp,
+        videoMimeType: videoFile.type,
+        videoStatus: 'uploading',
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
 
     try {
-        const videoDataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(videoFile);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-        });
+        await setDoc(messageRef, messageData);
 
-        if (videoDataUrl.length > 950 * 1024) {
-            toast({ variant: 'destructive', title: t('video_too_large'), description: 'This video is too large to be sent directly.' });
-            setMessageContent(content);
-            setFileToSend({ file: videoFile, previewUrl: URL.createObjectURL(videoFile), type: 'video'});
-            throw new Error("Video data URL too large");
-        }
-
-        const contentForMessage = content.replace(/\n/g, '  \n');
-        const timestamp = Timestamp.now();
-
-        const messageData: { [key: string]: any } = {
-            senderId: currentUser.uid,
-            content: contentForMessage,
-            timestamp,
-            type: 'user',
-            readBy: [],
-            videoUrl: videoDataUrl,
-            ...(replyTo && {
-                replyTo: {
-                    messageId: replyTo.id,
-                    content: replyTo.content,
-                    senderName: replyTo.sender?.name || replyTo.senderName || '',
-                },
-            }),
-        };
-
-        const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
             id: messageRef.id,
-            content: contentForMessage || t('video_attachment_placeholder'),
+            content: content || t('video_attachment_placeholder'),
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username,
             timestamp,
-            videoUrl: 'video' // Simple placeholder for sidebar
+            videoMimeType: videoFile.type
         };
-
-        const batch = writeBatch(db);
-        batch.set(messageRef, messageData);
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
         if (item.type !== 'channel') {
             item.members.forEach((memberId) => {
@@ -629,11 +606,42 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 }
             });
         }
-        batch.update(chatRef, updateData);
-        await batch.commit();
+        await updateDoc(chatRef, updateData);
+
+        const videoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(videoFile);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (error) => reject(error);
+        });
+
+
+        const CHUNK_SIZE = 900 * 1024;
+        const base64Chunks: string[] = [];
+        for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
+            base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
+        }
+
+        const chunkIds: string[] = [];
+        for (let i = 0; i < base64Chunks.length; i++) {
+            const chunkDocRef = doc(collection(db, 'videoChunks'));
+            await setDoc(chunkDocRef, {
+                data: base64Chunks[i],
+                part: i,
+                messageId: messageRef.id,
+                senderId: currentUser.uid,
+            });
+            chunkIds.push(chunkDocRef.id);
+        }
+
+        await updateDoc(messageRef, { 
+            videoStatus: 'complete',
+            videoChunkIds: chunkIds,
+        });
 
     } catch (error) {
         console.error('[VIDEO_UPLOAD] ERROR during upload process:', error);
+        await updateDoc(messageRef, { videoStatus: 'failed' });
         throw error;
     }
 };
@@ -760,8 +768,8 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
       try {
         setIsSending(true);
         if (file.type.startsWith('video/')) {
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit for videos
-                toast({ variant: 'destructive', title: t('video_too_large'), description: 'Please select a video smaller than 5MB.' });
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit for videos
+                toast({ variant: 'destructive', title: t('video_too_large') });
                 setIsSending(false);
                 return;
             }
@@ -1238,6 +1246,45 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+    const hasVideo = !!message.videoMimeType;
+    const videoStatus = message.videoStatus;
+
+    useEffect(() => {
+        if (videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
+            const fetchAndAssembleVideo = async () => {
+                setIsLoadingVideo(true);
+                setVideoUrl(null);
+                try {
+                    const chunkSnaps = await Promise.all(
+                        message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
+                    );
+                    
+                    const chunksData = chunkSnaps
+                        .map(snap => snap.exists() ? snap.data() : null)
+                        .filter((d): d is { part: number; data: string } => d !== null)
+                        .sort((a, b) => a.part - b.part)
+                        .map(d => d.data);
+
+                    if (chunksData.length !== message.videoChunkIds!.length) {
+                        throw new Error("Failed to fetch all video chunks.");
+                    }
+                    
+                    const assembledBase64 = chunksData.join('');
+                    const dataUrl = `data:${message.videoMimeType};base64,${assembledBase64}`;
+                    setVideoUrl(dataUrl);
+                } catch (e) {
+                    console.error("[VIDEO_DOWNLOAD] ERROR assembling video:", e);
+                    setVideoUrl(null);
+                } finally {
+                    setIsLoadingVideo(false);
+                }
+            };
+            fetchAndAssembleVideo();
+        }
+    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType, message.id]);
+    
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
         return chat.members.find((id) => id !== currentUser.uid);
@@ -1389,9 +1436,26 @@ function ChatMessage({
                 </button>
             )}
             <div className="overflow-hidden">
-                {message.videoUrl ? (
+                {hasVideo ? (
                     <div className="relative my-1">
-                         <video src={message.videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
+                        {(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            </div>
+                        )}
+                        {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
+                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
+                        )}
+                        {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                <p className='text-xs font-semibold text-center'>{t('video_load_failed')}</p>
+                            </div>
+                        )}
+                        {videoStatus === 'failed' && (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                <p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p>
+                            </div>
+                        )}
                     </div>
                 ) : message.imageUrl ? (
                     <div className="relative my-1">

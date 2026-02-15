@@ -79,6 +79,14 @@ service cloud.firestore {
       allow update: if request.resource.data.senderId == request.auth.uid;
       allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
+    
+    match /videoChunks/{chunkId} {
+        allow create: if request.auth.uid == request.resource.data.senderId;
+        // Allow reads for any signed in user. Security is through obscurity of chunkId.
+        allow read: if isSignedIn();
+        // Disallow updates/deletes for now to keep it simple. Could be changed to owner-only.
+        allow update, delete: if false;
+    }
 
     match /chats/{chatId} {
       // 1. You can get a chat if it exists and you are a member.

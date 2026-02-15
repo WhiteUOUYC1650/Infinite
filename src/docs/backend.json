@@ -86,9 +86,19 @@
             "type": "string",
             "description": "URL to an image attachment, in Base64 data URI format."
         },
-        "videoUrl": {
+        "videoMimeType": {
             "type": "string",
-            "description": "URL to a video attachment, in Base64 data URI format."
+            "description": "MIME type of the video attachment."
+        },
+        "videoStatus": {
+            "type": "string",
+            "enum": ["uploading", "complete", "failed"],
+            "description": "The upload status of the video attachment."
+        },
+        "videoChunkIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of document IDs for the video chunks in the /videoChunks collection."
         },
         "timestamp": {
           "type": "object",
@@ -134,6 +144,18 @@
         }
       },
       "required": ["senderId", "timestamp"]
+    },
+    "VideoChunk": {
+      "title": "Video Chunk",
+      "description": "A single chunk of a video file, stored separately to avoid document size limits.",
+      "type": "object",
+      "properties": {
+        "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
+        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
+        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
+      },
+      "required": ["data", "part", "messageId", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -251,6 +273,12 @@
         "$ref": "#/backend/entities/Message"
       },
       "description": "Stores messages for a specific chat."
+    },
+    "/videoChunks/{chunkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/VideoChunk"
+      },
+      "description": "Stores individual chunks of uploaded video files."
     },
     "/chatLinks/{linkId}": {
       "schema": {

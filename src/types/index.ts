@@ -30,7 +30,9 @@ export type Message = {
   senderId: string;
   content: string;
   imageUrl?: string;
-  videoUrl?: string;
+  videoMimeType?: string;
+  videoStatus?: 'uploading' | 'complete' | 'failed';
+  videoChunkIds?: string[];
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;
@@ -39,6 +41,13 @@ export type Message = {
   readBy?: string[];
   replyTo?: ReplyInfo;
   editedAt?: Timestamp;
+};
+
+export type VideoChunk = {
+  data: string;
+  part: number;
+  messageId: string;
+  senderId: string;
 };
 
 export type Chat = {
