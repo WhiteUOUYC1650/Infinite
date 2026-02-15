@@ -162,34 +162,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return item.members.includes(currentUser.uid);
   }, [item?.members, currentUser.uid]);
 
-  // --- Call listener ---
-  useEffect(() => {
-    // A DM chat ID that can have a call must contain two user IDs joined by an underscore.
-    // This check prevents listening for calls on special DM chats like "Saved Messages"
-    // whose ID is just the user's UID and does not contain an underscore.
-    if (!db || item.type !== 'dm' || !item.id.includes('_')) return;
-
-    const callDocRef = doc(db, 'calls', item.id);
-    const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const callData = { id: snapshot.id, ...snapshot.data() } as Call;
-        if (callData.status === 'calling' && callData.calleeId === currentUser.uid) {
-            setIncomingCall(callData);
-        } else if (callData.status === 'ended') {
-            setIncomingCall(null);
-            setShowCallDialog(false);
-        }
-      } else {
-        // Doc deleted or doesn't exist, clean up
-        setIncomingCall(null);
-        setShowCallDialog(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [db, item.id, item.type, currentUser.uid]);
-
-
   // --- End live chat data ---
 
   // --- Fetch messages and members ---
