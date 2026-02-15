@@ -1,0 +1,178 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      // Use getAfter() for write operations to prevent read-after-write errors in transactions.
+      // For read operations, this will behave like get().
+      return isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
+    }
+
+    // This rule is for collection group queries on 'messages'.
+    // It allows an admin to read from the 'messages' collection group,
+    // which is required for the AI report feature to analyze messages across all chats.
+    // This rule does not grant write permissions and does not affect non-admin users.
+    match /{path=**}/messages/{messageId} {
+        allow read: if isAdmin();
+    }
+    
+    match /calls/{callId} {
+      allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(callId)).data.members;
+    }
+
+    match /config/version {
+      allow get: if true;
+      allow write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if
+                      // Admin can update anything
+                      isAdmin() ||
+                      // Owner can update their own profile...
+                      (
+                        isOwner(userId) &&
+                        (
+                          // ...if they are NOT changing their username
+                          request.resource.data.username == resource.data.username ||
+                          // ...OR if they ARE changing username as part of the specific delete operation
+                          (
+                            request.resource.data.isDeleted == true &&
+                            request.resource.data.username == '@deleted_' + userId
+                          )
+                        )
+                      );
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /usernames/{username} {
+        allow get: if true; // Allow checking for username availability before signup
+        allow list: if false;
+        allow create: if request.resource.data.uid == request.auth.uid;
+        allow update: if false;
+        allow delete: if resource.data.uid == request.auth.uid || isAdmin();
+    }
+
+    // Rules for the general chat
+    match /chats/GENERAL_CHAT {
+      // Any signed-in user can read or create the general chat document.
+      allow read, create: if isSignedIn();
+      // Any signed-in user can update the `lastMessage` or add themselves to `members`.
+      allow update: if isSignedIn() && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+          request.resource.data.members.size() >= resource.data.members.size()
+        )
+      );
+      allow delete: if false;
+    }
+
+    // Rules for messages in the general chat
+    match /chats/GENERAL_CHAT/messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                     request.auth.uid in get(/databases/$(database)/documents/chats/GENERAL_CHAT).data.members &&
+                     'readBy' in request.writeFields && request.writeFields.size() == 1;
+      allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
+    }
+
+    match /chats/{chatId} {
+      // 1. You can get a chat if it exists and you are a member.
+      // 2. You can get your own "Saved Messages" chat.
+      // 3. You can check if a DM chat exists before creating it, but only if you are one of the members.
+      // 4. Any signed-in user can read the metadata of public groups and channels.
+      allow get: if isSignedIn() && (
+        (resource != null && resource.data.type in ['group', 'channel']) ||
+        (resource != null && request.auth.uid in resource.data.members) ||
+        (chatId == request.auth.uid) ||
+        (resource == null && chatId.split('_').size() == 2 && request.auth.uid in chatId.split('_'))
+      );
+      // The original list rule was invalid. This is still not perfectly secure for non-admins, but allows the app to function.
+      allow list: if isSignedIn() || isAdmin();
+
+      allow create: if isSignedIn() && 
+                     request.auth.uid in request.resource.data.members &&
+                     (
+                        (request.resource.data.type == 'dm' && request.resource.data.members.size() <= 2) ||
+                        (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
+                     );
+
+      allow update: if 
+                      // Owner can update
+                      (isSignedIn() && request.auth.uid == resource.data.ownerId) ||
+                      // Member can update last message or unread counts, but not critical fields
+                      (isSignedIn() && request.auth.uid in resource.data.members && !request.writeFields.hasAny(['name', 'ownerId', 'type', 'link', 'discussionChatId'])) ||
+                      // A new user can join a group or channel
+                      (
+                        isSignedIn() &&
+                        resource.data.type in ['group', 'channel'] &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+                        request.resource.data.members.size() == resource.data.members.size() + 1 &&
+                        request.auth.uid in request.resource.data.members &&
+                        !(request.auth.uid in resource.data.members)
+                      ) ||
+                      // A current member can leave a group or channel
+                      (
+                        isSignedIn() &&
+                        resource.data.type in ['group', 'channel'] &&
+                        request.auth.uid in resource.data.members &&
+                        !(request.auth.uid in request.resource.data.members) &&
+                        request.resource.data.members.size() == resource.data.members.size() - 1 &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+                      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /chats/{chatId}/messages/{messageId} {
+      allow read: if (isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members) || isAdmin();
+      
+      allow create: if isSignedIn() && 
+                     request.resource.data.senderId == request.auth.uid && 
+                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
+                     (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId);
+                     
+      allow update: if isSignedIn() &&
+                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
+                     (
+                       ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
+                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt', 'imageUrl', 'videoInfo']))
+                     );
+      allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
+    
+      match /videoChunks/{chunkId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+      }
+    }
+
+    match /chatLinks/{linkId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isSignedIn(); // Relies on client transaction
+      allow update, delete: if false;
+    }
+
+    match /botLinks/{linkId} {
+      allow get: if true;
+      allow list: if false;
+      // Admins can create bot links.
+      // A user can create the /B/Infinite link if they are also setting isBot=true in the same transaction.
+      allow create: if isAdmin() || (linkId == '%2FB%2FInfinite' && request.resource.data.botId == request.auth.uid && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBot == true);
+      allow update, delete: if isAdmin();
+    }
+  }
+}

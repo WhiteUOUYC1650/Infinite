@@ -1226,8 +1226,6 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     
-    const [isHovering, setIsHovering] = useState(false);
-
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
 
@@ -1461,8 +1459,6 @@ function ChatMessage({
                 "group flex items-end gap-2",
                 alignRight ? "flex-row-reverse" : "flex-row"
             )}
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
         >
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
@@ -1502,10 +1498,7 @@ function ChatMessage({
                             variant="ghost"
                             size="icon"
                             data-menu-trigger="true"
-                            className={cn("h-8 w-8 transition-opacity", 
-                                isHovering
-                                  ? "opacity-100"
-                                  : "opacity-0 focus:opacity-100"
+                            className={cn("h-8 w-8 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100"
                             )}
                         >
                             <MoreVertical className="h-4 w-4" />
