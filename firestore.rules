@@ -36,7 +36,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if
                       // Admin can update anything
@@ -117,7 +117,6 @@ service cloud.firestore {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
         // A member can create a message if they are the sender.
-        // Temporarily simplified to remove nested get() for diagnostics.
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
                       
         // A user can only update their own messages.
