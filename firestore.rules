@@ -25,7 +25,9 @@ service cloud.firestore {
     }
     
     match /calls/{callId} {
-      allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
+      // Allow read/write if the user's UID is part of the callId string.
+      // This is a simple way to ensure only participants can access the call document.
+      allow read, write: if isSignedIn() && callId.contains(request.auth.uid);
     }
 
     match /config/version {
