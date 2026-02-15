@@ -26,7 +26,6 @@ service cloud.firestore {
     
     match /calls/{callId} {
       // Allow read/write if the user is a member of the corresponding chat.
-      // This is safer and more flexible than parsing the callId string.
       allow read, write: if isSignedIn() &&
                       get(/databases/$(database)/documents/chats/$(callId)) != null &&
                       request.auth.uid in get(/databases/$(database)/documents/chats/$(callId)).data.members;
@@ -117,8 +116,8 @@ service cloud.firestore {
       allow update: if 
                       // Owner can update
                       (isSignedIn() && request.auth.uid == resource.data.ownerId) ||
-                      // Member can update last message or unread counts
-                      (isSignedIn() && request.auth.uid in resource.data.members && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'unreadCounts'])) ||
+                      // Member can update last message or unread counts, but not critical fields
+                      (isSignedIn() && request.auth.uid in resource.data.members && !('name' in request.writeFields) && !('ownerId' in request.writeFields) && !('type' in request.writeFields) && !('link' in request.writeFields) && !('discussionChatId' in request.writeFields)) ||
                       // A new user can join a group or channel
                       (
                         isSignedIn() &&
