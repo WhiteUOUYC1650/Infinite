@@ -70,13 +70,7 @@ service cloud.firestore {
       // Any signed-in user can read or create the general chat document.
       allow read, create: if isSignedIn();
       // Any signed-in user can update the `lastMessage` or add themselves to `members`.
-      allow update: if isSignedIn() && (
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage']) ||
-        (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
-          request.resource.data.members.size() >= resource.data.members.size()
-        )
-      );
+      allow update: if isSignedIn() && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'members']));
       allow delete: if false;
     }
 
@@ -111,15 +105,10 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      allow update: if 
-                      // Owner can update everything
-                      (isSignedIn() && request.auth.uid == resource.data.ownerId) ||
-                      // Or a member can update only a few specific fields for sending messages or joining/leaving.
-                      (isSignedIn() && request.auth.uid in resource.data.members && 
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'unreadCounts', 'members'])
-                      );
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['type', 'ownerId', 'name', 'icon', 'link', 'description']);
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
 
     match /chats/{chatId}/messages/{messageId} {
