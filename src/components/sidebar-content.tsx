@@ -795,8 +795,18 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isSelected = selectedId === item.id;
   const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot';
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
-  const lastMessageContent = item.lastMessage?.imageUrl ? t('image_attachment_placeholder') : item.lastMessage?.content;
-  const lastMessageSenderIsCurrentUser = item.lastMessage?.senderId === currentUserId;
+  
+  const lastMessage = item.lastMessage;
+  let lastMessageContent: string | undefined;
+  if (lastMessage?.imageUrl) {
+    lastMessageContent = t('image_attachment_placeholder');
+  } else if (lastMessage?.videoUrl) {
+    lastMessageContent = t('video_attachment_placeholder');
+  } else {
+    lastMessageContent = lastMessage?.content;
+  }
+  
+  const lastMessageSenderIsCurrentUser = lastMessage?.senderId === currentUserId;
 
   let senderPrefix = '';
   if (lastMessageSenderIsCurrentUser && !isSavedMessages) {
@@ -834,12 +844,20 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
 }
 
 function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
-  const lastMessage = item.lastMessage as { senderId?: string, senderName?: string, content?: string, imageUrl?: string };
+  const { t } = useLanguage();
+  const lastMessage = item.lastMessage;
   const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
-  const { t } = useLanguage();
-  const lastMessageContent = lastMessage?.imageUrl ? t('image_attachment_placeholder') : lastMessage?.content;
+  
+  let lastMessageContent: string | undefined;
+  if (lastMessage?.imageUrl) {
+    lastMessageContent = t('image_attachment_placeholder');
+  } else if (lastMessage?.videoUrl) {
+    lastMessageContent = t('video_attachment_placeholder');
+  } else {
+    lastMessageContent = lastMessage?.content;
+  }
 
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
   let senderPrefix = '';

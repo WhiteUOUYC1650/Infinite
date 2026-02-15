@@ -82,6 +82,14 @@
           "type": "string",
           "description": "The text content of the message."
         },
+        "imageUrl": {
+            "type": "string",
+            "description": "URL to an image attachment, in Base64 data URI format."
+        },
+        "videoUrl": {
+            "type": "string",
+            "description": "URL to a video attachment, in Base64 data URI format."
+        },
         "timestamp": {
           "type": "object",
           "description": "The server timestamp when the message was created."
