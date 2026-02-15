@@ -166,7 +166,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Call listener ---
   useEffect(() => {
-    if (!db || item.type !== 'dm' || !isMember || item.id === currentUser.uid || !item.id.includes('_')) return; // Prevents running for "Saved Messages" or invalid IDs
+    if (!db || item.type !== 'dm' || !isMember || !item.id.includes('_')) return; // Prevents running for "Saved Messages" or invalid IDs
     const callDocRef = doc(db, 'calls', item.id);
     const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
         const data = snapshot.data() as Call;
@@ -1498,7 +1498,8 @@ function ChatMessage({
                             variant="ghost"
                             size="icon"
                             data-menu-trigger="true"
-                            className={cn("h-8 w-8 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className={cn(
+                                "h-8 w-8 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
                             )}
                         >
                             <MoreVertical className="h-4 w-4" />

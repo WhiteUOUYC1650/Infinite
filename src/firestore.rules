@@ -25,7 +25,8 @@ service cloud.firestore {
     }
     
     match /calls/{callId} {
-      allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(callId)).data.members;
+      // Allow read/write if the user's ID is one of the two in the callId, which is formatted as uid1_uid2
+      allow read, write: if isSignedIn() && callId.split('_').size() == 2 && request.auth.uid in callId.split('_');
     }
 
     match /config/version {
@@ -85,7 +86,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
       allow update: if isSignedIn() &&
                      request.auth.uid in get(/databases/$(database)/documents/chats/GENERAL_CHAT).data.members &&
-                     'readBy' in request.writeFields && request.writeFields.size() == 1;
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
       allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
 
@@ -111,10 +112,14 @@ service cloud.firestore {
                      );
 
       allow update: if 
-                      // Owner can update
+                      // Owner can update everything
                       (isSignedIn() && request.auth.uid == resource.data.ownerId) ||
-                      // Member can update last message or unread counts, but not critical fields
-                      (isSignedIn() && request.auth.uid in resource.data.members && !request.writeFields.hasAny(['name', 'ownerId', 'type', 'link', 'discussionChatId'])) ||
+                      // Member can only update last message or unread counts, but not critical fields
+                      (
+                        isSignedIn() && 
+                        request.auth.uid in resource.data.members &&
+                        request.resource.data.diff(resource.data).affectedKeys().removeAll(['lastMessage', 'unreadCounts']).size() == 0
+                      ) ||
                       // A new user can join a group or channel
                       (
                         isSignedIn() &&
@@ -148,8 +153,8 @@ service cloud.firestore {
       allow update: if isSignedIn() &&
                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
                      (
-                       ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
-                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt', 'imageUrl', 'videoInfo']))
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) ||
+                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']))
                      );
       allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
     
