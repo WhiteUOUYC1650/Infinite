@@ -775,6 +775,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
       }
     }
   };
+  
+  const handleAttachmentClick = (type: 'image' | 'video') => {
+    if (fileInputRef.current) {
+        fileInputRef.current.accept = type === 'image' ? 'image/*' : 'video/*';
+        fileInputRef.current.click();
+    }
+  };
 
   const handleInitiateCall = async () => {
     if (item.type !== 'dm' || item.id === currentUser.uid) return;
@@ -1084,7 +1091,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
               }}
               disabled={isSending}
             />
-             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*" />
+             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Popover>
                     <PopoverTrigger asChild>
@@ -1094,11 +1101,11 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                     </PopoverTrigger>
                     <PopoverContent side="top" align="end" className="w-auto p-1">
                         <div className="flex flex-col">
-                            <Button variant="ghost" className="justify-start" onClick={() => fileInputRef.current?.click()}>
+                            <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('image')}>
                                 <ImageIcon className="mr-2 h-4 w-4" />
                                 <span>{t('photo')}</span>
                             </Button>
-                            <Button variant="ghost" className="justify-start" onClick={() => fileInputRef.current?.click()}>
+                            <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('video')}>
                                 <VideoIcon className="mr-2 h-4 w-4" />
                                 <span>{t('video')}</span>
                             </Button>
