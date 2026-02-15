@@ -489,7 +489,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     
     try {
         if (originalFile?.type === 'video') {
-            await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
+            await handleSendVideo(originalFile.file, originalContent, originalReplyTo, item, currentUser);
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
@@ -564,15 +564,15 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
     }
 };
 
-const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
+const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null, currentChat: PopulatedChat, user: AuthenticatedUser) => {
     if (!db) return;
     
     // 1. Create the message document with 'uploading' status
-    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const messageRef = doc(collection(db, 'chats', currentChat.id, 'messages'));
     const timestamp = Timestamp.now();
     
     const messageData: Omit<Message, 'id'> = {
-        senderId: currentUser.uid,
+        senderId: user.uid,
         content: content.replace(/\n/g, '  \n'),
         timestamp,
         videoMimeType: videoFile.type,
@@ -591,19 +591,19 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         await setDoc(messageRef, messageData);
 
         // 2. Update the chat's lastMessage
-        const chatRef = doc(db, 'chats', item.id);
+        const chatRef = doc(db, 'chats', currentChat.id);
         const lastMessageData = {
             id: messageRef.id,
             content: content || t('video_attachment_placeholder'),
-            senderId: currentUser.uid,
-            senderName: currentUser.name || currentUser.username,
+            senderId: user.uid,
+            senderName: user.name || user.username,
             timestamp,
             videoMimeType: videoFile.type
         };
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.type !== 'channel') {
-            item.members.forEach((memberId) => {
-                if (memberId !== currentUser.uid) {
+        if (currentChat.type !== 'channel') {
+            currentChat.members.forEach((memberId) => {
+                if (memberId !== user.uid) {
                     updateData[`unreadCounts.${memberId}`] = increment(1);
                 }
             });
@@ -632,8 +632,8 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 data: chunk,
                 part: index,
                 messageId: messageRef.id,
-                chatId: item.id,
-                senderId: currentUser.uid,
+                chatId: currentChat.id,
+                senderId: user.uid,
             };
             await setDoc(chunkDocRef, chunkData);
             chunkIds.push(chunkDocRef.id);
