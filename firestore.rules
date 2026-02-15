@@ -111,8 +111,7 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
 
       match /messages/{messageId} {
-        // TEMPORARY DIAGNOSTIC RULE - THIS IS INSECURE
-        allow read: if isSignedIn();
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
         allow create: if request.auth.uid == request.resource.data.senderId &&
                        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
