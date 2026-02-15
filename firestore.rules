@@ -104,15 +104,13 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      // A more robust update rule using a "blacklist" approach.
-      allow update: if isSignedIn() && request.auth.uid in resource.data.members && (
-        // Case 1: The user is the owner.
-        // The owner can change anything. Client-side logic prevents misuse.
-        resource.data.ownerId == request.auth.uid ||
-        // Case 2: The user is a member and is NOT changing critical fields.
-        // This implicitly allows updating lastMessage, unreadCounts, and members array.
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'ownerId', 'link', 'type', 'icon', 'discussionChatId', 'avatar', 'description'])
-      );
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members &&
+                 // Owner can change more things
+                 (resource.data.ownerId == request.auth.uid ||
+                 // Members can update as long as they don't touch critical, immutable fields
+                 (request.resource.data.ownerId == resource.data.ownerId &&
+                  request.resource.data.type == resource.data.type &&
+                  request.resource.data.link == resource.data.link));
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
