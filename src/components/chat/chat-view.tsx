@@ -164,7 +164,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Call listener ---
   useEffect(() => {
-    if (!db || item.type !== 'dm') return;
+    // Also check if this is not the "Saved Messages" chat
+    if (!db || item.type !== 'dm' || item.id === currentUser.uid) return;
 
     const callDocRef = doc(db, 'calls', item.id);
     const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
@@ -1276,6 +1277,7 @@ function ChatMessage({
     };
 
     const handleMouseLeave = () => {
+        setIsMenuOpen(false);
         setIsHovering(false);
     };
 
@@ -1516,9 +1518,9 @@ function ChatMessage({
                             size="icon"
                             data-menu-trigger="true"
                             className={cn("h-8 w-8 transition-opacity", 
-                                isHovering
+                                (isHovering || isMenuOpen)
                                   ? "opacity-100"
-                                  : "opacity-0 pointer-events-none"
+                                  : "opacity-0"
                             )}
                         >
                             <MoreVertical className="h-4 w-4" />
