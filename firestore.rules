@@ -157,7 +157,7 @@ service cloud.firestore {
     
       match /videoChunks/{chunkId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
       }
     }
 
