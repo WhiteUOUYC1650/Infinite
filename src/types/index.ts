@@ -30,6 +30,7 @@ export type Message = {
   senderId: string;
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;
