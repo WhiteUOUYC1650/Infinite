@@ -25,9 +25,11 @@ service cloud.firestore {
     }
     
     match /calls/{callId} {
-      // Allow read/write if the user's UID is one of the two UIDs in the callId,
-      // which is formatted as 'uid1_uid2'.
-      allow read, write: if isSignedIn() && callId.split('_').size() == 2 && request.auth.uid in callId.split('_');
+      // Allow read/write if the user is a member of the corresponding chat.
+      // This is safer and more flexible than parsing the callId string.
+      allow read, write: if isSignedIn() &&
+                      get(/databases/$(database)/documents/chats/$(callId)) != null &&
+                      request.auth.uid in get(/databases/$(database)/documents/chats/$(callId)).data.members;
     }
 
     match /config/version {
