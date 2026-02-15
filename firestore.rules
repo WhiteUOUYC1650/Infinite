@@ -81,7 +81,11 @@ service cloud.firestore {
     }
     
     match /videoChunks/{chunkId} {
-        allow read, write: if true;
+        allow create: if request.auth.uid == request.resource.data.senderId;
+        // Allow reads for any signed in user. Security is through obscurity of chunkId.
+        allow read: if isSignedIn();
+        // Disallow updates/deletes for now to keep it simple. Could be changed to owner-only.
+        allow update, delete: if false;
     }
 
     match /chats/{chatId} {

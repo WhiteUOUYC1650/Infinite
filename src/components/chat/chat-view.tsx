@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -623,11 +623,10 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         }
 
         const chunkIds: string[] = [];
-        for (let i = 0; i < base64Chunks.length; i++) {
-            const chunkDocRef = doc(db, 'videoChunks', `${messageRef.id}_part_${i}`);
+        for (const chunk of base64Chunks) {
+            const chunkDocRef = doc(collection(db, 'videoChunks'));
             await setDoc(chunkDocRef, {
-                data: base64Chunks[i],
-                part: i,
+                data: chunk,
                 messageId: messageRef.id,
                 senderId: currentUser.uid,
             });
@@ -1252,20 +1251,23 @@ function ChatMessage({
     const videoStatus = message.videoStatus;
 
     useEffect(() => {
-        if (videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
+        if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
                 setIsLoadingVideo(true);
-                setVideoUrl(null);
+                setVideoUrl(null); // Reset previous video URL if any
                 try {
                     const chunkSnaps = await Promise.all(
                         message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
                     );
                     
-                    const chunksData = chunkSnaps
-                        .map(snap => snap.exists() ? snap.data() : null)
-                        .filter((d): d is { part: number; data: string } => d !== null)
-                        .sort((a, b) => a.part - b.part)
-                        .map(d => d.data);
+                    const chunksData: string[] = [];
+                    chunkSnaps.forEach(snap => {
+                        if (snap.exists()) {
+                            // Firestore documents don't guarantee order, so we need a way to sort them.
+                            // The current implementation relies on the order in videoChunkIds.
+                            chunksData.push(snap.data().data);
+                        }
+                    });
 
                     if (chunksData.length !== message.videoChunkIds!.length) {
                         throw new Error("Failed to fetch all video chunks.");
@@ -1283,7 +1285,7 @@ function ChatMessage({
             };
             fetchAndAssembleVideo();
         }
-    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType, message.id]);
+    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
