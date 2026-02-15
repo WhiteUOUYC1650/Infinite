@@ -297,6 +297,8 @@ interface ThemeContextType {
   toggleSnowflakes: () => void;
   useExperimentalMenu: boolean;
   toggleExperimentalMenu: () => void;
+  sendOnEnter: boolean;
+  toggleSendOnEnter: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -306,6 +308,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSnowflakes, setShowSnowflakes] = useState(false);
   const [useExperimentalMenu, setUseExperimentalMenu] = useState(false);
+  const [sendOnEnter, setSendOnEnter] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -313,6 +316,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
     const storedExperimentalMenu = localStorage.getItem('app-experimental-menu');
+    const storedSendOnEnter = localStorage.getItem('app-send-on-enter');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -330,6 +334,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (storedExperimentalMenu) {
       setUseExperimentalMenu(storedExperimentalMenu === 'true');
+    }
+
+    if (storedSendOnEnter) {
+      setSendOnEnter(storedSendOnEnter === 'true');
     }
 
     setIsMounted(true);
@@ -423,6 +431,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const handleToggleSendOnEnter = () => {
+    setSendOnEnter(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-send-on-enter', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -432,6 +448,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleSnowflakes: handleToggleSnowflakes,
     useExperimentalMenu,
     toggleExperimentalMenu: handleToggleExperimentalMenu,
+    sendOnEnter,
+    toggleSendOnEnter: handleToggleSendOnEnter,
   };
 
   if (!isMounted) {

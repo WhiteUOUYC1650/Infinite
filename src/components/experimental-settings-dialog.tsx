@@ -30,7 +30,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -46,7 +46,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { EditProfileDialog } from './edit-profile-dialog';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat';
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none" disabled={disabled}>
@@ -78,7 +78,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [showEditProfile, setShowEditProfile] = useState(false);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, useExperimentalMenu, toggleExperimentalMenu } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, useExperimentalMenu, toggleExperimentalMenu, sendOnEnter, toggleSendOnEnter } = useTheme();
   
   const auth = useAuth();
   const db = useFirestore();
@@ -183,6 +183,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'appearance': return t('appearance');
       case 'theme': return t('color_theme');
       case 'language': return t('language');
+      case 'chat': return t('chat_settings');
       case 'account': return t('profile');
       case 'help': return t('help');
       case 'about': return t('version');
@@ -212,6 +213,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         </div>
         <div className="border-t">
           <SettingsItem icon={Paintbrush} label={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
+          <SettingsItem icon={MessageSquare} label={t('chat_settings')} onClick={() => navigateTo('chat')} />
           <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
           <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
           <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
@@ -254,6 +256,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <Label htmlFor="lang-ru" className='cursor-pointer'>Русский</Label>
         </div>
     </RadioGroup>
+  );
+
+  const chatPageContent = (
+    <div className='p-4'>
+        <SettingsSwitchItem id="send-on-enter-switch" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} />
+    </div>
   );
   
   const accountPageContent = (
@@ -309,6 +317,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'appearance': return appearancePageContent;
       case 'theme': return themePageContent;
       case 'language': return languagePageContent;
+      case 'chat': return chatPageContent;
       case 'account': return accountPageContent;
       case 'help': return helpPageContent;
       case 'about': return aboutPageContent;

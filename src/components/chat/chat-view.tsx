@@ -118,7 +118,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const { theme: colorTheme } = useTheme();
+  const { theme: colorTheme, sendOnEnter } = useTheme();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -1074,7 +1074,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) {
                   handleSubmit(e);
                 } else if (e.key === 'Escape') {
                   if (editingMessage) handleCancelEdit();
