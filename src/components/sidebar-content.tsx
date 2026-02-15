@@ -906,5 +906,3 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     </Button>
   );
 }
-
-    

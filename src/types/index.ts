@@ -45,7 +45,6 @@ export type Message = {
 
 export type VideoChunk = {
   data: string;
-  part: number;
   messageId: string;
   senderId: string;
 };

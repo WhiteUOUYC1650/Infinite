@@ -151,11 +151,10 @@
       "type": "object",
       "properties": {
         "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
-        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
         "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
         "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
       },
-      "required": ["data", "part", "messageId", "senderId"]
+      "required": ["data", "messageId", "senderId"]
     },
     "Chat": {
       "title": "Chat",

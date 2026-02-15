@@ -623,9 +623,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         }
 
         const chunkIds: string[] = [];
+        const chunksCollectionRef = collection(db, "videoChunks");
         for (const chunk of base64Chunks) {
-            const chunkDocRef = doc(collection(db, 'videoChunks'));
-            await setDoc(chunkDocRef, {
+            const chunkDocRef = await addDoc(chunksCollectionRef, {
                 data: chunk,
                 messageId: messageRef.id,
                 senderId: currentUser.uid,
