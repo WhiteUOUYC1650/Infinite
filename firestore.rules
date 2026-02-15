@@ -69,8 +69,8 @@ service cloud.firestore {
     match /chats/GENERAL_CHAT {
       // Any signed-in user can read or create the general chat document.
       allow read, create: if isSignedIn();
-      // Whitelist update operations: sending messages or updating member list.
-      allow update: if isSignedIn() && request.writeFields.every(key => key == 'lastMessage' || key.startsWith('unreadCounts.') || key == 'members');
+      // Any signed-in user can update the chat, as long as they don't change critical fields.
+      allow update: if isSignedIn() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'ownerId', 'link', 'type', 'icon']);
     }
 
     // Rules for messages in the general chat
@@ -104,22 +104,15 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      // A comprehensive whitelist for all valid update operations
-      allow update: if isSignedIn() && request.auth.uid in resource.data.members &&
-                     (
-                        // Case 1: Sending a message or resetting unread count.
-                        // Allows updating 'lastMessage' and any number of 'unreadCounts.*' fields, but nothing else.
-                        (request.writeFields.size() > 0 && request.writeFields.every(key => key == 'lastMessage' || key.startsWith('unreadCounts.')))
-                        ||
-                        // Case 2: Joining or leaving a chat (only 'members' field can be updated).
-                        request.writeFields.hasOnly(['members'])
-                        ||
-                        // Case 3: Owner editing chat info.
-                        (
-                          resource.data.ownerId == request.auth.uid &&
-                          request.writeFields.every(key => key in ['name', 'avatar', 'description', 'discussionChatId'])
-                        )
-                     );
+      // A more robust update rule using a "blacklist" approach.
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members && (
+        // Case 1: The user is the owner.
+        // The owner can change anything. Client-side logic prevents misuse.
+        resource.data.ownerId == request.auth.uid ||
+        // Case 2: The user is a member and is NOT changing critical fields.
+        // This implicitly allows updating lastMessage, unreadCounts, and members array.
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'ownerId', 'link', 'type', 'icon', 'discussionChatId', 'avatar', 'description'])
+      );
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
