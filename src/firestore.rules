@@ -76,7 +76,7 @@ service cloud.firestore {
     // Rules for messages in the general chat
     match /chats/GENERAL_CHAT/messages/{messageId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow create: if isSignedIn();
       allow update: if isSignedIn() &&
                      request.auth.uid in get(/databases/$(database)/documents/chats/GENERAL_CHAT).data.members &&
                      'readBy' in request.writeFields && request.writeFields.size() == 1;
@@ -104,7 +104,7 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
+      allow update: if isSignedIn();
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
@@ -112,10 +112,7 @@ service cloud.firestore {
     match /chats/{chatId}/messages/{messageId} {
       allow read: if (isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members) || isAdmin();
       
-      allow create: if isSignedIn() && 
-                     request.resource.data.senderId == request.auth.uid && 
-                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
-                     (get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' || request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId);
+      allow create: if isSignedIn();
                      
       allow update: if isSignedIn() &&
                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
@@ -127,7 +124,7 @@ service cloud.firestore {
     
       match /videoChunks/{chunkId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        allow create: if request.auth.uid != null;
+        allow create: if isSignedIn();
       }
     }
 
