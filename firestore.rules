@@ -26,7 +26,7 @@ service cloud.firestore {
     
     match /calls/{callId} {
       // Allow read/write if the user's ID is one of the two in the callId, which is formatted as uid1_uid2
-      allow read, write: if isSignedIn() && callId.split('_').size() == 2 && request.auth.uid in callId.split('_');
+      allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
     }
 
     match /config/version {
@@ -112,27 +112,11 @@ service cloud.firestore {
                      );
 
       allow update: if 
-                      // Owner can update
+                      // Owner can update everything
                       (isSignedIn() && request.auth.uid == resource.data.ownerId) ||
-                      // Member can update last message or unread counts, but not critical fields
-                      (isSignedIn() && request.auth.uid in resource.data.members && !('name' in request.writeFields) && !('ownerId' in request.writeFields) && !('type' in request.writeFields) && !('link' in request.writeFields) && !('discussionChatId' in request.writeFields)) ||
-                      // A new user can join a group or channel
-                      (
-                        isSignedIn() &&
-                        resource.data.type in ['group', 'channel'] &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
-                        request.resource.data.members.size() == resource.data.members.size() + 1 &&
-                        request.auth.uid in request.resource.data.members &&
-                        !(request.auth.uid in resource.data.members)
-                      ) ||
-                      // A current member can leave a group or channel
-                      (
-                        isSignedIn() &&
-                        resource.data.type in ['group', 'channel'] &&
-                        request.auth.uid in resource.data.members &&
-                        !(request.auth.uid in request.resource.data.members) &&
-                        request.resource.data.members.size() == resource.data.members.size() - 1 &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+                      // Or a member can update only a few specific fields for sending messages or joining/leaving.
+                      (isSignedIn() && request.auth.uid in resource.data.members && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'unreadCounts', 'members'])
                       );
 
       allow delete: if isAdmin();
