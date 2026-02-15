@@ -800,7 +800,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   let lastMessageContent: string | undefined;
   if (lastMessage?.imageUrl) {
     lastMessageContent = t('image_attachment_placeholder');
-  } else if (lastMessage?.videoMimeType) {
+  } else if (lastMessage?.videoUrl) {
     lastMessageContent = t('video_attachment_placeholder');
   } else {
     lastMessageContent = lastMessage?.content;
@@ -853,7 +853,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   let lastMessageContent: string | undefined;
   if (lastMessage?.imageUrl) {
     lastMessageContent = t('image_attachment_placeholder');
-  } else if (lastMessage?.videoMimeType) {
+  } else if (lastMessage?.videoUrl) {
     lastMessageContent = t('video_attachment_placeholder');
   } else {
     lastMessageContent = lastMessage?.content;
@@ -894,7 +894,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
           </div>
           {lastMessageContent && (
             <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                {lastMessage?.videoMimeType && <Video className="h-3 w-3 shrink-0" />}
+                {lastMessage?.videoUrl && <Video className="h-3 w-3 shrink-0" />}
                 <span>{senderPrefix}{lastMessageContent}</span>
             </p>
           )}

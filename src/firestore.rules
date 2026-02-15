@@ -79,10 +79,6 @@ service cloud.firestore {
       allow update: if request.resource.data.senderId == request.auth.uid;
       allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
-    
-    match /videoChunks/{chunkId} {
-        allow read, write: if true;
-    }
 
     match /chats/{chatId} {
       // 1. You can get a chat if it exists and you are a member.

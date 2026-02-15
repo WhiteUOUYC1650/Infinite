@@ -30,9 +30,7 @@ export type Message = {
   senderId: string;
   content: string;
   imageUrl?: string;
-  videoChunkIds?: string[];
-  videoMimeType?: string;
-  videoStatus?: 'uploading' | 'complete' | 'failed';
+  videoUrl?: string;
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;
@@ -79,11 +77,3 @@ export type ChatItem = Chat | Channel;
 export type PopulatedChat = Chat & {
     iconComponent?: LucideIcon;
 };
-
-export type VideoChunk = {
-  id: string;
-  part: number;
-  data: string;
-  messageId: string;
-  senderId: string;
-}

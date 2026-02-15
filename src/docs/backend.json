@@ -86,19 +86,9 @@
             "type": "string",
             "description": "URL to an image attachment, in Base64 data URI format."
         },
-        "videoChunkIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of IDs for video chunks stored in the top-level 'videoChunks' collection."
-        },
-        "videoMimeType": {
+        "videoUrl": {
             "type": "string",
-            "description": "The MIME type of the video file (e.g., 'video/mp4')."
-        },
-        "videoStatus": {
-            "type": "string",
-            "enum": ["uploading", "complete", "failed"],
-            "description": "The upload status of the video."
+            "description": "URL to a video attachment, in Base64 data URI format."
         },
         "timestamp": {
           "type": "object",
@@ -144,18 +134,6 @@
         }
       },
       "required": ["senderId", "timestamp"]
-    },
-    "VideoChunk": {
-      "title": "Video Chunk",
-      "description": "A single chunk of a video file, stored in a top-level collection to avoid document size limits.",
-      "type": "object",
-      "properties": {
-        "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
-        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
-        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
-        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
-      },
-      "required": ["data", "part", "messageId", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -273,12 +251,6 @@
         "$ref": "#/backend/entities/Message"
       },
       "description": "Stores messages for a specific chat."
-    },
-    "/videoChunks/{chunkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/VideoChunk"
-      },
-      "description": "Stores individual chunks of uploaded video files in a top-level collection."
     },
     "/chatLinks/{linkId}": {
       "schema": {
