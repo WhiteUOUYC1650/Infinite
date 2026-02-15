@@ -3,12 +3,12 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -126,7 +126,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [imageToSend, setImageToSend] = useState<string | null>(null);
+  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video'} | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -484,195 +484,156 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const handleSendMessage = async () => {
-    if ((!messageContent.trim() && !imageToSend) || !db) return;
+    if ((!messageContent.trim() && !fileToSend) || !db) return;
 
     setIsSending(true);
+
     const originalContent = messageContent;
-    const originalImage = imageToSend;
+    const originalFile = fileToSend;
     const originalReplyTo = replyToMessage;
-    const contentForMessage = originalContent.replace(/\n/g, '  \n');
-    const contentForPreview = originalImage ? t('image_attachment_placeholder') : originalContent.split('\n')[0];
-
-    const now = new Date();
-    const timestamp = Timestamp.fromDate(now);
-
+    
+    // Immediately clear inputs for better UX
     setMessageContent('');
+    setFileToSend(null);
     setReplyToMessage(null);
-    setImageToSend(null);
+    
+    try {
+        if (originalFile?.type.startsWith('video')) {
+            await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
+        } else {
+            await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        // Restore inputs on error
+        setMessageContent(originalContent);
+        setFileToSend(originalFile);
+        setReplyToMessage(originalReplyTo);
+        if (error instanceof FirestorePermissionError) {
+            errorEmitter.emit('permission-error', error);
+        } else {
+            toast({
+                variant: 'destructive',
+                title: t('admin_toast_error_title'),
+                description: (error as Error).message || t('unexpected_error'),
+            });
+        }
+    } finally {
+        setIsSending(false);
+    }
+};
 
+const handleSendTextOrImage = async (imageUrl: string | null | undefined, content: string, replyTo: Message | null) => {
+    if (!db) return;
+
+    const contentForMessage = content.replace(/\n/g, '  \n');
+    const contentForPreview = imageUrl ? t('image_attachment_placeholder') : content.split('\n')[0];
+    const timestamp = Timestamp.now();
 
     const messageData: { [key: string]: any } = {
         senderId: currentUser.uid,
         content: contentForMessage,
-        timestamp: timestamp,
-        senderName: currentUser.name || currentUser.username || 'User',
+        timestamp,
         type: 'user',
         readBy: [],
+        ...(imageUrl && { imageUrl }),
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
+    
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const chatRef = doc(db, 'chats', item.id);
+    const lastMessageData = {
+        id: messageRef.id,
+        content: contentForPreview,
+        senderId: currentUser.uid,
+        senderName: currentUser.name || currentUser.username,
+        timestamp,
+        ...(imageUrl && { imageUrl }),
     };
 
-    if (originalImage) {
-        messageData.imageUrl = originalImage;
-    }
-
-    if (currentUser.avatar) {
-        messageData.senderAvatar = currentUser.avatar;
-    }
-
-    if (replyToMessage) {
-        messageData.replyTo = {
-            messageId: replyToMessage.id,
-            content: replyToMessage.content,
-            senderName: replyToMessage.sender?.name || replyToMessage.senderName || '',
-        };
-    }
-
-    // --- Pre-read data needed for batch ---
-    const isVeoBotChat = otherUser?.username === '@VeoBot';
-    const isInfiniteBotChat = otherUser?.username === '@InfiniteBot';
-    let adminId: string | null = null;
-    let feedbackChatId: string | null = null;
-    let feedbackChatExists = false;
-    let discussionChatSnap: any = null;
-
-    try {
-        if (isInfiniteBotChat) {
-            const adminUsernameSnap = await getDoc(doc(db, 'usernames', '@Infinite'));
-            if (adminUsernameSnap.exists()) {
-                adminId = adminUsernameSnap.data().uid;
-                if (currentUser.uid !== adminId) {
-                    const members = [currentUser.uid, adminId].sort();
-                    feedbackChatId = members.join('_');
-                    const feedbackChatSnap = await getDoc(doc(db, 'chats', feedbackChatId));
-                    feedbackChatExists = feedbackChatSnap.exists();
-                } else {
-                    adminId = null; // Admin is talking to bot, no need to forward
-                }
+    const batch = writeBatch(db);
+    batch.set(messageRef, messageData);
+    const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+    if (item.type !== 'channel') {
+        item.members.forEach((memberId) => {
+            if (memberId !== currentUser.uid) {
+                updateData[`unreadCounts.${memberId}`] = increment(1);
             }
-        }
-
-        if (item.type === 'channel' && item.discussionChatId) {
-            discussionChatSnap = await getDoc(doc(db, 'chats', item.discussionChatId));
-        }
-
-        // --- All reads are done, start the batch ---
-        const batch = writeBatch(db);
-        const isChannelPost = item.type === 'channel' && item.ownerId === currentUser.uid;
-
-        // Post the message to the primary chat (channel, group, or DM)
-        const primaryMessageRef = doc(collection(db, 'chats', item.id, 'messages'));
-        batch.set(primaryMessageRef, messageData);
-
-        // Update the last message for the primary chat
-        const lastMessageForPrimary: {[key: string]: any} = {
-            id: primaryMessageRef.id,
-            content: contentForPreview,
-            senderId: currentUser.uid,
-            senderName: currentUser.name || currentUser.username || 'User',
-            timestamp: timestamp,
-        };
-         if (originalImage) {
-            lastMessageForPrimary.imageUrl = originalImage;
-        }
-        
-        const primaryChatRef = doc(db, 'chats', item.id);
-        const primaryUpdateData: { [key: string]: any } = { lastMessage: lastMessageForPrimary };
-
-        // Handle unread counts for DMs and Groups (Channels don't have direct unread counts)
-        if (!isChannelPost && item.id !== 'GENERAL_CHAT') {
-            item.members.forEach((memberId: string) => {
-                if (memberId !== currentUser.uid) {
-                    primaryUpdateData[`unreadCounts.${memberId}`] = increment(1);
-                }
-            });
-        }
-        batch.update(primaryChatRef, primaryUpdateData);
-
-
-        // If it's a channel post with a discussion group, forward the message there
-        if (isChannelPost && item.discussionChatId && discussionChatSnap?.exists()) {
-            const discussionChatRef = discussionChatSnap.ref;
-            const discussionMessageRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-            
-            const forwardedMessageData = { ...messageData, type: 'announcement', senderName: item.name, senderAvatar: 'is_channel_message' };
-            batch.set(discussionMessageRef, forwardedMessageData);
-
-            const lastMessageForDiscussion = {
-                ...lastMessageForPrimary,
-                id: discussionMessageRef.id,
-                senderName: item.name // Show channel name
-            };
-            const discussionUpdateData: { [key: string]: any } = { lastMessage: lastMessageForDiscussion };
-            discussionChatSnap.data().members.forEach((memberId: string) => {
-                discussionUpdateData[`unreadCounts.${memberId}`] = increment(1);
-            });
-            batch.update(discussionChatRef, discussionUpdateData);
-        }
-
-        // Forward message to admin if it's feedback to the bot
-        if (isInfiniteBotChat && adminId && feedbackChatId) {
-            const feedbackChatRef = doc(db, 'chats', feedbackChatId);
-            const feedbackMessageRef = doc(collection(db, 'chats', feedbackChatId, 'messages'));
-            
-            batch.set(feedbackMessageRef, messageData);
-
-            const feedbackLastMessageData = {
-                ...lastMessageForPrimary,
-                senderName: currentUser.name || currentUser.username || 'User', // ensure correct sender name
-                id: feedbackMessageRef.id,
-            };
-            const feedbackUpdateData: { [key: string]: any } = {
-                lastMessage: feedbackLastMessageData,
-                [`unreadCounts.${adminId}`]: increment(1),
-            };
-
-            if (feedbackChatExists) {
-                batch.update(feedbackChatRef, feedbackUpdateData);
-            } else {
-                batch.set(feedbackChatRef, {
-                    type: 'dm',
-                    members: [currentUser.uid, adminId].sort(),
-                    ...feedbackUpdateData,
-                });
-            }
-        }
-        
-        // --- Commit all writes ---
-        await batch.commit();
-        
-        if (isVeoBotChat && messageData.content.startsWith('/video ')) {
-            // This is a simplified version. In a real app, you would have the bot service listen to new messages.
-            const veoBotId = otherUser?.id;
-            if (veoBotId) {
-                const botResponseRef = doc(collection(db, 'chats', item.id, 'messages'));
-                const thinkingMessage = {
-                     senderId: veoBotId,
-                     type: 'announcement',
-                     content: `Generating video for: "${messageData.content.substring(7)}"`,
-                     timestamp: serverTimestamp(),
-                     senderName: otherUser?.name || 'VeoBot',
-                     senderAvatar: otherUser?.avatar || null,
-                };
-                await setDoc(botResponseRef, thinkingMessage);
-                await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...thinkingMessage, id: botResponseRef.id } });
-            }
-        }
-
-
-    } catch (serverError: any) {
-        setMessageContent(originalContent);
-        setReplyToMessage(originalReplyTo);
-        setImageToSend(originalImage);
-        console.error('Error sending message: ', serverError);
-        const permissionError = new FirestorePermissionError({
-            path: `chats/${item.id}/messages`,
-            operation: 'create',
-            requestResourceData: messageData,
         });
-        errorEmitter.emit('permission-error', permissionError);
-    } finally {
-        setIsSending(false);
     }
-  };
+    batch.update(chatRef, updateData);
+    await batch.commit();
+};
+
+const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
+    if (!db) return;
+
+    const videoBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(videoFile);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = (error) => reject(error);
+    });
+
+    const CHUNK_SIZE = 900 * 1024; // 900KB
+    const chunks: string[] = [];
+    for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
+        chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
+    }
+
+    const messageData = {
+        senderId: currentUser.uid,
+        content: content.replace(/\n/g, '  \n'),
+        timestamp: Timestamp.now(),
+        videoInfo: {
+            chunkCount: chunks.length,
+            mimeType: videoFile.type,
+        },
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
+
+    const messageRef = await addDoc(collection(db, 'chats', item.id, 'messages'), messageData);
+
+    const chunkBatch = writeBatch(db);
+    chunks.forEach((chunkData, index) => {
+        const chunkDocRef = doc(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks', `part_${index}`);
+        chunkBatch.set(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
+    });
+    await chunkBatch.commit();
+    
+    const lastMessageData = {
+        id: messageRef.id,
+        content: content || t('video_attachment_placeholder'),
+        senderId: currentUser.uid,
+        senderName: currentUser.name || currentUser.username,
+        timestamp: messageData.timestamp,
+        videoInfo: messageData.videoInfo,
+    };
+    
+    const chatRef = doc(db, 'chats', item.id);
+    const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+    if (item.type !== 'channel') {
+        item.members.forEach((memberId) => {
+            if (memberId !== currentUser.uid) {
+                updateData[`unreadCounts.${memberId}`] = increment(1);
+            }
+        });
+    }
+    await updateDoc(chatRef, updateData);
+};
   
   const handleReply = (message: Message) => {
     setReplyToMessage(message);
@@ -681,10 +642,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const handleSetEditingMessage = (message: Message | null) => {
     setEditingMessage(message);
-    // If we are starting an edit, cancel any reply.
     if (message !== null) {
         setReplyToMessage(null);
-        setImageToSend(null);
+        setFileToSend(null);
     }
   };
 
@@ -723,11 +683,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useEffect(() => {
     if (editingMessage) {
         setMessageContent(editingMessage.content.replace(/  \n/g, '\n'));
-        setImageToSend(editingMessage.imageUrl || null);
+        if (editingMessage.imageUrl) {
+            setFileToSend({ file: new File([], ''), previewUrl: editingMessage.imageUrl, type: 'image' });
+        } else {
+            setFileToSend(null);
+        }
     } else {
         if (!replyToMessage) {
             setMessageContent('');
-            setImageToSend(null);
+            setFileToSend(null);
         }
     }
   }, [editingMessage, replyToMessage]);
@@ -737,7 +701,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   
   const handleSaveEdit = async () => {
-    if (!db || !editingMessage || (!messageContent.trim() && !imageToSend)) return;
+    if (!db || !editingMessage || (!messageContent.trim() && !fileToSend)) return;
 
     setIsSending(true);
     const messageRef = doc(db, 'chats', item.id, 'messages', editingMessage.id);
@@ -746,17 +710,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         const updatePayload: { [key: string]: any } = {
             content: newContent,
-            imageUrl: imageToSend || null,
             editedAt: serverTimestamp(),
+            // For simplicity, don't allow changing attachments during edit
         };
         await updateDoc(messageRef, updatePayload);
 
         if (item.lastMessage?.id === editingMessage.id) {
             const chatRef = doc(db, 'chats', item.id);
-            const contentForPreview = imageToSend ? t('image_attachment_placeholder') : messageContent.split('\n')[0];
+            const contentForPreview = fileToSend ? t('image_attachment_placeholder') : messageContent.split('\n')[0];
             await updateDoc(chatRef, {
                 'lastMessage.content': contentForPreview,
-                'lastMessage.imageUrl': imageToSend || null,
                 'lastMessage.editedAt': serverTimestamp(),
             });
         }
@@ -788,69 +751,61 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const file = event.target.files[0];
       event.target.value = ''; // Reset file input
 
-      if (file.type.startsWith('video/')) {
-        toast({ variant: 'destructive', title: 'Video Upload Not Supported', description: 'Video uploads are coming soon!' });
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        toast({ variant: 'destructive', title: t('invalid_file_type'), description: t('select_an_image') });
-        return;
-      }
-      
-      const fileSizeInMB = file.size / 1024 / 1024;
-      const COMPRESSION_THRESHOLD_MB = 0.7; // 700KB
+      setReplyToMessage(null);
+      setEditingMessage(null);
 
       try {
         setIsSending(true);
-        let dataUrl: string;
+        if (file.type.startsWith('video/')) {
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit for videos
+                toast({ variant: 'destructive', title: t('video_too_large') });
+                setIsSending(false);
+                return;
+            }
+            const previewUrl = URL.createObjectURL(file);
+            setFileToSend({ file, previewUrl, type: 'video' });
 
-        if (fileSizeInMB > COMPRESSION_THRESHOLD_MB) {
-          dataUrl = await compressImage(file, 0.85, 1920); // quality 0.85, max 1920px
+        } else if (file.type.startsWith('image/')) {
+            const fileSizeInMB = file.size / 1024 / 1024;
+            const COMPRESSION_THRESHOLD_MB = 0.7;
+            let dataUrl: string;
+
+            if (fileSizeInMB > COMPRESSION_THRESHOLD_MB) {
+                dataUrl = await compressImage(file, 0.85, 1920);
+            } else {
+                dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = e => resolve(e.target?.result as string);
+                    reader.onerror = e => reject(e);
+                });
+            }
+            
+            if (dataUrl.length > 950 * 1024) { 
+                toast({ variant: 'destructive', title: t('image_too_large'), description: t('image_too_large_compressed') });
+                setIsSending(false);
+                return;
+            }
+            setFileToSend({ file, previewUrl: dataUrl, type: 'image' });
         } else {
-          dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = e => resolve(e.target?.result as string);
-            reader.onerror = e => reject(e);
-          });
-        }
-        
-        if (dataUrl.length > 950 * 1024) { 
-             toast({
-                variant: 'destructive',
-                title: t('image_too_large'),
-                description: t('image_too_large_compressed'),
-            });
+            toast({ variant: 'destructive', title: t('invalid_file_type') });
             setIsSending(false);
             return;
         }
 
-        if(editingMessage) {
-            setImageToSend(dataUrl);
-            setIsSending(false);
-        } else {
-            setReplyToMessage(null);
-            setImageToSend(dataUrl);
-        }
       } catch(e) {
-        console.error("Error processing image:", e);
-        toast({
-            variant: 'destructive',
-            title: t('image_processing_failed_title'),
-            description: t('image_processing_failed_desc'),
-        });
+        console.error("Error processing file:", e);
+        toast({ variant: 'destructive', title: t('image_processing_failed_title'), description: t('image_processing_failed_desc') });
       } finally {
-        if (!editingMessage) {
-            setIsSending(false);
-        }
+        setIsSending(false);
       }
     }
   };
 
   const handleInitiateCall = async () => {
+    if (item.type !== 'dm' || item.id === currentUser.uid) return;
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        // We got permission, we can close the stream immediately. The dialog will ask for it again.
         stream.getTracks().forEach(track => track.stop());
         setIsCaller(true);
         setShowCallDialog(true);
@@ -1115,16 +1070,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </div>
             </div>
           )}
-          {imageToSend && (
+          {fileToSend && (
             <div className="pb-2">
                 <div className="relative w-fit">
-                    <img src={imageToSend} alt="Preview" className="max-h-24 rounded-lg" />
+                    {fileToSend.type === 'image' ? (
+                        <img src={fileToSend.previewUrl} alt="Preview" className="max-h-24 rounded-lg" />
+                    ) : (
+                        <video src={fileToSend.previewUrl} controls className="max-h-24 rounded-lg" />
+                    )}
                      {isSending ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
                             <Loader2 className="h-8 w-8 animate-spin text-white" />
                         </div>
                     ) : (
-                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setImageToSend(null)}>
+                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setFileToSend(null)}>
                             <X className="h-4 w-4" />
                         </Button>
                     )}
@@ -1146,7 +1105,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 } else if (e.key === 'Escape') {
                   if (editingMessage) handleCancelEdit();
                   else if (replyToMessage) setReplyToMessage(null);
-                  else if (imageToSend) setImageToSend(null);
+                  else if (fileToSend) setFileToSend(null);
                 }
               }}
               disabled={isSending}
@@ -1165,7 +1124,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                 <ImageIcon className="mr-2 h-4 w-4" />
                                 <span>{t('photo')}</span>
                             </Button>
-                            <Button variant="ghost" className="justify-start" disabled>
+                            <Button variant="ghost" className="justify-start" onClick={() => fileInputRef.current?.click()}>
                                 <VideoIcon className="mr-2 h-4 w-4" />
                                 <span>{t('video')}</span>
                             </Button>
@@ -1177,7 +1136,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </PopoverContent>
                 </Popover>
 
-              <Button size="icon" type="submit" disabled={isSending || (!messageContent.trim() && !imageToSend)}>
+              <Button size="icon" type="submit" disabled={isSending || (!messageContent.trim() && !fileToSend)}>
                 {isSending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : editingMessage ? (
@@ -1271,6 +1230,33 @@ function ChatMessage({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
     const [isHovering, setIsHovering] = useState(false);
+
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+
+    useEffect(() => {
+      if (message.videoInfo && db) {
+        const fetchAndAssembleVideo = async () => {
+          setIsLoadingVideo(true);
+          try {
+            const chunksRef = collection(db, 'chats', chat.id, 'messages', message.id, 'videoChunks');
+            const q = query(chunksRef, orderBy('part'));
+            const querySnapshot = await getDocs(q);
+
+            const chunksData = querySnapshot.docs.map(doc => doc.data().data);
+            const assembledBase64 = chunksData.join('');
+            const dataUrl = `data:${message.videoInfo.mimeType};base64,${assembledBase64}`;
+            setVideoUrl(dataUrl);
+          } catch (e) {
+            console.error("Error assembling video:", e);
+            setVideoUrl(null);
+          } finally {
+            setIsLoadingVideo(false);
+          }
+        };
+        fetchAndAssembleVideo();
+      }
+    }, [message.videoInfo, message.id, chat.id, db]);
     
     const handleMouseEnter = () => {
         setIsHovering(true);
@@ -1432,11 +1418,22 @@ function ChatMessage({
                 </button>
             )}
             <div className="overflow-hidden">
-                 {message.videoUrl ? (
-                    <video src={message.videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg my-1" />
+                {message.videoInfo ? (
+                    <div className="relative my-1">
+                        {isLoadingVideo ? (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            </div>
+                        ) : videoUrl ? (
+                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
+                        ) : (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg">
+                                <p className='text-xs font-semibold'>Error loading video</p>
+                            </div>
+                        )}
+                    </div>
                 ) : message.imageUrl ? (
                     <div className="relative my-1">
-                        {/* In a real app, you might want a custom image viewer for zooming etc. */}
                         <img 
                             src={message.imageUrl} 
                             alt={t('image_attachment_alt')} 
@@ -1533,10 +1530,10 @@ function ChatMessage({
                                 <span>{t('reply')}</span>
                             </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onSelect={handleCopy}>
+                        {message.content && (<DropdownMenuItem onSelect={handleCopy}>
                             <Copy className="mr-2 h-4 w-4" />
                             <span>{t('copy_text')}</span>
-                        </DropdownMenuItem>
+                        </DropdownMenuItem>)}
                         
                         {(isCurrentUser && !fromBot) || canDeleteMessage ? (
                           <DropdownMenuSeparator />

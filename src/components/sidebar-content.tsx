@@ -36,7 +36,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
@@ -800,7 +800,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   let lastMessageContent: string | undefined;
   if (lastMessage?.imageUrl) {
     lastMessageContent = t('image_attachment_placeholder');
-  } else if (lastMessage?.videoUrl) {
+  } else if (lastMessage?.videoInfo) {
     lastMessageContent = t('video_attachment_placeholder');
   } else {
     lastMessageContent = lastMessage?.content;
@@ -853,7 +853,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   let lastMessageContent: string | undefined;
   if (lastMessage?.imageUrl) {
     lastMessageContent = t('image_attachment_placeholder');
-  } else if (lastMessage?.videoUrl) {
+  } else if (lastMessage?.videoInfo) {
     lastMessageContent = t('video_attachment_placeholder');
   } else {
     lastMessageContent = lastMessage?.content;
@@ -893,8 +893,9 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
           </div>
           {lastMessageContent && (
-            <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                {senderPrefix}{lastMessageContent}
+            <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                {lastMessage.videoInfo && <Video className="h-3 w-3 shrink-0" />}
+                <span>{senderPrefix}{lastMessageContent}</span>
             </p>
           )}
         </div>

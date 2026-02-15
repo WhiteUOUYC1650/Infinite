@@ -27,8 +27,7 @@ service cloud.firestore {
     match /calls/{callId} {
       // Allow read/write if the user's UID is one of the two UIDs in the callId,
       // which is formatted as 'uid1_uid2'.
-      allow read, write: if isSignedIn() &&
-                         (callId.split('_').size() == 2 && request.auth.uid in callId.split('_'));
+      allow read, write: if isSignedIn() && callId.split('_').size() == 2 && request.auth.uid in callId.split('_');
     }
 
     match /config/version {
@@ -152,9 +151,14 @@ service cloud.firestore {
                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
                      (
                        ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
-                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt', 'imageUrl', 'videoUrl']))
+                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt', 'imageUrl', 'videoInfo']))
                      );
       allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
+    
+      match /videoChunks/{chunkId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      }
     }
 
     match /chatLinks/{linkId} {
