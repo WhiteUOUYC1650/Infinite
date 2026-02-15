@@ -67,9 +67,7 @@ service cloud.firestore {
 
     // Rules for the general chat
     match /chats/GENERAL_CHAT {
-      // Any signed-in user can read or create the general chat document.
       allow read, create: if isSignedIn();
-      // Any signed-in user can update the chat.
       allow update: if isSignedIn();
     }
 
@@ -81,10 +79,11 @@ service cloud.firestore {
     }
     
     match /videoChunks/{chunkId} {
-        // TEMPORARY DIAGNOSTIC RULE
-        allow create: if isSignedIn();
-        allow read: if isSignedIn();
-        allow update, delete: if false;
+      // User can only create chunks for their own messages.
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.senderId;
+      // User can only read chunks for messages in chats they are a member of.
+      allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.members;
+      allow update, delete: if false;
     }
 
     match /chats/{chatId} {
@@ -108,17 +107,21 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      // TEMPORARY DIAGNOSTIC RULE
-      allow update: if isSignedIn();
+      // Any member of a chat can update it (to send messages, mark as read, etc.)
+      // The client logic must enforce who can change specific fields like 'name' or 'members'.
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
-        // TEMPORARY DIAGNOSTIC RULE
-        allow create: if isSignedIn();
+        // A member can create a message if they are the sender.
+        allow create: if isSignedIn() && 
+                      request.resource.data.senderId == request.auth.uid &&
+                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
                       
+        // A user can only update their own messages.
         allow update: if request.auth.uid == resource.data.senderId;
 
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);

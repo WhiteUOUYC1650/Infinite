@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -567,6 +567,7 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
     if (!db) return;
     
+    // 1. Create the message document with 'uploading' status
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const timestamp = Timestamp.now();
     
@@ -589,6 +590,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     try {
         await setDoc(messageRef, messageData);
 
+        // 2. Update the chat's lastMessage
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
             id: messageRef.id,
@@ -608,6 +610,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         }
         await updateDoc(chatRef, updateData);
 
+        // 3. Read file, convert to base64, and split into chunks
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(videoFile);
@@ -615,31 +618,35 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             reader.onerror = (error) => reject(error);
         });
 
-
-        const CHUNK_SIZE = 900 * 1024;
+        const CHUNK_SIZE = 900 * 1024; // 900KB, well below 1MB limit
         const base64Chunks: string[] = [];
         for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
 
+        // 4. Upload each chunk sequentially
         const chunkIds: string[] = [];
-        const chunksCollectionRef = collection(db, "videoChunks");
-        for (const chunk of base64Chunks) {
-            const chunkDocRef = await addDoc(chunksCollectionRef, {
+        for (const [index, chunk] of base64Chunks.entries()) {
+            const chunkDocRef = doc(collection(db, "videoChunks"));
+            const chunkData: Omit<VideoChunk, 'id'> = {
                 data: chunk,
+                part: index,
                 messageId: messageRef.id,
+                chatId: item.id,
                 senderId: currentUser.uid,
-            });
+            };
+            await setDoc(chunkDocRef, chunkData);
             chunkIds.push(chunkDocRef.id);
         }
 
+        // 5. Finalize the message: update status and add chunk IDs
         await updateDoc(messageRef, { 
             videoStatus: 'complete',
             videoChunkIds: chunkIds,
         });
 
     } catch (error) {
-        console.error('[VIDEO_UPLOAD] ERROR during upload process:', error);
+        console.error("Error during video upload process:", error);
         await updateDoc(messageRef, { videoStatus: 'failed' });
         throw error;
     }
@@ -1260,12 +1267,10 @@ function ChatMessage({
                         message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
                     );
                     
-                    const chunksData: string[] = [];
+                    const chunksData: {part: number, data: string}[] = [];
                     chunkSnaps.forEach(snap => {
                         if (snap.exists()) {
-                            // Firestore documents don't guarantee order, so we need a way to sort them.
-                            // The current implementation relies on the order in videoChunkIds.
-                            chunksData.push(snap.data().data);
+                            chunksData.push(snap.data() as {part: number, data: string});
                         }
                     });
 
@@ -1273,12 +1278,18 @@ function ChatMessage({
                         throw new Error("Failed to fetch all video chunks.");
                     }
                     
-                    const assembledBase64 = chunksData.join('');
+                    // Sort chunks by part number before joining
+                    chunksData.sort((a, b) => a.part - b.part);
+
+                    const assembledBase64 = chunksData.map(c => c.data).join('');
                     const dataUrl = `data:${message.videoMimeType};base64,${assembledBase64}`;
                     setVideoUrl(dataUrl);
                 } catch (e) {
-                    console.error("[VIDEO_DOWNLOAD] ERROR assembling video:", e);
+                    console.error("Error assembling video:", e);
                     setVideoUrl(null);
+                    if (e instanceof FirestorePermissionError) {
+                        errorEmitter.emit('permission-error', e);
+                    }
                 } finally {
                     setIsLoadingVideo(false);
                 }
