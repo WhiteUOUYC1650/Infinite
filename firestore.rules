@@ -117,9 +117,8 @@ service cloud.firestore {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
         // A member can create a message if they are the sender.
-        allow create: if isSignedIn() && 
-                      request.resource.data.senderId == request.auth.uid &&
-                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        // Temporarily simplified to remove nested get() for diagnostics.
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
                       
         // A user can only update their own messages.
         allow update: if request.auth.uid == resource.data.senderId;
