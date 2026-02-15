@@ -1250,13 +1250,14 @@ function ChatMessage({
     
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
-    const hasVideo = !!message.videoChunkIds && message.videoChunkIds.length > 0;
+    const hasVideo = !!message.videoMimeType;
     const videoStatus = message.videoStatus;
 
     useEffect(() => {
-        if (hasVideo && videoStatus === 'complete' && db) {
+        if (videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
                 setIsLoadingVideo(true);
+                setVideoUrl(null);
                 try {
                     const chunkSnaps = await Promise.all(
                         message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
@@ -1284,7 +1285,7 @@ function ChatMessage({
             };
             fetchAndAssembleVideo();
         }
-    }, [message.videoChunkIds, message.videoMimeType, message.id, db, hasVideo, videoStatus]);
+    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1439,17 +1440,22 @@ function ChatMessage({
             <div className="overflow-hidden">
                 {hasVideo ? (
                     <div className="relative my-1">
-                        {(isLoadingVideo || videoStatus === 'uploading') && (
+                        {(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && (
                              <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
                                 <Loader2 className="h-8 w-8 animate-spin" />
                             </div>
                         )}
-                        {!isLoadingVideo && videoUrl && (
+                        {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
                             <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
                         )}
-                        {!isLoadingVideo && (videoStatus === 'failed' || (!videoUrl && videoStatus !== 'uploading')) && (
+                        {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
                              <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>Error: video failed to load.</p>
+                                <p className='text-xs font-semibold text-center'>{t('video_load_failed')}</p>
+                            </div>
+                        )}
+                        {videoStatus === 'failed' && (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                <p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p>
                             </div>
                         )}
                     </div>

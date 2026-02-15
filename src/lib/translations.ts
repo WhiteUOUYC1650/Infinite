@@ -254,6 +254,8 @@ export const translations = {
       'call_ended': 'Call Ended',
       'microphone_error_title': 'Microphone Error',
       'microphone_error_desc': 'Could not access your microphone. Please enable microphone access in your browser settings.',
+      'video_upload_failed': 'Video upload failed.',
+      'video_load_failed': 'Error: video failed to load.',
     },
     ru: {
       'settings': 'Настройки',
@@ -510,6 +512,8 @@ export const translations = {
       'call_ended': 'Звонок завершён',
       'microphone_error_title': 'Ошибка микрофона',
       'microphone_error_desc': 'Не удалось получить доступ к вашему микрофону. Пожалуйста, разрешите доступ к микрофону в настройках вашего браузера.',
+      'video_upload_failed': 'Ошибка загрузки видео.',
+      'video_load_failed': 'Ошибка: не удалось загрузить видео.',
     }
   };
   
