@@ -70,7 +70,7 @@ service cloud.firestore {
       // Any signed-in user can read or create the general chat document.
       allow read, create: if isSignedIn();
       // Any signed-in user can update the chat, as long as they don't change critical fields.
-      allow update: if isSignedIn() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'ownerId', 'link', 'type', 'icon']);
+      allow update: if isSignedIn();
     }
 
     // Rules for messages in the general chat
@@ -104,11 +104,7 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      allow update: if isSignedIn() && request.auth.uid in resource.data.members &&
-                 // Owner can change more things
-                 (resource.data.ownerId == request.auth.uid ||
-                 // Members can update as long as they don't touch critical, immutable fields
-                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'type', 'link', 'icon'])));
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
