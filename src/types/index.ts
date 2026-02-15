@@ -30,11 +30,9 @@ export type Message = {
   senderId: string;
   content: string;
   imageUrl?: string;
-  videoInfo?: {
-    chunkCount: number;
-    mimeType: string;
-    status?: 'uploading' | 'complete' | 'failed';
-  };
+  videoChunkIds?: string[];
+  videoMimeType?: string;
+  videoStatus?: 'uploading' | 'complete' | 'failed';
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;
@@ -83,7 +81,9 @@ export type PopulatedChat = Chat & {
 };
 
 export type VideoChunk = {
+  id: string;
   part: number;
   data: string;
+  messageId: string;
   senderId: string;
 }

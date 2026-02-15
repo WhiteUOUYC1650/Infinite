@@ -1,0 +1,296 @@
+{
+  "entities": {
+    "AppConfig": {
+        "title": "App Config",
+        "description": "Stores global application configuration.",
+        "type": "object",
+        "properties": {
+            "latest": {
+                "type": "string",
+                "description": "The latest available version of the app (e.g., '0.2')."
+            }
+        },
+        "required": ["latest"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "User's display name or nickname. This is not unique."
+        },
+        "username": {
+          "type": "string",
+          "description": "User's unique handle, starting with '@'. This must be unique across all users."
+        },
+        "avatar": {
+          "type": "string",
+          "description": "URL to the user's avatar image."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["online", "away", "offline"],
+          "description": "User's current status."
+        },
+        "statusMessage": {
+            "type": "string",
+            "description": "A short status message from the user."
+        },
+        "hasSetNickname": {
+            "type": "boolean",
+            "description": "True if the user has set their nickname at least once."
+        },
+        "isBot": {
+            "type": "boolean",
+            "description": "True if the user is a bot account."
+        },
+        "isDeleted": {
+            "type": "boolean",
+            "description": "True if the user account has been deleted/anonymized."
+        },
+        "lastSeen": {
+            "type": "object",
+            "description": "Server timestamp of when the user was last active."
+        }
+      },
+      "required": ["name", "username", "avatar", "status"]
+    },
+    "Username": {
+        "title": "Username",
+        "description": "Maps a unique username to a user ID to enforce uniqueness.",
+        "type": "object",
+        "properties": {
+            "uid": {
+                "type": "string",
+                "description": "The user ID associated with this username."
+            }
+        },
+        "required": ["uid"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message within a chat.",
+      "type": "object",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "description": "The ID of the user who sent the message."
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "imageUrl": {
+            "type": "string",
+            "description": "URL to an image attachment, in Base64 data URI format."
+        },
+        "videoChunkIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of IDs for video chunks stored in the top-level 'videoChunks' collection."
+        },
+        "videoMimeType": {
+            "type": "string",
+            "description": "The MIME type of the video file (e.g., 'video/mp4')."
+        },
+        "videoStatus": {
+            "type": "string",
+            "enum": ["uploading", "complete", "failed"],
+            "description": "The upload status of the video."
+        },
+        "timestamp": {
+          "type": "object",
+          "description": "The server timestamp when the message was created."
+        },
+        "editedAt": {
+            "type": "object",
+            "description": "The server timestamp when the message was last edited."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["user", "announcement"],
+          "description": "The type of message. 'user' is a standard message, 'announcement' is a system message styled as from a bot."
+        },
+        "senderName": {
+            "type": "string",
+            "description": "Display name of the sender, used for bot messages."
+        },
+        "senderAvatar": {
+            "type": "string",
+            "description": "Avatar URL of the sender, used for bot messages."
+        },
+        "readBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of user IDs who have read the message."
+        },
+        "replyTo": {
+            "type": "object",
+            "description": "Information about the message being replied to.",
+            "properties": {
+                "messageId": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "senderName": {
+                    "type": "string"
+                }
+            },
+            "required": ["messageId", "content", "senderName"]
+        }
+      },
+      "required": ["senderId", "timestamp"]
+    },
+    "VideoChunk": {
+      "title": "Video Chunk",
+      "description": "A single chunk of a video file, stored in a top-level collection to avoid document size limits.",
+      "type": "object",
+      "properties": {
+        "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
+        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
+        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
+      },
+      "required": ["data", "part", "messageId", "senderId"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Represents a chat conversation.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["dm", "group", "channel"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the group or channel."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of user IDs who are members of this chat."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The user ID of the owner of the group or channel."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Name of the lucide-react icon for the chat."
+        },
+        "avatar": {
+            "type": "string",
+            "description": "URL to the chat's avatar image, in Base64 data URI format."
+        },
+        "description": {
+            "type": "string",
+            "description": "Description for a channel."
+        },
+        "lastMessage": {
+            "type": "object",
+            "description": "The last message sent in the chat for display in the sidebar."
+        },
+        "unreadCounts": {
+            "type": "object",
+            "description": "Map of user IDs to their unread message count for this chat.",
+            "additionalProperties": {
+                "type": "number"
+            }
+        },
+        "link": {
+          "type": "string",
+          "description": "Unique link for a group or channel."
+        },
+        "discussionChatId": {
+          "type": "string",
+          "description": "The ID of the group chat linked to this channel for discussions."
+        }
+      },
+      "required": ["type", "members"]
+    },
+    "ChatLink": {
+      "title": "Chat Link",
+      "description": "Maps a unique chat link to a chat ID to enforce uniqueness.",
+      "type": "object",
+      "properties": {
+          "chatId": {
+              "type": "string",
+              "description": "The chat ID associated with this link."
+          }
+      },
+      "required": ["chatId"]
+    },
+    "BotLink": {
+      "title": "Bot Link",
+      "description": "Maps a unique bot link to a user ID to enforce uniqueness.",
+      "type": "object",
+      "properties": {
+          "botId": {
+              "type": "string",
+              "description": "The user ID of the bot associated with this link."
+          }
+      },
+      "required": ["botId"]
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/config/version": {
+      "schema": {
+        "$ref": "#/backend/entities/AppConfig"
+      },
+      "description": "Stores global application configuration like the latest version."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/User"
+      },
+      "description": "Stores individual user profiles."
+    },
+    "/usernames/{username}": {
+        "schema": {
+            "$ref": "#/backend/entities/Username"
+        },
+        "description": "Used to enforce unique usernames."
+    },
+    "/chats/{chatId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Chat"
+      },
+      "description": "Stores metadata for chat rooms (DMs, groups, channels)."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Message"
+      },
+      "description": "Stores messages for a specific chat."
+    },
+    "/videoChunks/{chunkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/VideoChunk"
+      },
+      "description": "Stores individual chunks of uploaded video files in a top-level collection."
+    },
+    "/chatLinks/{linkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/ChatLink"
+      },
+      "description": "Used to enforce unique links for groups and channels."
+    },
+    "/botLinks/{linkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/BotLink"
+      },
+      "description": "Used to enforce unique links for bots."
+    }
+  }
+}

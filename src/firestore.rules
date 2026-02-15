@@ -80,6 +80,11 @@ service cloud.firestore {
       allow update: if isSignedIn();
       allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
+    
+    match /videoChunks/{chunkId} {
+        allow read: if isSignedIn();
+        allow create: if request.auth.uid == request.resource.data.senderId;
+    }
 
     match /chats/{chatId} {
       // 1. You can get a chat if it exists and you are a member.
@@ -114,11 +119,6 @@ service cloud.firestore {
         allow update: if isSignedIn() &&
                       request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
-        
-        match /videoChunks/{chunkId} {
-            allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-            allow create: if request.auth.uid == request.resource.data.senderId;
-        }
       }
     }
     
