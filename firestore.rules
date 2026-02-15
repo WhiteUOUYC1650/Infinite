@@ -75,15 +75,14 @@ service cloud.firestore {
 
     // Rules for messages in the general chat
     match /chats/GENERAL_CHAT/messages/{messageId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow read, create: if isSignedIn();
+      allow update: if request.resource.data.senderId == request.auth.uid;
       allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
     
     match /videoChunks/{chunkId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow create: if request.auth.uid == request.resource.data.senderId;
     }
 
     match /chats/{chatId} {
@@ -114,10 +113,11 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if (isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members) || isAdmin();
         
-        allow create: if isSignedIn();
+        allow create: if request.auth.uid == request.resource.data.senderId &&
+                       request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
                       
-        allow update: if isSignedIn() &&
-                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow update: if request.auth.uid == resource.data.senderId;
+
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
       }
     }
