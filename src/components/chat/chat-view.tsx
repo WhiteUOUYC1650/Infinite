@@ -578,6 +578,12 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
     }
 
+    // 1. Generate a client-side reference for the new message
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    
+    // 2. Prepare all write operations in a single atomic batch
+    const batch = writeBatch(db);
+
     const messageData = {
         senderId: currentUser.uid,
         content: content.replace(/\n/g, '  \n'),
@@ -595,15 +601,14 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             },
         }),
     };
+    // Add message creation to the batch
+    batch.set(messageRef, messageData);
 
-    const messageRef = await addDoc(collection(db, 'chats', item.id, 'messages'), messageData);
-
-    const chunkBatch = writeBatch(db);
+    // Add chunk creation to the batch
     chunks.forEach((chunkData, index) => {
         const chunkDocRef = doc(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks', `part_${index}`);
-        chunkBatch.set(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
+        batch.set(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
     });
-    await chunkBatch.commit();
     
     const lastMessageData = {
         id: messageRef.id,
@@ -623,7 +628,11 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             }
         });
     }
-    await updateDoc(chatRef, updateData);
+    // Add chat update to the batch
+    batch.update(chatRef, updateData);
+
+    // 3. Commit the atomic batch
+    await batch.commit();
 };
   
   const handleReply = (message: Message) => {
