@@ -477,8 +477,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMessage = async () => {
     if ((!messageContent.trim() && !fileToSend) || !db) return;
 
-    setIsSending(true);
-
     const originalContent = messageContent;
     const originalFile = fileToSend;
     const originalReplyTo = replyToMessage;
@@ -490,9 +488,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     
     try {
         if (originalFile?.type === 'video') {
-            await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
+            handleSendVideo(originalFile.file, originalContent, originalReplyTo);
         } else {
-            await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
+            handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
     } catch (error) {
         console.error('Error sending message:', error);
@@ -509,61 +507,64 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 description: (error as Error).message || t('unexpected_error'),
             });
         }
-    } finally {
-        setIsSending(false);
     }
 };
 
 const handleSendTextOrImage = async (imageUrl: string | null | undefined, content: string, replyTo: Message | null) => {
     if (!db) return;
+    setIsSending(true);
+    try {
+        const contentForMessage = content.replace(/\n/g, '  \n');
+        const contentForPreview = imageUrl ? t('image_attachment_placeholder') : content.split('\n')[0];
+        const timestamp = Timestamp.now();
 
-    const contentForMessage = content.replace(/\n/g, '  \n');
-    const contentForPreview = imageUrl ? t('image_attachment_placeholder') : content.split('\n')[0];
-    const timestamp = Timestamp.now();
+        const messageData: { [key: string]: any } = {
+            senderId: currentUser.uid,
+            content: contentForMessage,
+            timestamp,
+            type: 'user',
+            readBy: [],
+            ...(imageUrl && { imageUrl }),
+            ...(replyTo && {
+                replyTo: {
+                    messageId: replyTo.id,
+                    content: replyTo.content,
+                    senderName: replyTo.sender?.name || replyTo.senderName || '',
+                },
+            }),
+        };
+        
+        const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+        const chatRef = doc(db, 'chats', item.id);
+        const lastMessageData = {
+            id: messageRef.id,
+            content: contentForPreview,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
+            timestamp,
+            ...(imageUrl && { imageUrl }),
+        };
 
-    const messageData: { [key: string]: any } = {
-        senderId: currentUser.uid,
-        content: contentForMessage,
-        timestamp,
-        type: 'user',
-        readBy: [],
-        ...(imageUrl && { imageUrl }),
-        ...(replyTo && {
-            replyTo: {
-                messageId: replyTo.id,
-                content: replyTo.content,
-                senderName: replyTo.sender?.name || replyTo.senderName || '',
-            },
-        }),
-    };
-    
-    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
-    const chatRef = doc(db, 'chats', item.id);
-    const lastMessageData = {
-        id: messageRef.id,
-        content: contentForPreview,
-        senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.username,
-        timestamp,
-        ...(imageUrl && { imageUrl }),
-    };
-
-    const batch = writeBatch(db);
-    batch.set(messageRef, messageData);
-    const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-    if (item.type !== 'channel') {
-        item.members.forEach((memberId) => {
-            if (memberId !== currentUser.uid) {
-                updateData[`unreadCounts.${memberId}`] = increment(1);
-            }
-        });
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        if (item.type !== 'channel') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
+                    updateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        batch.update(chatRef, updateData);
+        await batch.commit();
+    } finally {
+        setIsSending(false);
     }
-    batch.update(chatRef, updateData);
-    await batch.commit();
 };
 
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
     if (!db) return;
+    setIsSending(true);
 
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const timestamp = Timestamp.now();
@@ -651,6 +652,8 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 description: (error as Error).message || t('unexpected_error'),
             });
         }
+    } finally {
+        setIsSending(false);
     }
 };
   
