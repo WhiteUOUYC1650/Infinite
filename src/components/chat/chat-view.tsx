@@ -164,8 +164,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Call listener ---
   useEffect(() => {
-    // Also check if this is not the "Saved Messages" chat
-    if (!db || item.type !== 'dm' || item.id === currentUser.uid) return;
+    // A DM chat ID that can have a call must contain two user IDs joined by an underscore.
+    // This check prevents listening for calls on special DM chats like "Saved Messages"
+    // whose ID is just the user's UID and does not contain an underscore.
+    if (!db || item.type !== 'dm' || !item.id.includes('_')) return;
 
     const callDocRef = doc(db, 'calls', item.id);
     const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
