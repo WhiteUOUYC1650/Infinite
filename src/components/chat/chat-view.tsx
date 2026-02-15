@@ -566,6 +566,7 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
     if (!db) return;
+    console.log('[VIDEO_UPLOAD] Starting handleSendVideo');
     
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const timestamp = Timestamp.now();
@@ -587,7 +588,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     };
 
     try {
+        console.log(`[VIDEO_UPLOAD] 1. Creating initial message document (id: ${messageRef.id})`);
         await setDoc(messageRef, messageData);
+        console.log('[VIDEO_UPLOAD] 1a. Initial message document created.');
 
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
@@ -606,7 +609,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 }
             });
         }
+        console.log('[VIDEO_UPLOAD] 2. Updating chat lastMessage.');
         await updateDoc(chatRef, updateData);
+        console.log('[VIDEO_UPLOAD] 2a. Chat lastMessage updated.');
 
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -614,16 +619,20 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
             reader.onerror = (error) => reject(error);
         });
+        console.log(`[VIDEO_UPLOAD] 3. Video converted to base64, size: ${videoBase64.length} chars.`);
+
 
         const CHUNK_SIZE = 900 * 1024;
         const base64Chunks: string[] = [];
         for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
+        console.log(`[VIDEO_UPLOAD] 4. Split into ${base64Chunks.length} chunks.`);
 
         const chunkCollectionRef = collection(db, 'videoChunks');
         const chunkDocRefs = base64Chunks.map(() => doc(chunkCollectionRef));
         const chunkIds = chunkDocRefs.map(ref => ref.id);
+        console.log(`[VIDEO_UPLOAD] 5. Generated chunk IDs:`, chunkIds);
 
         const chunkBatch = writeBatch(db);
         chunkDocRefs.forEach((chunkDocRef, index) => {
@@ -634,15 +643,20 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 senderId: currentUser.uid,
             });
         });
+        
+        console.log('[VIDEO_UPLOAD] 6. Committing chunk batch...');
         await chunkBatch.commit();
+        console.log('[VIDEO_UPLOAD] 6a. Chunk batch committed successfully.');
 
+        console.log('[VIDEO_UPLOAD] 7. Updating message status to "complete".');
         await updateDoc(messageRef, { 
             videoStatus: 'complete',
             videoChunkIds: chunkIds,
         });
+        console.log('[VIDEO_UPLOAD] 7a. Message status updated. Upload finished.');
 
     } catch (error) {
-        console.error('Error sending video:', error);
+        console.error('[VIDEO_UPLOAD] ERROR during upload process:', error);
         await updateDoc(messageRef, { videoStatus: 'failed' });
         throw error;
     }
@@ -1256,12 +1270,15 @@ function ChatMessage({
     useEffect(() => {
         if (videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
+                console.log(`[VIDEO_DOWNLOAD] Starting fetch for message ${message.id}`);
                 setIsLoadingVideo(true);
                 setVideoUrl(null);
                 try {
+                    console.log(`[VIDEO_DOWNLOAD] 1. Fetching chunk documents for IDs:`, message.videoChunkIds);
                     const chunkSnaps = await Promise.all(
                         message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
                     );
+                    console.log(`[VIDEO_DOWNLOAD] 2. Got ${chunkSnaps.length} snapshot responses.`);
                     
                     const chunksData = chunkSnaps
                         .map(snap => snap.exists() ? snap.data() : null)
@@ -1270,22 +1287,26 @@ function ChatMessage({
                         .map(d => d.data);
 
                     if (chunksData.length !== message.videoChunkIds!.length) {
+                        console.error("[VIDEO_DOWNLOAD] ERROR: Mismatch in fetched chunks count.", {expected: message.videoChunkIds!.length, got: chunksData.length});
                         throw new Error("Failed to fetch all video chunks.");
                     }
                     
+                    console.log('[VIDEO_DOWNLOAD] 3. All chunks fetched and sorted.');
                     const assembledBase64 = chunksData.join('');
                     const dataUrl = `data:${message.videoMimeType};base64,${assembledBase64}`;
+                    console.log(`[VIDEO_DOWNLOAD] 4. Assembled data URL (length: ${dataUrl.length}). Setting video URL.`);
                     setVideoUrl(dataUrl);
                 } catch (e) {
-                    console.error("Error assembling video:", e);
+                    console.error("[VIDEO_DOWNLOAD] ERROR assembling video:", e);
                     setVideoUrl(null);
                 } finally {
+                    console.log(`[VIDEO_DOWNLOAD] 5. Finished fetch process for message ${message.id}.`);
                     setIsLoadingVideo(false);
                 }
             };
             fetchAndAssembleVideo();
         }
-    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType]);
+    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType, message.id]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1581,5 +1602,7 @@ function ChatMessage({
         </div>
     );
 }
+
+    
 
     

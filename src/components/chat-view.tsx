@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost, Text } from 'lucide-react';
-import { UserAvatarWithStatus } from './user-avatar-with-status';
+import { UserAvatarWithStatus from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
@@ -566,6 +566,7 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
     if (!db) return;
+    console.log('[VIDEO_UPLOAD] Starting handleSendVideo');
     
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const timestamp = Timestamp.now();
@@ -587,7 +588,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     };
 
     try {
+        console.log(`[VIDEO_UPLOAD] 1. Creating initial message document (id: ${messageRef.id})`);
         await setDoc(messageRef, messageData);
+        console.log('[VIDEO_UPLOAD] 1a. Initial message document created.');
 
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
@@ -606,7 +609,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 }
             });
         }
+        console.log('[VIDEO_UPLOAD] 2. Updating chat lastMessage.');
         await updateDoc(chatRef, updateData);
+        console.log('[VIDEO_UPLOAD] 2a. Chat lastMessage updated.');
 
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -614,16 +619,20 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
             reader.onerror = (error) => reject(error);
         });
+        console.log(`[VIDEO_UPLOAD] 3. Video converted to base64, size: ${videoBase64.length} chars.`);
+
 
         const CHUNK_SIZE = 900 * 1024;
         const base64Chunks: string[] = [];
         for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
+        console.log(`[VIDEO_UPLOAD] 4. Split into ${base64Chunks.length} chunks.`);
 
         const chunkCollectionRef = collection(db, 'videoChunks');
         const chunkDocRefs = base64Chunks.map(() => doc(chunkCollectionRef));
         const chunkIds = chunkDocRefs.map(ref => ref.id);
+        console.log(`[VIDEO_UPLOAD] 5. Generated chunk IDs:`, chunkIds);
 
         const chunkBatch = writeBatch(db);
         chunkDocRefs.forEach((chunkDocRef, index) => {
@@ -634,15 +643,20 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 senderId: currentUser.uid,
             });
         });
+        
+        console.log('[VIDEO_UPLOAD] 6. Committing chunk batch...');
         await chunkBatch.commit();
+        console.log('[VIDEO_UPLOAD] 6a. Chunk batch committed successfully.');
 
+        console.log('[VIDEO_UPLOAD] 7. Updating message status to "complete".');
         await updateDoc(messageRef, { 
             videoStatus: 'complete',
             videoChunkIds: chunkIds,
         });
+        console.log('[VIDEO_UPLOAD] 7a. Message status updated. Upload finished.');
 
     } catch (error) {
-        console.error('Error sending video:', error);
+        console.error('[VIDEO_UPLOAD] ERROR during upload process:', error);
         await updateDoc(messageRef, { videoStatus: 'failed' });
         throw error;
     }
@@ -965,7 +979,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                                         <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             <span>{t('delete_chat')}</span>
-                                        </DropdownMenuItem>
+                                        DropdownMenuItem>
                                     </>
                                 ) : (
                                     <DropdownMenuItem onSelect={promptUpdate} className="text-destructive focus:text-destructive focus:bg-destructive/10">
@@ -998,7 +1012,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                   </div>
               )}
               {/* Scrollable Content */}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
+              div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -1013,9 +1027,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                               const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
 
                               return (
-                                  <React.Fragment key={message.id}>
-                                      {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                      <ChatMessage 
+                                  React.Fragment key={message.id}>
+                                      {showDateSeparator && DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
+                                      ChatMessage 
                                           message={message} 
                                           sender={sender}
                                           isCurrentUser={message.senderId === currentUser.uid} 
@@ -1030,21 +1044,21 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                                   </React.Fragment>
                               );
                           })}
-                          <div ref={messagesEndRef} />
+                          div ref={messagesEndRef} />
                       </div>
                   ) : (
-                      <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
+                      div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
                           {isMember ? (
-                              <p>{t('no_messages_yet')}</p>
+                              p>{t('no_messages_yet')}/p>
                           ) : (
                               <>
                                   {item.type === 'group' ? (
-                                      <Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                                      Users className="h-16 w-16 mb-4 text-muted-foreground/50" />
                                   ) : (
-                                      <Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                                      Megaphone className="h-16 w-16 mb-4 text-muted-foreground/50" />
                                   )}
-                                  <h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}</h3>
-                                  <p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}</p>
+                                  h3 className="text-xl font-semibold">{t(item.type === 'group' ? 'you_left_the_group' : 'you_left_the_channel')}/h3>
+                                  p className="text-sm">{t(item.type === 'group' ? 'you_left_the_group_desc' : 'you_left_the_channel_desc')}/p>
                               </>
                           )}
                       </div>
@@ -1055,65 +1069,78 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
 
       {/* Message Input */}
       {canSendMessage && (
-        <footer className={cn(
+        footer className={cn(
             "flex-shrink-0 p-4 border-t",
             colorTheme === 'frutiger' && 'bg-card/80'
         )}>
           {editingMessage && (
-            <div className="pb-2">
-              <div className="relative rounded-lg bg-accent/50 p-3">
-                <p className="text-xs font-semibold text-primary">{t('editing_message')}</p>
-                <p className="text-sm text-muted-foreground truncate">{editingMessage.content}</p>
-                <Button
+            div className="pb-2">
+              div className="relative rounded-lg bg-accent/50 p-3">
+                p className="text-xs font-semibold text-primary">{t('editing_message')}/p>
+                p className="text-sm text-muted-foreground truncate">{editingMessage.content}/p>
+                Button
                   variant="ghost"
                   size="icon"
                   className="absolute top-1 right-1 h-6 w-6"
                   onClick={handleCancelEdit}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  X className="h-4 w-4" />
+                Button>
               </div>
             </div>
           )}
           {replyToMessage && !editingMessage && (
-            <div className="pb-2">
-                <div className="relative rounded-lg bg-accent/50 p-3">
-                    <p className="text-xs font-semibold text-primary">
+            div className="pb-2">
+                div className="relative rounded-lg bg-accent/50 p-3">
+                    p className="text-xs font-semibold text-primary">
                         {t('replying_to', { name: replyToMessage?.sender?.name || replyToMessage?.senderName })}
                     </p>
-                    <p className="text-sm text-muted-foreground truncate">
+                    p className="text-sm text-muted-foreground truncate">
                         {replyToMessage.content}
-                    </p>
-                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyToMessage(null)}>
-                        <X className="h-4 w-4" />
-                    </Button>
+                    /p>
+                    Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyToMessage(null)}>
+                        X className="h-4 w-4" />
+                    Button>
                 </div>
             </div>
           )}
           {fileToSend && (
-            <div className="pb-2">
-                <div className="relative w-fit">
+            div className="pb-2">
+                div className="relative w-fit">
                     {fileToSend.type === 'image' ? (
-                        <img src={fileToSend.previewUrl} alt="Preview" className="max-h-24 rounded-lg" />
+                        img
+                            src={fileToSend.previewUrl}
+                            alt="Preview"
+                            className="max-h-24 rounded-lg"
+                        />
                     ) : (
-                        <video src={fileToSend.previewUrl} controls className="max-h-24 rounded-lg" />
+                        video
+                            src={fileToSend.previewUrl}
+                            controls
+                            className="max-h-24 rounded-lg"
+                        />
                     )}
                      {isSending ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                            <Loader2 className="h-8 w-8 animate-spin text-white" />
-                        </div>
+                        div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                            Loader2 className="h-8 w-8 animate-spin text-white" />
+                        /div>
                     ) : (
-                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setFileToSend(null)}>
-                            <X className="h-4 w-4" />
-                        </Button>
+                        Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                            onClick={() => setFileToSend(null)}
+                        >
+                            X className="h-4 w-4" />
+                        /Button>
                     )}
-                </div>
+                /div>
             </div>
           )}
 
 
-          <form onSubmit={handleSubmit} className="relative">
-            <Textarea
+          form onSubmit={handleSubmit} className="relative">
+            Textarea
               placeholder={t('message_placeholder')}
               className="pr-24 py-3 resize-none"
               rows={1}
@@ -1130,48 +1157,48 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
               }}
               disabled={isSending}
             />
-             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Popover>
-                    <PopoverTrigger asChild>
-                         <Button variant="ghost" size="icon" type="button">
-                            <Paperclip className="h-5 w-5" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" align="end" className="w-auto p-1">
-                        <div className="flex flex-col">
-                            <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('image')}>
-                                <ImageIcon className="mr-2 h-4 w-4" />
-                                <span>{t('photo')}</span>
-                            </Button>
-                            <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('video')}>
-                                <VideoIcon className="mr-2 h-4 w-4" />
-                                <span>{t('video')}</span>
-                            </Button>
-                             <Button variant="ghost" className="justify-start" disabled>
-                                <MusicIcon className="mr-2 h-4 w-4" />
-                                <span>{t('music')}</span>
-                            </Button>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+             input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+            div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                Popover>
+                    PopoverTrigger asChild>
+                         Button variant="ghost" size="icon" type="button">
+                            Paperclip className="h-5 w-5" />
+                        /Button>
+                    /PopoverTrigger>
+                    PopoverContent side="top" align="end" className="w-auto p-1">
+                        div className="flex flex-col">
+                            Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('image')}>
+                                ImageIcon className="mr-2 h-4 w-4" />
+                                span>{t('photo')}/span>
+                            /Button>
+                            Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('video')}>
+                                VideoIcon className="mr-2 h-4 w-4" />
+                                span>{t('video')}/span>
+                            /Button>
+                             Button variant="ghost" className="justify-start" disabled>
+                                MusicIcon className="mr-2 h-4 w-4" />
+                                span>{t('music')}/span>
+                            /Button>
+                        /div>
+                    /PopoverContent>
+                /Popover>
 
-              <Button size="icon" type="submit" disabled={isSending || (!messageContent.trim() && !fileToSend)}>
+              Button size="icon" type="submit" disabled={isSending || (!messageContent.trim() && !fileToSend)}>
                 {isSending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loader2 className="h-5 w-5 animate-spin" />
                 ) : editingMessage ? (
-                  <Check className="h-5 w-5" />
+                  Check className="h-5 w-5" />
                 ) : (
-                  <Send className="h-5 w-5" />
+                  Send className="h-5 w-5" />
                 )}
-              </Button>
-            </div>
-          </form>
-        </footer>
+              /Button>
+            /div>
+          /form>
+        /footer>
       )}
 
       {showChatProfile && item.type !== 'dm' && (
-        <ChatProfileDialog 
+        ChatProfileDialog 
             chat={item}
             members={Object.values(memberDetails).filter(m => item.members.includes(m.id))}
             currentUser={currentUser}
@@ -1182,7 +1209,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
       )}
 
       {profileDialogUser && (
-        <UserProfileDialog 
+        UserProfileDialog 
             user={profileDialogUser}
             open={!!profileDialogUser}
             onOpenChange={(open) => {
@@ -1192,7 +1219,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         />
       )}
     
-    {otherUser && <CallDialog 
+    {otherUser && CallDialog 
         open={showCallDialog} 
         onOpenChange={setShowCallDialog}
         chat={item}
@@ -1201,23 +1228,23 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         isCaller={isCaller}
     />}
 
-    <AlertDialog open={!!incomingCall}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-            <AlertDialogTitle>{t('incoming_call')}</AlertDialogTitle>
-            <AlertDialogDescription>
+    AlertDialog open={!!incomingCall}>
+        AlertDialogContent>
+            AlertDialogHeader>
+            AlertDialogTitle>{t('incoming_call')}/AlertDialogTitle>
+            AlertDialogDescription>
                 {t('is_calling_you', { name: otherUser?.name || '...' })}
-            </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <Button onClick={handleDeclineCall} variant="destructive">{t('decline')}</Button>
-                <Button onClick={handleAcceptCall}>{t('accept')}</Button>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+            /AlertDialogDescription>
+            /AlertDialogHeader>
+            AlertDialogFooter>
+                Button onClick={handleDeclineCall} variant="destructive">{t('decline')}/Button>
+                Button onClick={handleAcceptCall}>{t('accept')}/Button>
+            /AlertDialogFooter>
+        /AlertDialogContent>
+    /AlertDialog>
 
-    <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
-    </div>
+    FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
+    /div>
   );
 }
 
@@ -1248,20 +1275,23 @@ function ChatMessage({
     const { t } = useLanguage();
     const { toast } = useToast();
     
-    const [videoUrl, setVideoUrl] = useState<string | null>(null);
-    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+    const [videoUrl, setVideoUrl] = useStatenull>(null);
+    const [isLoadingVideo, setIsLoadingVideo] = useStatefalse);
     const hasVideo = !!message.videoMimeType;
     const videoStatus = message.videoStatus;
 
     useEffect(() => {
         if (videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
+                console.log(`[VIDEO_DOWNLOAD] Starting fetch for message ${message.id}`);
                 setIsLoadingVideo(true);
                 setVideoUrl(null);
                 try {
+                    console.log(`[VIDEO_DOWNLOAD] 1. Fetching chunk documents for IDs:`, message.videoChunkIds);
                     const chunkSnaps = await Promise.all(
                         message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
                     );
+                    console.log(`[VIDEO_DOWNLOAD] 2. Got ${chunkSnaps.length} snapshot responses.`);
                     
                     const chunksData = chunkSnaps
                         .map(snap => snap.exists() ? snap.data() : null)
@@ -1270,22 +1300,26 @@ function ChatMessage({
                         .map(d => d.data);
 
                     if (chunksData.length !== message.videoChunkIds!.length) {
+                        console.error("[VIDEO_DOWNLOAD] ERROR: Mismatch in fetched chunks count.", {expected: message.videoChunkIds!.length, got: chunksData.length});
                         throw new Error("Failed to fetch all video chunks.");
                     }
                     
+                    console.log('[VIDEO_DOWNLOAD] 3. All chunks fetched and sorted.');
                     const assembledBase64 = chunksData.join('');
                     const dataUrl = `data:${message.videoMimeType};base64,${assembledBase64}`;
+                    console.log(`[VIDEO_DOWNLOAD] 4. Assembled data URL (length: ${dataUrl.length}). Setting video URL.`);
                     setVideoUrl(dataUrl);
                 } catch (e) {
-                    console.error("Error assembling video:", e);
+                    console.error("[VIDEO_DOWNLOAD] ERROR assembling video:", e);
                     setVideoUrl(null);
                 } finally {
+                    console.log(`[VIDEO_DOWNLOAD] 5. Finished fetch process for message ${message.id}.`);
                     setIsLoadingVideo(false);
                 }
             };
             fetchAndAssembleVideo();
         }
-    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType]);
+    }, [videoStatus, db, message.videoChunkIds, message.videoMimeType, message.id]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1376,16 +1410,16 @@ function ChatMessage({
                 onInternalLinkClick(href);
             };
             return (
-                <a href={href} onClick={handleClick} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>
+                a href={href} onClick={handleClick} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>
                     {children}
-                </a>
+                /a>
             );
         }
 
         return (
-            <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>
+            a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>
                 {children}
-            </a>
+            /a>
         );
     };
 
@@ -1396,19 +1430,19 @@ function ChatMessage({
     const messageBubbleContent = (
         <>
             {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                  <div className="font-semibold text-sm mb-1 flex items-center gap-2">
-                      <div className="truncate">{displayName}</div>
-                      {isVerified && <VerifiedBadge />}
+                  div className="font-semibold text-sm mb-1 flex items-center gap-2">
+                      div className="truncate">{displayName}/div>
+                      {isVerified && VerifiedBadge />}
                       {isFromChannel ? (
-                          <Badge variant="secondary">{t('channel_badge')}</Badge>
+                          Badge variant="secondary">{t('channel_badge')}/Badge>
                       ) : (
-                          displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>
+                          displaySender.isBot && !isVerified && Badge variant="secondary">BOT/Badge>
                       )}
-                  </div>
+                  /div>
               ): null}
 
             {message.replyTo && (
-                <button
+                button
                     data-reply-box="true"
                     onClick={handleScrollToReply}
                     className={cn(
@@ -1418,83 +1452,87 @@ function ChatMessage({
                             : "bg-muted hover:bg-muted/80"
                     )}
                 >
-                    <div className="flex items-center gap-2">
-                        <CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                            <div className={cn(
+                    div className="flex items-center gap-2">
+                        CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        div className="min-w-0">
+                            div className={cn(
                                 "font-semibold text-sm",
                                 alignRight
                                     ? "text-primary-foreground/90"
                                     : "text-primary"
-                            )}>{message.replyTo.senderName}</div>
-                            <div className={cn(
+                            )}>{message.replyTo.senderName}/div>
+                            div className={cn(
                                 "text-sm truncate",
                                 alignRight
                                     ? "text-primary-foreground/70"
                                     : "text-muted-foreground"
-                            )}>{message.replyTo.content}</div>
-                        </div>
-                    </div>
-                </button>
+                            )}>{message.replyTo.content}/div>
+                        /div>
+                    /div>
+                /button>
             )}
-            <div className="overflow-hidden">
+            div className="overflow-hidden">
                 {hasVideo ? (
-                    <div className="relative my-1">
+                    div className="relative my-1">
                         {(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
-                                <Loader2 className="h-8 w-8 animate-spin" />
-                            </div>
+                             div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
+                                Loader2 className="h-8 w-8 animate-spin" />
+                            /div>
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
-                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
+                            video
+                                src={videoUrl}
+                                controls
+                                className="max-w-xs max-h-80 object-cover rounded-lg"
+                            />
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>{t('video_load_failed')}</p>
-                            </div>
+                             div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                p className='text-xs font-semibold text-center'>{t('video_load_failed')}/p>
+                            /div>
                         )}
                         {videoStatus === 'failed' && (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p>
-                            </div>
+                             div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                p className='text-xs font-semibold text-center'>{t('video_upload_failed')}/p>
+                            /div>
                         )}
-                    </div>
+                    /div>
                 ) : message.imageUrl ? (
-                    <div className="relative my-1">
-                        <img 
+                    div className="relative my-1">
+                        img 
                             src={message.imageUrl} 
                             alt={t('image_attachment_alt')} 
                             className="max-w-xs max-h-80 object-cover rounded-lg"
                         />
-                    </div>
+                    /div>
                 ) : null}
-                {message.content && <div className={cn(
+                {message.content && div className={cn(
                     "text-sm break-all prose prose-sm max-w-none",
                     alignRight ? "prose-invert text-white" : "dark:prose-invert"
                 )}>
-                    <ReactMarkdown 
+                    ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
                             a: renderLink,
                         }}
                     >
                         {message.content}
-                    </ReactMarkdown>
-                </div>}
-            </div>
+                    /ReactMarkdown>
+                /div>}
+            /div>
             
-            <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                {message.editedAt && <span className="italic">{t('edited')}</span>}
-                <span>{timestamp}</span>
+            div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                {message.editedAt && span className="italic">{t('edited')}/span>}
+                span>{timestamp}/span>
                 {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />
+                    CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />
                 )}
-            </div>
+            /div>
         </>
     );
 
     return (
-        <div 
+        div 
             id={`message-${message.id}`} 
             className={cn(
                 "group flex items-end gap-2",
@@ -1502,40 +1540,40 @@ function ChatMessage({
             )}
         >
             {showAvatar ? (
-                 <div className="w-10 h-10 flex-shrink-0">
+                 div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
-                        <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot || !!displaySender.isDeleted}>
+                        button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot || !!displaySender.isDeleted}>
                            {isFromChannel ? (
-                                <Avatar className="h-10 w-10">
-                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary">
-                                        <Megaphone className="h-5 w-5 text-secondary-foreground" />
-                                    </div>
-                                </Avatar>
+                                Avatar className="h-10 w-10">
+                                    div className="flex h-full w-full items-center justify-center rounded-full bg-secondary">
+                                        Megaphone className="h-5 w-5 text-secondary-foreground" />
+                                    /div>
+                                /Avatar>
                             ) : (
-                                <UserAvatarWithStatus user={displaySender} />
+                                UserAvatarWithStatus user={displaySender} />
                             )}
-                        </button>
+                        /button>
                     ) : (
-                        <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
+                        div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
                     )}
-                 </div>
+                 /div>
             ) : chatType === 'group' && !alignRight ? (
-                <div className="w-10 flex-shrink-0" />
+                div className="w-10 flex-shrink-0" />
             ) : null}
 
-            <div className={cn(
+            div className={cn(
                 "min-w-0 max-w-[calc(100%-6rem)] p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
                 : "bg-card text-card-foreground rounded-bl-none"
             )}>
                {messageBubbleContent}
-            </div>
+            /div>
 
-            <div className="flex-shrink-0 self-center">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
+            div className="flex-shrink-0 self-center">
+                DropdownMenu>
+                    DropdownMenuTrigger asChild>
+                        Button
                             variant="ghost"
                             size="icon"
                             data-menu-trigger="true"
@@ -1543,43 +1581,45 @@ function ChatMessage({
                                 "h-8 w-8 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
                             )}
                         >
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
+                            MoreVertical className="h-4 w-4" />
+                        /Button>
+                    /DropdownMenuTrigger>
+                    DropdownMenuContent align={alignRight ? 'end' : 'start'}>
                         {chat.type !== 'channel' && !displaySender?.isDeleted && (
-                            <DropdownMenuItem onSelect={() => onReply(message)}>
-                                <Reply className="mr-2 h-4 w-4" />
-                                <span>{t('reply')}</span>
-                            </DropdownMenuItem>
+                            DropdownMenuItem onSelect={() => onReply(message)}>
+                                Reply className="mr-2 h-4 w-4" />
+                                span>{t('reply')}/span>
+                            /DropdownMenuItem>
                         )}
-                        {message.content && (<DropdownMenuItem onSelect={handleCopy}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            <span>{t('copy_text')}</span>
-                        </DropdownMenuItem>)}
+                        {message.content && (DropdownMenuItem onSelect={handleCopy)}>
+                            Copy className="mr-2 h-4 w-4" />
+                            span>{t('copy_text')}/span>
+                        /DropdownMenuItem>)}
                         
                         {(isCurrentUser && !fromBot) || canDeleteMessage ? (
-                          <DropdownMenuSeparator />
+                          DropdownMenuSeparator />
                         ) : null}
 
                         {isCurrentUser && !fromBot && (
-                          <DropdownMenuItem onSelect={() => setEditingMessage(message)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>{t('edit_message')}</span>
-                          </DropdownMenuItem>
+                          DropdownMenuItem onSelect={() => setEditingMessage(message)}>
+                            Edit className="mr-2 h-4 w-4" />
+                            span>{t('edit_message')}/span>
+                          /DropdownMenuItem>
                         )}
 
                         {canDeleteMessage && (
-                           <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>{t('delete_message')}</span>
-                            </DropdownMenuItem>
+                           DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                Trash2 className="mr-2 h-4 w-4" />
+                                span>{t('delete_message')}/span>
+                            /DropdownMenuItem>
                         )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </div>
+                    /DropdownMenuContent>
+                /DropdownMenu>
+            /div>
+        /div>
     );
 }
+
+    
 
     
