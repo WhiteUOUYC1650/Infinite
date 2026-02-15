@@ -606,11 +606,16 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
 
         await updateDoc(messageRef, { 'videoInfo.chunkCount': chunks.length });
 
-        const uploadPromises = chunks.map((chunkData, index) => {
+        const chunkBatch = writeBatch(db);
+        chunks.forEach((chunkData, index) => {
             const chunkDocRef = doc(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks', `part_${index}`);
-            return setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
+            chunkBatch.set(chunkDocRef, {
+                data: chunkData,
+                part: index,
+                senderId: currentUser.uid,
+            });
         });
-        await Promise.all(uploadPromises);
+        await chunkBatch.commit();
 
         await updateDoc(messageRef, { 'videoInfo.status': 'complete' });
 
@@ -1256,15 +1261,25 @@ function ChatMessage({
     const videoStatus = message.videoInfo?.status;
 
     useEffect(() => {
-      if (isVideoMessage && (videoStatus === 'complete' || videoStatus === undefined) && db) {
+      if (isVideoMessage && message.videoInfo?.chunkCount && (videoStatus === 'complete' || videoStatus === undefined) && db) {
         const fetchAndAssembleVideo = async () => {
           setIsLoadingVideo(true);
           try {
-            const chunksRef = collection(db, 'chats', chat.id, 'messages', message.id, 'videoChunks');
-            const q = query(chunksRef, orderBy('part'));
-            const querySnapshot = await getDocs(q);
+            const chunkPromises = [];
+            for (let i = 0; i < message.videoInfo!.chunkCount; i++) {
+                const chunkDocRef = doc(db, 'chats', chat.id, 'messages', message.id, 'videoChunks', `part_${i}`);
+                chunkPromises.push(getDoc(chunkDocRef));
+            }
+            const chunkSnapshots = await Promise.all(chunkPromises);
+            
+            const chunksData = chunkSnapshots
+                .map(snap => snap.exists() ? snap.data().data as string : null)
+                .filter((d): d is string => d !== null);
 
-            const chunksData = querySnapshot.docs.map(doc => doc.data().data);
+            if (chunksData.length !== message.videoInfo!.chunkCount) {
+              throw new Error("Failed to fetch all video chunks.");
+            }
+
             const assembledBase64 = chunksData.join('');
             const dataUrl = `data:${message.videoInfo.mimeType};base64,${assembledBase64}`;
             setVideoUrl(dataUrl);
@@ -1568,3 +1583,5 @@ function ChatMessage({
         </div>
     );
 }
+
+    

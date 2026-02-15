@@ -6,7 +6,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIc
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -49,6 +49,7 @@ function useBatchUsers(userIds: string[]) {
             const usersCollection = collection(db, 'users');
             const fetchedUsers: Record<string, User> = {};
             
+            // Firestore 'in' queries support a maximum of 30 elements in the array.
             const chunks: string[][] = [];
             for (let i = 0; i < uniqueUserIds.length; i += 30) {
                 chunks.push(uniqueUserIds.slice(i, i + 30));
@@ -280,23 +281,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (currentUser.avatar) {
         messageData.senderAvatar = currentUser.avatar;
     }
-  
-    addDoc(messagesCollectionRef, messageData)
-      .catch((serverError: any) => {
-        setMessageContent(content); // Re-populate the input on error
-        console.error("Error sending message: ", serverError);
-        const permissionError = new FirestorePermissionError({
-            path: messagesCollectionRef.path,
-            operation: 'create',
-            requestResourceData: messageData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSending(false);
-      });
-  
+    
     const chatRef = doc(db, 'chats', item.id);
+    const batch = writeBatch(db);
+
+    const newMessageRef = doc(messagesCollectionRef);
+    batch.set(newMessageRef, messageData);
+  
     const lastMessageData = {
       content: content,
       senderId: currentUser.uid,
@@ -316,9 +307,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       });
     }
   
-    updateDoc(chatRef, chatUpdateData).catch((error) => {
-        console.error("Error updating chat metadata:", error);
-    });
+    batch.update(chatRef, chatUpdateData);
+
+    batch.commit()
+      .catch((serverError: any) => {
+        setMessageContent(content); // Re-populate the input on error
+        console.error("Error sending message: ", serverError);
+        const permissionError = new FirestorePermissionError({
+            path: `chats/${item.id}`,
+            operation: 'write', 
+            requestResourceData: messageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSending(false);
+      });
   };
 
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
@@ -585,3 +589,5 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick }
         </div>
     );
 }
+
+    
