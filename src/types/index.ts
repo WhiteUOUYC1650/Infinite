@@ -86,4 +86,6 @@ export type VideoChunk = {
   part: number;
   data: string;
   senderId: string;
+  messageId: string;
+  chatId: string;
 }

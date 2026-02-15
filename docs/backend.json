@@ -86,9 +86,14 @@
             "type": "string",
             "description": "URL to an image attachment, in Base64 data URI format."
         },
-        "videoUrl": {
-            "type": "string",
-            "description": "URL to a video attachment, in Base64 data URI format."
+        "videoInfo": {
+            "type": "object",
+            "description": "Information about a video attachment.",
+            "properties": {
+                "chunkCount": { "type": "number" },
+                "mimeType": { "type": "string" },
+                "status": { "type": "string", "enum": ["uploading", "complete", "failed"] }
+            }
         },
         "timestamp": {
           "type": "object",
@@ -134,6 +139,19 @@
         }
       },
       "required": ["senderId", "content", "timestamp"]
+    },
+    "VideoChunk": {
+      "title": "Video Chunk",
+      "description": "A single chunk of a video file, stored separately to avoid document size limits.",
+      "type": "object",
+      "properties": {
+        "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
+        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
+        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to (for security rules)." },
+        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
+      },
+      "required": ["data", "part", "messageId", "chatId", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -263,6 +281,12 @@
         "$ref": "#/backend/entities/BotLink"
       },
       "description": "Used to enforce unique links for bots."
+    },
+    "/videoChunks/{chunkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/VideoChunk"
+      },
+      "description": "Stores individual chunks of uploaded video files."
     }
   }
 }
