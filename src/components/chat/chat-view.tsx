@@ -622,21 +622,17 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
 
-        const chunkCollectionRef = collection(db, 'videoChunks');
-        const chunkDocRefs = base64Chunks.map((_, i) => doc(chunkCollectionRef, `${messageRef.id}_part_${i}`));
-        const chunkIds = chunkDocRefs.map(ref => ref.id);
-
-        const chunkBatch = writeBatch(db);
-        chunkDocRefs.forEach((chunkDocRef, index) => {
-            chunkBatch.set(chunkDocRef, {
-                data: base64Chunks[index],
-                part: index,
+        const chunkIds: string[] = [];
+        for (let i = 0; i < base64Chunks.length; i++) {
+            const chunkDocRef = doc(db, 'videoChunks', `${messageRef.id}_part_${i}`);
+            await setDoc(chunkDocRef, {
+                data: base64Chunks[i],
+                part: i,
                 messageId: messageRef.id,
                 senderId: currentUser.uid,
             });
-        });
-        
-        await chunkBatch.commit();
+            chunkIds.push(chunkDocRef.id);
+        }
 
         await updateDoc(messageRef, { 
             videoStatus: 'complete',
