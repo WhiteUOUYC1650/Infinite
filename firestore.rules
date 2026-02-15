@@ -69,7 +69,7 @@ service cloud.firestore {
     match /chats/GENERAL_CHAT {
       // Any signed-in user can read or create the general chat document.
       allow read, create: if isSignedIn();
-      // Any signed-in user can update the chat, as long as they don't change critical fields.
+      // Any signed-in user can update the chat.
       allow update: if isSignedIn();
     }
 
@@ -77,9 +77,7 @@ service cloud.firestore {
     match /chats/GENERAL_CHAT/messages/{messageId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn() &&
-                     request.auth.uid in get(/databases/$(database)/documents/chats/GENERAL_CHAT).data.members &&
-                     'readBy' in request.writeFields && request.writeFields.size() == 1;
+      allow update: if isSignedIn();
       allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
     }
 
@@ -104,7 +102,7 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      allow update: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
@@ -115,11 +113,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
                      
       allow update: if isSignedIn() &&
-                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members &&
-                     (
-                       ('readBy' in request.writeFields && request.writeFields.size() == 1) ||
-                       (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt', 'imageUrl', 'videoInfo']))
-                     );
+                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
       allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
     
       match /videoChunks/{chunkId} {
