@@ -604,16 +604,14 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
 
-        const videoChunksCollection = collection(db, 'videoChunks');
+        const chunksCollectionRef = collection(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks');
         const chunkBatch = writeBatch(db);
         chunks.forEach((chunkData, index) => {
-            const chunkDocRef = doc(videoChunksCollection);
+            const chunkDocRef = doc(chunksCollectionRef);
             chunkBatch.set(chunkDocRef, { 
                 data: chunkData, 
                 part: index, 
                 senderId: currentUser.uid,
-                messageId: messageRef.id,
-                chatId: item.id
             });
         });
         await chunkBatch.commit();
@@ -1262,12 +1260,12 @@ function ChatMessage({
     const videoStatus = message.videoInfo?.status;
 
     useEffect(() => {
-      if (isVideoMessage && videoStatus === 'complete' && db) {
+      if (isVideoMessage && (videoStatus === 'complete' || videoStatus === undefined) && db) {
         const fetchAndAssembleVideo = async () => {
           setIsLoadingVideo(true);
           try {
-            const chunksRef = collection(db, 'videoChunks');
-            const q = query(chunksRef, where('messageId', '==', message.id), orderBy('part'));
+            const chunksRef = collection(db, 'chats', chat.id, 'messages', message.id, 'videoChunks');
+            const q = query(chunksRef, orderBy('part'));
             const querySnapshot = await getDocs(q);
 
             const chunksData = querySnapshot.docs.map(doc => doc.data().data);
@@ -1283,7 +1281,7 @@ function ChatMessage({
         };
         fetchAndAssembleVideo();
       }
-    }, [message.id, message.videoInfo, db, isVideoMessage, videoStatus]);
+    }, [message.videoInfo, message.id, chat.id, db, isVideoMessage, videoStatus]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;

@@ -105,23 +105,23 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid in resource.data.members;
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
-    }
 
-    match /chats/{chatId}/messages/{messageId} {
-      allow read: if (isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members) || isAdmin();
-      
-      allow create: if isSignedIn();
-                     
-      allow update: if isSignedIn() &&
-                     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-      allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
+      match /messages/{messageId} {
+        allow read: if (isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members) || isAdmin();
+        
+        allow create: if isSignedIn();
+                      
+        allow update: if isSignedIn() &&
+                      request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
+        
+        match /videoChunks/{chunkId} {
+            allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+            allow create: if request.auth.uid == request.resource.data.senderId;
+        }
+      }
     }
-
-    match /videoChunks/{chunkId} {
-      allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.members;
-      allow create: if request.auth.uid == request.resource.data.senderId;
-    }
-
+    
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;

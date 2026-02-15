@@ -147,11 +147,9 @@
       "properties": {
         "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
         "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
-        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
-        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to (for security rules)." },
         "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
       },
-      "required": ["data", "part", "messageId", "chatId", "senderId"]
+      "required": ["data", "part", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -270,6 +268,12 @@
       },
       "description": "Stores messages for a specific chat."
     },
+    "/chats/{chatId}/messages/{messageId}/videoChunks/{chunkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/VideoChunk"
+      },
+      "description": "Stores individual chunks of uploaded video files for a specific message."
+    },
     "/chatLinks/{linkId}": {
       "schema": {
         "$ref": "#/backend/entities/ChatLink"
@@ -281,12 +285,6 @@
         "$ref": "#/backend/entities/BotLink"
       },
       "description": "Used to enforce unique links for bots."
-    },
-    "/videoChunks/{chunkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/VideoChunk"
-      },
-      "description": "Stores individual chunks of uploaded video files."
     }
   }
 }
