@@ -108,9 +108,7 @@ service cloud.firestore {
                  // Owner can change more things
                  (resource.data.ownerId == request.auth.uid ||
                  // Members can update as long as they don't touch critical, immutable fields
-                 (request.resource.data.ownerId == resource.data.ownerId &&
-                  request.resource.data.type == resource.data.type &&
-                  request.resource.data.link == resource.data.link));
+                 (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'type', 'link', 'icon'])));
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
@@ -133,7 +131,7 @@ service cloud.firestore {
     
       match /videoChunks/{chunkId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.senderId;
+        allow create: if request.auth.uid != null;
       }
     }
 
