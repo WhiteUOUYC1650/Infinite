@@ -164,6 +164,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- End live chat data ---
 
+  // --- Call listener ---
+  useEffect(() => {
+    if (!db || item.type !== 'dm' || !isMember || item.id === currentUser.uid || !item.id.includes('_')) return; // Prevents running for "Saved Messages" or invalid IDs
+    const callDocRef = doc(db, 'calls', item.id);
+    const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
+        const data = snapshot.data() as Call;
+        if (data && data.status === 'calling' && data.calleeId === currentUser.uid) {
+            setIncomingCall({id: snapshot.id, ...data});
+        }
+        if (data && data.status === 'ended') {
+            setIncomingCall(null);
+        }
+    });
+
+    return () => unsubscribe();
+  }, [db, item.id, item.type, currentUser.uid, isMember]);
+
   // --- Fetch messages and members ---
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !isMember) return null;
@@ -1208,7 +1225,6 @@ function ChatMessage({
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
     
     const [isHovering, setIsHovering] = useState(false);
 
@@ -1239,15 +1255,6 @@ function ChatMessage({
       }
     }, [message.videoInfo, message.id, chat.id, db]);
     
-    const handleMouseEnter = () => {
-        setIsHovering(true);
-    };
-
-    const handleMouseLeave = () => {
-        setIsMenuOpen(false);
-        setIsHovering(false);
-    };
-
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
         return chat.members.find((id) => id !== currentUser.uid);
@@ -1454,8 +1461,8 @@ function ChatMessage({
                 "group flex items-end gap-2",
                 alignRight ? "flex-row-reverse" : "flex-row"
             )}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
         >
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
@@ -1489,16 +1496,16 @@ function ChatMessage({
             </div>
 
             <div className="flex-shrink-0 self-center">
-                <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
                             size="icon"
                             data-menu-trigger="true"
                             className={cn("h-8 w-8 transition-opacity", 
-                                (isHovering || isMenuOpen)
+                                isHovering
                                   ? "opacity-100"
-                                  : "opacity-0"
+                                  : "opacity-0 focus:opacity-100"
                             )}
                         >
                             <MoreVertical className="h-4 w-4" />
