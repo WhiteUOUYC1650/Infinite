@@ -83,7 +83,7 @@ service cloud.firestore {
     
     match /videoChunks/{chunkId} {
         allow read: if isSignedIn();
-        allow create: if request.auth.uid == request.resource.data.senderId;
+        allow create: if isSignedIn();
     }
 
     match /chats/{chatId} {
