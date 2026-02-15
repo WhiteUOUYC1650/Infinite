@@ -33,6 +33,7 @@ export type Message = {
   videoInfo?: {
     chunkCount: number;
     mimeType: string;
+    status?: 'uploading' | 'complete' | 'failed';
   };
   timestamp: Timestamp;
   sender?: User; // hydrated sender

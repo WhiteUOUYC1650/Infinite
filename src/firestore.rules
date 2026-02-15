@@ -104,7 +104,15 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
 
-      allow update: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members && (
+        (
+          // Non-owners can only update lastMessage, unreadCounts, and members.
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'type', 'link', 'icon', 'name', 'description', 'avatar', 'discussionChatId'])
+        ) || (
+          // Owner can update anything.
+          resource.data.ownerId == request.auth.uid
+        )
+      );
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
     }
@@ -124,7 +132,7 @@ service cloud.firestore {
     
       match /videoChunks/{chunkId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        allow create: if isSignedIn();
+        allow create: if request.auth.uid == request.resource.data.senderId;
       }
     }
 

@@ -489,7 +489,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     setReplyToMessage(null);
     
     try {
-        if (originalFile?.type.startsWith('video')) {
+        if (originalFile?.type === 'video') {
             await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
@@ -565,74 +565,89 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
     if (!db) return;
 
-    const videoBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(videoFile);
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = (error) => reject(error);
-    });
+    setIsSending(true);
 
-    const CHUNK_SIZE = 900 * 1024; // 900KB
-    const chunks: string[] = [];
-    for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
-        chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
-    }
-
-    // 1. Generate a client-side reference for the new message
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
-    
-    // 2. Prepare all write operations in a single atomic batch
-    const batch = writeBatch(db);
+    const timestamp = Timestamp.now();
 
-    const messageData = {
-        senderId: currentUser.uid,
-        content: content.replace(/\n/g, '  \n'),
-        timestamp: Timestamp.now(),
-        videoInfo: {
-            chunkCount: chunks.length,
-            mimeType: videoFile.type,
-        },
-        readBy: [],
-        ...(replyTo && {
-            replyTo: {
-                messageId: replyTo.id,
-                content: replyTo.content,
-                senderName: replyTo.sender?.name || replyTo.senderName || '',
+    try {
+        const messageData = {
+            senderId: currentUser.uid,
+            content: content.replace(/\n/g, '  \n'),
+            timestamp: timestamp,
+            videoInfo: {
+                mimeType: videoFile.type,
+                status: 'uploading',
             },
-        }),
-    };
-    // Add message creation to the batch
-    batch.set(messageRef, messageData);
+            readBy: [],
+            ...(replyTo && {
+                replyTo: {
+                    messageId: replyTo.id,
+                    content: replyTo.content,
+                    senderName: replyTo.sender?.name || replyTo.senderName || '',
+                },
+            }),
+        };
 
-    // Add chunk creation to the batch
-    chunks.forEach((chunkData, index) => {
-        const chunkDocRef = doc(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks', `part_${index}`);
-        batch.set(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
-    });
-    
-    const lastMessageData = {
-        id: messageRef.id,
-        content: content || t('video_attachment_placeholder'),
-        senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.username,
-        timestamp: messageData.timestamp,
-        videoInfo: messageData.videoInfo,
-    };
-    
-    const chatRef = doc(db, 'chats', item.id);
-    const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-    if (item.type !== 'channel') {
-        item.members.forEach((memberId) => {
-            if (memberId !== currentUser.uid) {
-                updateData[`unreadCounts.${memberId}`] = increment(1);
-            }
+        await setDoc(messageRef, messageData);
+
+        const videoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(videoFile);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (error) => reject(error);
         });
-    }
-    // Add chat update to the batch
-    batch.update(chatRef, updateData);
 
-    // 3. Commit the atomic batch
-    await batch.commit();
+        const CHUNK_SIZE = 900 * 1024;
+        const chunks: string[] = [];
+        for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
+            chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
+        }
+
+        await updateDoc(messageRef, { 'videoInfo.chunkCount': chunks.length });
+
+        const uploadPromises = chunks.map((chunkData, index) => {
+            const chunkDocRef = doc(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks', `part_${index}`);
+            return setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
+        });
+        await Promise.all(uploadPromises);
+
+        await updateDoc(messageRef, { 'videoInfo.status': 'complete' });
+
+        const lastMessageData = {
+            id: messageRef.id,
+            content: content || t('video_attachment_placeholder'),
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
+            timestamp: timestamp,
+            videoInfo: {
+                chunkCount: chunks.length,
+                mimeType: videoFile.type,
+                status: 'complete',
+            },
+        };
+        const chatRef = doc(db, 'chats', item.id);
+        const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        if (item.type !== 'channel') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
+                    updateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        await updateDoc(chatRef, updateData);
+
+    } catch (error) {
+        console.error('Error sending video:', error);
+        await updateDoc(messageRef, { 'videoInfo.status': 'failed' });
+        toast({
+            variant: 'destructive',
+            title: t('admin_toast_error_title'),
+            description: (error as Error).message || t('unexpected_error'),
+        });
+    } finally {
+        setIsSending(false);
+    }
 };
   
   const handleReply = (message: Message) => {
@@ -1237,9 +1252,11 @@ function ChatMessage({
     
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+    const isVideoMessage = !!message.videoInfo;
+    const videoStatus = message.videoInfo?.status;
 
     useEffect(() => {
-      if (message.videoInfo && db) {
+      if (isVideoMessage && (videoStatus === 'complete' || videoStatus === undefined) && db) {
         const fetchAndAssembleVideo = async () => {
           setIsLoadingVideo(true);
           try {
@@ -1260,7 +1277,7 @@ function ChatMessage({
         };
         fetchAndAssembleVideo();
       }
-    }, [message.videoInfo, message.id, chat.id, db]);
+    }, [message.videoInfo, message.id, chat.id, db, isVideoMessage, videoStatus]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1413,17 +1430,19 @@ function ChatMessage({
                 </button>
             )}
             <div className="overflow-hidden">
-                {message.videoInfo ? (
+                {isVideoMessage ? (
                     <div className="relative my-1">
-                        {isLoadingVideo ? (
+                        {(isLoadingVideo || videoStatus === 'uploading') && (
                              <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
                                 <Loader2 className="h-8 w-8 animate-spin" />
                             </div>
-                        ) : videoUrl ? (
+                        )}
+                        {!isLoadingVideo && videoStatus !== 'uploading' && videoUrl && (
                             <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
-                        ) : (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg">
-                                <p className='text-xs font-semibold'>Error loading video</p>
+                        )}
+                        {!isLoadingVideo && (videoStatus === 'failed' || (!videoUrl && videoStatus !== 'uploading')) && (
+                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                <p className='text-xs font-semibold text-center'>Error: Video failed to load.</p>
                             </div>
                         )}
                     </div>
