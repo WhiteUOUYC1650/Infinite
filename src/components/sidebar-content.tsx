@@ -36,7 +36,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Clock } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Clock, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
@@ -809,11 +809,6 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   
   const lastMessageSenderIsCurrentUser = lastMessage?.senderId === currentUserId;
 
-  let senderPrefix = '';
-  if (lastMessageSenderIsCurrentUser && !isSavedMessages) {
-      senderPrefix = `${t('you_message_preview')}: `;
-  }
-
   return (
     <Button
         key={item.id}
@@ -832,10 +827,14 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                 </div>
                 {lastMessageContent && 
                     <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                        {lastMessageSenderIsCurrentUser && !isSavedMessages && lastMessage.videoStatus === 'uploading' && (
-                            <Clock className="h-3 w-3 shrink-0" />
-                        )}
-                       <span>{senderPrefix}{lastMessageContent}</span>
+                        {lastMessageSenderIsCurrentUser && !isSavedMessages ? (
+                            lastMessage.videoStatus === 'uploading' ? (
+                                <Clock className="h-3 w-3 shrink-0" />
+                            ) : (
+                                <Check className="h-3 w-3 shrink-0" />
+                            )
+                        ) : null}
+                       <span>{lastMessageContent}</span>
                     </p>
                 }
             </div>
@@ -867,7 +866,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   let senderPrefix = '';
   if (item.type === 'group' && lastMessage) {
       if (senderIsCurrentUser) {
-          senderPrefix = `${t('you_message_preview')}: `;
+          // senderPrefix = `${t('you_message_preview')}: `;
       } else if (lastMessage.senderName) {
           senderPrefix = `${lastMessage.senderName}: `;
       }
@@ -898,8 +897,12 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
           </div>
           {lastMessageContent && (
             <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                {senderIsCurrentUser && lastMessage?.videoStatus === 'uploading' ? (
-                    <Clock className="h-3 w-3 shrink-0" />
+                {senderIsCurrentUser ? (
+                    lastMessage?.videoStatus === 'uploading' ? (
+                        <Clock className="h-3 w-3 shrink-0" />
+                    ) : (
+                        <Check className="h-3 w-3 shrink-0" />
+                    )
                 ) : (
                     lastMessage?.videoMimeType && <VideoIcon className="h-3 w-3 shrink-0" />
                 )}
