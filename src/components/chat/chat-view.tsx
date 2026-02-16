@@ -137,6 +137,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
+  const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
   
 
   // --- Get live chat data ---
@@ -498,9 +499,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     
     try {
         if (originalFile?.type === 'video') {
-            await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
+            await handleSendVideo(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'music') {
-            await handleSendMusic(originalFile.file, originalContent, originalReplyTo);
+            await handleSendMusic(originalFile, originalContent, originalReplyTo);
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
@@ -576,10 +577,14 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
     }
 };
 
-const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
+const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
     if (!db) throw new Error("Database not initialized");
+
+    const { file: videoFile, previewUrl } = videoPayload;
     
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    setLocalMediaCache(prev => ({ ...prev, [messageRef.id]: previewUrl }));
+
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
 
@@ -686,10 +691,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     }
 };
 
-const handleSendMusic = async (musicFile: File, content: string, replyTo: Message | null) => {
+const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
     if (!db) throw new Error("Database not initialized");
     
+    const { file: musicFile, previewUrl } = musicPayload;
+
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    setLocalMediaCache(prev => ({ ...prev, [messageRef.id]: previewUrl }));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
 
@@ -1179,6 +1187,7 @@ const handleSendMusic = async (musicFile: File, content: string, replyTo: Messag
                                           onReply={handleReply}
                                           setEditingMessage={handleSetEditingMessage}
                                           onMediaLoad={handleMediaLoad}
+                                          localMediaUrl={localMediaCache[message.id]}
                                       />
                                   </React.Fragment>
                               );
@@ -1391,6 +1400,7 @@ function ChatMessage({
     onReply,
     setEditingMessage,
     onMediaLoad,
+    localMediaUrl,
 }: { 
     message: Message, 
     sender?: User, 
@@ -1403,22 +1413,24 @@ function ChatMessage({
     onReply: (message: Message) => void,
     setEditingMessage: (message: Message | null) => void,
     onMediaLoad: () => void,
+    localMediaUrl?: string;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
     
-    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(message.videoMimeType && localMediaUrl ? localMediaUrl : null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
     const hasVideo = !!message.videoMimeType;
     const videoStatus = message.videoStatus;
 
-    const [musicUrl, setMusicUrl] = useState<string | null>(null);
+    const [musicUrl, setMusicUrl] = useState<string | null>(message.musicMimeType && localMediaUrl ? localMediaUrl : null);
     const [isLoadingMusic, setIsLoadingMusic] = useState(false);
     const hasMusic = !!message.musicMimeType;
     const musicStatus = message.musicStatus;
 
     useEffect(() => {
+        if (videoUrl) return;
         if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
                 setIsLoadingVideo(true);
@@ -1457,9 +1469,10 @@ function ChatMessage({
             };
             fetchAndAssembleVideo();
         }
-    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id]);
+    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id, videoUrl]);
     
     useEffect(() => {
+        if (musicUrl) return;
         if (hasMusic && musicStatus === 'complete' && db && message.musicChunkIds && message.musicChunkIds.length > 0) {
             const fetchAndAssembleMusic = async () => {
                 setIsLoadingMusic(true);
@@ -1497,7 +1510,7 @@ function ChatMessage({
             };
             fetchAndAssembleMusic();
         }
-    }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id]);
+    }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id, musicUrl]);
 
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1658,7 +1671,7 @@ function ChatMessage({
                             </div>
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
-                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />
+                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg themed-media-player" onLoadedData={onMediaLoad} />
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
                              <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
@@ -1679,7 +1692,7 @@ function ChatMessage({
                             </div>
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && musicUrl && (
-                            <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
+                            <audio src={musicUrl} controls className="w-full themed-media-player" onLoadedData={onMediaLoad} />
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && !musicUrl && (
                              <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
@@ -1779,7 +1792,7 @@ function ChatMessage({
                             size="icon"
                             data-menu-trigger="true"
                             className={cn(
-                                "h-8 w-8 transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
+                                "h-8 w-8 transition-transform scale-0 group-hover:scale-100 focus:scale-100 data-[state=open]:scale-100"
                             )}
                         >
                             <MoreVertical className="h-4 w-4" />

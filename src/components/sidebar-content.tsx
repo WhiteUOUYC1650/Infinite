@@ -36,7 +36,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
@@ -811,6 +811,16 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   
   const lastMessageSenderIsCurrentUser = lastMessage?.senderId === currentUserId;
 
+  const otherUserIdInDM = item.members.find(id => id !== currentUserId);
+
+  const isRead = useMemo(() => {
+    if (!lastMessage || !lastMessageSenderIsCurrentUser || !lastMessage.readBy) return false;
+    if (item.type === 'dm' && otherUserIdInDM) {
+        return lastMessage.readBy.includes(otherUserIdInDM);
+    }
+    return false;
+  }, [lastMessage, lastMessageSenderIsCurrentUser, item.type, otherUserIdInDM]);
+
   return (
     <Button
         key={item.id}
@@ -833,7 +843,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                             (lastMessage.videoStatus === 'uploading' || lastMessage.musicStatus === 'uploading') ? (
                                 <Clock className="h-3 w-3 shrink-0" />
                             ) : (
-                                <Check className="h-3 w-3 shrink-0" />
+                                isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-3 w-3 shrink-0" />
                             )
                         ) : null}
                        <span>{lastMessageContent}</span>
@@ -855,6 +865,14 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
+
+  const isRead = useMemo(() => {
+    if (!lastMessage || !senderIsCurrentUser || !lastMessage.readBy) return false;
+    if (item.type === 'group') {
+        return lastMessage.readBy.some(id => id !== currentUserId);
+    }
+    return false; // No read receipts for channels in sidebar
+  }, [lastMessage, senderIsCurrentUser, item.type, currentUserId]);
   
   let lastMessageContent: string | undefined;
   if (lastMessage?.imageUrl) {
@@ -903,7 +921,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
                     (lastMessage?.videoStatus === 'uploading' || lastMessage?.musicStatus === 'uploading') ? (
                         <Clock className="h-3 w-3 shrink-0" />
                     ) : (
-                        <Check className="h-3 w-3 shrink-0" />
+                        isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-3 w-3 shrink-0" />
                     )
                 ) : (
                     (lastMessage?.videoMimeType && <VideoIcon className="h-3 w-3 shrink-0" />) || (lastMessage?.musicMimeType && <MusicIcon className="h-3 w-3 shrink-0" />)

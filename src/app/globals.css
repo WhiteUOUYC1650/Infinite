@@ -39,8 +39,6 @@ body {
     --sidebar-primary-foreground: 25 85% 95%;
     --sidebar-accent: 30 50% 88%;
     --sidebar-accent-foreground: 20 14.3% 4.1%;
-    --sidebar-border: 30 30% 82%;
-    --sidebar-ring: 25 95% 53%;
   }
 
   .dark {
@@ -114,6 +112,13 @@ body {
 }
 
 @layer components {
+  .themed-media-player {
+    color-scheme: light;
+  }
+  .dark .themed-media-player {
+    color-scheme: dark;
+  }
+
   .theme-frutiger [data-sidebar="sidebar"],
   .theme-frutiger main {
     backdrop-filter: blur(8px);
