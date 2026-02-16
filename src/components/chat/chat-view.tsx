@@ -1759,7 +1759,8 @@ function ChatMessage({
                 "min-w-0 max-w-[calc(100%-6rem)] p-3 rounded-lg flex flex-col",
                 alignRight
                 ? "bg-primary text-primary-foreground rounded-br-none"
-                : "bg-card text-card-foreground rounded-bl-none"
+                : "bg-card text-card-foreground rounded-bl-none",
+                (hasMusic && !message.content.trim()) && "min-w-64"
             )}>
                {messageBubbleContent}
             </div>
