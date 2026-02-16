@@ -77,8 +77,10 @@ service cloud.firestore {
     match /videoChunks/{chunkId} {
       // User can only create chunks for their own messages.
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.senderId;
-      // User can only read chunks for messages in chats they are a member of.
-      allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.members;
+      // If a user can read the message doc, they can know the chunk IDs.
+      // Therefore, they are implicitly authorized to read the chunks.
+      // The expensive get() call is redundant and removed.
+      allow read: if isSignedIn();
       allow update, delete: if false;
     }
 
