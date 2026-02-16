@@ -567,7 +567,6 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null, currentChat: PopulatedChat, user: AuthenticatedUser) => {
     if (!db) return;
     
-    // 1. Create the message document with 'uploading' status
     const messageRef = doc(collection(db, 'chats', currentChat.id, 'messages'));
     const timestamp = Timestamp.now();
     
@@ -588,9 +587,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     };
 
     try {
-        await setDoc(messageRef, messageData);
-
-        // 2. Update the chat's lastMessage
+        // Atomically create the message doc and update the chat's lastMessage
         const chatRef = doc(db, 'chats', currentChat.id);
         const lastMessageData = {
             id: messageRef.id,
@@ -608,9 +605,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 }
             });
         }
-        await updateDoc(chatRef, updateData);
+        
+        const initialWriteBatch = writeBatch(db);
+        initialWriteBatch.set(messageRef, messageData);
+        initialWriteBatch.update(chatRef, updateData);
+        await initialWriteBatch.commit();
 
-        // 3. Read file, convert to base64, and split into chunks
+        // Read file, convert to base64, and split into chunks
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(videoFile);
@@ -624,7 +625,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
 
-        // 4. Upload each chunk sequentially
+        // Upload each chunk sequentially
         const chunkIds: string[] = [];
         for (const [index, chunk] of base64Chunks.entries()) {
             const chunkDocRef = doc(collection(db, "videoChunks"));
@@ -639,7 +640,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             chunkIds.push(chunkDocRef.id);
         }
 
-        // 5. Finalize the message: update status and add chunk IDs
+        // Finalize the message: update status and add chunk IDs
         await updateDoc(messageRef, { 
             videoStatus: 'complete',
             videoChunkIds: chunkIds,
