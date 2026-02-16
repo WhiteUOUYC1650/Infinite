@@ -5,7 +5,7 @@ import { UpdatePromptDialog } from '@/components/update-prompt-dialog';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-const CURRENT_APP_VERSION = "0.2.1";
+const CURRENT_APP_VERSION = "0.3";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;

@@ -217,7 +217,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
           <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
           <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
-          <SettingsItem icon={Info} label={t('version')} value="0.2.1" onClick={() => navigateTo('about')} />
+          <SettingsItem icon={Info} label={t('version')} value="0.3" onClick={() => navigateTo('about')} />
           {currentUser.isAdmin && (
               <SettingsItem icon={Shield} label={t('admin_panel_title')} onClick={() => router.push('/admin')} />
           )}
