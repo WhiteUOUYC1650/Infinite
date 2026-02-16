@@ -573,6 +573,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
 
     try {
         setIsProcessingVideo(true);
+        // Add a small delay to allow the UI to update before heavy processing
+        await new Promise(resolve => setTimeout(resolve, 50));
+
         const timestamp = Timestamp.now();
         
         const messageData: Omit<Message, 'id'> = {
@@ -590,6 +593,55 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 },
             }),
         };
+       
+        const chunkStringAsync = (str: string, size: number): Promise<string[]> => {
+          return new Promise(resolve => {
+              const chunks: string[] = [];
+              let i = 0;
+              const process = () => {
+                  if (i >= str.length) {
+                      resolve(chunks);
+                      return;
+                  }
+                  const end = Math.min(i + size, str.length);
+                  chunks.push(str.substring(i, end));
+                  i = end;
+                  // Yield to the event loop
+                  setTimeout(process, 0); 
+              };
+              process();
+          });
+        };
+
+        const videoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(videoFile);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (error) => reject(error);
+        });
+
+        const CHUNK_SIZE = 900 * 1024; // 900KB
+        const base64Chunks = await chunkStringAsync(videoBase64, CHUNK_SIZE);
+
+        const videoChunksCollectionRef = collection(db, 'videoChunks');
+        const chunkIds: string[] = [];
+        const chunkUploadBatch = writeBatch(db);
+        
+        for (const [index, chunk] of base64Chunks.entries()) {
+            const chunkDocRef = doc(videoChunksCollectionRef);
+            const chunkData: Omit<VideoChunk, 'id'> = {
+                chatId: item.id,
+                messageId: messageRef.id,
+                data: chunk,
+                part: index,
+                senderId: currentUser.uid,
+            };
+            chunkUploadBatch.set(chunkDocRef, chunkData);
+            chunkIds.push(chunkDocRef.id);
+        }
+        
+        // This is a single atomic operation now
+        const finalBatch = writeBatch(db);
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
             id: messageRef.id,
@@ -599,6 +651,11 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             timestamp,
             videoMimeType: videoFile.type
         };
+
+        // 1. Create message doc
+        finalBatch.set(messageRef, { ...messageData, videoChunkIds: chunkIds, videoStatus: 'complete' });
+
+        // 2. Update chat doc
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
         if (item.type !== 'channel') {
             item.members.forEach((memberId) => {
@@ -607,60 +664,12 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 }
             });
         }
-        
-        const initialWriteBatch = writeBatch(db);
-        initialWriteBatch.set(messageRef, messageData);
-        initialWriteBatch.update(chatRef, updateData);
-        await initialWriteBatch.commit();
+        finalBatch.update(chatRef, updateData);
 
-        const videoBase64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(videoFile);
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
-            reader.onerror = (error) => reject(error);
-        });
-
-        const chunkStringAsync = (str: string, size: number): Promise<string[]> => {
-          return new Promise(resolve => {
-              const chunks: string[] = [];
-              let i = 0;
-              const process = () => {
-                  const end = Math.min(i + size, str.length);
-                  chunks.push(str.substring(i, end));
-                  i = end;
-                  if (i < str.length) {
-                      setTimeout(process, 0);
-                  } else {
-                      resolve(chunks);
-                  }
-              };
-              process();
-          });
-        };
-
-        const CHUNK_SIZE = 900 * 1024;
-        const base64Chunks = await chunkStringAsync(videoBase64, CHUNK_SIZE);
-
-        const videoChunksCollectionRef = collection(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks');
-        const chunkIds: string[] = [];
-        const chunkUploadBatch = writeBatch(db);
-        
-        for (const [index, chunk] of base64Chunks.entries()) {
-            const chunkDocRef = doc(videoChunksCollectionRef);
-            const chunkData: Omit<VideoChunk, 'id'> = {
-                data: chunk,
-                part: index,
-                senderId: currentUser.uid,
-            };
-            chunkUploadBatch.set(chunkDocRef, chunkData);
-            chunkIds.push(chunkDocRef.id);
-        }
+        // 3. Commit chunks and final batch
         await chunkUploadBatch.commit();
+        await finalBatch.commit();
 
-        await updateDoc(messageRef, { 
-            videoStatus: 'complete',
-            videoChunkIds: chunkIds,
-        });
 
     } catch (error) {
         console.error("Error during video upload process:", error);
@@ -1297,7 +1306,7 @@ function ChatMessage({
                 setVideoUrl(null); // Reset previous video URL if any
                 try {
                     const chunkSnaps = await Promise.all(
-                        message.videoChunkIds!.map(id => getDoc(doc(db, 'chats', chat.id, 'messages', message.id, 'videoChunks', id)))
+                        message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
                     );
                     
                     const chunksData: {part: number, data: string}[] = [];

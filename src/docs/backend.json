@@ -98,7 +98,7 @@
         "videoChunkIds": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "List of document IDs for the video chunks in the 'videoChunks' subcollection."
+            "description": "List of document IDs for the video chunks in the global 'videoChunks' collection."
         },
         "timestamp": {
           "type": "object",
@@ -150,11 +150,13 @@
       "description": "A single chunk of a video file, stored separately to avoid document size limits.",
       "type": "object",
       "properties": {
+        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
         "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
         "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
         "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
       },
-      "required": ["data", "part", "senderId"]
+      "required": ["chatId", "messageId", "data", "part", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -273,11 +275,11 @@
       },
       "description": "Stores messages for a specific chat."
     },
-    "/chats/{chatId}/messages/{messageId}/videoChunks/{chunkId}": {
+    "/videoChunks/{chunkId}": {
       "schema": {
         "$ref": "#/backend/entities/VideoChunk"
       },
-      "description": "Stores individual chunks of uploaded video files for a specific message."
+      "description": "Stores individual chunks of uploaded video files."
     },
     "/chatLinks/{linkId}": {
       "schema": {
