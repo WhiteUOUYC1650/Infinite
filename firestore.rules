@@ -79,7 +79,7 @@ service cloud.firestore {
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
 
         match /videoChunks/{chunkId} {
-          allow create: if isSignedIn();
+          allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
           allow read: if isSignedIn();
           allow update, delete: if false;
         }
