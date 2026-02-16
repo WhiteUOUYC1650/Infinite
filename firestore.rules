@@ -77,13 +77,19 @@ service cloud.firestore {
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
         allow update: if request.auth.uid == resource.data.senderId;
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
-
-        match /messages/{messageId}/videoChunks/{chunkId} {
-          allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-          allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-          allow update, delete: if false;
-        }
       }
+    }
+    
+    match /videoChunks/{chunkId} {
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /musicChunks/{chunkId} {
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update, delete: if false;
     }
     
     match /chatLinks/{linkId} {
