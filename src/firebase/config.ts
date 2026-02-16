@@ -4,11 +4,11 @@
 // https://firebase.google.com/docs/web/setup#get-config
 
 export const firebaseConfig = {
-    apiKey: "AIzaSyCYrlAOd0WWpQrH4gc9LIG4FrYwbUbRkgg",
-      authDomain: "whitegram-16506-pd.firebaseapp.com",
-        databaseURL: "https://whitegram-16506-pd-default-rtdb.firebaseio.com",
-          projectId: "whitegram-16506-pd",
-            storageBucket: "whitegram-16506-pd.firebasestorage.app",
-              messagingSenderId: "804605791227",
-                appId: "1:804605791227:web:40c202d0a207dbcb33595e"
-                };
+  apiKey: "AIzaSyCYrlAOd0WWpQrH4gc9LIG4FrYwbUbRkgg",
+  authDomain: "whitegram-16506-pd.firebaseapp.com",
+  databaseURL: "https://whitegram-16506-pd-default-rtdb.firebaseio.com",
+  projectId: "whitegram-16506-pd",
+  storageBucket: "whitegram-16506-pd.appspot.com",
+  messagingSenderId: "804605791227",
+  appId: "1:804605791227:web:40c202d0a207dbcb33595e"
+};
