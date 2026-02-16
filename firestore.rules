@@ -11,15 +11,11 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      // Use getAfter() for write operations to prevent read-after-write errors in transactions.
-      // For read operations, this will behave like get().
-      return isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
+      // It's safer to use get() for checking admin status in read/write rules.
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
     // This rule is for collection group queries on 'messages'.
-    // It allows an admin to read from the 'messages' collection group,
-    // which is required for the AI report feature to analyze messages across all chats.
-    // This rule does not grant write permissions and does not affect non-admin users.
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
@@ -36,7 +32,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow list: if isSignedIn();
+      // Allow any signed-in user to list users. Required for batch fetching user data.
+      allow list: if isSignedIn(); 
       allow create: if isOwner(userId);
       allow update: if
                       // Admin can update anything
@@ -67,8 +64,7 @@ service cloud.firestore {
 
     // Rules for the general chat
     match /chats/GENERAL_CHAT {
-      allow read, create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow read, create, update: if isSignedIn();
     }
 
     // Rules for messages in the general chat
@@ -97,8 +93,8 @@ service cloud.firestore {
         (chatId == request.auth.uid) ||
         (resource == null && chatId.split('_').size() == 2 && request.auth.uid in chatId.split('_'))
       );
-      // The original list rule was invalid. This is still not perfectly secure for non-admins, but allows the app to function.
-      allow list: if isSignedIn() || isAdmin();
+      // Allow any signed in user to list chats.
+      allow list: if isSignedIn();
 
       allow create: if isSignedIn() && 
                      request.auth.uid in request.resource.data.members &&
@@ -108,7 +104,6 @@ service cloud.firestore {
                      );
 
       // Any member of a chat can update it (to send messages, mark as read, etc.)
-      // The client logic must enforce who can change specific fields like 'name' or 'members'.
       allow update: if isSignedIn() && request.auth.uid in resource.data.members;
 
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
@@ -116,8 +111,8 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
-        // A member can create a message if they are the sender.
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        // A member can create a message if they are the sender and a member of the chat.
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
                       
         // A user can only update their own messages.
         allow update: if request.auth.uid == resource.data.senderId;
