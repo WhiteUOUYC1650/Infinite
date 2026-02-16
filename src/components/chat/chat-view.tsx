@@ -489,7 +489,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     
     try {
         if (originalFile?.type === 'video') {
-            await handleSendVideo(originalFile.file, originalContent, originalReplyTo, item, currentUser);
+            await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
@@ -498,6 +498,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setMessageContent(originalContent);
         setFileToSend(originalFile);
         setReplyToMessage(originalReplyTo);
+        
         if (error instanceof FirestorePermissionError) {
             errorEmitter.emit('permission-error', error);
         } else {
@@ -564,14 +565,14 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
     }
 };
 
-const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null, currentChat: PopulatedChat, user: AuthenticatedUser) => {
-    if (!db) return;
+const handleSendVideo = async (videoFile: File, content: string, replyTo: Message | null) => {
+    if (!db) throw new Error("Database not initialized");
     
-    const messageRef = doc(collection(db, 'chats', currentChat.id, 'messages'));
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const timestamp = Timestamp.now();
     
     const messageData: Omit<Message, 'id'> = {
-        senderId: user.uid,
+        senderId: currentUser.uid,
         content: content.replace(/\n/g, '  \n'),
         timestamp,
         videoMimeType: videoFile.type,
@@ -587,20 +588,19 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     };
 
     try {
-        // Atomically create the message doc and update the chat's lastMessage
-        const chatRef = doc(db, 'chats', currentChat.id);
+        const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
             id: messageRef.id,
             content: content || t('video_attachment_placeholder'),
-            senderId: user.uid,
-            senderName: user.name || user.username,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
             timestamp,
             videoMimeType: videoFile.type
         };
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (currentChat.type !== 'channel') {
-            currentChat.members.forEach((memberId) => {
-                if (memberId !== user.uid) {
+        if (item.type !== 'channel') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
                     updateData[`unreadCounts.${memberId}`] = increment(1);
                 }
             });
@@ -611,7 +611,6 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         initialWriteBatch.update(chatRef, updateData);
         await initialWriteBatch.commit();
 
-        // Read file, convert to base64, and split into chunks
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(videoFile);
@@ -619,14 +618,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             reader.onerror = (error) => reject(error);
         });
 
-        const CHUNK_SIZE = 900 * 1024; // 900KB, well below 1MB limit
+        const CHUNK_SIZE = 900 * 1024;
         const base64Chunks: string[] = [];
         for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
 
-        // Upload each chunk
-        const videoChunksCollectionRef = collection(db, 'chats', currentChat.id, 'messages', messageRef.id, 'videoChunks');
+        const videoChunksCollectionRef = collection(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks');
         const chunkIds: string[] = [];
         const chunkUploadBatch = writeBatch(db);
         
@@ -635,15 +633,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             const chunkData: Omit<VideoChunk, 'id'> = {
                 data: chunk,
                 part: index,
-                senderId: user.uid,
+                senderId: currentUser.uid,
             };
             chunkUploadBatch.set(chunkDocRef, chunkData);
             chunkIds.push(chunkDocRef.id);
         }
         await chunkUploadBatch.commit();
 
-
-        // Finalize the message: update status and add chunk IDs
         await updateDoc(messageRef, { 
             videoStatus: 'complete',
             videoChunkIds: chunkIds,
@@ -651,8 +647,16 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
 
     } catch (error) {
         console.error("Error during video upload process:", error);
-        await updateDoc(messageRef, { videoStatus: 'failed' });
-        throw error;
+        await updateDoc(messageRef, { videoStatus: 'failed' }).catch(()=>{});
+        
+        throw new FirestorePermissionError({
+            path: messageRef.path,
+            operation: 'write/update',
+            requestResourceData: { 
+                note: "Video upload process failed. Check security rules for creating messages and video chunks.",
+                originalError: (error as Error).message
+            },
+        });
     }
 };
   
