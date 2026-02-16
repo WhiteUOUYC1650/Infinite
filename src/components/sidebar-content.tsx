@@ -36,7 +36,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
@@ -831,8 +831,11 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                     {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
                 </div>
                 {lastMessageContent && 
-                    <p className={cn("text-xs truncate", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                       {senderPrefix}{lastMessageContent}
+                    <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                        {lastMessageSenderIsCurrentUser && !isSavedMessages && lastMessage.videoStatus === 'uploading' && (
+                            <Clock className="h-3 w-3 shrink-0" />
+                        )}
+                       <span>{senderPrefix}{lastMessageContent}</span>
                     </p>
                 }
             </div>
@@ -850,6 +853,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
+  const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
   
   let lastMessageContent: string | undefined;
   if (lastMessage?.imageUrl) {
@@ -860,7 +864,6 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     lastMessageContent = lastMessage?.content;
   }
 
-  const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
   let senderPrefix = '';
   if (item.type === 'group' && lastMessage) {
       if (senderIsCurrentUser) {
@@ -895,7 +898,11 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
           </div>
           {lastMessageContent && (
             <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                {lastMessage?.videoMimeType && <VideoIcon className="h-3 w-3 shrink-0" />}
+                {senderIsCurrentUser && lastMessage?.videoStatus === 'uploading' ? (
+                    <Clock className="h-3 w-3 shrink-0" />
+                ) : (
+                    lastMessage?.videoMimeType && <VideoIcon className="h-3 w-3 shrink-0" />
+                )}
                 <span>{senderPrefix}{lastMessageContent}</span>
             </p>
           )}

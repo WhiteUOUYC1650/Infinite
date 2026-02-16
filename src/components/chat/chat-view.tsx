@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost, Clock } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -599,7 +599,8 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username,
             timestamp,
-            videoMimeType: videoFile.type
+            videoMimeType: videoFile.type,
+            videoStatus: 'uploading',
         };
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
         if (item.type !== 'channel') {
@@ -665,6 +666,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             videoStatus: 'complete',
             videoChunkIds: chunkIds,
         });
+
+        // Also update the lastMessage on the chat if this is the last message
+        if (item.lastMessage?.id === messageRef.id) {
+            await updateDoc(chatRef, {
+                'lastMessage.videoStatus': 'complete'
+            });
+        }
 
     } catch (error) {
         console.error("Error during video upload process:", error);
@@ -1532,7 +1540,11 @@ function ChatMessage({
                 {message.editedAt && <span className="italic">{t('edited')}</span>}
                 <span>{timestamp}</span>
                 {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    <CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />
+                    message.videoStatus === 'uploading' ? (
+                        <Clock className="h-4 w-4" />
+                    ) : (
+                        <CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />
+                    )
                 )}
             </div>
         </>
