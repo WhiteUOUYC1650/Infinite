@@ -80,7 +80,7 @@ service cloud.firestore {
 
         match /videoChunks/{chunkId} {
           allow create: if request.resource.data.senderId == request.auth.uid;
-          allow read: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+          allow read: if isSignedIn();
           allow update, delete: if false;
         }
       }

@@ -294,6 +294,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 type: 'dm',
                 members: [currentUser.uid],
                 icon: 'Bookmark',
+                unreadCounts: { [currentUser.uid]: 0 },
             });
         } else {
             chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;

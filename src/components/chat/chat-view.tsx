@@ -127,6 +127,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video'} | null>(null);
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -569,25 +570,26 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     if (!db) throw new Error("Database not initialized");
     
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
-    const timestamp = Timestamp.now();
-    
-    const messageData: Omit<Message, 'id'> = {
-        senderId: currentUser.uid,
-        content: content.replace(/\n/g, '  \n'),
-        timestamp,
-        videoMimeType: videoFile.type,
-        videoStatus: 'uploading',
-        readBy: [],
-        ...(replyTo && {
-            replyTo: {
-                messageId: replyTo.id,
-                content: replyTo.content,
-                senderName: replyTo.sender?.name || replyTo.senderName || '',
-            },
-        }),
-    };
 
     try {
+        setIsProcessingVideo(true);
+        const timestamp = Timestamp.now();
+        
+        const messageData: Omit<Message, 'id'> = {
+            senderId: currentUser.uid,
+            content: content.replace(/\n/g, '  \n'),
+            timestamp,
+            videoMimeType: videoFile.type,
+            videoStatus: 'uploading',
+            readBy: [],
+            ...(replyTo && {
+                replyTo: {
+                    messageId: replyTo.id,
+                    content: replyTo.content,
+                    senderName: replyTo.sender?.name || replyTo.senderName || '',
+                },
+            }),
+        };
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
             id: messageRef.id,
@@ -617,6 +619,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
             reader.onerror = (error) => reject(error);
         });
+
+        // Yield to event loop to prevent Firebase timeout
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         const CHUNK_SIZE = 900 * 1024;
         const base64Chunks: string[] = [];
@@ -657,6 +662,8 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 originalError: (error as Error).message
             },
         });
+    } finally {
+        setIsProcessingVideo(false);
     }
 };
   
@@ -873,7 +880,13 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div className={cn("flex flex-col h-svh bg-background overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]", isMobile ? 'w-screen' : 'w-full')}>
+    <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]", isMobile ? 'w-screen' : 'w-full')}>
+      {isProcessingVideo && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">{t('processing_video')}</p>
+        </div>
+      )}
       {/* Chat Header */}
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b",
