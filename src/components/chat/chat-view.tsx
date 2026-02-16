@@ -625,20 +625,23 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
 
-        // Upload each chunk sequentially
+        // Upload each chunk
+        const videoChunksCollectionRef = collection(db, 'chats', currentChat.id, 'messages', messageRef.id, 'videoChunks');
         const chunkIds: string[] = [];
+        const chunkUploadBatch = writeBatch(db);
+        
         for (const [index, chunk] of base64Chunks.entries()) {
-            const chunkDocRef = doc(collection(db, "videoChunks"));
+            const chunkDocRef = doc(videoChunksCollectionRef);
             const chunkData: Omit<VideoChunk, 'id'> = {
                 data: chunk,
                 part: index,
-                messageId: messageRef.id,
-                chatId: currentChat.id,
                 senderId: user.uid,
             };
-            await setDoc(chunkDocRef, chunkData);
+            chunkUploadBatch.set(chunkDocRef, chunkData);
             chunkIds.push(chunkDocRef.id);
         }
+        await chunkUploadBatch.commit();
+
 
         // Finalize the message: update status and add chunk IDs
         await updateDoc(messageRef, { 
@@ -1265,7 +1268,7 @@ function ChatMessage({
                 setVideoUrl(null); // Reset previous video URL if any
                 try {
                     const chunkSnaps = await Promise.all(
-                        message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
+                        message.videoChunkIds!.map(id => getDoc(doc(db, 'chats', chat.id, 'messages', message.id, 'videoChunks', id)))
                     );
                     
                     const chunksData: {part: number, data: string}[] = [];
@@ -1297,7 +1300,7 @@ function ChatMessage({
             };
             fetchAndAssembleVideo();
         }
-    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id]);
+    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id]);
     
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;

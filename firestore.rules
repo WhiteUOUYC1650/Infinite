@@ -11,7 +11,6 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      // It's safer to use get() for checking admin status in read/write rules.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
@@ -21,7 +20,6 @@ service cloud.firestore {
     }
     
     match /calls/{callId} {
-      // Allow read/write if the user's ID is one of the two in the callId, which is formatted as uid1_uid2
       allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
     }
 
@@ -32,19 +30,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      // Allow any signed-in user to list users. Required for batch fetching user data.
       allow list: if isSignedIn(); 
       allow create: if isOwner(userId);
       allow update: if
-                      // Admin can update anything
                       isAdmin() ||
-                      // Owner can update their own profile...
                       (
                         isOwner(userId) &&
                         (
-                          // ...if they are NOT changing their username
                           request.resource.data.username == resource.data.username ||
-                          // ...OR if they ARE changing username as part of the specific delete operation
                           (
                             request.resource.data.isDeleted == true &&
                             request.resource.data.username == '@deleted_' + userId
@@ -55,87 +48,54 @@ service cloud.firestore {
     }
 
     match /usernames/{username} {
-        allow get: if true; // Allow checking for username availability before signup
+        allow get: if true;
         allow list: if false;
         allow create: if request.resource.data.uid == request.auth.uid;
         allow update: if false;
         allow delete: if resource.data.uid == request.auth.uid || isAdmin();
     }
 
-    // Rules for the general chat
-    match /chats/GENERAL_CHAT {
-      allow read, create, update: if isSignedIn();
-    }
-
-    // Rules for messages in the general chat
-    match /chats/GENERAL_CHAT/messages/{messageId} {
-      allow read, create: if isSignedIn();
-      allow update: if request.resource.data.senderId == request.auth.uid;
-      allow delete: if resource.data.senderId == request.auth.uid || isAdmin();
-    }
-    
-    match /videoChunks/{chunkId} {
-      // User can only create chunks for their own messages.
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.senderId;
-      // If a user can read the message doc, they can know the chunk IDs.
-      // Therefore, they are implicitly authorized to read the chunks.
-      // The expensive get() call is redundant and removed.
-      allow read: if isSignedIn();
-      allow update, delete: if false;
-    }
-
     match /chats/{chatId} {
-      // 1. You can get a chat if it exists and you are a member.
-      // 2. You can get your own "Saved Messages" chat.
-      // 3. You can check if a DM chat exists before creating it, but only if you are one of the members.
-      // 4. Any signed-in user can read the metadata of public groups and channels.
       allow get: if isSignedIn() && (
         (resource != null && resource.data.type in ['group', 'channel']) ||
         (resource != null && request.auth.uid in resource.data.members) ||
         (chatId == request.auth.uid) ||
         (resource == null && chatId.split('_').size() == 2 && request.auth.uid in chatId.split('_'))
       );
-      // Allow any signed in user to list chats.
       allow list: if isSignedIn();
-
       allow create: if isSignedIn() && 
                      request.auth.uid in request.resource.data.members &&
                      (
                         (request.resource.data.type == 'dm' && request.resource.data.members.size() <= 2) ||
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
-
-      // Any member of a chat can update it (to send messages, mark as read, etc.)
       allow update: if isSignedIn() && request.auth.uid in resource.data.members;
-
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        
-        // A member can create a message if they are the sender. The check for membership is removed to prevent issues with batch writes.
-        // The UI should prevent users from writing to chats they aren't members of.
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-                      
-        // A user can only update their own messages.
         allow update: if request.auth.uid == resource.data.senderId;
-
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group' && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
+
+        match /videoChunks/{chunkId} {
+          allow create: if request.resource.data.senderId == request.auth.uid;
+          allow read: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+          allow update, delete: if false;
+        }
       }
     }
     
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;
-      allow create: if isSignedIn(); // Relies on client transaction
+      allow create: if isSignedIn();
       allow update, delete: if false;
     }
 
     match /botLinks/{linkId} {
       allow get: if true;
       allow list: if false;
-      // Admins can create bot links.
-      // A user can create the /B/Infinite link if they are also setting isBot=true in the same transaction.
       allow create: if isAdmin() || (linkId == '%2FB%2FInfinite' && request.resource.data.botId == request.auth.uid && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBot == true);
       allow update, delete: if isAdmin();
     }
