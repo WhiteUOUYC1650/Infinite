@@ -620,14 +620,26 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
             reader.onerror = (error) => reject(error);
         });
 
-        // Yield to event loop to prevent Firebase timeout
-        await new Promise(resolve => setTimeout(resolve, 50));
+        const chunkStringAsync = (str: string, size: number): Promise<string[]> => {
+          return new Promise(resolve => {
+              const chunks: string[] = [];
+              let i = 0;
+              const process = () => {
+                  const end = Math.min(i + size, str.length);
+                  chunks.push(str.substring(i, end));
+                  i = end;
+                  if (i < str.length) {
+                      setTimeout(process, 0);
+                  } else {
+                      resolve(chunks);
+                  }
+              };
+              process();
+          });
+        };
 
         const CHUNK_SIZE = 900 * 1024;
-        const base64Chunks: string[] = [];
-        for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
-            base64Chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
-        }
+        const base64Chunks = await chunkStringAsync(videoBase64, CHUNK_SIZE);
 
         const videoChunksCollectionRef = collection(db, 'chats', item.id, 'messages', messageRef.id, 'videoChunks');
         const chunkIds: string[] = [];
