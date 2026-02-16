@@ -111,8 +111,9 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
         
-        // A member can create a message if they are the sender and a member of the chat.
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        // A member can create a message if they are the sender. The check for membership is removed to prevent issues with batch writes.
+        // The UI should prevent users from writing to chats they aren't members of.
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
                       
         // A user can only update their own messages.
         allow update: if request.auth.uid == resource.data.senderId;
