@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk, MusicChunk } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost, Clock } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -126,7 +126,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video'} | null>(null);
+  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music'} | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -490,6 +490,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         if (originalFile?.type === 'video') {
             await handleSendVideo(originalFile.file, originalContent, originalReplyTo);
+        } else if (originalFile?.type === 'music') {
+            await handleSendMusic(originalFile.file, originalContent, originalReplyTo);
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
@@ -612,8 +614,6 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         }
         batch.update(chatRef, updateData);
         await batch.commit();
-
-        // If we get here, the initial message is created. Now upload chunks.
         
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -623,32 +623,18 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         });
 
         const CHUNK_SIZE = 900 * 1024; // 900KB
-        const chunkStringAsync = (str: string, size: number): Promise<string[]> => {
-          return new Promise(resolve => {
-              const chunks: string[] = [];
-              let i = 0;
-              const process = () => {
-                  if (i >= str.length) {
-                      resolve(chunks);
-                      return;
-                  }
-                  const end = Math.min(i + size, str.length);
-                  chunks.push(str.substring(i, end));
-                  i = end;
-                  // Yield to the event loop
-                  setTimeout(process, 0); 
-              };
-              process();
-          });
-        };
-        const base64Chunks = await chunkStringAsync(videoBase64, CHUNK_SIZE);
         
-        // Step 2: Upload all chunks in a single batch
+        const chunks: string[] = [];
+        for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
+            chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
+            await new Promise(res => setTimeout(res, 0)); // Yield to event loop
+        }
+        
         const chunkUploadBatch = writeBatch(db);
         const videoChunksCollectionRef = collection(db, 'videoChunks');
         const chunkIds: string[] = [];
 
-        for (const [index, chunk] of base64Chunks.entries()) {
+        for (const [index, chunk] of chunks.entries()) {
             const chunkDocRef = doc(videoChunksCollectionRef);
             chunkUploadBatch.set(chunkDocRef, {
                 chatId: item.id,
@@ -668,7 +654,8 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         });
 
         // Also update the lastMessage on the chat if this is the last message
-        if (item.lastMessage?.id === messageRef.id) {
+        const chatDoc = await getDoc(chatRef);
+        if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, {
                 'lastMessage.videoStatus': 'complete'
             });
@@ -677,17 +664,126 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     } catch (error) {
         console.error("Error during video upload process:", error);
         
-        // Now, this update should work because the messageRef document exists.
         await updateDoc(messageRef, { videoStatus: 'failed' }).catch((updateError) => {
              console.error("Failed to update message status to 'failed'", updateError);
         });
         
-        // This is what will be displayed in the toast.
         throw new FirestorePermissionError({
             path: 'videoChunks', // This is the most likely failure point.
             operation: 'create',
             requestResourceData: { 
                 note: "Video chunk upload failed. Check security rules for creating video chunks.",
+                originalError: (error as Error).message
+            },
+        });
+    }
+};
+
+const handleSendMusic = async (musicFile: File, content: string, replyTo: Message | null) => {
+    if (!db) throw new Error("Database not initialized");
+    
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const chatRef = doc(db, 'chats', item.id);
+    const timestamp = Timestamp.now();
+
+    const messageData: Omit<Message, 'id'> = {
+        senderId: currentUser.uid,
+        content: content.replace(/\n/g, '  \n'),
+        timestamp,
+        musicMimeType: musicFile.type,
+        musicStatus: 'uploading', // Initial status
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
+
+    try {
+        // Step 1: Create the initial message and update the chat atomically.
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        
+        const lastMessageData = {
+            id: messageRef.id,
+            content: content || t('music_attachment_placeholder'),
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
+            timestamp,
+            musicMimeType: musicFile.type,
+            musicStatus: 'uploading',
+        };
+        const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        if (item.type !== 'channel') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
+                    updateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        batch.update(chatRef, updateData);
+        await batch.commit();
+
+        const musicBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(musicFile);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (error) => reject(error);
+        });
+
+        const CHUNK_SIZE = 900 * 1024; // 900KB
+        const chunks: string[] = [];
+        for (let i = 0; i < musicBase64.length; i += CHUNK_SIZE) {
+            chunks.push(musicBase64.substring(i, i + CHUNK_SIZE));
+            await new Promise(res => setTimeout(res, 0)); // Yield to event loop
+        }
+        
+        const musicUploadBatch = writeBatch(db);
+        const musicChunksCollectionRef = collection(db, 'musicChunks');
+        const chunkIds: string[] = [];
+
+        for (const [index, chunk] of chunks.entries()) {
+            const chunkDocRef = doc(musicChunksCollectionRef);
+            musicUploadBatch.set(chunkDocRef, {
+                chatId: item.id,
+                messageId: messageRef.id,
+                data: chunk,
+                part: index,
+                senderId: currentUser.uid,
+            });
+            chunkIds.push(chunkDocRef.id);
+        }
+        await musicUploadBatch.commit();
+
+        // Step 3: Finalize the message
+        await updateDoc(messageRef, {
+            musicStatus: 'complete',
+            musicChunkIds: chunkIds,
+        });
+
+        // Also update the lastMessage on the chat if this is the last message
+        const chatDoc = await getDoc(chatRef);
+        if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
+            await updateDoc(chatRef, {
+                'lastMessage.musicStatus': 'complete'
+            });
+        }
+
+    } catch (error) {
+        console.error("Error during music upload process:", error);
+        
+        await updateDoc(messageRef, { musicStatus: 'failed' }).catch((updateError) => {
+             console.error("Failed to update message status to 'failed'", updateError);
+        });
+        
+        throw new FirestorePermissionError({
+            path: 'musicChunks', // This is the most likely failure point.
+            operation: 'create',
+            requestResourceData: { 
+                note: "Music chunk upload failed. Check security rules for creating music chunks.",
                 originalError: (error as Error).message
             },
         });
@@ -846,6 +942,14 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 return;
             }
             setFileToSend({ file, previewUrl: dataUrl, type: 'image' });
+        } else if (file.type.startsWith('audio/')) {
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit for music
+                toast({ variant: 'destructive', title: t('music_too_large') });
+                setIsSending(false);
+                return;
+            }
+            const previewUrl = URL.createObjectURL(file);
+            setFileToSend({ file, previewUrl, type: 'music' });
         } else {
             toast({ variant: 'destructive', title: t('invalid_file_type') });
             setIsSending(false);
@@ -861,9 +965,9 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     }
   };
   
-  const handleAttachmentClick = (type: 'image' | 'video') => {
+  const handleAttachmentClick = (type: 'image' | 'video' | 'music') => {
     if (fileInputRef.current) {
-        fileInputRef.current.accept = type === 'image' ? 'image/*' : 'video/*';
+        fileInputRef.current.accept = type === 'image' ? 'image/*' : type === 'video' ? 'video/*' : 'audio/*';
         fileInputRef.current.click();
     }
   };
@@ -1141,9 +1245,14 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                 <div className="relative w-fit">
                     {fileToSend.type === 'image' ? (
                         <img src={fileToSend.previewUrl} alt="Preview" className="max-h-24 rounded-lg" />
-                    ) : (
+                    ) : fileToSend.type === 'video' ? (
                         <video src={fileToSend.previewUrl} controls className="max-h-24 rounded-lg" />
-                    )}
+                    ) : fileToSend.type === 'music' ? (
+                        <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                            <MusicIcon className="h-8 w-8 text-primary" />
+                            <p className="text-sm text-muted-foreground truncate max-w-xs">{fileToSend.file.name}</p>
+                        </div>
+                    ) : null}
                      {isSending ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
                             <Loader2 className="h-8 w-8 animate-spin text-white" />
@@ -1194,7 +1303,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
                                 <VideoIcon className="mr-2 h-4 w-4" />
                                 <span>{t('video')}</span>
                             </Button>
-                             <Button variant="ghost" className="justify-start" disabled>
+                             <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('music')}>
                                 <MusicIcon className="mr-2 h-4 w-4" />
                                 <span>{t('music')}</span>
                             </Button>
@@ -1299,6 +1408,11 @@ function ChatMessage({
     const hasVideo = !!message.videoMimeType;
     const videoStatus = message.videoStatus;
 
+    const [musicUrl, setMusicUrl] = useState<string | null>(null);
+    const [isLoadingMusic, setIsLoadingMusic] = useState(false);
+    const hasMusic = !!message.musicMimeType;
+    const musicStatus = message.musicStatus;
+
     useEffect(() => {
         if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
@@ -1340,6 +1454,46 @@ function ChatMessage({
         }
     }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id]);
     
+    useEffect(() => {
+        if (hasMusic && musicStatus === 'complete' && db && message.musicChunkIds && message.musicChunkIds.length > 0) {
+            const fetchAndAssembleMusic = async () => {
+                setIsLoadingMusic(true);
+                setMusicUrl(null);
+                try {
+                    const chunkSnaps = await Promise.all(
+                        message.musicChunkIds!.map(id => getDoc(doc(db, 'musicChunks', id)))
+                    );
+                    
+                    const chunksData: {part: number, data: string}[] = [];
+                    chunkSnaps.forEach(snap => {
+                        if (snap.exists()) {
+                            chunksData.push(snap.data() as {part: number, data: string});
+                        }
+                    });
+
+                    if (chunksData.length !== message.musicChunkIds!.length) {
+                        throw new Error("Failed to fetch all music chunks.");
+                    }
+                    
+                    chunksData.sort((a, b) => a.part - b.part);
+
+                    const assembledBase64 = chunksData.map(c => c.data).join('');
+                    const dataUrl = `data:${message.musicMimeType};base64,${assembledBase64}`;
+                    setMusicUrl(dataUrl);
+                } catch (e) {
+                    console.error("Error assembling music:", e);
+                    setMusicUrl(null);
+                    if (e instanceof FirestorePermissionError) {
+                        errorEmitter.emit('permission-error', e);
+                    }
+                } finally {
+                    setIsLoadingMusic(false);
+                }
+            };
+            fetchAndAssembleMusic();
+        }
+    }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id]);
+
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
         return chat.members.find((id) => id !== currentUser.uid);
@@ -1512,6 +1666,27 @@ function ChatMessage({
                             </div>
                         )}
                     </div>
+                ) : hasMusic ? (
+                    <div className="relative my-1">
+                        {(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && (
+                             <div className="w-full max-w-xs flex items-center justify-center bg-secondary rounded-lg p-4">
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            </div>
+                        )}
+                        {musicStatus === 'complete' && !isLoadingMusic && musicUrl && (
+                            <audio src={musicUrl} controls className="w-full max-w-xs" />
+                        )}
+                        {musicStatus === 'complete' && !isLoadingMusic && !musicUrl && (
+                             <div className="w-full max-w-xs flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                <p className='text-xs font-semibold text-center'>{t('music_load_failed')}</p>
+                            </div>
+                        )}
+                        {musicStatus === 'failed' && (
+                             <div className="w-full max-w-xs flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                                <p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p>
+                            </div>
+                        )}
+                    </div>
                 ) : message.imageUrl ? (
                     <div className="relative my-1">
                         <img 
@@ -1540,7 +1715,7 @@ function ChatMessage({
                 {message.editedAt && <span className="italic">{t('edited')}</span>}
                 <span>{timestamp}</span>
                 {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    message.videoStatus === 'uploading' ? (
+                    (message.videoStatus === 'uploading' || message.musicStatus === 'uploading') ? (
                         <Clock className="h-4 w-4" />
                     ) : (
                         <CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />

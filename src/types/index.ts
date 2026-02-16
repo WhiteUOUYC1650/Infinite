@@ -33,6 +33,9 @@ export type Message = {
   videoMimeType?: string;
   videoStatus?: 'uploading' | 'complete' | 'failed';
   videoChunkIds?: string[];
+  musicMimeType?: string;
+  musicStatus?: 'uploading' | 'complete' | 'failed';
+  musicChunkIds?: string[];
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;
@@ -44,6 +47,14 @@ export type Message = {
 };
 
 export type VideoChunk = {
+  chatId: string;
+  messageId: string;
+  data: string;
+  part: number;
+  senderId: string;
+};
+
+export type MusicChunk = {
   chatId: string;
   messageId: string;
   data: string;

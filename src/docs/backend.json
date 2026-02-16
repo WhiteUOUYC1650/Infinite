@@ -100,6 +100,20 @@
             "items": { "type": "string" },
             "description": "List of document IDs for the video chunks in the global 'videoChunks' collection."
         },
+        "musicMimeType": {
+            "type": "string",
+            "description": "MIME type of the music attachment."
+        },
+        "musicStatus": {
+            "type": "string",
+            "enum": ["uploading", "complete", "failed"],
+            "description": "The upload status of the music attachment."
+        },
+        "musicChunkIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of document IDs for the music chunks in the global 'musicChunks' collection."
+        },
         "timestamp": {
           "type": "object",
           "description": "The server timestamp when the message was created."
@@ -154,6 +168,19 @@
         "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
         "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
         "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
+        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
+      },
+      "required": ["chatId", "messageId", "data", "part", "senderId"]
+    },
+    "MusicChunk": {
+      "title": "Music Chunk",
+      "description": "A single chunk of a music file, stored separately to avoid document size limits.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
+        "data": { "type": "string", "description": "Base64 encoded data of the music chunk." },
+        "part": { "type": "number", "description": "The order of this chunk in the music sequence." },
         "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
       },
       "required": ["chatId", "messageId", "data", "part", "senderId"]
@@ -280,6 +307,12 @@
         "$ref": "#/backend/entities/VideoChunk"
       },
       "description": "Stores individual chunks of uploaded video files."
+    },
+    "/musicChunks/{chunkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MusicChunk"
+      },
+      "description": "Stores individual chunks of uploaded music files."
     },
     "/chatLinks/{linkId}": {
       "schema": {
