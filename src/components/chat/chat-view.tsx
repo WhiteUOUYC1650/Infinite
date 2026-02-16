@@ -127,7 +127,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video'} | null>(null);
-  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -570,30 +569,59 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     if (!db) throw new Error("Database not initialized");
     
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const chatRef = doc(db, 'chats', item.id);
+    const timestamp = Timestamp.now();
+
+    const messageData: Omit<Message, 'id'> = {
+        senderId: currentUser.uid,
+        content: content.replace(/\n/g, '  \n'),
+        timestamp,
+        videoMimeType: videoFile.type,
+        videoStatus: 'uploading', // Initial status
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
 
     try {
-        setIsProcessingVideo(true);
-        // Add a small delay to allow the UI to update before heavy processing
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        const timestamp = Timestamp.now();
+        // Step 1: Create the initial message and update the chat atomically.
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
         
-        const messageData: Omit<Message, 'id'> = {
+        const lastMessageData = {
+            id: messageRef.id,
+            content: content || t('video_attachment_placeholder'),
             senderId: currentUser.uid,
-            content: content.replace(/\n/g, '  \n'),
+            senderName: currentUser.name || currentUser.username,
             timestamp,
-            videoMimeType: videoFile.type,
-            videoStatus: 'uploading',
-            readBy: [],
-            ...(replyTo && {
-                replyTo: {
-                    messageId: replyTo.id,
-                    content: replyTo.content,
-                    senderName: replyTo.sender?.name || replyTo.senderName || '',
-                },
-            }),
+            videoMimeType: videoFile.type
         };
-       
+        const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        if (item.type !== 'channel') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
+                    updateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        batch.update(chatRef, updateData);
+        await batch.commit();
+
+        // If we get here, the initial message is created. Now upload chunks.
+        
+        const videoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(videoFile);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (error) => reject(error);
+        });
+
+        const CHUNK_SIZE = 900 * 1024; // 900KB
         const chunkStringAsync = (str: string, size: number): Promise<string[]> => {
           return new Promise(resolve => {
               const chunks: string[] = [];
@@ -612,79 +640,49 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
               process();
           });
         };
-
-        const videoBase64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(videoFile);
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
-            reader.onerror = (error) => reject(error);
-        });
-
-        const CHUNK_SIZE = 900 * 1024; // 900KB
         const base64Chunks = await chunkStringAsync(videoBase64, CHUNK_SIZE);
-
+        
+        // Step 2: Upload all chunks in a single batch
+        const chunkUploadBatch = writeBatch(db);
         const videoChunksCollectionRef = collection(db, 'videoChunks');
         const chunkIds: string[] = [];
-        const chunkUploadBatch = writeBatch(db);
-        
+
         for (const [index, chunk] of base64Chunks.entries()) {
             const chunkDocRef = doc(videoChunksCollectionRef);
-            const chunkData: Omit<VideoChunk, 'id'> = {
+            chunkUploadBatch.set(chunkDocRef, {
                 chatId: item.id,
                 messageId: messageRef.id,
                 data: chunk,
                 part: index,
                 senderId: currentUser.uid,
-            };
-            chunkUploadBatch.set(chunkDocRef, chunkData);
+            });
             chunkIds.push(chunkDocRef.id);
         }
-        
-        // This is a single atomic operation now
-        const finalBatch = writeBatch(db);
-        const chatRef = doc(db, 'chats', item.id);
-        const lastMessageData = {
-            id: messageRef.id,
-            content: content || t('video_attachment_placeholder'),
-            senderId: currentUser.uid,
-            senderName: currentUser.name || currentUser.username,
-            timestamp,
-            videoMimeType: videoFile.type
-        };
-
-        // 1. Create message doc
-        finalBatch.set(messageRef, { ...messageData, videoChunkIds: chunkIds, videoStatus: 'complete' });
-
-        // 2. Update chat doc
-        const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.type !== 'channel') {
-            item.members.forEach((memberId) => {
-                if (memberId !== currentUser.uid) {
-                    updateData[`unreadCounts.${memberId}`] = increment(1);
-                }
-            });
-        }
-        finalBatch.update(chatRef, updateData);
-
-        // 3. Commit chunks and final batch
         await chunkUploadBatch.commit();
-        await finalBatch.commit();
 
+        // Step 3: Finalize the message
+        await updateDoc(messageRef, {
+            videoStatus: 'complete',
+            videoChunkIds: chunkIds,
+        });
 
     } catch (error) {
         console.error("Error during video upload process:", error);
-        await updateDoc(messageRef, { videoStatus: 'failed' }).catch(()=>{});
         
+        // Now, this update should work because the messageRef document exists.
+        await updateDoc(messageRef, { videoStatus: 'failed' }).catch((updateError) => {
+             console.error("Failed to update message status to 'failed'", updateError);
+        });
+        
+        // This is what will be displayed in the toast.
         throw new FirestorePermissionError({
-            path: messageRef.path,
-            operation: 'write/update',
+            path: 'videoChunks', // This is the most likely failure point.
+            operation: 'create',
             requestResourceData: { 
-                note: "Video upload process failed. Check security rules for creating messages and video chunks.",
+                note: "Video chunk upload failed. Check security rules for creating video chunks.",
                 originalError: (error as Error).message
             },
         });
-    } finally {
-        setIsProcessingVideo(false);
     }
 };
   
@@ -902,12 +900,6 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]", isMobile ? 'w-screen' : 'w-full')}>
-      {isProcessingVideo && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">{t('processing_video')}</p>
-        </div>
-      )}
       {/* Chat Header */}
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b",

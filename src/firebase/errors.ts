@@ -14,9 +14,10 @@ export class FirestorePermissionError extends Error {
         this.context = context;
         // This is to make the error visible in the Next.js overlay
         if (typeof window !== 'undefined') {
-            setTimeout(() => {
-                throw this;
-            }, 0);
+            // No longer throwing automatically, will be displayed in a toast.
+            // setTimeout(() => {
+            //     throw this;
+            // }, 0);
         }
     }
 }
