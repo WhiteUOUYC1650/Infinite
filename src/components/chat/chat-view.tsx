@@ -307,6 +307,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, item, chatLoading, messagesLoading, membersLoading]);
 
+  // --- Scroll on media load ---
+  const handleMediaLoad = useCallback(() => {
+    // Using a small timeout to allow the browser to paint the new dimensions
+    // before we try to scroll.
+    setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, []);
+
   // --- Sticky Date Header Logic & Scroll Detection ---
     const handleScroll = useCallback(() => {
         // --- For sticky date ---
@@ -615,6 +624,7 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         batch.update(chatRef, updateData);
         await batch.commit();
         
+        // Now that the message exists, we can upload chunks.
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(videoFile);
@@ -627,25 +637,20 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
         const chunks: string[] = [];
         for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
             chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
-            await new Promise(res => setTimeout(res, 0)); // Yield to event loop
         }
         
-        const chunkUploadBatch = writeBatch(db);
-        const videoChunksCollectionRef = collection(db, 'videoChunks');
         const chunkIds: string[] = [];
-
-        for (const [index, chunk] of chunks.entries()) {
-            const chunkDocRef = doc(videoChunksCollectionRef);
-            chunkUploadBatch.set(chunkDocRef, {
-                chatId: item.id,
-                messageId: messageRef.id,
-                data: chunk,
+        for (const [index, chunkData] of chunks.entries()) {
+            const chunkDocRef = doc(collection(db, 'videoChunks'));
+            await setDoc(chunkDocRef, {
+                data: chunkData,
                 part: index,
-                senderId: currentUser.uid,
+                senderId: currentUser.uid, // Required for security rules
             });
             chunkIds.push(chunkDocRef.id);
+            // Yield to event loop to prevent freezing on large files
+            await new Promise(res => setTimeout(res, 0));
         }
-        await chunkUploadBatch.commit();
 
         // Step 3: Finalize the message
         await updateDoc(messageRef, {
@@ -664,10 +669,12 @@ const handleSendVideo = async (videoFile: File, content: string, replyTo: Messag
     } catch (error) {
         console.error("Error during video upload process:", error);
         
+        // This update might fail if the initial message creation failed, but we try anyway.
         await updateDoc(messageRef, { videoStatus: 'failed' }).catch((updateError) => {
              console.error("Failed to update message status to 'failed'", updateError);
         });
         
+        // This is what will be displayed in the toast.
         throw new FirestorePermissionError({
             path: 'videoChunks', // This is the most likely failure point.
             operation: 'create',
@@ -741,22 +748,17 @@ const handleSendMusic = async (musicFile: File, content: string, replyTo: Messag
             await new Promise(res => setTimeout(res, 0)); // Yield to event loop
         }
         
-        const musicUploadBatch = writeBatch(db);
-        const musicChunksCollectionRef = collection(db, 'musicChunks');
         const chunkIds: string[] = [];
-
-        for (const [index, chunk] of chunks.entries()) {
-            const chunkDocRef = doc(musicChunksCollectionRef);
-            musicUploadBatch.set(chunkDocRef, {
-                chatId: item.id,
-                messageId: messageRef.id,
-                data: chunk,
+        for (const [index, chunkData] of chunks.entries()) {
+            const chunkDocRef = doc(collection(db, 'musicChunks'));
+            await setDoc(chunkDocRef, {
+                data: chunkData,
                 part: index,
                 senderId: currentUser.uid,
             });
             chunkIds.push(chunkDocRef.id);
+            await new Promise(res => setTimeout(res, 0));
         }
-        await musicUploadBatch.commit();
 
         // Step 3: Finalize the message
         await updateDoc(messageRef, {
@@ -1176,6 +1178,7 @@ const handleSendMusic = async (musicFile: File, content: string, replyTo: Messag
                                           onInternalLinkClick={handleInternalLinkClick}
                                           onReply={handleReply}
                                           setEditingMessage={handleSetEditingMessage}
+                                          onMediaLoad={handleMediaLoad}
                                       />
                                   </React.Fragment>
                               );
@@ -1387,6 +1390,7 @@ function ChatMessage({
     onInternalLinkClick, 
     onReply,
     setEditingMessage,
+    onMediaLoad,
 }: { 
     message: Message, 
     sender?: User, 
@@ -1398,6 +1402,7 @@ function ChatMessage({
     onInternalLinkClick: (href: string) => Promise<void>,
     onReply: (message: Message) => void,
     setEditingMessage: (message: Message | null) => void,
+    onMediaLoad: () => void,
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -1653,7 +1658,7 @@ function ChatMessage({
                             </div>
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
-                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" />
+                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
                              <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
@@ -1674,7 +1679,7 @@ function ChatMessage({
                             </div>
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && musicUrl && (
-                            <audio src={musicUrl} controls className="w-full" />
+                            <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && !musicUrl && (
                              <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
@@ -1693,6 +1698,7 @@ function ChatMessage({
                             src={message.imageUrl} 
                             alt={t('image_attachment_alt')} 
                             className="max-w-xs max-h-80 object-cover rounded-lg"
+                            onLoad={onMediaLoad}
                         />
                     </div>
                 ) : null}
