@@ -1669,20 +1669,20 @@ function ChatMessage({
                 ) : hasMusic ? (
                     <div className="relative my-1">
                         {(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && (
-                             <div className="w-full max-w-xs flex items-center justify-center bg-secondary rounded-lg p-4">
+                             <div className="w-full flex items-center justify-center bg-secondary rounded-lg p-4">
                                 <Loader2 className="h-8 w-8 animate-spin" />
                             </div>
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && musicUrl && (
-                            <audio src={musicUrl} controls className="w-full max-w-xs" />
+                            <audio src={musicUrl} controls className="w-full" />
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && !musicUrl && (
-                             <div className="w-full max-w-xs flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                             <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
                                 <p className='text-xs font-semibold text-center'>{t('music_load_failed')}</p>
                             </div>
                         )}
                         {musicStatus === 'failed' && (
-                             <div className="w-full max-w-xs flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
+                             <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
                                 <p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p>
                             </div>
                         )}
