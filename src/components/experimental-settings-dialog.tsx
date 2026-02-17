@@ -47,7 +47,7 @@ import remarkGfm from 'remark-gfm';
 import { EditProfileDialog } from './edit-profile-dialog';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { DailyBonusWheel, PRIZES } from './daily-bonus-wheel';
+import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus';
 
@@ -90,7 +90,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Subscription state
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<'monthly' | 'yearly'>('monthly');
 
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -195,14 +198,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   };
 
   const handleSubscribe = async () => {
-    if (!db || currentUser.isPrem || (currentUser.infGoldBalance ?? 0) < 100) return;
+    const cost = subscriptionPlan === 'yearly' ? 1000 : 100;
+    if (!db || currentUser.isPrem || (currentUser.infGoldBalance ?? 0) < cost) return;
     setIsSubscribing(true);
 
     try {
         const userRef = doc(db, 'users', currentUser.uid);
         await updateDoc(userRef, {
             isPrem: true,
-            infGoldBalance: increment(-100)
+            infGoldBalance: increment(-cost)
         });
         toast({
             title: t('subscription_successful_title'),
@@ -216,29 +220,32 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
-  const handleSpin = async (): Promise<number> => {
-    const prize = PRIZES[Math.floor(Math.random() * PRIZES.length)];
-    const prizeIndex = PRIZES.indexOf(prize);
+  const handleSpin = async (): Promise<void> => {
+    // Weighted random selection
+    const totalWeight = PRIZES_WITH_ANGLES.reduce((sum, p) => sum + p.weight, 0);
+    let randomWeight = Math.random() * totalWeight;
+    const winningPrize = PRIZES_WITH_ANGLES.find(p => {
+        randomWeight -= p.weight;
+        return randomWeight <= 0;
+    })!;
     
     const baseRotation = 360 * 5; 
-    const segmentAngle = 360 / PRIZES.length;
-    const prizeAngle = prizeIndex * segmentAngle;
+    const prizeAngle = winningPrize.startAngle + winningPrize.angle / 2;
+    const randomOffset = (Math.random() - 0.5) * (winningPrize.angle * 0.8);
     
-    const randomOffset = (Math.random() - 0.5) * (segmentAngle * 0.8);
-    
-    setWheelRotation(prev => prev - (prev % 360) + baseRotation - prizeAngle - randomOffset);
+    setWheelRotation(prev => (prev - (prev % 360)) + baseRotation - prizeAngle - randomOffset);
 
     // Delay showing result to match animation
     setTimeout(async () => {
         toast({
             title: t('you_won'),
-            description: `${prize} InfGold!`,
+            description: `${winningPrize.value} InfGold!`,
         });
         setSpinning(false);
         try {
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, {
-                infGoldBalance: increment(prize),
+                infGoldBalance: increment(winningPrize.value),
                 lastDailyBonusClaimed: serverTimestamp(),
             });
         } catch (e) {
@@ -246,8 +253,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to claim bonus.'});
         }
     }, 5000); // animation duration
-
-    return prize;
 };
 
 
@@ -314,10 +319,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const themePageContent = (
     <RadioGroup value={theme} onValueChange={(v) => setTheme(v as any)} className="p-4 space-y-1">
-        {(['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger'] as const).map(themeName => (
+        {(['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger', 'shining_gold'] as const).map(themeName => (
             <div key={themeName} className="flex items-center space-x-2">
                 <RadioGroupItem value={themeName} id={`theme-${themeName}`} />
-                <Label htmlFor={`theme-${themeName}`} className='capitalize cursor-pointer'>{t(themeName === 'frutiger' ? 'frutiger_aero' : themeName)}</Label>
+                <Label htmlFor={`theme-${themeName}`} className='capitalize cursor-pointer'>{t(themeName === 'frutiger' ? 'frutiger_aero' : (themeName as any))}</Label>
             </div>
         ))}
     </RadioGroup>
@@ -459,7 +464,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   );
 
   const premPageContent = (
-      <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6">
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -480,20 +485,41 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         {currentUser.isPrem ? (
             <Button disabled className='w-full'>{t('already_subscribed')}</Button>
         ) : (
-            <Button 
-                onClick={handleSubscribe} 
-                disabled={(currentUser.infGoldBalance ?? 0) < 100 || isSubscribing} 
-                className='w-full'
-            >
-                {isSubscribing ? <Loader2 className="animate-spin" /> : t('subscribe_for_100')}
-            </Button>
+            <>
+                <RadioGroup value={subscriptionPlan} onValueChange={(value: any) => setSubscriptionPlan(value)} className="space-y-2">
+                    <Label htmlFor="monthly" className="flex items-center gap-4 rounded-md border p-4 cursor-pointer hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:ring-1 has-[input:checked]:ring-primary">
+                        <RadioGroupItem value="monthly" id="monthly" />
+                        <div className='flex-1'>
+                            <p className="font-semibold">{t('monthly')}</p>
+                            <p className="text-sm text-muted-foreground">{t('subscribe_monthly')}</p>
+                        </div>
+                    </Label>
+                    <Label htmlFor="yearly" className="flex items-center gap-4 rounded-md border p-4 cursor-pointer hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:ring-1 has-[input:checked]:ring-primary">
+                        <RadioGroupItem value="yearly" id="yearly" />
+                        <div className='flex-1'>
+                            <p className="font-semibold">{t('yearly')}</p>
+                            <p className="text-sm text-muted-foreground">{t('subscribe_yearly')}</p>
+                        </div>
+                         <Badge variant="secondary">{t('yearly_discount_note')}</Badge>
+                    </Label>
+                </RadioGroup>
+
+                <Button 
+                    onClick={handleSubscribe} 
+                    disabled={isSubscribing || (currentUser.infGoldBalance ?? 0) < (subscriptionPlan === 'yearly' ? 1000 : 100)}
+                    className='w-full'
+                >
+                    {isSubscribing ? <Loader2 className="animate-spin" /> : t('subscribe')}
+                </Button>
+
+                { (currentUser.infGoldBalance ?? 0) < (subscriptionPlan === 'yearly' ? 1000 : 100) && (
+                    <p className="text-sm text-center text-destructive">{t('not_enough_gold')}</p>
+                )}
+            </>
         )}
-        
-        { !currentUser.isPrem && (currentUser.infGoldBalance ?? 0) < 100 && (
-            <p className="text-sm text-center text-destructive">{t('not_enough_gold')}</p>
-        )}
-      </div>
+    </div>
   );
+
 
   const dailyBonusPageContent = (
       <div className="p-4 flex flex-col items-center">
@@ -537,7 +563,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           )}
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        <ScrollArea ref={scrollAreaRef}>
+        <ScrollArea ref={scrollAreaRef} className="animate-in fade-in-0 duration-300">
            <div 
                 key={page} 
                 className={cn(

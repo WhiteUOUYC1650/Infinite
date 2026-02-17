@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 
-type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger';
+type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger' | 'shining_gold';
 
 type ThemeColors = { [key: string]: string };
 
@@ -286,6 +286,36 @@ const THEMES: Record<Theme, ThemeConfig> = {
     },
     backgroundImage: 'frutiger_aero_background',
   },
+  shining_gold: {
+    light: {
+      primary: '45 100% 51%', // gold
+      foreground: '45 100% 98%', // very light yellow
+      background: '35 20% 95%', // off-white
+      card: '35 20% 98%',
+      'sidebar-background': '35 20% 98%',
+      popover: '35 20% 98%',
+      muted: '35 20% 92%',
+      border: '35 20% 85%',
+      input: '35 20% 88%',
+      sidebarForeground: '35 20% 20%',
+      sidebarAccent: '35 20% 92%',
+      sidebarAccentForeground: '35 20% 20%',
+    },
+    dark: {
+      primary: '45 100% 51%', // gold
+      foreground: '45 100% 10%', // almost black for text on gold
+      background: '35 10% 10%', // very dark brown/black
+      card: '35 10% 12%',
+      'sidebar-background': '35 10% 12%',
+      popover: '35 10% 10%',
+      muted: '35 10% 18%',
+      border: '35 10% 25%',
+      input: '35 10% 25%',
+      sidebarForeground: '35 20% 95%',
+      sidebarAccent: '35 10% 18%',
+      sidebarAccentForeground: '35 20% 95%',
+    }
+  }
 };
 
 interface ThemeContextType {
