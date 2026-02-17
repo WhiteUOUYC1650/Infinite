@@ -86,7 +86,8 @@ export function DailyBonusWheel({ onSpin, isSpinning, canSpin, rotation }: Daily
                         <span 
                             className="flex items-center gap-1 pt-4" 
                             style={{ 
-                                transform: `rotate(${-midAngle}deg)`
+                                transform: `rotate(${-midAngle}deg)`,
+                                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
                             }}
                         >
                             {prize.value}

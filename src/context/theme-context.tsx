@@ -288,34 +288,34 @@ const THEMES: Record<Theme, ThemeConfig> = {
   },
   shining_gold: {
     light: {
-      primary: '45 100% 51%', // gold
-      foreground: '45 100% 98%', // very light yellow
-      background: '35 20% 95%', // off-white
-      card: '35 20% 98%',
-      'sidebar-background': '35 20% 98%',
-      popover: '35 20% 98%',
-      muted: '35 20% 92%',
-      border: '35 20% 85%',
-      input: '35 20% 88%',
-      sidebarForeground: '35 20% 20%',
-      sidebarAccent: '35 20% 92%',
-      sidebarAccentForeground: '35 20% 20%',
+      primary: '42 90% 55%',
+      foreground: '42 90% 98%',
+      background: '38 30% 95%',
+      card: '38 30% 98%',
+      'sidebar-background': '38 30% 98%',
+      popover: '38 30% 98%',
+      muted: '38 30% 92%',
+      border: '38 25% 85%',
+      input: '38 25% 88%',
+      sidebarForeground: '38 20% 20%',
+      sidebarAccent: '38 30% 92%',
+      sidebarAccentForeground: '38 20% 20%',
     },
     dark: {
-      primary: '45 100% 51%', // gold
-      foreground: '45 100% 10%', // almost black for text on gold
-      background: '35 10% 10%', // very dark brown/black
-      card: '35 10% 12%',
-      'sidebar-background': '35 10% 12%',
-      popover: '35 10% 10%',
-      muted: '35 10% 18%',
+      primary: '42 90% 55%',
+      foreground: '42 90% 10%',
+      background: '35 15% 10%',
+      card: '35 15% 12%',
+      'sidebar-background': '35 15% 12%',
+      popover: '35 15% 10%',
+      muted: '35 15% 18%',
       border: '35 10% 25%',
       input: '35 10% 25%',
       sidebarForeground: '35 20% 95%',
-      sidebarAccent: '35 10% 18%',
+      sidebarAccent: '35 15% 18%',
       sidebarAccentForeground: '35 20% 95%',
-    }
-  }
+    },
+  },
 };
 
 interface ThemeContextType {
