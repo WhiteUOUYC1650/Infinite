@@ -41,7 +41,7 @@ import { useRouter } from 'next/navigation';
 
 import { UserProfileCard } from './user-profile-card';
 import { useLanguage } from '@/context/language-context';
-import { useTheme } from '@/context/theme-context';
+import { useTheme, type Theme } from '@/context/theme-context';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -333,6 +333,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     { question: t('faq_create_chat_q'), answer: t('faq_create_chat_a') },
     { question: t('faq_invite_q'), answer: t('faq_invite_a') },
     { question: t('faq_edit_profile_q'), answer: t('faq_edit_profile_a') },
+    { question: t('faq_calls_q'), answer: t('faq_calls_a') },
+    { question: t('faq_media_q'), answer: t('faq_media_a') },
+    { question: t('faq_infgold_q'), answer: t('faq_infgold_a') },
+    { question: t('faq_prem_q'), answer: t('faq_prem_a') },
     { question: t('faq_bot_q'), answer: t('faq_bot_a') },
     { question: t('faq_security_q'), answer: t('faq_security_a') },
   ];
@@ -373,14 +377,31 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </>
   );
   
+  const currentTierLevel = subscriptionTiers.find(t => t.id === currentUser.subscriptionTier)?.level ?? 0;
+  const premTierLevel = subscriptionTiers.find(t => t.id === 'prem')?.level ?? 3;
+  const hasPremAccess = currentTierLevel >= premTierLevel;
+  const allThemes: Theme[] = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger', 'shining_gold'];
+  
   const themePageContent = (
     <RadioGroup value={theme} onValueChange={(v) => setTheme(v as any)} className="p-4 space-y-1">
-        {(['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger', 'shining_gold'] as const).map(themeName => (
-            <div key={themeName} className="flex items-center space-x-2">
-                <RadioGroupItem value={themeName} id={`theme-${themeName}`} />
-                <Label htmlFor={`theme-${themeName}`} className='capitalize cursor-pointer'>{t(themeName === 'frutiger' ? 'frutiger_aero' : (themeName as any))}</Label>
-            </div>
-        ))}
+        {allThemes.map(themeName => {
+            const isPremium = themeName === 'shining_gold';
+            const isDisabled = isPremium && !hasPremAccess;
+
+            if (isDisabled && theme !== themeName) {
+                return null;
+            }
+            
+            return (
+                <div key={themeName} className={cn("flex items-center space-x-2", isDisabled && "opacity-50")}>
+                    <RadioGroupItem value={themeName} id={`theme-${themeName}`} disabled={isDisabled} />
+                    <Label htmlFor={`theme-${themeName}`} className={cn('capitalize', !isDisabled && 'cursor-pointer')}>
+                        {t(themeName === 'frutiger' ? 'frutiger_aero' : (themeName as any))}
+                        {isPremium && <Crown className="inline-block ml-2 h-4 w-4 text-amber-500" />}
+                    </Label>
+                </div>
+            )
+        })}
     </RadioGroup>
   );
 
@@ -470,17 +491,18 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const premPageContent = (
     <div className="p-4 space-y-6">
-        <RadioGroup defaultValue={subscriptionPlan} onValueChange={(value: any) => setSubscriptionPlan(value)} className="flex justify-center gap-4">
+        <RadioGroup defaultValue={subscriptionPlan} onValueChange={(value: any) => setSubscriptionPlan(value)} className="grid grid-cols-2 gap-4">
             <div>
                 <RadioGroupItem value="monthly" id="monthly" className="sr-only" />
-                <Label htmlFor="monthly" className={cn("rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary")}>
+                <Label htmlFor="monthly" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer")}>
                     {t('monthly')}
                 </Label>
             </div>
             <div>
                 <RadioGroupItem value="yearly" id="yearly" className="sr-only" />
-                <Label htmlFor="yearly" className={cn("rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary")}>
-                    {t('yearly')}
+                <Label htmlFor="yearly" className={cn("flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer")}>
+                     {t('yearly')}
+                     <Badge variant="secondary" className="mt-1">{t('yearly_discount_note')}</Badge>
                 </Label>
             </div>
         </RadioGroup>

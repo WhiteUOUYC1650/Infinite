@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 
-type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger' | 'shining_gold';
+export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger' | 'shining_gold';
 
 type ThemeColors = { [key: string]: string };
 

@@ -45,6 +45,22 @@ export function FaqDialog({ open, onOpenChange }: FaqDialogProps) {
       answer: t('faq_edit_profile_a'),
     },
     {
+      question: t('faq_calls_q'),
+      answer: t('faq_calls_a'),
+    },
+    {
+      question: t('faq_media_q'),
+      answer: t('faq_media_a'),
+    },
+    {
+      question: t('faq_infgold_q'),
+      answer: t('faq_infgold_a'),
+    },
+    {
+      question: t('faq_prem_q'),
+      answer: t('faq_prem_a'),
+    },
+    {
       question: t('faq_bot_q'),
       answer: t('faq_bot_a'),
     },
