@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { useLanguage } from '@/context/language-context';
+import { useTheme } from '@/context/theme-context';
 
 function DraggableCallBubble({ onClick }: { onClick: () => void }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -127,6 +128,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const db = useFirestore();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { minimizeCallOnClose } = useTheme();
   
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
@@ -254,7 +256,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 if (!data || !pcInstance) return;
 
                 // Callee gets offer and creates answer
-                if (!isCaller && data.offer && !offerApplied.current) {
+                if (!isCaller && data.offer && !offerApplied.current && pcInstance.signalingState === 'have-remote-offer') {
                     offerApplied.current = true;
                     await pcInstance.setRemoteDescription(new RTCSessionDescription(data.offer));
                     const answer = await pcInstance.createAnswer();
@@ -266,7 +268,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 }
                 
                 // Caller gets answer
-                if (isCaller && data.answer && !answerApplied.current) {
+                if (isCaller && data.answer && !answerApplied.current && pcInstance.signalingState === 'stable') {
                      answerApplied.current = true;
                      await pcInstance.setRemoteDescription(new RTCSessionDescription(data.answer));
                 }
@@ -333,12 +335,20 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             className="max-w-sm" 
             hideCloseButton
             onEscapeKeyDown={(e) => {
+              if (minimizeCallOnClose) {
                 e.preventDefault();
                 handleMinimize();
+              } else {
+                e.preventDefault();
+              }
             }}
             onPointerDownOutside={(e) => {
+              if (minimizeCallOnClose) {
                 e.preventDefault();
                 handleMinimize();
+              } else {
+                e.preventDefault();
+              }
             }}
           >
             <DialogHeader className="items-center text-center space-y-4">

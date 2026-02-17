@@ -299,6 +299,8 @@ interface ThemeContextType {
   toggleExperimentalMenu: () => void;
   sendOnEnter: boolean;
   toggleSendOnEnter: () => void;
+  minimizeCallOnClose: boolean;
+  toggleMinimizeCallOnClose: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -309,6 +311,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [showSnowflakes, setShowSnowflakes] = useState(false);
   const [useExperimentalMenu, setUseExperimentalMenu] = useState(false);
   const [sendOnEnter, setSendOnEnter] = useState(false);
+  const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -317,6 +320,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
     const storedExperimentalMenu = localStorage.getItem('app-experimental-menu');
     const storedSendOnEnter = localStorage.getItem('app-send-on-enter');
+    const storedMinimizeCall = localStorage.getItem('app-minimize-call');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -338,6 +342,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (storedSendOnEnter) {
       setSendOnEnter(storedSendOnEnter === 'true');
+    }
+
+    if (storedMinimizeCall) {
+      setMinimizeCallOnClose(storedMinimizeCall === 'true');
     }
 
     setIsMounted(true);
@@ -439,6 +447,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const handleToggleMinimizeCallOnClose = () => {
+    setMinimizeCallOnClose(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-minimize-call', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -450,6 +466,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleExperimentalMenu: handleToggleExperimentalMenu,
     sendOnEnter,
     toggleSendOnEnter: handleToggleSendOnEnter,
+    minimizeCallOnClose,
+    toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
   };
 
   if (!isMounted) {

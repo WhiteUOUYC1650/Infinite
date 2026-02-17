@@ -268,6 +268,7 @@ export const translations = {
       'version_0_1_2_changes': 'Version 0.1.2 (Beta) - Theming & UI\n- Added multiple new color themes.\n- Introduced Dark Mode.\n- Added experimental \'Frutiger Aero\' theme.',
       'version_0_1_1_changes': 'Version 0.1.1 (Beta) - Initial Fixes\n- Resolved early bugs from the initial release.\n- Improved UI responsiveness.',
       'version_0_1_changes': 'Version 0.1 (Beta) - Initial Release\n- Core chat functionality: DMs, groups, and channels.\n- User authentication and profiles.\n- Real-time online status.\n- Dark mode and multiple color themes.',
+      'minimize_call_on_close_label': 'Minimize call window on background click',
     },
     ru: {
       'settings': 'Настройки',
@@ -538,6 +539,7 @@ export const translations = {
       'version_0_1_2_changes': 'Версия 0.1.2 (Бета) - Темы и интерфейс\n- Добавлено несколько новых цветовых тем.\n- Внедрен темный режим.\n- Добавлена экспериментальная тема "Frutiger Aero".',
       'version_0_1_1_changes': 'Версия 0.1.1 (Бета) - Первые исправления\n- Устранены ранние ошибки после первоначального выпуска.\n- Улучшена адаптивность интерфейса.',
       'version_0_1_changes': 'Версия 0.1 (Бета) - Первый выпуск\n- Базовый функционал чата: личные сообщения, группы и каналы.\n- Аутентификация пользователей и профили.\n- Статус онлайн в реальном времени.\n- Темный режим и несколько цветовых тем.',
+      'minimize_call_on_close_label': 'Сворачивать окно звонка при клике по фону',
     }
   };
   
