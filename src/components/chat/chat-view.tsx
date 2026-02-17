@@ -1671,7 +1671,7 @@ function ChatMessage({
                             </div>
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
-                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg themed-media-player" onLoadedData={onMediaLoad} />
+                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />
                         )}
                         {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
                              <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
@@ -1692,7 +1692,7 @@ function ChatMessage({
                             </div>
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && musicUrl && (
-                            <audio src={musicUrl} controls className="w-full themed-media-player" onLoadedData={onMediaLoad} />
+                            <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
                         )}
                         {musicStatus === 'complete' && !isLoadingMusic && !musicUrl && (
                              <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
@@ -1784,7 +1784,10 @@ function ChatMessage({
                {messageBubbleContent}
             </div>
 
-            <div className="flex-shrink-0 self-center">
+            <div className={cn(
+                "flex-shrink-0 self-center w-0 group-hover:w-8 focus-within:w-8 transition-[width]",
+                !alignRight && "order-last"
+            )}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -1792,7 +1795,7 @@ function ChatMessage({
                             size="icon"
                             data-menu-trigger="true"
                             className={cn(
-                                "h-8 w-8 transition-transform scale-0 group-hover:scale-100 focus:scale-100 data-[state=open]:scale-100"
+                                "h-8 w-8"
                             )}
                         >
                             <MoreVertical className="h-4 w-4" />

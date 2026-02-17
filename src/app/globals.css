@@ -39,6 +39,8 @@ body {
     --sidebar-primary-foreground: 25 85% 95%;
     --sidebar-accent: 30 50% 88%;
     --sidebar-accent-foreground: 20 14.3% 4.1%;
+    color-scheme: light;
+    accent-color: hsl(var(--primary));
   }
 
   .dark {
@@ -74,6 +76,7 @@ body {
     --sidebar-accent-foreground: 30 71% 92%;
     --sidebar-border: 20 10% 25%;
     --sidebar-ring: 25 95% 53%;
+    color-scheme: dark;
   }
 }
 
@@ -106,19 +109,12 @@ body {
   background-color: white;
   border-radius: 50%;
   animation: snowfall linear infinite;
-  z-index: 100;
+  z-index: 101;
   opacity: 0;
   pointer-events: none;
 }
 
 @layer components {
-  .themed-media-player {
-    color-scheme: light;
-  }
-  .dark .themed-media-player {
-    color-scheme: dark;
-  }
-
   .theme-frutiger [data-sidebar="sidebar"],
   .theme-frutiger main {
     backdrop-filter: blur(8px);
