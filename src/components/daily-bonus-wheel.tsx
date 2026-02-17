@@ -78,7 +78,7 @@ export function DailyBonusWheel({ onSpin, isSpinning, canSpin, rotation }: Daily
                 return (
                     <div
                         key={i}
-                        className="absolute top-0 left-0 w-full h-full flex justify-center text-white font-bold text-lg"
+                        className="absolute top-0 left-0 w-full h-full flex justify-center items-start text-white font-bold text-lg"
                         style={{
                             transform: `rotate(${midAngle}deg)`,
                         }}
