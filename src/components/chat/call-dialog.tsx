@@ -14,12 +14,14 @@ import { useLanguage } from '@/context/language-context';
 
 function DraggableCallBubble({ onClick }: { onClick: () => void }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 120 });
   const dragInfo = useRef<{isDragging: boolean, didMove: boolean, startX: number, startY: number, offsetX: number, offsetY: number}>({isDragging: false, didMove: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0});
 
   useEffect(() => {
     // Set initial position after mount to access window object
-    setPosition({ x: window.innerWidth - 100, y: window.innerHeight - 120 });
+    const initialX = document.documentElement.clientWidth - 80;
+    const initialY = document.documentElement.clientHeight - 100;
+    setPosition({ x: initialX, y: initialY });
   }, []);
 
 
@@ -53,8 +55,10 @@ function DraggableCallBubble({ onClick }: { onClick: () => void }) {
       let newY = e.clientY - dragInfo.current.offsetY;
 
       // Constrain to viewport
-      newX = Math.max(0, Math.min(newX, window.innerWidth - bubbleRef.current.offsetWidth));
-      newY = Math.max(0, Math.min(newY, window.innerHeight - bubbleRef.current.offsetHeight));
+      const constrainX = document.documentElement.clientWidth - bubbleRef.current.offsetWidth;
+      const constrainY = document.documentElement.clientHeight - bubbleRef.current.offsetHeight;
+      newX = Math.max(0, Math.min(newX, constrainX));
+      newY = Math.max(0, Math.min(newY, constrainY));
 
       setPosition({ x: newX, y: newY });
     };
@@ -92,7 +96,7 @@ function DraggableCallBubble({ onClick }: { onClick: () => void }) {
       onClick={handleClick}
       className="fixed z-[100] flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-green-500/90 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-105"
       style={{
-        transform: `translate(${position.x}px, ${position.y}px)`,
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
       }}
     >
       <Phone className="h-8 w-8 text-white" strokeWidth={1.5} />
@@ -128,6 +132,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const localStream = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const answerApplied = useRef(false);
+  const offerApplied = useRef(false);
 
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
@@ -187,6 +192,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     setCallStatus('connecting');
     setIsMinimized(false);
     answerApplied.current = false;
+    offerApplied.current = false;
     setDuration(0);
 
     let callDocUnsubscribe: () => void;
@@ -248,7 +254,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 if (!data || !pcInstance) return;
 
                 // Callee gets offer and creates answer
-                if (!isCaller && data.offer && pcInstance.signalingState === 'stable') {
+                if (!isCaller && data.offer && !offerApplied.current) {
+                    offerApplied.current = true;
                     await pcInstance.setRemoteDescription(new RTCSessionDescription(data.offer));
                     const answer = await pcInstance.createAnswer();
                     await pcInstance.setLocalDescription(answer);
@@ -259,7 +266,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 }
                 
                 // Caller gets answer
-                if (isCaller && data.answer && !answerApplied.current && pcInstance.signalingState === 'have-local-offer') {
+                if (isCaller && data.answer && !answerApplied.current) {
                      answerApplied.current = true;
                      await pcInstance.setRemoteDescription(new RTCSessionDescription(data.answer));
                 }
