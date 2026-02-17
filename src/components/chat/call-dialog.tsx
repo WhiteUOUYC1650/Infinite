@@ -316,7 +316,18 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   return (
     <>
         <Dialog open={open && !isMinimized} onOpenChange={(o) => { if (!o) handleMinimize() }}>
-          <DialogContent className="max-w-sm" hideCloseButton>
+          <DialogContent 
+            className="max-w-sm" 
+            hideCloseButton
+            onEscapeKeyDown={(e) => {
+                e.preventDefault();
+                handleMinimize();
+            }}
+            onPointerDownOutside={(e) => {
+                e.preventDefault();
+                handleMinimize();
+            }}
+          >
             <DialogHeader className="items-center text-center space-y-4">
               <UserAvatarWithStatus user={otherUser!} className="w-24 h-24 text-4xl" />
               <div className="space-y-1">
