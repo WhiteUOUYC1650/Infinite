@@ -77,21 +77,22 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     
     const setupCall = async () => {
         try {
-            peerConnection.current = new RTCPeerConnection(servers);
+            const pc = new RTCPeerConnection(servers);
+            peerConnection.current = pc;
             
             const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
             localStream.current = stream;
-            stream.getTracks().forEach(track => peerConnection.current!.addTrack(track, stream));
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
             const remoteStream = new MediaStream();
             if (remoteAudioRef.current) {
                 remoteAudioRef.current.srcObject = remoteStream;
             }
-            peerConnection.current.ontrack = (event) => {
+            pc.ontrack = (event) => {
                 event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
             };
-            peerConnection.current.onconnectionstatechange = () => {
-                if(peerConnection.current?.connectionState === 'connected') {
+            pc.onconnectionstatechange = () => {
+                if(pc.connectionState === 'connected') {
                     setCallStatus('connected');
                 }
             }
@@ -100,7 +101,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             const callDocRef = doc(db, 'calls', chat.id);
             
             // Exchange ICE candidates
-            peerConnection.current.onicecandidate = async (event) => {
+            pc.onicecandidate = async (event) => {
                 if (event.candidate) {
                     await updateDoc(callDocRef, {
                         [isCaller ? 'callerCandidates' : 'calleeCandidates']: arrayUnion(event.candidate.toJSON())
@@ -110,8 +111,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             
             // Caller logic
             if (isCaller) {
-                const offer = await peerConnection.current.createOffer();
-                await peerConnection.current.setLocalDescription(offer);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
 
                 await setDoc(callDocRef, {
                     callerId: currentUser.uid,
