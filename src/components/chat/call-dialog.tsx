@@ -71,6 +71,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   useEffect(() => {
     if (!open || !db) return;
 
+    setCallStatus('connecting');
+
     let callDocUnsubscribe: () => void;
     
     const setupCall = async () => {
@@ -125,13 +127,13 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             callDocUnsubscribe = onSnapshot(callDocRef, async (snapshot) => {
                 const data = snapshot.data() as Call;
 
-                if (!data) return;
+                if (!data || !peerConnection.current) return;
 
                 // Callee gets offer and creates answer
-                if (!isCaller && data.offer && !peerConnection.current?.currentRemoteDescription) {
-                    await peerConnection.current!.setRemoteDescription(new RTCSessionDescription(data.offer));
-                    const answer = await peerConnection.current!.createAnswer();
-                    await peerConnection.current!.setLocalDescription(answer);
+                if (!isCaller && data.offer && peerConnection.current.signalingState === 'stable') {
+                    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answer = await peerConnection.current.createAnswer();
+                    await peerConnection.current.setLocalDescription(answer);
                     await updateDoc(callDocRef, {
                         answer: { sdp: answer.sdp, type: answer.type },
                         status: 'active'
@@ -139,15 +141,17 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 }
                 
                 // Caller gets answer
-                if (isCaller && data.answer && !peerConnection.current?.currentRemoteDescription) {
-                     await peerConnection.current!.setRemoteDescription(new RTCSessionDescription(data.answer));
+                if (isCaller && data.answer && peerConnection.current.signalingState === 'have-local-offer') {
+                     await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
                 }
                 
                 // Add ICE candidates
                 const candidatesField = isCaller ? 'calleeCandidates' : 'callerCandidates';
                 if (data[candidatesField]) {
                     data[candidatesField]!.forEach(candidate => {
-                        peerConnection.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Error adding ICE candidate", e));
+                        if (peerConnection.current?.remoteDescription) {
+                          peerConnection.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Error adding ICE candidate", e));
+                        }
                     });
                 }
 
