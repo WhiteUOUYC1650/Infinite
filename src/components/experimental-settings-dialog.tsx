@@ -47,10 +47,63 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { EditProfileDialog } from './edit-profile-dialog';
 import { InfGoldIcon } from './ui/inf-gold-icon';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus';
+
+type SubscriptionTierId = 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
+
+const subscriptionTiers: {
+    id: SubscriptionTierId;
+    nameKey: any;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    features: any[];
+    level: number;
+}[] = [
+  {
+    id: 'super',
+    nameKey: 'infinite_super',
+    monthlyPrice: 10,
+    yearlyPrice: 100,
+    features: ['super_feature_1'],
+    level: 1,
+  },
+  {
+    id: 'mega',
+    nameKey: 'infinite_mega',
+    monthlyPrice: 50,
+    yearlyPrice: 500,
+    features: ['mega_feature_1'],
+    level: 2,
+  },
+  {
+    id: 'prem',
+    nameKey: 'infinite_prem',
+    monthlyPrice: 100,
+    yearlyPrice: 1000,
+    features: ['prem_feature_1', 'prem_feature_2'],
+    level: 3,
+  },
+  {
+    id: 'giga',
+    nameKey: 'infinite_giga',
+    monthlyPrice: 250,
+    yearlyPrice: 2500,
+    features: ['giga_feature_1'],
+    level: 4,
+  },
+  {
+    id: 'ultra',
+    nameKey: 'infinite_ultra',
+    monthlyPrice: 500,
+    yearlyPrice: 5000,
+    features: ['ultra_feature_1'],
+    level: 5,
+  },
+].sort((a, b) => a.level - b.level);
+
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none" disabled={disabled}>
@@ -198,15 +251,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
-  const handleSubscribe = async () => {
-    const cost = subscriptionPlan === 'yearly' ? 1000 : 100;
-    if (!db || currentUser.isPrem || (currentUser.infGoldBalance ?? 0) < cost) return;
+  const handleSubscribe = async (tier: typeof subscriptionTiers[0]) => {
+    const cost = subscriptionPlan === 'yearly' ? tier.yearlyPrice : tier.monthlyPrice;
+    if (!db || (currentUser.infGoldBalance ?? 0) < cost) return;
     setIsSubscribing(true);
 
     try {
         const userRef = doc(db, 'users', currentUser.uid);
         await updateDoc(userRef, {
-            isPrem: true,
+            subscriptionTier: tier.id,
             infGoldBalance: increment(-cost)
         });
         toast({
@@ -466,57 +519,78 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const premPageContent = (
     <div className="p-4 space-y-6">
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Crown className="text-purple-500" />
-                    <span>{t('infinite_prem')}</span>
-                </CardTitle>
-                <CardDescription>{t('prem_description')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ul className="list-disc space-y-2 pl-5">
-                    <li>{t('prem_benefit_1')}</li>
-                    <li>{t('prem_benefit_2')}</li>
-                    <li>{t('prem_benefit_3')}</li>
-                </ul>
-            </CardContent>
-        </Card>
-        
-        {currentUser.isPrem ? (
-            <Button disabled className='w-full'>{t('already_subscribed')}</Button>
-        ) : (
-            <>
-                <RadioGroup value={subscriptionPlan} onValueChange={(value: any) => setSubscriptionPlan(value)} className="space-y-2">
-                    <Label htmlFor="monthly" className="flex items-center gap-4 rounded-md border p-4 cursor-pointer hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:ring-1 has-[input:checked]:ring-primary">
-                        <RadioGroupItem value="monthly" id="monthly" />
-                        <div className='flex-1'>
-                            <p className="font-semibold">{t('monthly')}</p>
-                            <p className="text-sm text-muted-foreground">{t('subscribe_monthly')}</p>
-                        </div>
-                    </Label>
-                    <Label htmlFor="yearly" className="flex items-center gap-4 rounded-md border p-4 cursor-pointer hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:ring-1 has-[input:checked]:ring-primary">
-                        <RadioGroupItem value="yearly" id="yearly" />
-                        <div className='flex-1'>
-                            <p className="font-semibold">{t('yearly')}</p>
-                            <p className="text-sm text-muted-foreground">{t('subscribe_yearly')}</p>
-                        </div>
-                         <Badge variant="secondary">{t('yearly_discount_note')}</Badge>
-                    </Label>
-                </RadioGroup>
+        <RadioGroup defaultValue={subscriptionPlan} onValueChange={(value: any) => setSubscriptionPlan(value)} className="flex justify-center gap-4">
+            <div>
+                <RadioGroupItem value="monthly" id="monthly" className="sr-only" />
+                <Label htmlFor="monthly" className={cn("rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary")}>
+                    {t('monthly')}
+                </Label>
+            </div>
+            <div>
+                <RadioGroupItem value="yearly" id="yearly" className="sr-only" />
+                <Label htmlFor="yearly" className={cn("rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary")}>
+                    {t('yearly')}
+                </Label>
+            </div>
+        </RadioGroup>
 
-                <Button 
-                    onClick={handleSubscribe} 
-                    disabled={isSubscribing || (currentUser.infGoldBalance ?? 0) < (subscriptionPlan === 'yearly' ? 1000 : 100)}
-                    className='w-full'
-                >
-                    {isSubscribing ? <Loader2 className="animate-spin" /> : t('subscribe')}
-                </Button>
+        <div className="space-y-4">
+        {subscriptionTiers.map((tier, index) => {
+            const currentTierLevel = subscriptionTiers.find(t => t.id === currentUser.subscriptionTier)?.level ?? 0;
+            const isCurrent = currentUser.subscriptionTier === tier.id;
+            const previousTier = index > 0 ? subscriptionTiers[index - 1] : null;
+            const cost = subscriptionPlan === 'yearly' ? tier.yearlyPrice : tier.monthlyPrice;
+            const canAfford = (currentUser.infGoldBalance ?? 0) >= cost;
+            
+            let buttonTextKey: any = 'subscribe';
+            if (isCurrent) buttonTextKey = 'current_plan';
+            else if (tier.level > currentTierLevel) buttonTextKey = 'upgrade';
+            else if (tier.level < currentTierLevel) buttonTextKey = 'downgrade';
 
-                { (currentUser.infGoldBalance ?? 0) < (subscriptionPlan === 'yearly' ? 1000 : 100) && (
-                    <p className="text-sm text-center text-destructive">{t('not_enough_gold')}</p>
-                )}
-            </>
+            return (
+                <Card key={tier.id} className={cn(isCurrent && 'border-primary ring-1 ring-primary')}>
+                    <CardHeader>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <CardTitle>{t(tier.nameKey)}</CardTitle>
+                                <CardDescription className="flex items-center gap-1.5">
+                                    <span className="font-bold">{cost}</span>
+                                    <InfGoldIcon className="w-4 h-4" />
+                                    <span>/ {t(subscriptionPlan === 'yearly' ? 'year' : 'month')}</span>
+                                </CardDescription>
+                            </div>
+                            {tier.id === 'prem' && <Badge variant="secondary">{t('best_value')}</Badge>}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="list-disc space-y-2 pl-5 text-sm">
+                            <li>
+                                {previousTier 
+                                    ? t('all_features_from', { tierName: t(previousTier.nameKey) })
+                                    : t('all_free_features')
+                                }
+                            </li>
+                            {tier.features.map((featureKey: any) => (
+                                <li key={featureKey}>{t(featureKey)}</li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                    <CardFooter>
+                         <Button
+                            onClick={() => handleSubscribe(tier)}
+                            disabled={isSubscribing || isCurrent || !canAfford}
+                            className='w-full'
+                         >
+                            {isSubscribing ? <Loader2 className="animate-spin" /> : t(buttonTextKey)}
+                         </Button>
+                    </CardFooter>
+                </Card>
+            )
+        })}
+        </div>
+
+        { (currentUser.infGoldBalance ?? 0) < (subscriptionPlan === 'yearly' ? 1000 : 100) && (
+            <p className="text-sm text-center text-destructive">{t('not_enough_gold')}</p>
         )}
     </div>
   );

@@ -48,6 +48,14 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
   const displayUsername = user.isDeleted ? '' : user.username;
+  
+  const subscriptionDisplayName: Record<string, any> = {
+    super: t('infinite_super'),
+    mega: t('infinite_mega'),
+    prem: t('infinite_prem'),
+    giga: t('infinite_giga'),
+    ultra: t('infinite_ultra'),
+  };
 
   return (
     <div className="flex flex-col">
@@ -60,7 +68,11 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                     {displayName}
                 </h2>
                 {user.isAdmin && <VerifiedBadge />}
-                {user.isPrem && <Badge className='bg-purple-600 hover:bg-purple-700 text-white'>{t('infinite_prem')}</Badge>}
+                {user.subscriptionTier && user.subscriptionTier !== 'none' && (
+                    <Badge className='bg-purple-600 hover:bg-purple-700 text-white'>
+                        {subscriptionDisplayName[user.subscriptionTier]}
+                    </Badge>
+                )}
             </div>
 
             {user.isBot ? (

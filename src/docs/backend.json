@@ -58,9 +58,10 @@
             "type": "number",
             "description": "The user's balance of InfGold."
         },
-        "isPrem": {
-            "type": "boolean",
-            "description": "True if the user has an active Infinite Prem subscription."
+        "subscriptionTier": {
+            "type": "string",
+            "enum": ["none", "super", "mega", "prem", "giga", "ultra"],
+            "description": "The user's current subscription tier."
         },
         "lastDailyBonusClaimed": {
             "type": "object",

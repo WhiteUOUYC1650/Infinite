@@ -16,7 +16,7 @@ export type User = {
   lastSeen?: Timestamp;
   isDeleted?: boolean;
   infGoldBalance?: number;
-  isPrem?: boolean;
+  subscriptionTier?: 'none' | 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
   lastDailyBonusClaimed?: Timestamp;
 };
 

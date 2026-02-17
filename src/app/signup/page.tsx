@@ -94,7 +94,7 @@ export default function SignUpPage() {
           hasSetNickname: true,
           isBot: isBotUser,
           infGoldBalance: 0,
-          isPrem: false,
+          subscriptionTier: 'none',
         });
 
         // Reserve the username
