@@ -30,11 +30,11 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2 } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
-import { doc, runTransaction, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -45,8 +45,11 @@ import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { EditProfileDialog } from './edit-profile-dialog';
+import { InfGoldIcon } from './ui/inf-gold-icon';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { DailyBonusWheel, PRIZES } from './daily-bonus-wheel';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus';
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none" disabled={disabled}>
@@ -87,10 +90,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  // Daily Bonus State
+  const [isSpinning, setSpinning] = useState(false);
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        // The viewport is the direct scrollable child of the ScrollArea root.
         scrollAreaRef.current.scrollTop = 0;
     }
   }, [page]);
@@ -185,6 +194,62 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
+  const handleSubscribe = async () => {
+    if (!db || currentUser.isPrem || (currentUser.infGoldBalance ?? 0) < 100) return;
+    setIsSubscribing(true);
+
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+            isPrem: true,
+            infGoldBalance: increment(-100)
+        });
+        toast({
+            title: t('subscription_successful_title'),
+            description: t('subscription_successful_desc'),
+        });
+    } catch (error) {
+        console.error("Subscription failed:", error);
+        toast({ variant: 'destructive', title: 'Error', description: t('subscription_failed') });
+    } finally {
+        setIsSubscribing(false);
+    }
+  };
+
+  const handleSpin = async (): Promise<number> => {
+    const prize = PRIZES[Math.floor(Math.random() * PRIZES.length)];
+    const prizeIndex = PRIZES.indexOf(prize);
+    
+    const baseRotation = 360 * 5; 
+    const segmentAngle = 360 / PRIZES.length;
+    const prizeAngle = prizeIndex * segmentAngle;
+    
+    const randomOffset = (Math.random() - 0.5) * (segmentAngle * 0.8);
+    
+    setWheelRotation(prev => prev - (prev % 360) + baseRotation - prizeAngle - randomOffset);
+
+    // Delay showing result to match animation
+    setTimeout(async () => {
+        toast({
+            title: t('you_won'),
+            description: `${prize} InfGold!`,
+        });
+        setSpinning(false);
+        try {
+            const userRef = doc(db, 'users', currentUser.uid);
+            await updateDoc(userRef, {
+                infGoldBalance: increment(prize),
+                lastDailyBonusClaimed: serverTimestamp(),
+            });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to claim bonus.'});
+        }
+    }, 5000); // animation duration
+
+    return prize;
+};
+
 
   const getTitle = () => {
     switch (page) {
@@ -196,6 +261,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'account': return t('profile');
       case 'help': return t('help');
       case 'about': return t('version');
+      case 'infGold': return 'InfGold';
+      case 'prem': return t('infinite_prem');
+      case 'dailyBonus': return t('daily_bonus');
       default: return t('settings');
     }
   };
@@ -224,6 +292,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <SettingsItem icon={Paintbrush} label={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
           <SettingsItem icon={MessageSquare} label={t('chat_settings')} onClick={() => navigateTo('chat')} />
           <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
+          <SettingsItem icon={InfGoldIcon} label="InfGold" onClick={() => navigateTo('infGold')} />
           <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
           <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
           <SettingsItem icon={Info} label={t('version')} value="0.3" onClick={() => navigateTo('about')} />
@@ -373,6 +442,72 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     </div>
 );
 
+ const infGoldPageContent = (
+      <>
+        <div className="p-4 text-center space-y-2">
+            <h2 className="text-4xl font-bold flex items-center justify-center gap-2">
+                <InfGoldIcon className="w-8 h-8" />
+                <span>{currentUser.infGoldBalance ?? 0}</span>
+            </h2>
+            <p className="text-muted-foreground">{t('inf_gold_balance')}</p>
+        </div>
+        <div className="border-t">
+          <SettingsItem icon={Crown} label={t('infinite_prem')} onClick={() => navigateTo('prem')} />
+          <SettingsItem icon={Gift} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} />
+        </div>
+      </>
+  );
+
+  const premPageContent = (
+      <div className="p-4 space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Crown className="text-purple-500" />
+                    <span>{t('infinite_prem')}</span>
+                </CardTitle>
+                <CardDescription>{t('prem_description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ul className="list-disc space-y-2 pl-5">
+                    <li>{t('prem_benefit_1')}</li>
+                    <li>{t('prem_benefit_2')}</li>
+                    <li>{t('prem_benefit_3')}</li>
+                </ul>
+            </CardContent>
+        </Card>
+        
+        {currentUser.isPrem ? (
+            <Button disabled className='w-full'>{t('already_subscribed')}</Button>
+        ) : (
+            <Button 
+                onClick={handleSubscribe} 
+                disabled={(currentUser.infGoldBalance ?? 0) < 100 || isSubscribing} 
+                className='w-full'
+            >
+                {isSubscribing ? <Loader2 className="animate-spin" /> : t('subscribe_for_100')}
+            </Button>
+        )}
+        
+        { !currentUser.isPrem && (currentUser.infGoldBalance ?? 0) < 100 && (
+            <p className="text-sm text-center text-destructive">{t('not_enough_gold')}</p>
+        )}
+      </div>
+  );
+
+  const dailyBonusPageContent = (
+      <div className="p-4 flex flex-col items-center">
+        <DailyBonusWheel 
+            onSpin={handleSpin}
+            isSpinning={isSpinning}
+            setSpinning={setSpinning}
+            canSpin={isBonusAvailable}
+            rotation={wheelRotation}
+        />
+        {!isBonusAvailable && <p className="text-sm text-muted-foreground mt-4 text-center">{t('come_back_tomorrow')}</p>}
+      </div>
+  );
+
   const renderContent = () => {
     switch (page) {
       case 'main': return mainPageContent;
@@ -383,6 +518,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'account': return accountPageContent;
       case 'help': return helpPageContent;
       case 'about': return aboutPageContent;
+      case 'infGold': return infGoldPageContent;
+      case 'prem': return premPageContent;
+      case 'dailyBonus': return dailyBonusPageContent;
       default: return null;
     }
   };
@@ -399,9 +537,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           )}
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        <ScrollArea>
+        <ScrollArea ref={scrollAreaRef}>
            <div 
-                ref={scrollAreaRef}
                 key={page} 
                 className={cn(
                     "animate-in fade-in-0 duration-300",

@@ -93,6 +93,8 @@ export default function SignUpPage() {
             : 'Hey there! I am using Infinite.',
           hasSetNickname: true,
           isBot: isBotUser,
+          infGoldBalance: 0,
+          isPrem: false,
         });
 
         // Reserve the username

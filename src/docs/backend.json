@@ -53,6 +53,18 @@
         "lastSeen": {
             "type": "object",
             "description": "Server timestamp of when the user was last active."
+        },
+        "infGoldBalance": {
+            "type": "number",
+            "description": "The user's balance of InfGold."
+        },
+        "isPrem": {
+            "type": "boolean",
+            "description": "True if the user has an active Infinite Prem subscription."
+        },
+        "lastDailyBonusClaimed": {
+            "type": "object",
+            "description": "Server timestamp of when the user last claimed their daily bonus."
         }
       },
       "required": ["name", "username", "avatar", "status"]

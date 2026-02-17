@@ -9,6 +9,8 @@ import type { TranslationKey } from '@/lib/translations';
 import { Button } from './ui/button';
 import { VerifiedBadge } from './ui/verified-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
+import { Badge } from './ui/badge';
+import { InfGoldIcon } from './ui/inf-gold-icon';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -53,16 +55,27 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
              <UserAvatarWithStatus user={user} className="w-24 h-24 text-3xl" />
         </div>
         <div className="text-center">
-            <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
-                {displayName}
+            <div className="flex items-center justify-center gap-2">
+                <h2 className="text-xl font-bold font-headline">
+                    {displayName}
+                </h2>
                 {user.isAdmin && <VerifiedBadge />}
-            </h2>
+                {user.isPrem && <Badge className='bg-purple-600 hover:bg-purple-700 text-white'>{t('infinite_prem')}</Badge>}
+            </div>
+
             {user.isBot ? (
                 <p className="text-muted-foreground text-sm">/B/Infinite</p>
             ) : (
                 <p className="text-muted-foreground text-sm">{displayUsername}</p>
             )}
             <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
+
+            {!user.isDeleted && !user.isBot && (
+                 <div className="flex items-center justify-center gap-2 mt-4">
+                    <InfGoldIcon className="h-5 w-5" />
+                    <span className="font-semibold text-lg">{user.infGoldBalance ?? 0}</span>
+                </div>
+            )}
         </div>
 
         {user.statusMessage && !user.isDeleted && (

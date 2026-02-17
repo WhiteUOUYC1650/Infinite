@@ -15,6 +15,9 @@ export type User = {
   isBot?: boolean;
   lastSeen?: Timestamp;
   isDeleted?: boolean;
+  infGoldBalance?: number;
+  isPrem?: boolean;
+  lastDailyBonusClaimed?: Timestamp;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };
