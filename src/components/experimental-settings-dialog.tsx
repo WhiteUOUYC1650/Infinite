@@ -50,7 +50,7 @@ import { InfGoldIcon } from './ui/inf-gold-icon';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew';
 
 type SubscriptionTierId = 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
 
@@ -323,6 +323,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'infGold': return 'InfGold';
       case 'prem': return t('infinite_prem');
       case 'dailyBonus': return t('daily_bonus');
+      case 'whatsNew': return t('whats_new');
       default: return t('settings');
     }
   };
@@ -353,6 +354,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
           <SettingsItem icon={InfGoldIcon} label="InfGold" onClick={() => navigateTo('infGold')} />
           <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
+          <SettingsItem icon={Star} label={t('whats_new')} onClick={() => navigateTo('whatsNew')} />
           <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
           <SettingsItem icon={Info} label={t('version')} value="0.3" onClick={() => navigateTo('about')} />
           {currentUser.isAdmin && (
@@ -438,66 +440,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   );
   
   const aboutPageContent = (
-    <div className='p-4 space-y-4'>
-      <p>{t('version_info')}</p>
-       <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left">
+    <div className='p-4 space-y-4 text-center flex flex-col items-center justify-center h-full min-h-[50vh]'>
+      <h2 className="text-6xl font-bold font-headline">0.3</h2>
+      <p className="text-muted-foreground">{t('beta_badge')}</p>
+       <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left mt-8">
             <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
             <AlertDescription className="text-yellow-700 dark:text-yellow-400">
                 {t('thank_you_beta')}
             </AlertDescription>
       </Alert>
-
-      <h3 className="text-lg font-semibold pt-4">{t('version_history')}</h3>
-      <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="0.3">
-              <AccordionTrigger>Version 0.3 (Beta)</AccordionTrigger>
-              <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
-                      {t('version_0_3_changes')}
-                  </div>
-              </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="0.2">
-              <AccordionTrigger>Version 0.2 (Beta)</AccordionTrigger>
-              <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
-                      {t('version_0_2_changes')}
-                  </div>
-              </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="0.1.3">
-              <AccordionTrigger>Version 0.1.3 (Beta)</AccordionTrigger>
-              <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
-                      {t('version_0_1_3_changes')}
-                  </div>
-              </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="0.1.2">
-              <AccordionTrigger>Version 0.1.2 (Beta)</AccordionTrigger>
-              <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
-                      {t('version_0_1_2_changes')}
-                  </div>
-              </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="0.1.1">
-              <AccordionTrigger>Version 0.1.1 (Beta)</AccordionTrigger>
-              <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
-                      {t('version_0_1_1_changes')}
-                  </div>
-              </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="0.1">
-              <AccordionTrigger>Version 0.1 (Beta)</AccordionTrigger>
-              <AccordionContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
-                      {t('version_0_1_changes')}
-                  </div>
-              </AccordionContent>
-          </AccordionItem>
-      </Accordion>
     </div>
 );
 
@@ -609,6 +560,34 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
   );
 
+    const whatsNewPageContent = (
+    <div className='p-6 space-y-6'>
+      <div className="text-center">
+        <h2 className="text-2xl font-bold font-headline">{t('whats_new_title')}</h2>
+        <p className="text-muted-foreground">{t('whats_new_desc')}</p>
+      </div>
+      <div className="space-y-4 text-sm">
+        <div className="p-4 rounded-lg bg-card border">
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_infgold_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_infgold_desc')}</p>
+        </div>
+        <div className="p-4 rounded-lg bg-card border">
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_media_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_media_desc')}</p>
+        </div>
+        <div className="p-4 rounded-lg bg-card border">
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_calls_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_calls_desc')}</p>
+        </div>
+        <div className="p-4 rounded-lg bg-card border">
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_themes_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_themes_desc')}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+
   const renderContent = () => {
     switch (page) {
       case 'main': return mainPageContent;
@@ -622,6 +601,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'infGold': return infGoldPageContent;
       case 'prem': return premPageContent;
       case 'dailyBonus': return dailyBonusPageContent;
+      case 'whatsNew': return whatsNewPageContent;
       default: return null;
     }
   };
