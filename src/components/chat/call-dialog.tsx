@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, PhoneOff, Video, VideoOff } from 'lucide-react';
+import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import type { PopulatedChat, AuthenticatedUser, User, Call } from '@/types';
@@ -11,6 +11,95 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { useLanguage } from '@/context/language-context';
+
+function DraggableCallBubble({ onClick }: { onClick: () => void }) {
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const dragInfo = useRef<{isDragging: boolean, didMove: boolean, startX: number, startY: number, offsetX: number, offsetY: number}>({isDragging: false, didMove: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0});
+
+  useEffect(() => {
+    // Set initial position after mount to access window object
+    setPosition({ x: window.innerWidth - 100, y: window.innerHeight - 120 });
+  }, []);
+
+
+  const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const bubble = bubbleRef.current;
+    if (!bubble) return;
+    
+    dragInfo.current.isDragging = true;
+    dragInfo.current.didMove = false;
+    dragInfo.current.startX = e.clientX;
+    dragInfo.current.startY = e.clientY;
+    
+    const rect = bubble.getBoundingClientRect();
+    dragInfo.current.offsetX = e.clientX - rect.left;
+    dragInfo.current.offsetY = e.clientY - rect.top;
+    
+    bubble.style.transition = 'none'; // Disable transitions while dragging
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragInfo.current.isDragging || !bubbleRef.current) return;
+      
+      if (!dragInfo.current.didMove && (Math.abs(e.clientX - dragInfo.current.startX) > 5 || Math.abs(e.clientY - dragInfo.current.startY) > 5)) {
+        dragInfo.current.didMove = true;
+      }
+
+      e.preventDefault();
+      
+      let newX = e.clientX - dragInfo.current.offsetX;
+      let newY = e.clientY - dragInfo.current.offsetY;
+
+      // Constrain to viewport
+      newX = Math.max(0, Math.min(newX, window.innerWidth - bubbleRef.current.offsetWidth));
+      newY = Math.max(0, Math.min(newY, window.innerHeight - bubbleRef.current.offsetHeight));
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const onMouseUp = () => {
+      if (dragInfo.current.isDragging) {
+        dragInfo.current.isDragging = false;
+        if (bubbleRef.current) {
+            bubbleRef.current.style.transition = ''; // Re-enable transitions
+        }
+      }
+    };
+    
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (dragInfo.current.didMove) {
+      e.stopPropagation();
+      return;
+    }
+    onClick();
+  };
+
+  return (
+    <div
+      ref={bubbleRef}
+      onMouseDown={onMouseDown}
+      onClick={handleClick}
+      className="fixed z-[100] flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-green-500/90 p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-105"
+      style={{
+        transform: `translate(${position.x}px, ${position.y}px)`,
+      }}
+    >
+      <Phone className="h-8 w-8 text-white" strokeWidth={1.5} />
+    </div>
+  );
+}
+
 
 interface CallDialogProps {
   open: boolean;
@@ -41,6 +130,28 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
 
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (callStatus === 'connected') {
+        timer = setInterval(() => {
+            setDuration(prev => prev + 1);
+        }, 1000);
+    } else {
+        setDuration(0); // Reset timer if not connected
+    }
+    return () => {
+        if (timer) clearInterval(timer);
+    };
+  }, [callStatus]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  };
 
   // Local cleanup function
   const endCallLocally = (notifyFirestore = true) => {
@@ -62,7 +173,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
         });
     }
 
-    // Delay closing the dialog to show "Call Ended"
+    // Delay closing the dialog to tell parent component to unmount us
     setTimeout(() => {
         onOpenChange(false);
     }, 1500);
@@ -71,7 +182,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   useEffect(() => {
     if (!open || !db) return;
 
-    setCallStatus('connecting');
+    setCallStatus('connecting'); // Reset status on new call
 
     let callDocUnsubscribe: () => void;
     
@@ -127,14 +238,15 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             // Watch for call doc changes (answer, candidates, hang-up)
             callDocUnsubscribe = onSnapshot(callDocRef, async (snapshot) => {
                 const data = snapshot.data() as Call;
+                const pcInstance = peerConnection.current;
 
-                if (!data || !peerConnection.current) return;
+                if (!data || !pcInstance) return;
 
                 // Callee gets offer and creates answer
-                if (!isCaller && data.offer && peerConnection.current.signalingState === 'stable') {
-                    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.offer));
-                    const answer = await peerConnection.current.createAnswer();
-                    await peerConnection.current.setLocalDescription(answer);
+                if (!isCaller && data.offer && pcInstance.signalingState === 'stable') {
+                    await pcInstance.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answer = await pcInstance.createAnswer();
+                    await pcInstance.setLocalDescription(answer);
                     await updateDoc(callDocRef, {
                         answer: { sdp: answer.sdp, type: answer.type },
                         status: 'active'
@@ -142,16 +254,16 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 }
                 
                 // Caller gets answer
-                if (isCaller && data.answer && peerConnection.current.signalingState === 'have-local-offer') {
-                     await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+                if (isCaller && data.answer && pcInstance.signalingState === 'have-local-offer') {
+                     await pcInstance.setRemoteDescription(new RTCSessionDescription(data.answer));
                 }
                 
                 // Add ICE candidates
                 const candidatesField = isCaller ? 'calleeCandidates' : 'callerCandidates';
                 if (data[candidatesField]) {
                     data[candidatesField]!.forEach(candidate => {
-                        if (peerConnection.current?.remoteDescription) {
-                          peerConnection.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Error adding ICE candidate", e));
+                        if (pcInstance?.remoteDescription) {
+                          pcInstance?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.error("Error adding ICE candidate", e));
                         }
                     });
                 }
@@ -192,35 +304,48 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const handleVideoClick = () => {
       toast({ title: t('placeholder_title'), description: t('placeholder_description')});
   }
+  
+  const handleMinimize = () => {
+    setIsMinimized(true);
+  }
+
+  const handleRestore = () => {
+    setIsMinimized(false);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleHangUp() }}>
-      <DialogContent className="max-w-sm" hideCloseButton>
-        <DialogHeader className="items-center text-center space-y-4">
-          <UserAvatarWithStatus user={otherUser!} className="w-24 h-24 text-4xl" />
-          <div className="space-y-1">
-            <DialogTitle className="text-2xl">{otherUser?.name}</DialogTitle>
-            <DialogDescription>
-              {callStatus === 'connecting' && t('connecting')}
-              {callStatus === 'connected' && '00:00'}
-              {callStatus === 'ended' && t('call_ended')}
-            </DialogDescription>
-          </div>
-        </DialogHeader>
+    <>
+        <Dialog open={open && !isMinimized} onOpenChange={(o) => { if (!o) handleMinimize() }}>
+          <DialogContent className="max-w-sm" hideCloseButton>
+            <DialogHeader className="items-center text-center space-y-4">
+              <UserAvatarWithStatus user={otherUser!} className="w-24 h-24 text-4xl" />
+              <div className="space-y-1">
+                <DialogTitle className="text-2xl">{otherUser?.name}</DialogTitle>
+                <DialogDescription>
+                  {callStatus === 'connecting' && t('connecting')}
+                  {callStatus === 'connected' && formatDuration(duration)}
+                  {callStatus === 'ended' && t('call_ended')}
+                </DialogDescription>
+              </div>
+            </DialogHeader>
 
-        <DialogFooter className="flex-row justify-center gap-4 pt-8">
-            <Button variant={isMuted ? "default" : "secondary"} size="icon" className="w-16 h-16 rounded-full" onClick={toggleMute}>
-                {isMuted ? <MicOff /> : <Mic />}
-            </Button>
-             <Button variant="secondary" size="icon" className="w-16 h-16 rounded-full" onClick={handleVideoClick}>
-                <VideoOff />
-            </Button>
-            <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full" onClick={handleHangUp}>
-                <PhoneOff />
-            </Button>
-        </DialogFooter>
-        <audio ref={remoteAudioRef} autoPlay playsInline />
-      </DialogContent>
-    </Dialog>
+            <DialogFooter className="flex-row justify-center gap-4 pt-8">
+                <Button variant={isMuted ? "default" : "secondary"} size="icon" className="w-16 h-16 rounded-full" onClick={toggleMute}>
+                    {isMuted ? <MicOff /> : <Mic />}
+                </Button>
+                 <Button variant="secondary" size="icon" className="w-16 h-16 rounded-full" onClick={handleVideoClick}>
+                    <VideoOff />
+                </Button>
+                <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full" onClick={handleHangUp}>
+                    <PhoneOff />
+                </Button>
+            </DialogFooter>
+            <audio ref={remoteAudioRef} autoPlay playsInline />
+          </DialogContent>
+        </Dialog>
+        {isMinimized && open && (
+            <DraggableCallBubble onClick={handleRestore} />
+        )}
+    </>
   );
 }
