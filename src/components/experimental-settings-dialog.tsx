@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -76,6 +76,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const page = pageHistory[pageHistory.length - 1];
   
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, useExperimentalMenu, toggleExperimentalMenu, sendOnEnter, toggleSendOnEnter } = useTheme();
@@ -86,6 +87,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+            viewport.scrollTop = 0;
+        }
+    }
+  }, [page]);
+
 
   const navigateTo = (newPage: SettingsPage) => {
     setAnimationDirection('forward');
@@ -389,7 +400,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           )}
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1">
+        <ScrollArea ref={scrollAreaRef} className="flex-1">
            <div 
                 key={page} 
                 className={cn(
