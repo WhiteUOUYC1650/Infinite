@@ -1430,9 +1430,13 @@ function ChatMessage({
     const musicStatus = message.musicStatus;
 
     useEffect(() => {
-        if (videoUrl) return;
         if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
+                // If we already have a URL (from local cache), don't re-fetch
+                if (videoUrl) {
+                    onMediaLoad(); // Ensure scroll happens even for cached media
+                    return;
+                }
                 setIsLoadingVideo(true);
                 setVideoUrl(null); // Reset previous video URL if any
                 try {
@@ -1469,12 +1473,16 @@ function ChatMessage({
             };
             fetchAndAssembleVideo();
         }
-    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id, videoUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id]);
     
     useEffect(() => {
-        if (musicUrl) return;
         if (hasMusic && musicStatus === 'complete' && db && message.musicChunkIds && message.musicChunkIds.length > 0) {
             const fetchAndAssembleMusic = async () => {
+                if (musicUrl) {
+                    onMediaLoad();
+                    return;
+                }
                 setIsLoadingMusic(true);
                 setMusicUrl(null);
                 try {
@@ -1510,7 +1518,8 @@ function ChatMessage({
             };
             fetchAndAssembleMusic();
         }
-    }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id, musicUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id]);
 
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1737,7 +1746,7 @@ function ChatMessage({
                     (message.videoStatus === 'uploading' || message.musicStatus === 'uploading') ? (
                         <Clock className="h-4 w-4" />
                     ) : (
-                        <CheckCheck className={cn("h-4 w-4", isRead ? "text-inherit" : "text-inherit/50")} />
+                        isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />
                     )
                 )}
             </div>
@@ -1749,7 +1758,7 @@ function ChatMessage({
             id={`message-${message.id}`} 
             className={cn(
                 "group flex items-end gap-2",
-                alignRight ? "flex-row-reverse" : "flex-row"
+                alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg"
             )}
         >
             {showAvatar ? (
@@ -1794,9 +1803,7 @@ function ChatMessage({
                             variant="ghost"
                             size="icon"
                             data-menu-trigger="true"
-                            className={cn(
-                                "h-8 w-8"
-                            )}
+                            className="h-8 w-8"
                         >
                             <MoreVertical className="h-4 w-4" />
                         </Button>

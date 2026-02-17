@@ -102,7 +102,7 @@ export default {
             '--tw-prose-links': theme('colors.white'),
             '--tw-prose-bold': theme('colors.white'),
             '--tw-prose-counters': theme('colors.white'),
-            '--tw-prose-bullets': theme('colors.gray.400'),
+            '--tw-prose-bullets': theme('colors.white'),
             '--tw-prose-hr': theme('colors.gray.700'),
             '--tw-prose-quotes': theme('colors.white'),
             '--tw-prose-quote-borders': theme('colors.gray.700'),

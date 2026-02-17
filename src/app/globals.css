@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .outgoing-msg audio,
+  .outgoing-msg video {
+    accent-color: hsl(var(--primary-foreground));
+  }
+  .incoming-msg audio,
+  .incoming-msg video {
+    accent-color: hsl(var(--primary));
+  }
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -40,7 +51,6 @@ body {
     --sidebar-accent: 30 50% 88%;
     --sidebar-accent-foreground: 20 14.3% 4.1%;
     color-scheme: light;
-    accent-color: hsl(var(--primary));
   }
 
   .dark {
