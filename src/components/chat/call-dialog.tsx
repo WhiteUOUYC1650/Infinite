@@ -127,6 +127,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const answerApplied = useRef(false);
 
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
@@ -182,7 +183,11 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   useEffect(() => {
     if (!open || !db) return;
 
-    setCallStatus('connecting'); // Reset status on new call
+    // Reset all local states for a new call
+    setCallStatus('connecting');
+    setIsMinimized(false);
+    answerApplied.current = false;
+    setDuration(0);
 
     let callDocUnsubscribe: () => void;
     
@@ -254,7 +259,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 }
                 
                 // Caller gets answer
-                if (isCaller && data.answer && pcInstance.signalingState === 'have-local-offer') {
+                if (isCaller && data.answer && !answerApplied.current && pcInstance.signalingState === 'have-local-offer') {
+                     answerApplied.current = true;
                      await pcInstance.setRemoteDescription(new RTCSessionDescription(data.answer));
                 }
                 
@@ -286,7 +292,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
         if (callDocUnsubscribe) callDocUnsubscribe();
         endCallLocally(true);
     };
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, db, isCaller, chat.id, currentUser.uid, otherUser?.id, toast, t]);
 
   const handleHangUp = () => {
@@ -315,7 +321,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
 
   return (
     <>
-        <Dialog open={open && !isMinimized} onOpenChange={(o) => { if (!o) handleMinimize() }}>
+        <Dialog open={open && !isMinimized}>
           <DialogContent 
             className="max-w-sm" 
             hideCloseButton
