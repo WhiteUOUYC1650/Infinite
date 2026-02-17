@@ -327,6 +327,30 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </AccordionContent>
           </AccordionItem>
+          <AccordionItem value="0.1.3">
+              <AccordionTrigger>Version 0.1.3 (Beta)</AccordionTrigger>
+              <AccordionContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                      {t('version_0_1_3_changes')}
+                  </div>
+              </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="0.1.2">
+              <AccordionTrigger>Version 0.1.2 (Beta)</AccordionTrigger>
+              <AccordionContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                      {t('version_0_1_2_changes')}
+                  </div>
+              </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="0.1.1">
+              <AccordionTrigger>Version 0.1.1 (Beta)</AccordionTrigger>
+              <AccordionContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                      {t('version_0_1_1_changes')}
+                  </div>
+              </AccordionContent>
+          </AccordionItem>
           <AccordionItem value="0.1">
               <AccordionTrigger>Version 0.1 (Beta)</AccordionTrigger>
               <AccordionContent>
