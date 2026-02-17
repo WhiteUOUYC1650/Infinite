@@ -300,16 +300,44 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   );
   
   const aboutPageContent = (
-      <div className='p-4 space-y-4'>
-        <p>{t('version_info')}</p>
-         <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left">
-              <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
-              <AlertDescription className="text-yellow-700 dark:text-yellow-400">
-                  {t('thank_you_beta')}
-              </AlertDescription>
-        </Alert>
-      </div>
-  );
+    <div className='p-4 space-y-4'>
+      <p>{t('version_info')}</p>
+       <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left">
+            <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
+            <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+                {t('thank_you_beta')}
+            </AlertDescription>
+      </Alert>
+
+      <h3 className="text-lg font-semibold pt-4">{t('version_history')}</h3>
+      <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="0.3">
+              <AccordionTrigger>Version 0.3 (Beta)</AccordionTrigger>
+              <AccordionContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                      {t('version_0_3_changes')}
+                  </div>
+              </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="0.2">
+              <AccordionTrigger>Version 0.2 (Beta)</AccordionTrigger>
+              <AccordionContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                      {t('version_0_2_changes')}
+                  </div>
+              </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="0.1">
+              <AccordionTrigger>Version 0.1 (Beta)</AccordionTrigger>
+              <AccordionContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                      {t('version_0_1_changes')}
+                  </div>
+              </AccordionContent>
+          </AccordionItem>
+      </Accordion>
+    </div>
+);
 
   const renderContent = () => {
     switch (page) {

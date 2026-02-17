@@ -261,6 +261,10 @@ export const translations = {
       'music_upload_failed': 'Music upload failed.',
       'music_load_failed': 'Error: music failed to load.',
       'processing_video': 'Processing video...',
+      'version_history': 'Version History',
+      'version_0_3_changes': 'Version 0.3 (Beta) - Music, Calls & UI Polish\n- Added support for sending music files.\n- Added experimental audio calls.\n- Message status icons (sending, sent, read) are now displayed in the chat list.\n- Player controls now adapt to the active color theme.\n- Numerous UI fixes and stability improvements.',
+      'version_0_2_changes': 'Version 0.2 (Beta) - Video & Admin Tools\n- Added support for sending video files.\n- Added an admin panel for user and chat management.\n- Implemented an AI-powered user reporting tool for admins.',
+      'version_0_1_changes': 'Version 0.1 (Beta) - Initial Release\n- Core chat functionality: DMs, groups, and channels.\n- User authentication and profiles.\n- Real-time online status.\n- Dark mode and multiple color themes.',
     },
     ru: {
       'settings': 'Настройки',
@@ -524,6 +528,10 @@ export const translations = {
       'music_upload_failed': 'Ошибка загрузки музыки.',
       'music_load_failed': 'Ошибка: не удалось загрузить музыку.',
       'processing_video': 'Обработка видео...',
+      'version_history': 'История версий',
+      'version_0_3_changes': 'Версия 0.3 (Бета) - Музыка, звонки и улучшения\n- Добавлена поддержка отправки музыкальных файлов.\n- Добавлены экспериментальные аудиозвонки.\n- Иконки статуса сообщения (отправка, отправлено, прочитано) теперь отображаются в списке чатов.\n- Элементы управления плеером теперь адаптируются к активной цветовой теме.\n- Множество исправлений интерфейса и улучшений стабильности.',
+      'version_0_2_changes': 'Версия 0.2 (Бета) - Видео и инструменты администратора\n- Добавлена поддержка отправки видеофайлов.\n- Добавлена панель администратора для управления пользователями и чатами.\n- Реализован инструмент для создания ИИ-отчетов о поведении пользователей для администраторов.',
+      'version_0_1_changes': 'Версия 0.1 (Бета) - Первый выпуск\n- Базовый функционал чата: личные сообщения, группы и каналы.\n- Аутентификация пользователей и профили.\n- Статус онлайн в реальном времени.\n- Темный режим и несколько цветовых тем.',
     }
   };
   

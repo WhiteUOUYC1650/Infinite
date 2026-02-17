@@ -697,7 +697,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       </SidebarFooter>
 
       <AlertDialog open={showVersion} onOpenChange={setShowVersion}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[80vh] flex flex-col">
             <AlertDialogHeader>
             <AlertDialogTitle>{t('app_version')}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -710,8 +710,39 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                   {t('thank_you_beta')}
               </AlertDescription>
             </Alert>
-            <AlertDialogFooter className='mt-4'>
-            <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
+
+            <ScrollArea className="flex-1 my-4 -mx-6 px-6">
+                <h3 className="text-lg font-semibold mb-2">{t('version_history')}</h3>
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="0.3">
+                        <AccordionTrigger>Version 0.3 (Beta)</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                                {t('version_0_3_changes')}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="0.2">
+                        <AccordionTrigger>Version 0.2 (Beta)</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                                {t('version_0_2_changes')}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="0.1">
+                        <AccordionTrigger>Version 0.1 (Beta)</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0 whitespace-pre-wrap">
+                                {t('version_0_1_changes')}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </ScrollArea>
+            
+            <AlertDialogFooter className='mt-auto pt-4 border-t'>
+                <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
