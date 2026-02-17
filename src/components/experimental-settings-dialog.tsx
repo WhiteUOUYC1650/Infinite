@@ -90,10 +90,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (viewport) {
-            viewport.scrollTop = 0;
-        }
+        // The viewport is the direct scrollable child of the ScrollArea root.
+        scrollAreaRef.current.scrollTop = 0;
     }
   }, [page]);
 
@@ -400,8 +398,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           )}
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
-        <ScrollArea ref={scrollAreaRef} className="flex-1">
+        <ScrollArea>
            <div 
+                ref={scrollAreaRef}
                 key={page} 
                 className={cn(
                     "animate-in fade-in-0 duration-300",

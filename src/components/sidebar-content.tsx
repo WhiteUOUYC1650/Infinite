@@ -622,7 +622,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                             <Paintbrush className="mr-2 h-4 w-4" />
                             <span>{t('appearance')}</span>
                         </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
+                        <DropdownMenuSubContent className="max-w-[80vw]">
                             <DropdownMenuLabel>{t('color_theme')}</DropdownMenuLabel>
                             <DropdownMenuRadioGroup value={colorTheme} onValueChange={(value) => setColorTheme(value as any)}>
                                 <DropdownMenuRadioItem value="orange">{t('orange')}</DropdownMenuRadioItem>
