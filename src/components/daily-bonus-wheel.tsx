@@ -87,10 +87,11 @@ export function DailyBonusWheel({ onSpin, isSpinning, canSpin, rotation }: Daily
                             className="flex items-center gap-1 pt-4" 
                             style={{ 
                                 transform: `rotate(${-midAngle}deg)`,
-                                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                                textShadow: '0 1px 1px #000, 0 1px 5px #000',
                             }}
                         >
-                            {prize.value}
+                            <span>{prize.value}</span>
+                            <InfGoldIcon className="w-5 h-5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
                         </span>
                     </div>
                 );

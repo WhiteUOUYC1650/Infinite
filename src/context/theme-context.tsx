@@ -395,6 +395,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.remove('theme-frutiger');
       }
       
+      if (theme === 'shining_gold') {
+        root.classList.add('theme-shining-gold');
+      } else {
+        root.classList.remove('theme-shining-gold');
+      }
+      
       const themeConfig = THEMES[theme];
       const bgImageKey = themeConfig.backgroundImage;
 
