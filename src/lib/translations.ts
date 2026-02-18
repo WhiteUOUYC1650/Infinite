@@ -323,7 +323,16 @@ export const translations = {
       'whats_new_calls_title': 'Audio Calls',
       'whats_new_calls_desc': 'Stay connected with experimental one-on-one audio calls. You can even minimize the call window to continue browsing the app.',
       'whats_new_themes_title': 'New Themes & UI',
-      'whats_new_themes_desc': 'Explore new color themes, including the experimental "Frutiger Aero" and the premium "Shining Gold". The entire settings menu has also been redesigned!'
+      'whats_new_themes_desc': 'Explore new color themes, including the experimental "Frutiger Aero" and the premium "Shining Gold". The entire settings menu has also been redesigned!',
+      'inftube': 'InfTube',
+      'infvid_title': 'InfVid',
+      'infvid_upload_title': 'Upload Video',
+      'infvid_video_title_label': 'Title',
+      'infvid_video_desc_label': 'Description',
+      'infvid_no_videos': 'No videos yet. Be the first to upload!',
+      'infvid_uploading': 'Uploading video...',
+      'infvid_upload_success': 'Video uploaded successfully!',
+      'infvid_views': '{count} views',
     },
     ru: {
       'settings': 'Настройки',
@@ -351,7 +360,7 @@ export const translations = {
       'username_placeholder': 'вашеимя',
       'username_placeholder_short': '@имяпользователя',
       'user_not_found': 'Пользователь не найден.',
-      'searching': 'Поиск...',
+      'searching': 'Проверка...',
       'start_chat': 'Начать чат',
       'chat_exists': 'Чат уже существует',
       'chat_exists_desc': 'Этот чат уже есть в вашем списке.',
@@ -649,7 +658,16 @@ export const translations = {
       'whats_new_calls_title': 'Аудиозвонки',
       'whats_new_calls_desc': 'Оставайтесь на связи с помощью экспериментальных аудиозвонков один на один. Вы даже можете свернуть окно звонка, чтобы продолжить пользоваться приложением.',
       'whats_new_themes_title': 'Новые темы и интерфейс',
-      'whats_new_themes_desc': 'Исследуйте новые цветовые темы, включая экспериментальную "Frutiger Aero" и премиальную "Сияющее золото". Все меню настроек также было переработано!'
+      'whats_new_themes_desc': 'Исследуйте новые цветовые темы, включая экспериментальную "Frutiger Aero" и премиальную "Сияющее золото". Все меню настроек также было переработано!',
+      'inftube': 'InfTube',
+      'infvid_title': 'InfVid',
+      'infvid_upload_title': 'Загрузить видео',
+      'infvid_video_title_label': 'Название',
+      'infvid_video_desc_label': 'Описание',
+      'infvid_no_videos': 'Видео пока нет. Станьте первым!',
+      'infvid_uploading': 'Загрузка видео...',
+      'infvid_upload_success': 'Видео успешно загружено!',
+      'infvid_views': '{count, plural, one {# просмотр} few {# просмотра} other {# просмотров}}',
     }
   };
   
@@ -681,13 +699,16 @@ export const translations = {
               const category = pluralRules.select(count);
               switch(category) {
                   case 'one':
-                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник|\# подписчик/g, '').trim() || '';
+                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник|\# подписчик|\# просмотр/g, '').trim() || '';
+                      if (str.includes('просмотр')) return `${count} просмотр`;
                       return `${count} ${str.includes('участник') ? 'участник' : 'подписчик'}`;
                   case 'few':
-                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника|\# подписчика/g, '').trim() || '';
+                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника|\# подписчика|\# просмотра/g, '').trim() || '';
+                       if (str.includes('просмотр')) return `${count} просмотра`;
                        return `${count} ${str.includes('участника') ? 'участника' : 'подписчика'}`;
                   default:
-                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников|\# подписчиков/g, '').trim() || '';
+                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников|\# подписчиков|\# просмотров/g, '').trim() || '';
+                       if (str.includes('просмотр')) return `${count} просмотров`;
                        return `${count} ${str.includes('участников') ? 'участников' : 'подписчиков'}`;
               }
           }

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -36,7 +34,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
@@ -79,8 +77,20 @@ const iconMap = {
     Bot,
 };
 
+// Custom InfVid Icon: Infinite logo inside a Play triangle
+const InfVidIcon = ({ className }: { className?: string }) => (
+  <div className={cn("relative flex items-center justify-center", className)}>
+    <svg viewBox="0 0 24 24" fill="currentColor" className="absolute w-full h-full text-primary/20">
+      <path d="M5 3l14 9-14 9V3z" />
+    </svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative w-3/5 h-3/5">
+      <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4zm0 0c2 2.67 4 4 6 4a4 4 0 1 0 0-8c-2 0-4 1.33-6 4z" />
+    </svg>
+  </div>
+);
+
 interface SidebarContentProps {
-  onSelect: (item: PopulatedChat) => void;
+  onSelect: (item: PopulatedChat | 'infvid') => void;
   selectedId?: string;
   currentUser: AuthenticatedUser;
 }
@@ -414,7 +424,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <ScrollArea className="flex-1">
         <SidebarBody>
-            <div className="py-1 md:px-4">
+            <div className="py-1 md:px-4 space-y-1">
                 <Button
                     variant="ghost"
                     onClick={handleSelectSavedMessages}
@@ -434,8 +444,19 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         <Globe className="h-5 w-5 text-muted-foreground" />
                         <div className="flex items-center gap-2">
                            <p className="font-semibold">{t('general_chat')}</p>
-                           {/* This is a placeholder for a potential global verified chat */}
-                           {/* <VerifiedBadge className="w-4 h-4" /> */}
+                        </div>
+                    </div>
+                </Button>
+                <Button
+                    variant="ghost"
+                    onClick={() => { onSelect('infvid'); setOpenMobile(false); }}
+                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                >
+                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                        <InfVidIcon className="h-5 w-5" />
+                        <div className="flex items-center gap-2">
+                           <p className="font-semibold">{t('inftube')}</p>
+                           <Badge variant="secondary" className="h-4 px-1 text-[10px] leading-none">BETA</Badge>
                         </div>
                     </div>
                 </Button>

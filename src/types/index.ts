@@ -50,8 +50,9 @@ export type Message = {
 };
 
 export type VideoChunk = {
-  chatId: string;
-  messageId: string;
+  chatId?: string;
+  messageId?: string;
+  videoId?: string;
   data: string;
   part: number;
   senderId: string;
@@ -89,6 +90,19 @@ export type Call = {
   answer?: RTCSessionDescriptionInit;
   callerCandidates?: RTCIceCandidateInit[];
   calleeCandidates?: RTCIceCandidateInit[];
+};
+
+export type SharedVideo = {
+  id: string;
+  title: string;
+  description?: string;
+  senderId: string;
+  timestamp: Timestamp;
+  videoMimeType: string;
+  videoStatus: 'uploading' | 'complete' | 'failed';
+  videoChunkIds?: string[];
+  thumbnailUrl?: string;
+  views?: number;
 };
 
 export type Channel = Chat & {
