@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -17,6 +17,7 @@ import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { User, AuthenticatedUser } from '@/types';
 import { useLanguage } from '@/context/language-context';
+import { useNotifications } from '@/context/notification-context';
 
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
@@ -24,6 +25,16 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const { isMobile } = useSidebar();
   const db = useFirestore();
   const { t } = useLanguage();
+  const { setActiveChatId } = useNotifications();
+
+  // Inform NotificationProvider about the currently open chat
+  useEffect(() => {
+    if (selectedItem && typeof selectedItem !== 'string') {
+      setActiveChatId(selectedItem.id);
+    } else {
+      setActiveChatId(null);
+    }
+  }, [selectedItem, setActiveChatId]);
 
   const userDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -79,7 +90,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     <>
       {!isMobile && (
         <Sidebar>
-          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />}
+          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedId === 'string' ? selectedId : selectedItem?.id} currentUser={populatedUser} />}
         </Sidebar>
       )}
       <SidebarInset>

@@ -7,6 +7,7 @@ import { LanguageProvider } from '@/context/language-context';
 import { UpdatePromptProvider } from '@/context/update-prompt-context';
 import { ThemeProvider } from '@/context/theme-context';
 import { Snowfall } from '@/components/ui/snowfall';
+import { NotificationProvider } from '@/context/notification-context';
 
 export const metadata: Metadata = {
   title: 'Infinite',
@@ -31,11 +32,13 @@ export default function RootLayout({
           <LanguageProvider>
             <ThemeProvider>
               <Snowfall />
-              <UpdatePromptProvider>
-                <SplashScreen />
-                {children}
-                <Toaster />
-              </UpdatePromptProvider>
+              <NotificationProvider>
+                <UpdatePromptProvider>
+                  <SplashScreen />
+                  {children}
+                  <Toaster />
+                </UpdatePromptProvider>
+              </NotificationProvider>
             </ThemeProvider>
           </LanguageProvider>
         </FirebaseClientProvider>
