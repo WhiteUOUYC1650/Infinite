@@ -31,7 +31,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -49,6 +49,7 @@ import { EditProfileDialog } from './edit-profile-dialog';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
+import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew';
 
@@ -105,23 +106,29 @@ const subscriptionTiers: {
 ].sort((a, b) => a.level - b.level);
 
 
-const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean }) => (
-    <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none" disabled={disabled}>
-        <Icon className="h-6 w-6 mr-4 text-muted-foreground" />
-        <div className="flex-1 flex items-center justify-between">
-            <span className="font-medium">{label}</span>
-            <div className="flex items-center gap-2 text-muted-foreground">
-                {value && <span className='capitalize'>{value}</span>}
-                <ChevronRight className="h-5 w-5" />
-            </div>
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string }) => (
+    <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 group-hover:bg-primary/20 transition-colors">
+            <Icon className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 flex flex-col justify-center min-w-0">
+            <span className="font-medium truncate">{label}</span>
+            {description && <span className="text-xs text-muted-foreground truncate">{description}</span>}
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground ml-2">
+            {value && <span className='capitalize text-sm'>{value}</span>}
+            <ChevronRight className="h-5 w-5" />
         </div>
   </button>
 );
 
 
-const SettingsSwitchItem = ({ label, checked, onCheckedChange, id }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string }) => (
+const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string }) => (
     <div className="flex items-center justify-between w-full p-4">
-        <Label htmlFor={id} className="font-medium cursor-pointer">{label}</Label>
+        <div className="flex flex-col flex-1 mr-4">
+            <Label htmlFor={id} className="font-medium cursor-pointer">{label}</Label>
+            {description && <span className="text-xs text-muted-foreground">{description}</span>}
+        </div>
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
     </div>
 );
@@ -136,7 +143,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign } = useTheme();
   
   const auth = useAuth();
   const db = useFirestore();
@@ -341,28 +348,64 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     { question: t('faq_security_q'), answer: t('faq_security_a') },
   ];
 
+  const ExperimentalProfileHeader = () => (
+    <div className="flex flex-col items-center pt-8 pb-6 px-4 bg-primary/5">
+        <UserAvatarWithStatus user={currentUser as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl" />
+        <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold font-headline flex items-center justify-center gap-2">
+                {currentUser.name}
+                {currentUser.isAdmin && <VerifiedBadge />}
+            </h2>
+            <p className="text-muted-foreground">{currentUser.username}</p>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4 w-full max-w-xs mt-8">
+            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-blue-500" />
+                </div>
+                <span className="text-xs font-medium">{t('message')}</span>
+            </button>
+            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-green-500" />
+                </div>
+                <span className="text-xs font-medium">{t('music')}</span>
+            </button>
+            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-orange-500" />
+                </div>
+                <span className="text-xs font-medium">{t('audio_call')}</span>
+            </button>
+        </div>
+    </div>
+  );
+
   const mainPageContent = (
       <>
-        <div className="p-4">
-            <UserProfileCard 
-                user={currentUser} 
-                onEditProfile={() => {
-                    onOpenChange(false);
-                    setTimeout(() => setShowEditProfile(true), 150);
-                }} 
-            />
-        </div>
-        <div className="border-t">
-          <SettingsItem icon={Paintbrush} label={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
-          <SettingsItem icon={MessageSquare} label={t('chat_settings')} onClick={() => navigateTo('chat')} />
-          <SettingsItem icon={Languages} label={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
-          <SettingsItem icon={InfGoldIcon} label="InfGold" onClick={() => navigateTo('infGold')} />
-          <SettingsItem icon={User} label={t('profile')} onClick={() => navigateTo('account')} />
-          <SettingsItem icon={Star} label={t('whats_new')} onClick={() => navigateTo('whatsNew')} />
-          <SettingsItem icon={HelpCircle} label={t('help')} onClick={() => navigateTo('help')} />
-          <SettingsItem icon={Info} label={t('version')} value="0.3" onClick={() => navigateTo('about')} />
+        {experimentalDesign ? <ExperimentalProfileHeader /> : (
+            <div className="p-4">
+                <UserProfileCard 
+                    user={currentUser} 
+                    onEditProfile={() => {
+                        onOpenChange(false);
+                        setTimeout(() => setShowEditProfile(true), 150);
+                    }} 
+                />
+            </div>
+        )}
+        <div className={cn("border-t", experimentalDesign && "mt-4")}>
+          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
+          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings')} onClick={() => navigateTo('chat')} />
+          <SettingsItem icon={Languages} label={t('language')} description={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
+          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('inf_gold_balance')} onClick={() => navigateTo('infGold')} />
+          <SettingsItem icon={User} label={t('profile')} description={t('view_profile')} onClick={() => navigateTo('account')} />
+          <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} />
+          <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} />
+          <SettingsItem icon={Info} label={t('version')} description={t('version_info')} value="0.3" onClick={() => navigateTo('about')} />
           {currentUser.isAdmin && (
-              <SettingsItem icon={Shield} label={t('admin_panel_title')} onClick={() => router.push('/admin')} />
+              <SettingsItem icon={Shield} label={t('admin_panel_title')} description={t('admin_panel_title')} onClick={() => router.push('/admin')} />
           )}
         </div>
       </>
@@ -373,6 +416,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
         <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('theme')} />
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
+        <SettingsSwitchItem id="exp-design-switch" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={t('experimental_design_desc')} />
       </>
   );
   
@@ -627,17 +671,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
+  const isMainPage = page === 'main';
+
   return (
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
-      <DialogContent className="max-w-md w-full h-[80svh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+      <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none", experimentalDesign && "rounded-3xl border-none")}>
+        <DialogHeader className={cn(
+            "relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20",
+            experimentalDesign ? "bg-background/60 backdrop-blur-xl border-none" : "bg-background border-b"
+        )}>
           {pageHistory.length > 1 && (
             <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
               <ArrowLeft />
             </Button>
           )}
-          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogTitle className={cn(experimentalDesign && isMainPage && "sr-only")}>{getTitle()}</DialogTitle>
         </DialogHeader>
         <ScrollArea ref={scrollAreaRef} className="animate-in fade-in-0 duration-300">
            <div 

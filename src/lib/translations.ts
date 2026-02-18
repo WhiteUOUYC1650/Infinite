@@ -334,6 +334,8 @@ export const translations = {
       'infvid_upload_success': 'Video uploaded successfully!',
       'infvid_views': '{count} views',
       'new_message_from': 'New message from {name}',
+      'experimental_design_label': 'Experimental Design',
+      'experimental_design_desc': 'Try out the new mobile-style settings layout with quick actions.',
     },
     ru: {
       'settings': 'Настройки',
@@ -670,6 +672,8 @@ export const translations = {
       'infvid_upload_success': 'Видео успешно загружено!',
       'infvid_views': '{count, plural, one {# просмотр} few {# просмотра} other {# просмотров}}',
       'new_message_from': 'Новое сообщение от {name}',
+      'experimental_design_label': 'Экспериментальный дизайн',
+      'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле с быстрыми действиями.',
     }
   };
   

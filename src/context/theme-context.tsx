@@ -328,6 +328,8 @@ interface ThemeContextType {
   toggleSendOnEnter: () => void;
   minimizeCallOnClose: boolean;
   toggleMinimizeCallOnClose: () => void;
+  experimentalDesign: boolean;
+  toggleExperimentalDesign: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -338,6 +340,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [showSnowflakes, setShowSnowflakes] = useState(false);
   const [sendOnEnter, setSendOnEnter] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
+  const [experimentalDesign, setExperimentalDesign] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -346,6 +349,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
     const storedSendOnEnter = localStorage.getItem('app-send-on-enter');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
+    const storedExperimental = localStorage.getItem('app-experimental-design');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -367,6 +371,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (storedMinimizeCall) {
       setMinimizeCallOnClose(storedMinimizeCall === 'true');
+    }
+
+    if (storedExperimental) {
+      setExperimentalDesign(storedExperimental === 'true');
     }
 
     setIsMounted(true);
@@ -474,6 +482,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const handleToggleExperimentalDesign = () => {
+    setExperimentalDesign(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-experimental-design', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -485,6 +501,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleSendOnEnter: handleToggleSendOnEnter,
     minimizeCallOnClose,
     toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
+    experimentalDesign,
+    toggleExperimentalDesign: handleToggleExperimentalDesign,
   };
 
   if (!isMounted) {
