@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 // --- InfVid Icon ---
 const InfVidIcon = ({ className }: { className?: string }) => (
   <div className={cn("relative flex items-center justify-center", className)}>
-    <svg viewBox="0 0 24 24" fill="currentColor" className="absolute w-full h-full text-primary/20">
+    <svg viewBox="0 0 24 24" fill="#FF8C00" className="absolute w-full h-full">
       <path d="M5 3l14 9-14 9V3z" />
     </svg>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative w-3/5 h-3/5">
