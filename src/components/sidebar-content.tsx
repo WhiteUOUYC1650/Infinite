@@ -11,20 +11,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from '@/components/ui/dropdown-menu';
-import {
   SidebarFooter,
   SidebarHeader,
   SidebarContent as SidebarBody,
@@ -36,8 +22,8 @@ import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status'
 import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth, useCollection, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, getDocs } from 'firebase/firestore';
+import { useAuth, useCollection, useFirestore } from '@/firebase';
+import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import {
@@ -63,8 +49,6 @@ import { useTheme } from '@/context/theme-context';
 import { FaqDialog } from './faq-dialog';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { Skeleton } from './ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { VerifiedBadge } from './ui/verified-badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
@@ -102,17 +86,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, useExperimentalMenu, toggleExperimentalMenu } = useTheme();
+  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme } = useTheme();
   const { setOpenMobile } = useSidebar();
-  const [showVersion, setShowVersion] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false);
   const [showUserProfilePopover, setShowUserProfilePopover] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const [infiniteBot, setInfiniteBot] = useState<User | null>(null);
@@ -211,78 +191,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       handleSelect(newChat);
     }
   }
-
-  const handleLogout = async () => {
-    if (auth && db && currentUser) {
-      const userRef = doc(db, 'users', currentUser.uid);
-      try {
-        await setDoc(userRef, {
-            status: 'offline',
-            lastSeen: serverTimestamp()
-        }, { merge: true });
-      } catch (error) {
-        console.error("Failed to update status on logout:", error);
-      }
-      auth.signOut();
-    } else if (auth) {
-        auth.signOut();
-    }
-  };
-  
-  const handleDeleteAccount = async () => {
-    if (!auth || !db || !currentUser?.username) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete account. User data is missing.' });
-        return;
-    }
-    
-    setIsDeleting(true);
-    sessionStorage.setItem('isDeletingAccount', 'true');
-
-    const userToDelete = auth.currentUser;
-    if (!userToDelete) {
-        setIsDeleting(false);
-        sessionStorage.removeItem('isDeletingAccount');
-        return;
-    }
-
-    const usernameToDelete = currentUser.username;
-    
-    try {
-        await runTransaction(db, async (transaction) => {
-            const userDocRef = doc(db, 'users', userToDelete.uid);
-            const usernameDocRef = doc(db, 'usernames', usernameToDelete);
-            
-            const usernameDoc = await transaction.get(usernameDocRef);
-
-            transaction.update(userDocRef, {
-                name: 'Deleted Account',
-                username: `@deleted_${userToDelete.uid}`,
-                avatar: '',
-                status: 'offline',
-                statusMessage: '',
-                isDeleted: true,
-            });
-
-            if (usernameDoc.exists()) {
-                transaction.delete(usernameDocRef);
-            }
-        });
-
-        await deleteUser(userToDelete);
-        
-        router.push('/goodbye');
-
-    } catch (error: any) {
-        console.error("Error deleting account:", error);
-        toast({
-            variant: 'destructive',
-            title: t('delete_account_error'),
-            description: error.message || t('unexpected_error')
-        });
-        setIsDeleting(false);
-        sessionStorage.removeItem('isDeletingAccount');
-    }
-  };
 
   const handleSelectSavedMessages = async () => {
     if (!db) return;
@@ -615,148 +523,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-           {useExperimentalMenu ? (
-                <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)}>
-                    <Cog className="h-5 w-5" />
-                </Button>
-            ) : (
-                <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                    <Cog className="h-5 w-5" />
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="end">
-                    <DropdownMenuLabel>{t('settings')}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        <DropdownMenuItem onSelect={() => setShowEditProfile(true)}>{t('profile')}</DropdownMenuItem>
-                        {currentUser.isAdmin && (
-                            <DropdownMenuItem onSelect={() => router.push('/admin')}>
-                                <Shield className="mr-2 h-4 w-4" />
-                                <span>{t('admin_panel_title')}</span>
-                            </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onSelect={promptUpdate}>{t('notifications')}</DropdownMenuItem>
-                        <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                            <Paintbrush className="mr-2 h-4 w-4" />
-                            <span>{t('appearance')}</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="max-w-[80vw]">
-                            <DropdownMenuLabel>{t('color_theme')}</DropdownMenuLabel>
-                            <DropdownMenuRadioGroup value={colorTheme} onValueChange={(value) => setColorTheme(value as any)}>
-                                <DropdownMenuRadioItem value="orange">{t('orange')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="purple">{t('purple')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="blue">{t('blue')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="gray">{t('gray')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="green">{t('green')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="red">{t('red')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="yellow">{t('yellow')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="pink">{t('pink')}</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="frutiger">{t('frutiger_aero')}</DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                            <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Label htmlFor="snow-switch" className="flex w-full cursor-pointer items-center justify-between">
-                                        <span>{t('snowflakes')}</span>
-                                        <Switch
-                                            id="snow-switch"
-                                            checked={showSnowflakes}
-                                            onCheckedChange={toggleSnowflakes}
-                                        />
-                                    </Label>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Label htmlFor="experimental-menu-switch" className="flex w-full cursor-pointer items-center justify-between">
-                                        <span>{t('experimental_settings_menu_label')}</span>
-                                        <Switch
-                                            id="experimental-menu-switch"
-                                            checked={useExperimentalMenu}
-                                            onCheckedChange={toggleExperimentalMenu}
-                                        />
-                                    </Label>
-                                </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                            <Languages className="mr-2 h-4 w-4" />
-                            <span>{t('language')}</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                            <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
-                                <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
-                        <HelpCircle className="mr-2 h-4 w-4" />
-                        <span>{t('help')}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setShowVersion(true)}>
-                        <Info className="mr-2 h-4 w-4" />
-                        <span>{t('version')}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>{t('delete_account')}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>{t('logout')}</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-            )}
-
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)}>
+              <Cog className="h-5 w-5" />
+          </Button>
         </div>
       </SidebarFooter>
-
-      <AlertDialog open={showVersion} onOpenChange={setShowVersion}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-            <AlertDialogTitle>{t('app_version')}</AlertDialogTitle>
-            <AlertDialogDescription>
-                {t('version_info')}
-            </AlertDialogDescription>
-            </AlertDialogHeader>
-            <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left mt-4">
-              <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
-              <AlertDescription className="text-yellow-700 dark:text-yellow-400">
-                  {t('thank_you_beta')}
-              </AlertDescription>
-            </Alert>
-            <AlertDialogFooter className='mt-4'>
-                <AlertDialogAction onClick={() => setShowVersion(false)}>{t('ok')}</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-            <AlertDialogTitle>{t('delete_account_confirm_title')}</AlertDialogTitle>
-            <AlertDialogDescription>
-                {t('delete_account_confirm_desc')}
-            </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction 
-                onClick={handleDeleteAccount} 
-                disabled={isDeleting}
-                className={cn(buttonVariants({ variant: "destructive" }))}
-            >
-                {isDeleting ? t('deleting_account') : t('delete_account')}
-            </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <EditProfileDialog 
           user={currentUser}
@@ -778,19 +549,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           onChatSelected={handleSelect}
       />
 
-      <FaqDialog
-        open={showFaqDialog}
-        onScrollAreaContentChange={() => {}}
-        onOpenChange={setShowFaqDialog}
+      <ExperimentalSettingsDialog
+          open={showSettingsDialog}
+          onOpenChange={setShowSettingsDialog}
+          currentUser={currentUser}
       />
-
-      {useExperimentalMenu && (
-        <ExperimentalSettingsDialog
-            open={showSettingsDialog}
-            onOpenChange={setShowSettingsDialog}
-            currentUser={currentUser}
-        />
-      )}
 
     </>
   );

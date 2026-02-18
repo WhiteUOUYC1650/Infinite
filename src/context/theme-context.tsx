@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -325,8 +324,6 @@ interface ThemeContextType {
   isDarkMode: boolean;
   showSnowflakes: boolean;
   toggleSnowflakes: () => void;
-  useExperimentalMenu: boolean;
-  toggleExperimentalMenu: () => void;
   sendOnEnter: boolean;
   toggleSendOnEnter: () => void;
   minimizeCallOnClose: boolean;
@@ -339,7 +336,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('orange');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSnowflakes, setShowSnowflakes] = useState(false);
-  const [useExperimentalMenu, setUseExperimentalMenu] = useState(false);
   const [sendOnEnter, setSendOnEnter] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -348,7 +344,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedTheme = localStorage.getItem('app-color-theme') as Theme | null;
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
-    const storedExperimentalMenu = localStorage.getItem('app-experimental-menu');
     const storedSendOnEnter = localStorage.getItem('app-send-on-enter');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
 
@@ -364,10 +359,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     if (storedSnowflakes) {
       setShowSnowflakes(storedSnowflakes === 'true');
-    }
-
-    if (storedExperimentalMenu) {
-      setUseExperimentalMenu(storedExperimentalMenu === 'true');
     }
 
     if (storedSendOnEnter) {
@@ -467,14 +458,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const handleToggleExperimentalMenu = () => {
-    setUseExperimentalMenu(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-experimental-menu', String(newState));
-      return newState;
-    });
-  };
-
   const handleToggleSendOnEnter = () => {
     setSendOnEnter(prev => {
       const newState = !prev;
@@ -498,8 +481,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     isDarkMode,
     showSnowflakes,
     toggleSnowflakes: handleToggleSnowflakes,
-    useExperimentalMenu,
-    toggleExperimentalMenu: handleToggleExperimentalMenu,
     sendOnEnter,
     toggleSendOnEnter: handleToggleSendOnEnter,
     minimizeCallOnClose,
