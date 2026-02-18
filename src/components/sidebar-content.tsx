@@ -455,7 +455,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <div className="flex items-center gap-3 w-full px-4 md:px-0">
                         <InfVidIcon className="h-5 w-5" />
                         <div className="flex items-center gap-2">
-                           <p className="font-semibold">{t('inftube')}</p>
+                           <p className="font-semibold">{t('infvid_title')}</p>
                            <Badge variant="secondary" className="h-4 px-1 text-[10px] leading-none">BETA</Badge>
                         </div>
                     </div>
@@ -780,6 +780,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <FaqDialog
         open={showFaqDialog}
+        onScrollAreaContentChange={() => {}}
         onOpenChange={setShowFaqDialog}
       />
 
