@@ -50,6 +50,7 @@ import { InfGoldIcon } from './ui/inf-gold-icon';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
+import { VerifiedBadge } from './ui/verified-badge';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew';
 
