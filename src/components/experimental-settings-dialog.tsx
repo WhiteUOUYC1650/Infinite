@@ -739,16 +739,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
       <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
-        <DialogHeader className={cn(
-            "relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all",
-            experimentalDesign ? "bg-background/60 backdrop-blur-xl border-none" : "bg-background border-b"
-        )}>
+        <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-background border-b">
           {pageHistory.length > 1 && (
             <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
               <ArrowLeft />
             </Button>
           )}
-          <DialogTitle className={cn(experimentalDesign && isMainPage ? "sr-only" : "text-lg")}>{getTitle()}</DialogTitle>
+          <DialogTitle className="text-lg">{getTitle()}</DialogTitle>
         </DialogHeader>
         <ScrollArea ref={scrollAreaRef} className="flex-1">
            <div 
