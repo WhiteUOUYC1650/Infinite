@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import type { User } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
@@ -18,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from './ui/verified-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, BellOff, Bell } from 'lucide-react';
+import { MessageSquare, Phone, Bell } from 'lucide-react';
 
 interface UserProfileDialogProps {
   user: User;
@@ -55,12 +54,12 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-sm", experimentalDesign && "rounded-3xl p-0 gap-0 overflow-hidden border-none")}>
-        <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
-            <DialogHeader>
+      <DialogContent className={cn("max-w-sm p-0 overflow-hidden", experimentalDesign ? "rounded-[2rem] border-none" : "rounded-lg")}>
+        <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-background pt-10 pb-6 px-6")}>
+            <DialogHeader className="p-0">
                 <DialogTitle className="sr-only">{displayName}'s Profile</DialogTitle>
-                <div className='relative mx-auto w-32 h-32'>
-                    <UserAvatarWithStatus user={user} className="w-32 h-32 text-4xl shadow-xl border-4 border-background" />
+                <div className='relative mx-auto flex justify-center'>
+                    <UserAvatarWithStatus user={user} className="w-28 h-28 text-4xl shadow-xl border-4 border-background rounded-full" />
                 </div>
             </DialogHeader>
             <div className="text-center py-4">
@@ -77,39 +76,39 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                 <div className="grid grid-cols-3 gap-3 w-full mt-4">
                     <button 
                         onClick={() => onSendMessage(user)}
-                        className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95"
+                        className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
                     >
                         <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
                             <MessageSquare className="w-5 h-5 text-blue-500" />
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-tight">{t('message')}</span>
                     </button>
-                    <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95">
+                    <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
                         <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
-                            <Phone className="w-5 h-5 text-green-500" />
+                            <Bell className="w-5 h-5 text-green-500" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-tight text-green-600">{t('audio_call')}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tight text-green-600">{t('music')}</span>
                     </button>
-                    <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                            <Bell className="w-5 h-5 text-muted-foreground" />
+                    <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
+                        <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
+                            <Phone className="w-5 h-5 text-orange-500" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">MUTE</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('audio_call')}</span>
                     </button>
                 </div>
             )}
         </div>
 
-        <div className={cn(experimentalDesign && "px-6 pb-8")}>
+        <div className={cn("px-6 pb-8", !experimentalDesign && "pt-0")}>
             {user.statusMessage && !user.isDeleted && (
                 <div className="text-center p-4 bg-muted/50 rounded-2xl mb-6">
-                    <p className="text-sm italic">{user.statusMessage}</p>
+                    <p className="text-sm italic text-muted-foreground">"{user.statusMessage}"</p>
                 </div>
             )}
         
             {!experimentalDesign && (
-                <DialogFooter className='!justify-center'>
-                    <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted}>
+                <DialogFooter className='!justify-center p-0'>
+                    <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8">
                         {t('message')}
                     </Button>
                 </DialogFooter>

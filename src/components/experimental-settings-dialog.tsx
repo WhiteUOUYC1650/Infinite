@@ -351,7 +351,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const ExperimentalProfileHeader = () => (
     <div className="flex flex-col items-center pt-12 pb-8 px-6 bg-gradient-to-b from-primary/10 to-transparent">
-        <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl" />
+        <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full" />
         <div className="text-center space-y-1.5">
             <h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">
                 {currentUser.name}
@@ -361,19 +361,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         </div>
         
         <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-10 px-2">
-            <button className="flex flex-col items-center gap-2.5 p-4 rounded-3xl bg-background border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
+            <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
                 <div className="w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center">
                     <MessageSquare className="w-6 h-6 text-blue-500" />
                 </div>
                 <span className="text-[11px] font-bold uppercase tracking-wider">{t('message')}</span>
             </button>
-            <button className="flex flex-col items-center gap-2.5 p-4 rounded-3xl bg-background border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
+            <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
                 <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center">
                     <Bell className="w-6 h-6 text-green-500" />
                 </div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-green-600">{t('music')}</span>
             </button>
-            <button className="flex flex-col items-center gap-2.5 p-4 rounded-3xl bg-background border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
+            <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
                 <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center">
                     <Phone className="w-6 h-6 text-orange-500" />
                 </div>
@@ -677,7 +677,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   return (
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
-      <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none", experimentalDesign && "rounded-3xl border-none")}>
+      <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
         <DialogHeader className={cn(
             "relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all",
             experimentalDesign ? "bg-background/60 backdrop-blur-xl border-none" : "bg-background border-b"
@@ -710,7 +710,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     />
 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader>
             <AlertDialogTitleComponent>{t('delete_account_confirm_title')}</AlertDialogTitleComponent>
             <AlertDialogDescription>
@@ -718,11 +718,11 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction 
                 onClick={handleDeleteAccount} 
                 disabled={isDeleting}
-                className={cn(buttonVariants({ variant: "destructive" }))}
+                className={cn(buttonVariants({ variant: "destructive" }), "rounded-xl")}
             >
                 {isDeleting ? t('deleting_account') : t('delete_account')}
             </AlertDialogAction>

@@ -47,6 +47,7 @@ import ReactCrop, {
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
+import { cn } from '@/lib/utils';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -327,12 +328,12 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
   const Icon = chat.type === 'group' ? Users : Megaphone;
   
   const cropperContent = (
-    <>
+    <div className="p-6">
         <DialogHeader>
             <DialogTitle>Crop your new avatar</DialogTitle>
             <DialogDescription>Adjust the selection to crop your image. It will be a 1:1 square.</DialogDescription>
         </DialogHeader>
-        <div className="flex justify-center">
+        <div className="flex justify-center my-4">
             <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -357,12 +358,12 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                 Crop & Save
             </Button>
         </DialogFooter>
-    </>
+    </div>
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-sm flex flex-col max-h-[90vh]", experimentalDesign && !isEditing && "rounded-3xl p-0 gap-0 overflow-hidden border-none")}>
+      <DialogContent className={cn("max-w-sm flex flex-col p-0 overflow-hidden", experimentalDesign && !isEditing ? "rounded-[2rem] border-none" : "rounded-lg")}>
         {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
@@ -373,7 +374,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                         <div className="space-y-4">
                             <div className="flex justify-center">
                               <div className="relative">
-                                <button type="button" onClick={handleAvatarClick} className="rounded-full">
+                                <button type="button" onClick={handleAvatarClick} className="rounded-full overflow-hidden">
                                     <Avatar className="h-24 w-24">
                                         <AvatarImage src={avatarPreview || undefined} />
                                         <AvatarFallback><Icon className="h-12 w-12" /></AvatarFallback>
@@ -382,7 +383,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                 <button
                                   type="button"
                                   onClick={handleAvatarClick}
-                                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
@@ -452,7 +453,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                             )}
                         </div>
                     </div>
-                    <DialogFooter className="mt-auto pt-4 border-t">
+                    <DialogFooter className="mt-auto pt-4 border-t gap-2">
                         <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button>
                         <Button type="submit" disabled={isSaving}>
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -464,10 +465,10 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         ) : (
             <>
                 <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
-                    <DialogHeader>
+                    <DialogHeader className="p-0">
                         <DialogTitle className="sr-only">{chat.name}'s Profile</DialogTitle>
-                        <div className='relative mx-auto w-32 h-32'>
-                            <Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background">
+                        <div className='relative mx-auto'>
+                            <Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background rounded-full">
                             {chat.avatar ? (
                                     <AvatarImage src={chat.avatar} alt={chat.name} />
                             ) : (
@@ -487,10 +488,10 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     </div>
 
                     {experimentalDesign && (
-                        <div className="grid grid-cols-3 gap-3 w-full mt-6 px-2">
+                        <div className="grid grid-cols-3 gap-3 w-full mt-6">
                             <button 
                                 onClick={() => onOpenChange(false)}
-                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95"
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
                             >
                                 <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
                                     <MessageSquare className="w-5 h-5 text-blue-500" />
@@ -499,14 +500,14 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                             </button>
                             <button 
                                 onClick={handleCopyLink}
-                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95"
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
                             >
                                 <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
                                     <Share2 className="w-5 h-5 text-orange-500" />
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span>
                             </button>
-                            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95">
+                            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
                                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                                     <Bell className="w-5 h-5 text-muted-foreground" />
                                 </div>
@@ -519,7 +520,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                 <div className={cn("flex-1 overflow-y-auto px-6 space-y-6", experimentalDesign ? "pb-8" : "py-4")}>
                     {chat.description && (
                         <div className="text-center p-4 bg-muted/50 rounded-2xl">
-                            <p className="text-sm italic">{chat.description}</p>
+                            <p className="text-sm italic text-muted-foreground">"{chat.description}"</p>
                         </div>
                     )}
 
@@ -549,7 +550,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     )}
                 </div>
             
-                <div className={cn('!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "mt-auto")}>
+                <div className={cn('flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "mt-auto")}>
                     <div className="flex gap-2 w-full">
                         {isOwner && chat.id !== 'GENERAL_CHAT' && chat.type !== 'dm' && (
                             <Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl">
@@ -567,7 +568,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                             {isDeleting ? t('deleting') : t('delete')}
                                         </Button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent>
+                                    <AlertDialogContent className="rounded-2xl">
                                         <AlertDialogHeader>
                                         <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
                                         <AlertDialogDescription>
@@ -575,8 +576,8 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                         </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting}>
+                                        <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className="rounded-xl">
                                             {t('delete')}
                                         </AlertDialogAction>
                                         </AlertDialogFooter>
@@ -590,7 +591,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                             {isLeaving ? t('leaving') : t('leave')}
                                         </Button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent>
+                                    <AlertDialogContent className="rounded-2xl">
                                         <AlertDialogHeader>
                                         <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
                                         <AlertDialogDescription>
@@ -598,8 +599,8 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                         </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving}>
+                                        <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving} className="rounded-xl">
                                             {t('leave')}
                                         </AlertDialogAction>
                                         </AlertDialogFooter>
