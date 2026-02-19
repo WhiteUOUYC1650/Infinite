@@ -350,34 +350,34 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   ];
 
   const ExperimentalProfileHeader = () => (
-    <div className="flex flex-col items-center pt-8 pb-6 px-4 bg-primary/5">
-        <UserAvatarWithStatus user={currentUser as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl" />
-        <div className="text-center space-y-1">
-            <h2 className="text-2xl font-bold font-headline flex items-center justify-center gap-2">
+    <div className="flex flex-col items-center pt-12 pb-8 px-6 bg-gradient-to-b from-primary/10 to-transparent">
+        <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl" />
+        <div className="text-center space-y-1.5">
+            <h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">
                 {currentUser.name}
                 {currentUser.isAdmin && <VerifiedBadge />}
             </h2>
-            <p className="text-muted-foreground">{currentUser.username}</p>
+            <p className="text-muted-foreground font-medium">{currentUser.username}</p>
         </div>
         
-        <div className="grid grid-cols-3 gap-4 w-full max-w-xs mt-8">
-            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-blue-500" />
+        <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-10 px-2">
+            <button className="flex flex-col items-center gap-2.5 p-4 rounded-3xl bg-background border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
+                <div className="w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center">
+                    <MessageSquare className="w-6 h-6 text-blue-500" />
                 </div>
-                <span className="text-xs font-medium">{t('message')}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider">{t('message')}</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-green-500" />
+            <button className="flex flex-col items-center gap-2.5 p-4 rounded-3xl bg-background border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
+                <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center">
+                    <Bell className="w-6 h-6 text-green-500" />
                 </div>
-                <span className="text-xs font-medium">{t('music')}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-green-600">{t('music')}</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-orange-500" />
+            <button className="flex flex-col items-center gap-2.5 p-4 rounded-3xl bg-background border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
+                <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center">
+                    <Phone className="w-6 h-6 text-orange-500" />
                 </div>
-                <span className="text-xs font-medium">{t('audio_call')}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-orange-600">{t('audio_call')}</span>
             </button>
         </div>
     </div>
@@ -396,7 +396,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 />
             </div>
         )}
-        <div className={cn("border-t", experimentalDesign && "mt-4")}>
+        <div className={cn("border-t", experimentalDesign && "mt-2")}>
           <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
           <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings')} onClick={() => navigateTo('chat')} />
           <SettingsItem icon={Languages} label={t('language')} description={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
@@ -679,7 +679,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
       <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none", experimentalDesign && "rounded-3xl border-none")}>
         <DialogHeader className={cn(
-            "relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20",
+            "relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all",
             experimentalDesign ? "bg-background/60 backdrop-blur-xl border-none" : "bg-background border-b"
         )}>
           {pageHistory.length > 1 && (

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2 } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +46,7 @@ import ReactCrop, {
   type PixelCrop,
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { useTheme } from '@/context/theme-context';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -137,6 +138,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
+  const { experimentalDesign } = useTheme();
   const [isLeaving, setIsLeaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -315,6 +317,13 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     }
   }
 
+  const handleCopyLink = () => {
+    if (chat.link) {
+        navigator.clipboard.writeText(chat.link);
+        toast({ title: t('copy_success_toast') });
+    }
+  }
+
   const Icon = chat.type === 'group' ? Users : Megaphone;
   
   const cropperContent = (
@@ -353,14 +362,14 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm flex flex-col max-h-[90vh]">
+      <DialogContent className={cn("max-w-sm flex flex-col max-h-[90vh]", experimentalDesign && !isEditing && "rounded-3xl p-0 gap-0 overflow-hidden border-none")}>
         {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden">
+                <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
                     <DialogHeader>
                         <DialogTitle>{t('edit_chat_title')}</DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6">
+                    <div className="flex-1 overflow-y-auto py-4">
                         <div className="space-y-4">
                             <div className="flex justify-center">
                               <div className="relative">
@@ -443,7 +452,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                             )}
                         </div>
                     </div>
-                    <DialogFooter className="mt-auto pt-4 border-t -mx-6 px-6 pb-0">
+                    <DialogFooter className="mt-auto pt-4 border-t">
                         <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button>
                         <Button type="submit" disabled={isSaving}>
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -454,116 +463,152 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
             </Form>
         ) : (
             <>
-                <DialogHeader>
-                    <DialogTitle className="sr-only">{chat.name}'s Profile</DialogTitle>
-                    <div className='relative mx-auto w-32 h-32'>
-                        <Avatar className="w-32 h-32 text-4xl">
-                           {chat.avatar ? (
-                                <AvatarImage src={chat.avatar} alt={chat.name} />
-                           ) : (
-                                <AvatarFallback>
-                                    <Icon className="h-16 w-16" />
-                                </AvatarFallback>
-                           )}
-                        </Avatar>
-                    </div>
-                </DialogHeader>
-                <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6 space-y-4">
-                    <div className="text-center">
+                <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
+                    <DialogHeader>
+                        <DialogTitle className="sr-only">{chat.name}'s Profile</DialogTitle>
+                        <div className='relative mx-auto w-32 h-32'>
+                            <Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background">
+                            {chat.avatar ? (
+                                    <AvatarImage src={chat.avatar} alt={chat.name} />
+                            ) : (
+                                    <AvatarFallback>
+                                        <Icon className="h-16 w-16" />
+                                    </AvatarFallback>
+                            )}
+                            </Avatar>
+                        </div>
+                    </DialogHeader>
+                    <div className="text-center pt-4">
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold font-headline">{chat.name}</h2>
                             {(chat.link === '/G/Infinite' || chat.link === '/C/Infinite') && <VerifiedBadge />}
                         </div>
-                        <p className="text-muted-foreground">{chat.link}</p>
+                        <p className="text-muted-foreground font-medium">{chat.link}</p>
                     </div>
 
+                    {experimentalDesign && (
+                        <div className="grid grid-cols-3 gap-3 w-full mt-6 px-2">
+                            <button 
+                                onClick={() => onOpenChange(false)}
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
+                                    <MessageSquare className="w-5 h-5 text-blue-500" />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tight">{t('open')}</span>
+                            </button>
+                            <button 
+                                onClick={handleCopyLink}
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
+                                    <Share2 className="w-5 h-5 text-orange-500" />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span>
+                            </button>
+                            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background border shadow-sm hover:shadow-md transition-all active:scale-95">
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                    <Bell className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">MUTE</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div className={cn("flex-1 overflow-y-auto px-6 space-y-6", experimentalDesign ? "pb-8" : "py-4")}>
                     {chat.description && (
-                        <div className="text-center p-4 bg-muted/50 rounded-lg">
-                            <p className="text-sm">{chat.description}</p>
+                        <div className="text-center p-4 bg-muted/50 rounded-2xl">
+                            <p className="text-sm italic">{chat.description}</p>
                         </div>
                     )}
 
                     {(chat.type === 'group' || chat.type === 'channel') && (
                         <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
                                 {t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: members.length })}
                             </h3>
-                            <ScrollArea className="h-auto max-h-48 pr-4">
-                                <div className="space-y-2">
-                                    {members.map(member => (
-                                        <div key={member.id} className="flex items-center gap-3">
-                                            <UserAvatarWithStatus user={member} />
-                                            <div className="flex-1 truncate">
-                                                <p className="font-semibold truncate">{member.name}</p>
-                                                <p className="text-xs text-muted-foreground truncate">{member.username}</p>
-                                            </div>
-                                            {chat.ownerId === member.id && <Badge variant="secondary">{t('owner')}</Badge>}
+                            <div className="space-y-3">
+                                {members.slice(0, 10).map(member => (
+                                    <div key={member.id} className="flex items-center gap-3">
+                                        <UserAvatarWithStatus user={member} className="w-10 h-10" />
+                                        <div className="flex-1 truncate">
+                                            <p className="font-bold text-sm truncate">{member.name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{member.username}</p>
                                         </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
+                                        {chat.ownerId === member.id && <Badge variant="secondary" className="text-[10px]">{t('owner')}</Badge>}
+                                    </div>
+                                ))}
+                                {members.length > 10 && (
+                                    <p className="text-xs text-center text-muted-foreground pt-2">
+                                        And {members.length - 10} more...
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
             
-                <DialogFooter className='!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 pt-4 mt-auto border-t -mx-6 px-6 pb-0'>
-                    {isOwner && chat.id !== 'GENERAL_CHAT' && chat.type !== 'dm' && (
-                        <Button variant="outline" onClick={() => setIsEditing(true)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            {t('edit')}
-                        </Button>
-                    )}
-
-                    {chat.id !== 'GENERAL_CHAT' && (<>
-                        {isOwner ? (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isDeleting}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        {isDeleting ? t('deleting') : t('delete_chat')}
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        {t('delete_chat_confirm')}
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting}>
-                                        {t('delete')}
-                                    </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        ) : (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" disabled={isLeaving}>
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        {isLeaving ? t('leaving') : t('leave_chat')}
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        {t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving}>
-                                        {t('leave')}
-                                    </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                <div className={cn('!justify-center flex-col sm:flex-col sm:space-x-0 gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "mt-auto")}>
+                    <div className="flex gap-2 w-full">
+                        {isOwner && chat.id !== 'GENERAL_CHAT' && chat.type !== 'dm' && (
+                            <Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                {t('edit')}
+                            </Button>
                         )}
-                    </>)}
-                </DialogFooter>
+
+                        {chat.id !== 'GENERAL_CHAT' && (<>
+                            {isOwner ? (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" disabled={isDeleting} className="flex-1 rounded-xl">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            {isDeleting ? t('deleting') : t('delete')}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            {t('delete_chat_confirm')}
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting}>
+                                            {t('delete')}
+                                        </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            ) : (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" disabled={isLeaving} className="flex-1 rounded-xl">
+                                            <LogOut className="mr-2 h-4 w-4" />
+                                            {isLeaving ? t('leaving') : t('leave')}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            {t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving}>
+                                            {t('leave')}
+                                        </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                        </>)}
+                    </div>
+                </div>
             </>
         )}
       </DialogContent>
