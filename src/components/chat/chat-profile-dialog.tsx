@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -467,7 +468,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                 <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
                     <DialogHeader className="p-0">
                         <DialogTitle className="sr-only">{chat.name}'s Profile</DialogTitle>
-                        <div className='relative mx-auto'>
+                        <div className='relative mx-auto flex justify-center'>
                             <Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background rounded-full">
                             {chat.avatar ? (
                                     <AvatarImage src={chat.avatar} alt={chat.name} />
@@ -511,7 +512,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                                     <Bell className="w-5 h-5 text-muted-foreground" />
                                 </div>
-                                <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">MUTE</span>
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span>
                             </button>
                         </div>
                     )}

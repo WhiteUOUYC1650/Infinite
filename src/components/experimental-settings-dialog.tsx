@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -107,10 +108,13 @@ const subscriptionTiers: {
 ].sort((a, b) => a.level - b.level);
 
 
-const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string }) => (
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 group-hover:bg-primary/20 transition-colors">
-            <Icon className="h-5 w-5 text-primary" />
+        <div className={cn(
+            "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-4 transition-colors",
+            showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20"
+        )}>
+            <Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} />
         </div>
         <div className="flex-1 flex flex-col justify-center min-w-0">
             <span className="font-medium truncate">{label}</span>
@@ -350,7 +354,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   ];
 
   const ExperimentalProfileHeader = () => (
-    <div className="flex flex-col items-center pt-12 pb-8 px-6 bg-gradient-to-b from-primary/10 to-transparent">
+    <div className="flex flex-col items-center pt-8 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent">
         <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full" />
         <div className="text-center space-y-1.5">
             <h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">
@@ -368,16 +372,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 <span className="text-[11px] font-bold uppercase tracking-wider">{t('message')}</span>
             </button>
             <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
-                <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center">
-                    <Bell className="w-6 h-6 text-green-500" />
+                <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center">
+                    <Bell className="w-6 h-6 text-orange-500" />
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-green-600">{t('music')}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-orange-600">{t('mute')}</span>
             </button>
             <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
-                <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center">
-                    <Phone className="w-6 h-6 text-orange-500" />
+                <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center">
+                    <Phone className="w-6 h-6 text-green-500" />
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-orange-600">{t('audio_call')}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-green-600">{t('audio_call')}</span>
             </button>
         </div>
     </div>
@@ -397,16 +401,91 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </div>
         )}
         <div className={cn("border-t", experimentalDesign && "mt-2")}>
-          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} />
-          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings')} onClick={() => navigateTo('chat')} />
-          <SettingsItem icon={Languages} label={t('language')} description={t('language')} value={language.toUpperCase()} onClick={() => navigateTo('language')} />
-          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('inf_gold_balance')} onClick={() => navigateTo('infGold')} />
-          <SettingsItem icon={User} label={t('profile')} description={t('view_profile')} onClick={() => navigateTo('account')} />
-          <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} />
-          <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} />
-          <SettingsItem icon={Info} label={t('version')} description={t('version_info')} value="0.3" onClick={() => navigateTo('about')} />
+          <SettingsItem 
+            icon={Paintbrush} 
+            label={t('appearance')} 
+            description={t('appearance')} 
+            value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} 
+            onClick={() => navigateTo('appearance')}
+            showExpColors={experimentalDesign}
+            iconBg="bg-blue-500/15"
+            iconColor="text-blue-500"
+          />
+          <SettingsItem 
+            icon={MessageSquare} 
+            label={t('chat_settings')} 
+            description={t('chat_settings')} 
+            onClick={() => navigateTo('chat')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-green-500/15"
+            iconColor="text-green-500"
+          />
+          <SettingsItem 
+            icon={Languages} 
+            label={t('language')} 
+            description={t('language')} 
+            value={language.toUpperCase()} 
+            onClick={() => navigateTo('language')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-purple-500/15"
+            iconColor="text-purple-500"
+          />
+          <SettingsItem 
+            icon={InfGoldIcon} 
+            label="InfGold" 
+            description={t('inf_gold_balance')} 
+            onClick={() => navigateTo('infGold')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-amber-500/15"
+            iconColor="text-amber-600"
+          />
+          <SettingsItem 
+            icon={User} 
+            label={t('profile')} 
+            description={t('view_profile')} 
+            onClick={() => navigateTo('account')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-teal-500/15"
+            iconColor="text-teal-500"
+          />
+          <SettingsItem 
+            icon={Star} 
+            label={t('whats_new')} 
+            description={t('whats_new_desc')} 
+            onClick={() => navigateTo('whatsNew')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-yellow-500/15"
+            iconColor="text-yellow-600"
+          />
+          <SettingsItem 
+            icon={HelpCircle} 
+            label={t('help')} 
+            description={t('faq_desc')} 
+            onClick={() => navigateTo('help')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-rose-500/15"
+            iconColor="text-rose-500"
+          />
+          <SettingsItem 
+            icon={Info} 
+            label={t('version')} 
+            description={t('version_info')} 
+            value="0.3" 
+            onClick={() => navigateTo('about')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-gray-500/15"
+            iconColor="text-gray-500"
+          />
           {currentUser.isAdmin && (
-              <SettingsItem icon={Shield} label={t('admin_panel_title')} description={t('admin_panel_title')} onClick={() => router.push('/admin')} />
+              <SettingsItem 
+                icon={Shield} 
+                label={t('admin_panel_title')} 
+                description={t('admin_panel_title')} 
+                onClick={() => router.push('/admin')} 
+                showExpColors={experimentalDesign}
+                iconBg="bg-indigo-500/15"
+                iconColor="text-indigo-500"
+              />
           )}
         </div>
       </>
@@ -687,9 +766,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <ArrowLeft />
             </Button>
           )}
-          <DialogTitle className={cn(experimentalDesign && isMainPage && "sr-only")}>{getTitle()}</DialogTitle>
+          <DialogTitle className={cn(experimentalDesign && isMainPage ? "sr-only" : "text-lg")}>{getTitle()}</DialogTitle>
         </DialogHeader>
-        <ScrollArea ref={scrollAreaRef} className="animate-in fade-in-0 duration-300">
+        <ScrollArea ref={scrollAreaRef} className="flex-1">
            <div 
                 key={page} 
                 className={cn(

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -84,16 +85,16 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         <span className="text-[10px] font-bold uppercase tracking-tight">{t('message')}</span>
                     </button>
                     <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
-                        <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
-                            <Bell className="w-5 h-5 text-green-500" />
+                        <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
+                            <Bell className="w-5 h-5 text-orange-500" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-tight text-green-600">{t('music')}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('mute')}</span>
                     </button>
                     <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
-                        <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
-                            <Phone className="w-5 h-5 text-orange-500" />
+                        <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
+                            <Phone className="w-5 h-5 text-green-500" />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('audio_call')}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tight text-green-600">{t('audio_call')}</span>
                     </button>
                 </div>
             )}
