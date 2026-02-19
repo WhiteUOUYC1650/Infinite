@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -32,7 +31,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -354,7 +353,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   ];
 
   const ExperimentalProfileHeader = () => (
-    <div className="flex flex-col items-center pt-8 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent">
+    <div className="flex flex-col items-center pt-8 pb-10 px-6 bg-gradient-to-b from-primary/15 to-transparent">
         <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full" />
         <div className="text-center space-y-1.5">
             <h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">
@@ -362,27 +361,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 {currentUser.isAdmin && <VerifiedBadge />}
             </h2>
             <p className="text-muted-foreground font-medium">{currentUser.username}</p>
-        </div>
-        
-        <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-10 px-2">
-            <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
-                <div className="w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center">
-                    <MessageSquare className="w-6 h-6 text-blue-500" />
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider">{t('message')}</span>
-            </button>
-            <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
-                <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center">
-                    <Bell className="w-6 h-6 text-orange-500" />
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-orange-600">{t('mute')}</span>
-            </button>
-            <button className="flex flex-col items-center gap-2.5 p-4 rounded-[1.5rem] bg-card border shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all">
-                <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center">
-                    <Phone className="w-6 h-6 text-green-500" />
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-green-600">{t('audio_call')}</span>
-            </button>
         </div>
     </div>
   );
@@ -550,6 +528,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const accountPageContent = (
     <div className='p-4 space-y-2'>
+        <Button onClick={() => setShowEditProfile(true)} variant="outline" className='w-full justify-start'>
+            <Pencil className="mr-2 h-4 w-4" />
+            <span>{t('edit_profile')}</span>
+        </Button>
         <Button onClick={handleLogout} variant="outline" className='w-full justify-start'>
             <LogOut className="mr-2 h-4 w-4" />
             <span>{t('logout')}</span>
