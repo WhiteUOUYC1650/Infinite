@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -56,7 +55,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn("max-w-sm p-0 overflow-hidden", experimentalDesign ? "rounded-[2rem] border-none" : "rounded-lg")}>
-        <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-background pt-10 pb-6 px-6")}>
+        <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-background pt-6 pb-6 px-6")}>
             <DialogHeader className="p-0">
                 <DialogTitle className="sr-only">{displayName}'s Profile</DialogTitle>
                 <div className='relative mx-auto flex justify-center'>

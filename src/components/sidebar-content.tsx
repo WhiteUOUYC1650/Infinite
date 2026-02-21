@@ -511,7 +511,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     </div>
                 </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-xl")}>
+            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh]", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-xl")}>
                 <UserProfileCard 
                     user={currentUser} 
                     onEditProfile={() => {
