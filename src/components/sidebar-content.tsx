@@ -86,7 +86,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
-  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme } = useTheme();
+  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme, experimentalDesign } = useTheme();
   const { setOpenMobile } = useSidebar();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -494,21 +494,24 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <Separator />
 
-      <SidebarFooter className="p-2">
+      <SidebarFooter className={cn("p-2", experimentalDesign && "bg-muted/30 rounded-t-2xl border-t shadow-[0_-4px_12px_rgba(0,0,0,0.05)]")}>
         <div className="flex items-center gap-2">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 flex-1 truncate p-2 rounded-md hover:bg-sidebar-accent text-left">
+                <button className={cn(
+                  "flex items-center gap-2 flex-1 truncate p-2 rounded-xl hover:bg-sidebar-accent text-left transition-all",
+                  experimentalDesign && "bg-background/50 backdrop-blur-md border border-border/50 shadow-sm"
+                )}>
                     {currentUser.uid && currentUser.name && (
                     <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted }} />
                     )}
                     <div className="flex-1 truncate">
-                    <p className="font-semibold">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{currentUser.isDeleted ? '' : t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
+                    <p className="font-bold text-sm leading-tight">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{currentUser.isDeleted ? '' : t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
                     </div>
                 </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="w-80 mb-1">
+            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-xl")}>
                 <UserProfileCard 
                     user={currentUser} 
                     onEditProfile={() => {
@@ -518,12 +521,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn(experimentalDesign && "rounded-xl bg-background/50")}>
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)}>
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn(experimentalDesign && "rounded-xl bg-background/50")}>
               <Cog className="h-5 w-5" />
           </Button>
         </div>

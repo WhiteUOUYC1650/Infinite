@@ -11,17 +11,12 @@ import { VerifiedBadge } from './ui/verified-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Badge } from './ui/badge';
 import { InfGoldIcon } from './ui/inf-gold-icon';
+import { useTheme } from '@/context/theme-context';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
   onEditProfile: () => void;
 }
-
-const statusColors = {
-    online: "bg-green-500",
-    away: "bg-yellow-500",
-    offline: "bg-gray-400",
-};
 
 const statusTranslations: Record<User['status'], TranslationKey> = {
     online: 'online',
@@ -31,6 +26,7 @@ const statusTranslations: Record<User['status'], TranslationKey> = {
 
 export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const { t } = useLanguage();
+  const { experimentalDesign } = useTheme();
 
   const getStatusText = (user: AuthenticatedUser) => {
     if (user.isBot || user.isDeleted) return '';
@@ -56,6 +52,55 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
     giga: t('infinite_giga'),
     ultra: t('infinite_ultra'),
   };
+
+  if (experimentalDesign) {
+    return (
+      <div className="flex flex-col overflow-hidden">
+        {/* Experimental Header Background */}
+        <div className="flex flex-col items-center pt-6 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent">
+          <UserAvatarWithStatus user={user as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl rounded-full" />
+          <div className="text-center space-y-1">
+            <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
+              {displayName}
+              {user.isAdmin && <VerifiedBadge />}
+            </h2>
+            <p className="text-muted-foreground text-sm font-medium">{displayUsername}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{getStatusText(user)}</p>
+          </div>
+        </div>
+
+        <div className="px-4 pb-6 space-y-4">
+          {!user.isDeleted && !user.isBot && (
+            <div className="flex items-center justify-center gap-2 py-2">
+              <InfGoldIcon className="h-6 w-6" />
+              <span className="font-bold text-2xl tracking-tighter">{user.infGoldBalance ?? 0}</span>
+            </div>
+          )}
+
+          {user.statusMessage && !user.isDeleted && (
+            <div className="text-center p-4 bg-muted/40 rounded-[1.5rem] border border-border/50">
+              <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            {user.subscriptionTier && user.subscriptionTier !== 'none' && (
+              <Badge className="w-full justify-center py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl">
+                {subscriptionDisplayName[user.subscriptionTier]}
+              </Badge>
+            )}
+            <Button 
+              onClick={onEditProfile} 
+              disabled={!!user.isDeleted}
+              className="w-full rounded-[1.25rem] h-12 font-bold shadow-lg shadow-primary/20"
+            >
+              {t('edit_profile')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col">
