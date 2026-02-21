@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -31,7 +32,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -52,7 +53,7 @@ import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage';
 
 type SubscriptionTierId = 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
 
@@ -115,12 +116,12 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
         )}>
             <Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} />
         </div>
-        <div className="flex-1 flex flex-col justify-center min-w-0">
+        <div className="flex-1 flex flex-col justify-center min-w-0 overflow-hidden">
             <span className="font-medium truncate">{label}</span>
             {description && <span className="text-xs text-muted-foreground truncate">{description}</span>}
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground ml-2">
-            {value && <span className='capitalize text-sm'>{value}</span>}
+        <div className="flex items-center gap-2 text-muted-foreground ml-2 shrink-0">
+            {value && <span className='capitalize text-sm max-w-[100px] truncate'>{value}</span>}
             <ChevronRight className="h-5 w-5" />
         </div>
   </button>
@@ -129,11 +130,11 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
 
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string }) => (
     <div className="flex items-center justify-between w-full p-4">
-        <div className="flex flex-col flex-1 mr-4">
-            <Label htmlFor={id} className="font-medium cursor-pointer">{label}</Label>
-            {description && <span className="text-xs text-muted-foreground">{description}</span>}
+        <div className="flex flex-col flex-1 mr-4 min-w-0">
+            <Label htmlFor={id} className="font-medium cursor-pointer truncate">{label}</Label>
+            {description && <span className="text-xs text-muted-foreground truncate">{description}</span>}
         </div>
-        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
     </div>
 );
 
@@ -320,6 +321,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }, 5000); // animation duration
 };
 
+  const handleClearCache = () => {
+    // We clear localStorage but carefully keep or let reset non-auth things.
+    // Firebase auth is stored in IndexedDB, so localStorage.clear() shouldn't log out.
+    try {
+        localStorage.clear();
+        toast({ title: t('dm_success'), description: t('cache_cleared_success') });
+        // Optionally reload or state will reset on next access.
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (e) {
+        console.error("Clear cache failed", e);
+    }
+  };
+
 
   const getTitle = () => {
     switch (page) {
@@ -335,6 +349,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'prem': return t('infinite_prem');
       case 'dailyBonus': return t('daily_bonus');
       case 'whatsNew': return t('whats_new');
+      case 'dataStorage': return t('data_storage');
       default: return t('settings');
     }
   };
@@ -397,6 +412,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             showExpColors={experimentalDesign}
             iconBg="bg-green-500/15"
             iconColor="text-green-500"
+          />
+          <SettingsItem 
+            icon={HardDrive} 
+            label={t('data_storage')} 
+            description={t('data_storage')} 
+            onClick={() => navigateTo('dataStorage')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-orange-500/15"
+            iconColor="text-orange-500"
           />
           <SettingsItem 
             icon={Languages} 
@@ -525,6 +549,20 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <SettingsSwitchItem id="minimize-call-switch" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} />
     </div>
   );
+
+  const dataStoragePageContent = (
+    <div className='p-4 space-y-4'>
+        <div className="p-4 rounded-xl bg-card border flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate">{t('clear_cache')}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{t('clear_cache_desc')}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleClearCache} className="shrink-0">
+                {t('clear_cache')}
+            </Button>
+        </div>
+    </div>
+  );
   
   const accountPageContent = (
     <div className='p-4 space-y-2'>
@@ -547,7 +585,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       <Accordion type="single" collapsible className="w-full px-4">
         {faqs.map((faq, index) => (
           <AccordionItem value={`item-${index}`} key={index}>
-            <AccordionTrigger>{faq.question}</AccordionTrigger>
+            <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
             <AccordionContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0">
                     <ReactMarkdown
@@ -729,11 +767,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'prem': return premPageContent;
       case 'dailyBonus': return dailyBonusPageContent;
       case 'whatsNew': return whatsNewPageContent;
+      case 'dataStorage': return dataStoragePageContent;
       default: return null;
     }
   };
-
-  const isMainPage = page === 'main';
 
   return (
     <>

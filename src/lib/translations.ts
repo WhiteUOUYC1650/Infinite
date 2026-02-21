@@ -338,6 +338,10 @@ export const translations = {
       'experimental_design_label': 'Experimental Design',
       'experimental_design_desc': 'Try out the new mobile-style settings layout with quick actions.',
       'mute': 'Mute',
+      'data_storage': 'Data and Storage',
+      'clear_cache': 'Clear Cache',
+      'cache_cleared_success': 'Cache cleared successfully.',
+      'clear_cache_desc': 'Clears local app data (themes, language).',
     },
     ru: {
       'settings': 'Настройки',
@@ -677,6 +681,10 @@ export const translations = {
       'experimental_design_label': 'Экспериментальный дизайн',
       'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле с быстрыми действиями.',
       'mute': 'Звук',
+      'data_storage': 'Данные и память',
+      'clear_cache': 'Очистить кэш',
+      'cache_cleared_success': 'Кэш успешно очищен.',
+      'clear_cache_desc': 'Сбрасывает локальные данные (темы, язык).',
     }
   };
   
