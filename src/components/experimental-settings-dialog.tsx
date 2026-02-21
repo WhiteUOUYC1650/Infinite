@@ -368,7 +368,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const mainPageContent = (
       <>
         {experimentalDesign ? <ExperimentalProfileHeader /> : (
-            <div className="p-4">
+            <div className="p-0 overflow-hidden">
                 <UserProfileCard 
                     user={currentUser} 
                     onEditProfile={() => {

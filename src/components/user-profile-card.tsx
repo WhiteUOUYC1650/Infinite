@@ -55,9 +55,9 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
 
   if (experimentalDesign) {
     return (
-      <div className="flex flex-col overflow-hidden">
+      <div className="flex flex-col overflow-hidden max-h-full">
         {/* Experimental Header Background */}
-        <div className="flex flex-col items-center pt-6 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent">
+        <div className="flex flex-col items-center pt-8 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent shrink-0">
           <UserAvatarWithStatus user={user as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl rounded-full" />
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
@@ -69,7 +69,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
           </div>
         </div>
 
-        <div className="px-4 pb-6 space-y-4">
+        <div className="px-4 pb-6 space-y-4 overflow-y-auto">
           {!user.isDeleted && !user.isBot && (
             <div className="flex items-center justify-center gap-2 py-2">
               <InfGoldIcon className="h-6 w-6" />
@@ -103,8 +103,8 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   }
 
   return (
-    <div className="flex flex-col">
-        <div className='relative mx-auto w-24 h-24 mb-4'>
+    <div className="flex flex-col p-6">
+        <div className='relative mx-auto w-24 h-24 mb-4 shrink-0'>
              <UserAvatarWithStatus user={user} className="w-24 h-24 text-3xl" />
         </div>
         <div className="text-center">
@@ -136,13 +136,13 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
         </div>
 
         {user.statusMessage && !user.isDeleted && (
-             <div className="text-center p-3 mt-4 bg-muted/50 rounded-lg">
+             <div className="text-center p-3 mt-4 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
                 <p className="text-sm">{user.statusMessage}</p>
             </div>
         )}
        
-        <div className='mt-4 flex justify-center'>
-            <Button onClick={onEditProfile} disabled={!!user.isDeleted}>
+        <div className='mt-6 flex justify-center'>
+            <Button onClick={onEditProfile} disabled={!!user.isDeleted} className="w-full sm:w-auto">
                 {t('edit_profile')}
             </Button>
         </div>
