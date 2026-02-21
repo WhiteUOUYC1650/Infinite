@@ -353,7 +353,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   ];
 
   const ExperimentalProfileHeader = () => (
-    <div className="flex flex-col items-center pt-8 pb-10 px-6 bg-gradient-to-b from-primary/15 to-transparent">
+    <div className="flex flex-col items-center pt-10 pb-10 px-6 bg-gradient-to-b from-primary/15 to-transparent">
         <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full" />
         <div className="text-center space-y-1.5">
             <h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">

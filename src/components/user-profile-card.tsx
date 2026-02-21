@@ -57,7 +57,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
     return (
       <div className="flex flex-col overflow-hidden max-h-full">
         {/* Experimental Header Background */}
-        <div className="flex flex-col items-center pt-8 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent shrink-0">
+        <div className="flex flex-col items-center pt-10 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent shrink-0">
           <UserAvatarWithStatus user={user as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl rounded-full" />
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
