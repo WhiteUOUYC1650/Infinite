@@ -4,11 +4,11 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk, MusicChunk } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost, Clock } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost, Clock, Sparkles } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -46,6 +46,7 @@ import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
+import { summarizeChat } from '@/ai/flows/summarize-chat-flow';
 
 
 function DateSeparator({ date }: { date: string }) {
@@ -139,6 +140,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
   
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
 
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -163,11 +167,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return item.members.includes(currentUser.uid);
   }, [item?.members, currentUser.uid]);
 
-  // --- End live chat data ---
-
   // --- Call listener ---
   useEffect(() => {
-    if (!db || item.type !== 'dm' || !isMember || !item.id.includes('_')) return; // Prevents running for "Saved Messages" or invalid IDs
+    if (!db || item.type !== 'dm' || !isMember || !item.id.includes('_')) return; 
     const callDocRef = doc(db, 'calls', item.id);
     const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
         const data = snapshot.data() as Call;
@@ -247,7 +249,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [db, currentUser?.uid, item.id, item.unreadCounts, isMember]);
 
-  // --- Optimized User fetching for DM header ---
   const otherUserId = useMemo(() => {
     if (item.type !== 'dm') return null;
     return item.members.find((id) => id !== currentUser.uid) || currentUser.uid;
@@ -257,7 +258,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!otherUserId || !memberDetails) return null;
     return memberDetails[otherUserId] || null;
   }, [otherUserId, memberDetails]);
-  // --- End Optimization ---
 
 
   const getChatName = () => {
@@ -310,8 +310,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Scroll on media load ---
   const handleMediaLoad = useCallback(() => {
-    // Using a small timeout to allow the browser to paint the new dimensions
-    // before we try to scroll.
     setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -319,7 +317,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Sticky Date Header Logic & Scroll Detection ---
     const handleScroll = useCallback(() => {
-        // --- For sticky date ---
         const container = scrollContainerRef.current;
         if (!container) return;
 
@@ -333,7 +330,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         } else {
             for (let i = 0; i < dateSeparators.length; i++) {
                 const separator = dateSeparators[i];
-                if (separator.offsetTop <= scrollTop + 5) { // 5px offset for the sticky header itself
+                if (separator.offsetTop <= scrollTop + 5) {
                     currentStickyDate = separator.dataset.dateSeparator || null;
                 } else {
                     break;
@@ -347,32 +344,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
-
-        // We are already adding onScroll to the div itself, no need for event listener
-        handleScroll(); // Initial check
-
-    }, [handleScroll, messages]); // Rerun if messages change
+        handleScroll(); 
+    }, [handleScroll, messages]); 
 
 
   const handleSendMessageToUser = async (targetUser: User) => {
     if (!db || !currentUser || targetUser.isDeleted) return;
-
-    // Close the profile dialog
     setProfileDialogUser(null);
-
-    // Check if we are already in the correct DM chat
     const members = [currentUser.uid, targetUser.id].sort();
     const chatId = members.join('_');
-    if (initialItem.id === chatId) {
-      return; // Already in the correct chat, do nothing.
-    }
+    if (initialItem.id === chatId) return;
 
     const chatRef = doc(db, 'chats', chatId);
-
     try {
       const chatSnap = await getDoc(chatRef);
       let chatData: Chat;
-
       if (!chatSnap.exists()) {
         chatData = {
           id: chatId,
@@ -401,17 +387,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
     } catch (error) {
       console.error('Error switching to DM:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not open direct message.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not open direct message.' });
     }
   };
 
   const handleInternalLinkClick = async (href: string) => {
     if (!db || !currentUser) return;
-
     try {
         let targetChat: Chat | null = null;
         const processedHref = href.startsWith('/') ? href : href.toLowerCase();
@@ -419,17 +400,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (processedHref.startsWith('@')) {
             const usernameRef = doc(db, 'usernames', processedHref);
             const usernameSnap = await getDoc(usernameRef);
-
             if (usernameSnap.exists()) {
                 const targetUserId = usernameSnap.data().uid;
-
                 if (targetUserId === currentUser.uid) {
                     const selfChatRef = doc(db, 'chats', currentUser.uid);
                     const selfChatSnap = await getDoc(selfChatRef);
                     if (selfChatSnap.exists()) {
                         targetChat = { id: selfChatSnap.id, ...selfChatSnap.data() } as Chat;
                     } else {
-                        // Create saved messages chat if it doesn't exist
                         await setDoc(selfChatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark' });
                         targetChat = { id: currentUser.uid, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' };
                     }
@@ -468,35 +446,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             onSelectChat(populatedChat);
             if(isMobile) onClose();
         } else {
-            toast({
-                variant: 'destructive',
-                title: t('no_results_found'),
-                description: t('internal_link_not_found', { link: href }),
-            });
+            toast({ variant: 'destructive', title: t('no_results_found'), description: t('internal_link_not_found', { link: href }) });
         }
     } catch (error) {
         console.error("Error handling internal link:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: t('dm_error'),
-        });
+        toast({ variant: 'destructive', title: 'Error', description: t('dm_error') });
     }
   };
 
   const handleSendMessage = async () => {
     if ((!messageContent.trim() && !fileToSend) || !db) return;
-
     setIsSending(true);
-
     const originalContent = messageContent;
     const originalFile = fileToSend;
     const originalReplyTo = replyToMessage;
-    
     setMessageContent('');
     setFileToSend(null);
     setReplyToMessage(null);
-    
     try {
         if (originalFile?.type === 'video') {
             await handleSendVideo(originalFile, originalContent, originalReplyTo);
@@ -510,15 +476,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setMessageContent(originalContent);
         setFileToSend(originalFile);
         setReplyToMessage(originalReplyTo);
-        
         if (error instanceof FirestorePermissionError) {
             errorEmitter.emit('permission-error', error);
         } else {
-            toast({
-                variant: 'destructive',
-                title: t('admin_toast_error_title'),
-                description: (error as Error).message || t('unexpected_error'),
-            });
+            toast({ variant: 'destructive', title: t('admin_toast_error_title'), description: (error as Error).message || t('unexpected_error') });
         }
     } finally {
         setIsSending(false);
@@ -531,7 +492,6 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
         const contentForMessage = content.replace(/\n/g, '  \n');
         const contentForPreview = imageUrl ? t('image_attachment_placeholder') : content.split('\n')[0];
         const timestamp = Timestamp.now();
-
         const messageData: { [key: string]: any } = {
             senderId: currentUser.uid,
             content: contentForMessage,
@@ -547,7 +507,6 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
                 },
             }),
         };
-        
         const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
         const chatRef = doc(db, 'chats', item.id);
         const lastMessageData = {
@@ -558,7 +517,6 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
             timestamp,
             ...(imageUrl && { imageUrl }),
         };
-
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
@@ -579,21 +537,17 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 
 const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
     if (!db) throw new Error("Database not initialized");
-
     const { file: videoFile, previewUrl } = videoPayload;
-    
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     setLocalMediaCache(prev => ({ ...prev, [messageRef.id]: previewUrl }));
-
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
-
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
         content: content.replace(/\n/g, '  \n'),
         timestamp,
         videoMimeType: videoFile.type,
-        videoStatus: 'uploading', // Initial status
+        videoStatus: 'uploading',
         readBy: [],
         ...(replyTo && {
             replyTo: {
@@ -603,12 +557,9 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
             },
         }),
     };
-
     try {
-        // Step 1: Create the initial message and update the chat atomically.
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
-        
         const lastMessageData = {
             id: messageRef.id,
             content: content || t('video_attachment_placeholder'),
@@ -628,85 +579,49 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
         }
         batch.update(chatRef, updateData);
         await batch.commit();
-        
-        // Now that the message exists, we can upload chunks.
         const videoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(videoFile);
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
             reader.onerror = (error) => reject(error);
         });
-
-        const CHUNK_SIZE = 900 * 1024; // 900KB
-        
+        const CHUNK_SIZE = 900 * 1024; 
         const chunks: string[] = [];
         for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
             chunks.push(videoBase64.substring(i, i + CHUNK_SIZE));
         }
-        
         const chunkIds: string[] = [];
         for (const [index, chunkData] of chunks.entries()) {
             const chunkDocRef = doc(collection(db, 'videoChunks'));
-            await setDoc(chunkDocRef, {
-                data: chunkData,
-                part: index,
-                senderId: currentUser.uid, // Required for security rules
-            });
+            await setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
             chunkIds.push(chunkDocRef.id);
-            // Yield to event loop to prevent freezing on large files
             await new Promise(res => setTimeout(res, 0));
         }
-
-        // Step 3: Finalize the message
-        await updateDoc(messageRef, {
-            videoStatus: 'complete',
-            videoChunkIds: chunkIds,
-        });
-
-        // Also update the lastMessage on the chat if this is the last message
+        await updateDoc(messageRef, { videoStatus: 'complete', videoChunkIds: chunkIds });
         const chatDoc = await getDoc(chatRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
-            await updateDoc(chatRef, {
-                'lastMessage.videoStatus': 'complete'
-            });
+            await updateDoc(chatRef, { 'lastMessage.videoStatus': 'complete' });
         }
-
     } catch (error) {
         console.error("Error during video upload process:", error);
-        
-        // This update might fail if the initial message creation failed, but we try anyway.
-        await updateDoc(messageRef, { videoStatus: 'failed' }).catch((updateError) => {
-             console.error("Failed to update message status to 'failed'", updateError);
-        });
-        
-        // This is what will be displayed in the toast.
-        throw new FirestorePermissionError({
-            path: 'videoChunks', // This is the most likely failure point.
-            operation: 'create',
-            requestResourceData: { 
-                note: "Video chunk upload failed. Check security rules for creating video chunks.",
-                originalError: (error as Error).message
-            },
-        });
+        await updateDoc(messageRef, { videoStatus: 'failed' }).catch(() => {});
+        throw new FirestorePermissionError({ path: 'videoChunks', operation: 'create', requestResourceData: { note: "Video chunk upload failed.", originalError: (error as Error).message } });
     }
 };
 
 const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
     if (!db) throw new Error("Database not initialized");
-    
     const { file: musicFile, previewUrl } = musicPayload;
-
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     setLocalMediaCache(prev => ({ ...prev, [messageRef.id]: previewUrl }));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
-
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
         content: content.replace(/\n/g, '  \n'),
         timestamp,
         musicMimeType: musicFile.type,
-        musicStatus: 'uploading', // Initial status
+        musicStatus: 'uploading',
         readBy: [],
         ...(replyTo && {
             replyTo: {
@@ -716,12 +631,9 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             },
         }),
     };
-
     try {
-        // Step 1: Create the initial message and update the chat atomically.
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
-        
         const lastMessageData = {
             id: messageRef.id,
             content: content || t('music_attachment_placeholder'),
@@ -741,62 +653,34 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         }
         batch.update(chatRef, updateData);
         await batch.commit();
-
         const musicBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(musicFile);
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
             reader.onerror = (error) => reject(error);
         });
-
-        const CHUNK_SIZE = 900 * 1024; // 900KB
+        const CHUNK_SIZE = 900 * 1024;
         const chunks: string[] = [];
         for (let i = 0; i < musicBase64.length; i += CHUNK_SIZE) {
             chunks.push(musicBase64.substring(i, i + CHUNK_SIZE));
-            await new Promise(res => setTimeout(res, 0)); // Yield to event loop
+            await new Promise(res => setTimeout(res, 0));
         }
-        
         const chunkIds: string[] = [];
         for (const [index, chunkData] of chunks.entries()) {
             const chunkDocRef = doc(collection(db, 'musicChunks'));
-            await setDoc(chunkDocRef, {
-                data: chunkData,
-                part: index,
-                senderId: currentUser.uid,
-            });
+            await setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
             chunkIds.push(chunkDocRef.id);
             await new Promise(res => setTimeout(res, 0));
         }
-
-        // Step 3: Finalize the message
-        await updateDoc(messageRef, {
-            musicStatus: 'complete',
-            musicChunkIds: chunkIds,
-        });
-
-        // Also update the lastMessage on the chat if this is the last message
+        await updateDoc(messageRef, { musicStatus: 'complete', musicChunkIds: chunkIds });
         const chatDoc = await getDoc(chatRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
-            await updateDoc(chatRef, {
-                'lastMessage.musicStatus': 'complete'
-            });
+            await updateDoc(chatRef, { 'lastMessage.musicStatus': 'complete' });
         }
-
     } catch (error) {
         console.error("Error during music upload process:", error);
-        
-        await updateDoc(messageRef, { musicStatus: 'failed' }).catch((updateError) => {
-             console.error("Failed to update message status to 'failed'", updateError);
-        });
-        
-        throw new FirestorePermissionError({
-            path: 'musicChunks', // This is the most likely failure point.
-            operation: 'create',
-            requestResourceData: { 
-                note: "Music chunk upload failed. Check security rules for creating music chunks.",
-                originalError: (error as Error).message
-            },
-        });
+        await updateDoc(messageRef, { musicStatus: 'failed' }).catch(() => {});
+        throw new FirestorePermissionError({ path: 'musicChunks', operation: 'create', requestResourceData: { note: "Music chunk upload failed.", originalError: (error as Error).message } });
     }
 };
   
@@ -818,30 +702,18 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     try {
         const chatRef = doc(db, 'chats', discussionChatId);
         const chatSnap = await getDoc(chatRef);
-
         if (chatSnap.exists()) {
             const targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
             const iconName = targetChat.icon as keyof typeof iconMap | undefined;
-            const populatedChat: PopulatedChat = {
-                ...targetChat,
-                iconComponent: iconName ? iconMap[iconName] : undefined,
-            };
+            const populatedChat: PopulatedChat = { ...targetChat, iconComponent: iconName ? iconMap[iconName] : undefined };
             onSelectChat(populatedChat);
             if(isMobile) onClose();
         } else {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: t('discussion_chat_not_found'),
-            });
+            toast({ variant: 'destructive', title: 'Error', description: t('discussion_chat_not_found') });
         }
     } catch (error) {
         console.error("Error joining discussion:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not open discussion chat.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not open discussion chat.' });
     }
   };
   
@@ -867,35 +739,19 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
   
   const handleSaveEdit = async () => {
     if (!db || !editingMessage || (!messageContent.trim() && !fileToSend)) return;
-
     setIsSending(true);
     const messageRef = doc(db, 'chats', item.id, 'messages', editingMessage.id);
     const newContent = messageContent.replace(/\n/g, '  \n');
-
     try {
-        const updatePayload: { [key: string]: any } = {
-            content: newContent,
-            editedAt: serverTimestamp(),
-            // For simplicity, don't allow changing attachments during edit
-        };
-        await updateDoc(messageRef, updatePayload);
-
+        await updateDoc(messageRef, { content: newContent, editedAt: serverTimestamp() });
         if (item.lastMessage?.id === editingMessage.id) {
             const chatRef = doc(db, 'chats', item.id);
             const contentForPreview = fileToSend ? t('image_attachment_placeholder') : messageContent.split('\n')[0];
-            await updateDoc(chatRef, {
-                'lastMessage.content': contentForPreview,
-                'lastMessage.editedAt': serverTimestamp(),
-            });
+            await updateDoc(chatRef, { 'lastMessage.content': contentForPreview, 'lastMessage.editedAt': serverTimestamp() });
         }
-
         setEditingMessage(null);
     } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: messageRef.path,
-            operation: 'update',
-            requestResourceData: { content: newContent },
-        });
+        const permissionError = new FirestorePermissionError({ path: messageRef.path, operation: 'update', requestResourceData: { content: newContent } });
         errorEmitter.emit('permission-error', permissionError);
     } finally {
         setIsSending(false);
@@ -914,27 +770,23 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
-      event.target.value = ''; // Reset file input
-
+      event.target.value = ''; 
       setReplyToMessage(null);
       setEditingMessage(null);
-
       try {
         setIsSending(true);
         if (file.type.startsWith('video/')) {
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit for videos
+            if (file.size > 10 * 1024 * 1024) { 
                 toast({ variant: 'destructive', title: t('video_too_large') });
                 setIsSending(false);
                 return;
             }
             const previewUrl = URL.createObjectURL(file);
             setFileToSend({ file, previewUrl, type: 'video' });
-
         } else if (file.type.startsWith('image/')) {
             const fileSizeInMB = file.size / 1024 / 1024;
             const COMPRESSION_THRESHOLD_MB = 0.7;
             let dataUrl: string;
-
             if (fileSizeInMB > COMPRESSION_THRESHOLD_MB) {
                 dataUrl = await compressImage(file, 0.85, 1920);
             } else {
@@ -945,7 +797,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                     reader.onerror = e => reject(e);
                 });
             }
-            
             if (dataUrl.length > 950 * 1024) { 
                 toast({ variant: 'destructive', title: t('image_too_large'), description: t('image_too_large_compressed') });
                 setIsSending(false);
@@ -953,7 +804,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             }
             setFileToSend({ file, previewUrl: dataUrl, type: 'image' });
         } else if (file.type.startsWith('audio/')) {
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit for music
+            if (file.size > 10 * 1024 * 1024) { 
                 toast({ variant: 'destructive', title: t('music_too_large') });
                 setIsSending(false);
                 return;
@@ -965,7 +816,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             setIsSending(false);
             return;
         }
-
       } catch(e) {
         console.error("Error processing file:", e);
         toast({ variant: 'destructive', title: t('image_processing_failed_title'), description: t('image_processing_failed_desc') });
@@ -1000,7 +850,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         stream.getTracks().forEach(track => track.stop());
-        
         setIsCaller(false);
         setShowCallDialog(true);
         setIncomingCall(null);
@@ -1016,6 +865,55 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     const callDocRef = doc(db, 'calls', incomingCall.id);
     updateDoc(callDocRef, { status: 'ended' });
     setIncomingCall(null);
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!db || isSummarizing) return;
+    
+    const COST = 10;
+    if ((currentUser.infGoldBalance ?? 0) < COST) {
+        toast({ variant: 'destructive', title: t('not_enough_gold') });
+        return;
+    }
+
+    setIsSummarizing(true);
+    try {
+        const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
+        const q = query(messagesCollectionRef, orderBy('timestamp', 'desc'), limit(50));
+        const querySnapshot = await getDocs(q);
+        
+        const summaryMessages = querySnapshot.docs.map(doc => {
+            const data = doc.data() as Message;
+            return {
+                senderName: memberDetails[data.senderId]?.name || data.senderName || 'Unknown',
+                content: data.content || '',
+            };
+        }).reverse();
+
+        if (summaryMessages.length < 5) {
+            toast({ title: 'Error', description: 'Not enough messages to summarize.' });
+            return;
+        }
+
+        // Use transaction to deduct balance and run AI
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+            infGoldBalance: increment(-COST)
+        });
+
+        const { summary } = await summarizeChat({
+            chatName: getChatName() || 'Unknown Chat',
+            messages: summaryMessages,
+        });
+
+        setAiSummary(summary);
+        setShowSummaryDialog(true);
+    } catch (e) {
+        console.error("Summary failed:", e);
+        toast({ variant: 'destructive', title: 'Error', description: 'AI Summary failed.' });
+    } finally {
+        setIsSummarizing(false);
+    }
   };
   
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
@@ -1033,7 +931,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         
         <div className="flex-1 flex items-center min-w-0">
             {item.type === "dm" ? (
-                otherUser ? ( // If we have the user, show the profile button
+                otherUser ? ( 
                     <button
                         className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
                         onClick={() => setProfileDialogUser(otherUser)}
@@ -1050,7 +948,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                             </p>
                         </div>
                     </button>
-                ) : ( // if it's a DM but user is loading, show a skeleton
+                ) : ( 
                     <div className="flex items-center min-w-0">
                         <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
                         <div className="ml-3 space-y-2">
@@ -1059,7 +957,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                         </div>
                     </div>
                 )
-            ) : ( // Not a DM, show group/channel info
+            ) : ( 
                  <button 
                     className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
                     onClick={() => setShowChatProfile(true)}
@@ -1090,6 +988,18 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         </div>
 
         <div className="flex items-center gap-2 ml-2">
+            {item.type !== 'channel' && (
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="hidden sm:flex gap-2 text-primary hover:text-primary/80" 
+                    onClick={handleGenerateSummary}
+                    disabled={isSummarizing || !messages || messages.length < 5}
+                >
+                    {isSummarizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    <span className="font-bold">{t('ai_summary')}</span>
+                </Button>
+            )}
             {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
               <>
                 <Button variant="ghost" size="icon" onClick={handleInitiateCall} title={t('audio_call')}>
@@ -1113,6 +1023,11 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={handleGenerateSummary} disabled={isSummarizing || item.type === 'channel'}>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            <span>{t('ai_summary')} (10 InfGold)</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         {item.type === 'dm' && otherUser ? (
                             <>
                                 {otherUser.id !== currentUser.uid ? (
@@ -1151,13 +1066,11 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
       {/* Message List Area */}
       <div className="relative flex-1 min-h-0">
           <div className="absolute inset-0 flex flex-col">
-              {/* Sticky Date Header */}
               {stickyDate && (
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex-shrink-0 flex justify-center py-2 pointer-events-none">
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              {/* Scrollable Content */}
               <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
@@ -1383,6 +1296,28 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         </AlertDialogContent>
     </AlertDialog>
 
+    <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
+        <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    {t('ai_summary_title')}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                    {t('ai_report_desc')}
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="prose prose-sm dark:prose-invert max-w-none max-h-[60vh] overflow-y-auto p-4 rounded-xl border bg-muted/30">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {aiSummary || ''}
+                </ReactMarkdown>
+            </div>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setShowSummaryDialog(false)}>{t('ok')}</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+
     <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
     </div>
   );
@@ -1418,12 +1353,10 @@ function ChatMessage({
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
-    
     const [videoUrl, setVideoUrl] = useState<string | null>(message.videoMimeType && localMediaUrl ? localMediaUrl : null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
     const hasVideo = !!message.videoMimeType;
     const videoStatus = message.videoStatus;
-
     const [musicUrl, setMusicUrl] = useState<string | null>(message.musicMimeType && localMediaUrl ? localMediaUrl : null);
     const [isLoadingMusic, setIsLoadingMusic] = useState(false);
     const hasMusic = !!message.musicMimeType;
@@ -1432,93 +1365,51 @@ function ChatMessage({
     useEffect(() => {
         if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
-                // If we already have a URL (from local cache), don't re-fetch
-                if (videoUrl) {
-                    onMediaLoad(); // Ensure scroll happens even for cached media
-                    return;
-                }
+                if (videoUrl) { onMediaLoad(); return; }
                 setIsLoadingVideo(true);
-                setVideoUrl(null); // Reset previous video URL if any
+                setVideoUrl(null);
                 try {
-                    const chunkSnaps = await Promise.all(
-                        message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
-                    );
-                    
+                    const chunkSnaps = await Promise.all(message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id))));
                     const chunksData: {part: number, data: string}[] = [];
-                    chunkSnaps.forEach(snap => {
-                        if (snap.exists()) {
-                            chunksData.push(snap.data() as {part: number, data: string});
-                        }
-                    });
-
-                    if (chunksData.length !== message.videoChunkIds!.length) {
-                        throw new Error("Failed to fetch all video chunks.");
-                    }
-                    
-                    // Sort chunks by part number before joining
+                    chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
+                    if (chunksData.length !== message.videoChunkIds!.length) throw new Error("Failed to fetch all video chunks.");
                     chunksData.sort((a, b) => a.part - b.part);
-
-                    const assembledBase64 = chunksData.map(c => c.data).join('');
-                    const dataUrl = `data:${message.videoMimeType};base64,${assembledBase64}`;
-                    setVideoUrl(dataUrl);
+                    setVideoUrl(`data:${message.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`);
                 } catch (e) {
                     console.error("Error assembling video:", e);
                     setVideoUrl(null);
-                    if (e instanceof FirestorePermissionError) {
-                        errorEmitter.emit('permission-error', e);
-                    }
+                    if (e instanceof FirestorePermissionError) errorEmitter.emit('permission-error', e);
                 } finally {
                     setIsLoadingVideo(false);
                 }
             };
             fetchAndAssembleVideo();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id]);
     
     useEffect(() => {
         if (hasMusic && musicStatus === 'complete' && db && message.musicChunkIds && message.musicChunkIds.length > 0) {
             const fetchAndAssembleMusic = async () => {
-                if (musicUrl) {
-                    onMediaLoad();
-                    return;
-                }
+                if (musicUrl) { onMediaLoad(); return; }
                 setIsLoadingMusic(true);
                 setMusicUrl(null);
                 try {
-                    const chunkSnaps = await Promise.all(
-                        message.musicChunkIds!.map(id => getDoc(doc(db, 'musicChunks', id)))
-                    );
-                    
+                    const chunkSnaps = await Promise.all(message.musicChunkIds!.map(id => getDoc(doc(db, 'musicChunks', id))));
                     const chunksData: {part: number, data: string}[] = [];
-                    chunkSnaps.forEach(snap => {
-                        if (snap.exists()) {
-                            chunksData.push(snap.data() as {part: number, data: string});
-                        }
-                    });
-
-                    if (chunksData.length !== message.musicChunkIds!.length) {
-                        throw new Error("Failed to fetch all music chunks.");
-                    }
-                    
+                    chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
+                    if (chunksData.length !== message.musicChunkIds!.length) throw new Error("Failed to fetch all music chunks.");
                     chunksData.sort((a, b) => a.part - b.part);
-
-                    const assembledBase64 = chunksData.map(c => c.data).join('');
-                    const dataUrl = `data:${message.musicMimeType};base64,${assembledBase64}`;
-                    setMusicUrl(dataUrl);
+                    setMusicUrl(`data:${message.musicMimeType};base64,${chunksData.map(c => c.data).join('')}`);
                 } catch (e) {
                     console.error("Error assembling music:", e);
                     setMusicUrl(null);
-                    if (e instanceof FirestorePermissionError) {
-                        errorEmitter.emit('permission-error', e);
-                    }
+                    if (e instanceof FirestorePermissionError) errorEmitter.emit('permission-error', e);
                 } finally {
                     setIsLoadingMusic(false);
                 }
             };
             fetchAndAssembleMusic();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id]);
 
     const otherUserId = useMemo(() => {
@@ -1527,27 +1418,15 @@ function ChatMessage({
     }, [chat, currentUser.uid]);
 
     const isRead = useMemo(() => {
-        if (!isCurrentUser) return false;
-        
-        if (!message.readBy || !Array.isArray(message.readBy) || message.readBy.length === 0) {
-            return false;
-        }
-    
-        if (chat.type === 'dm') {
-            return otherUserId ? message.readBy.includes(otherUserId) : false;
-        }
-        if (chat.type === 'group') {
-            return message.readBy.some(readerId => readerId !== currentUser.uid);
-        }
+        if (!isCurrentUser || !message.readBy || !Array.isArray(message.readBy) || message.readBy.length === 0) return false;
+        if (chat.type === 'dm') return otherUserId ? message.readBy.includes(otherUserId) : false;
+        if (chat.type === 'group') return message.readBy.some(readerId => readerId !== currentUser.uid);
         return false;
     }, [message.readBy, chat.type, currentUser.uid, otherUserId, isCurrentUser]);
 
-
     const handleAvatarClick = () => {
         if (fromBot || (sender && sender.isDeleted)) return;
-        if (sender && !isCurrentUser) {
-            onAvatarClick(sender);
-        }
+        if (sender && !isCurrentUser) onAvatarClick(sender);
     };
 
     const handleCopy = () => {
@@ -1558,15 +1437,10 @@ function ChatMessage({
     const handleDelete = () => {
         if (!db) return;
         const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
-        deleteDoc(messageRef)
-            .catch((serverError: any) => {
-                console.error("Error deleting message: ", serverError);
-                const permissionError = new FirestorePermissionError({
-                    path: messageRef.path,
-                    operation: 'delete',
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            });
+        deleteDoc(messageRef).catch((serverError: any) => {
+            console.error("Error deleting message: ", serverError);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: messageRef.path, operation: 'delete' }));
+        });
     };
 
     const handleScrollToReply = () => {
@@ -1575,9 +1449,7 @@ function ChatMessage({
             if (repliedMsgElement) {
                 repliedMsgElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 repliedMsgElement.classList.add('bg-primary/10', 'rounded-lg', 'transition-colors', 'duration-1000');
-                setTimeout(() => {
-                    repliedMsgElement.classList.remove('bg-primary/10');
-                }, 2000);
+                setTimeout(() => repliedMsgElement.classList.remove('bg-primary/10'), 2000);
             }
         }
     };
@@ -1586,259 +1458,59 @@ function ChatMessage({
     const fromBot = message.type === 'announcement';
     const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
-    
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
-
-    const botUser: User | undefined = fromBot ? {
-        id: 'INFINITE_BOT',
-        name: message.senderName || 'Infinite',
-        username: '@InfiniteBot',
-        avatar: message.senderAvatar,
-        status: 'online',
-        isBot: true,
-    } : undefined;
-
+    const botUser: User | undefined = fromBot ? { id: 'INFINITE_BOT', name: message.senderName || 'Infinite', username: '@InfiniteBot', avatar: message.senderAvatar, status: 'online', isBot: true } : undefined;
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
     const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
 
-
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
-            const handleClick = (e: React.MouseEvent) => {
-                e.preventDefault();
-                onInternalLinkClick(href);
-            };
-            return (
-                <a href={href} onClick={handleClick} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>
-                    {children}
-                </a>
-            );
+            return <a href={href} onClick={(e) => { e.preventDefault(); onInternalLinkClick(href); }} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>{children}</a>;
         }
-
-        return (
-            <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>
-                {children}
-            </a>
-        );
+        return <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>{children}</a>;
     };
 
-    const canDeleteMessage = (isCurrentUser && !fromBot) || 
-                             (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') ||
-                             (chat.type === 'group' && chat.ownerId === currentUser.uid);
+    const canDeleteMessage = (isCurrentUser && !fromBot) || (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') || (chat.type === 'group' && chat.ownerId === currentUser.uid);
     
-    const messageBubbleContent = (
-        <>
-            {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender ? (
-                  <div className="font-semibold text-sm mb-1 flex items-center gap-2">
-                      <div className="truncate">{displayName}</div>
-                      {isVerified && <VerifiedBadge />}
-                      {isFromChannel ? (
-                          <Badge variant="secondary">{t('channel_badge')}</Badge>
-                      ) : (
-                          displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>
-                      )}
-                  </div>
-              ): null}
-
-            {message.replyTo && (
-                <button
-                    data-reply-box="true"
-                    onClick={handleScrollToReply}
-                    className={cn(
-                        "mb-2 p-2 rounded-md w-full text-left transition-colors",
-                        alignRight
-                            ? "bg-black/10 hover:bg-black/20"
-                            : "bg-muted hover:bg-muted/80"
-                    )}
-                >
-                    <div className="flex items-center gap-2">
-                        <CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                            <div className={cn(
-                                "font-semibold text-sm",
-                                alignRight
-                                    ? "text-primary-foreground/90"
-                                    : "text-primary"
-                            )}>{message.replyTo.senderName}</div>
-                            <div className={cn(
-                                "text-sm truncate",
-                                alignRight
-                                    ? "text-primary-foreground/70"
-                                    : "text-muted-foreground"
-                            )}>{message.replyTo.content}</div>
-                        </div>
-                    </div>
-                </button>
-            )}
-            <div className="overflow-hidden">
-                {hasVideo ? (
-                    <div className="relative my-1">
-                        {(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg">
-                                <Loader2 className="h-8 w-8 animate-spin" />
-                            </div>
-                        )}
-                        {videoStatus === 'complete' && !isLoadingVideo && videoUrl && (
-                            <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />
-                        )}
-                        {videoStatus === 'complete' && !isLoadingVideo && !videoUrl && (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>{t('video_load_failed')}</p>
-                            </div>
-                        )}
-                        {videoStatus === 'failed' && (
-                             <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p>
-                            </div>
-                        )}
-                    </div>
-                ) : hasMusic ? (
-                    <div className="relative my-1">
-                        {(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && (
-                             <div className="w-full flex items-center justify-center bg-secondary rounded-lg p-4">
-                                <Loader2 className="h-8 w-8 animate-spin" />
-                            </div>
-                        )}
-                        {musicStatus === 'complete' && !isLoadingMusic && musicUrl && (
-                            <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
-                        )}
-                        {musicStatus === 'complete' && !isLoadingMusic && !musicUrl && (
-                             <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>{t('music_load_failed')}</p>
-                            </div>
-                        )}
-                        {musicStatus === 'failed' && (
-                             <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2">
-                                <p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p>
-                            </div>
-                        )}
-                    </div>
-                ) : message.imageUrl ? (
-                    <div className="relative my-1">
-                        <img 
-                            src={message.imageUrl} 
-                            alt={t('image_attachment_alt')} 
-                            className="max-w-xs max-h-80 object-cover rounded-lg"
-                            onLoad={onMediaLoad}
-                        />
-                    </div>
-                ) : null}
-                {message.content && <div className={cn(
-                    "text-sm break-all prose prose-sm max-w-none",
-                    alignRight ? "prose-invert text-white" : "dark:prose-invert"
-                )}>
-                    <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                            a: renderLink,
-                        }}
-                    >
-                        {message.content}
-                    </ReactMarkdown>
-                </div>}
-            </div>
-            
-            <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                {message.editedAt && <span className="italic">{t('edited')}</span>}
-                <span>{timestamp}</span>
-                {isCurrentUser && chat.type !== 'channel' && !fromBot && (
-                    (message.videoStatus === 'uploading' || message.musicStatus === 'uploading') ? (
-                        <Clock className="h-4 w-4" />
-                    ) : (
-                        isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />
-                    )
-                )}
-            </div>
-        </>
-    );
-
     return (
-        <div 
-            id={`message-${message.id}`} 
-            className={cn(
-                "group flex items-end gap-2",
-                alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg"
-            )}
-        >
+        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
                         <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot || !!displaySender.isDeleted}>
-                           {isFromChannel ? (
-                                <Avatar className="h-10 w-10">
-                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary">
-                                        <Megaphone className="h-5 w-5 text-secondary-foreground" />
-                                    </div>
-                                </Avatar>
-                            ) : (
-                                <UserAvatarWithStatus user={displaySender} />
-                            )}
+                           {isFromChannel ? <Avatar className="h-10 w-10"><div className="flex h-full w-full items-center justify-center rounded-full bg-secondary"><Megaphone className="h-5 w-5 text-secondary-foreground" /></div></Avatar> : <UserAvatarWithStatus user={displaySender} />}
                         </button>
-                    ) : (
-                        <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
-                    )}
+                    ) : <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />}
                  </div>
-            ) : chatType === 'group' && !alignRight ? (
-                <div className="w-10 flex-shrink-0" />
-            ) : null}
+            ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn(
-                "min-w-0 max-w-[calc(100%-6rem)] p-3 rounded-lg flex flex-col",
-                alignRight
-                ? "bg-primary text-primary-foreground rounded-br-none"
-                : "bg-card text-card-foreground rounded-bl-none",
-                (hasMusic && !message.content.trim()) && "min-w-64"
-            )}>
-               {messageBubbleContent}
+            <div className={cn("min-w-0 max-w-[calc(100%-6rem)] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
+                {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
+                    <div className="font-semibold text-sm mb-1 flex items-center gap-2">
+                        <div className="truncate">{displayName}</div>
+                        {isVerified && <VerifiedBadge />}
+                        {isFromChannel ? <Badge variant="secondary">{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>)}
+                    </div>
+                )}
+                {message.replyTo && (
+                    <button onClick={handleScrollToReply} className={cn("mb-2 p-2 rounded-md w-full text-left transition-colors", alignRight ? "bg-black/10 hover:bg-black/20" : "bg-muted hover:bg-muted/80")}>
+                        <div className="flex items-center gap-2"><CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0"><div className={cn("font-semibold text-sm", alignRight ? "text-primary-foreground/90" : "text-primary")}>{message.replyTo.senderName}</div><div className={cn("text-sm truncate", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.replyTo.content}</div></div></div>
+                    </button>
+                )}
+                <div className="overflow-hidden">
+                    {hasVideo ? (
+                        <div className="relative my-1">{(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg"><Loader2 className="h-8 w-8 animate-spin" /></div>}{videoStatus === 'complete' && !isLoadingVideo && videoUrl && <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />}{videoStatus === 'failed' && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p></div>}</div>
+                    ) : hasMusic ? (
+                        <div className="relative my-1">{(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && <div className="w-full flex items-center justify-center bg-secondary rounded-lg p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>}{musicStatus === 'complete' && !isLoadingMusic && musicUrl && <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />}{musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}</div>
+                    ) : message.imageUrl ? <div className="relative my-1"><img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} /></div> : null}
+                    {message.content && <div className={cn("text-sm break-all prose prose-sm max-w-none", alignRight ? "prose-invert text-white" : "dark:prose-invert")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: renderLink }}>{message.content}</ReactMarkdown></div>}
+                </div>
+                <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
             </div>
 
-            <div className={cn(
-                "flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]",
-                !alignRight && "order-last"
-            )}>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            data-menu-trigger="true"
-                            className="h-8 w-8"
-                        >
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
-                        {chat.type !== 'channel' && !displaySender?.isDeleted && (
-                            <DropdownMenuItem onSelect={() => onReply(message)}>
-                                <Reply className="mr-2 h-4 w-4" />
-                                <span>{t('reply')}</span>
-                            </DropdownMenuItem>
-                        )}
-                        {message.content && (<DropdownMenuItem onSelect={handleCopy}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            <span>{t('copy_text')}</span>
-                        </DropdownMenuItem>)}
-                        
-                        {(isCurrentUser && !fromBot) || canDeleteMessage ? (
-                          <DropdownMenuSeparator />
-                        ) : null}
-
-                        {isCurrentUser && !fromBot && (
-                          <DropdownMenuItem onSelect={() => setEditingMessage(message)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>{t('edit_message')}</span>
-                          </DropdownMenuItem>
-                        )}
-
-                        {canDeleteMessage && (
-                           <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>{t('delete_message')}</span>
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+            <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>
+                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}>{chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}{message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}{(isCurrentUser && !fromBot) || canDeleteMessage ? <DropdownMenuSeparator /> : null}{isCurrentUser && !fromBot && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );
