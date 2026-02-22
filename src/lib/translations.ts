@@ -15,7 +15,8 @@ export const translations = {
       'loading_chats': 'Loading chats...',
       'saved_messages': 'Saved Messages',
       'app_version': 'App Version',
-      'version_info': 'You are currently running version 0.3 (Beta) of Infinite messenger.',
+      'version_info': 'Infinite Version',
+      'version_info_detail': 'You are currently running version 0.3 (Beta) of Infinite messenger.',
       'ok': 'OK',
       'new_conversation': 'New Conversation',
       'new_conversation_desc': 'Start a new direct message, group discussion, or broadcast channel.',
@@ -342,6 +343,7 @@ export const translations = {
       'clear_cache': 'Clear Cache',
       'cache_cleared_success': 'Cache cleared successfully.',
       'clear_cache_desc': 'Clears local app data (images, videos, temporary files). Your settings will be preserved.',
+      'cache_usage': 'Cache Usage',
     },
     ru: {
       'settings': 'Настройки',
@@ -358,7 +360,8 @@ export const translations = {
       'loading_chats': 'Загрузка чатов...',
       'saved_messages': 'Избранное',
       'app_version': 'Версия приложения',
-      'version_info': 'Вы используете версию 0.3 (Бета) мессенджера Infinite.',
+      'version_info': 'Версия Infinite',
+      'version_info_detail': 'Вы используете версию 0.3 (Бета) мессенджера Infinite.',
       'ok': 'OK',
       'new_conversation': 'Новый диалог',
       'new_conversation_desc': 'Начните новое личное сообщение, групповое обсуждение или канал.',
@@ -554,7 +557,7 @@ export const translations = {
       'faq_infgold_q': "Что такое InfGold и как его получить?",
       'faq_infgold_a': "InfGold — это наша виртуальная валюта. Вы можете зарабатывать её бесплатно каждый день, вращая колесо 'Ежедневного бонуса' в настройках InfGold. Затем вы можете использовать InfGold для покупки подписок 'Infinite Prem'.",
       'faq_prem_q': "Что такое 'Infinite Prem'?",
-      'faq_prem_a': "'Infinite Prem' — это подписка, которая открывает доступ к эксклюзивным функциям, таким как премиум-темы (например, 'Сияющее золото'), специальные значки в профиле и многое другое. Вы можете подписаться, используя InfGold.",
+      'faq_prem_a': "'Infinite Prem' — это подписка, которая открывает доступ к эксклюзивным функциям, такой как премиум-темы (например, 'Сияющее золото'), специальные значки в профиле и многое другое. Вы можете подписаться, используя InfGold.",
       'no_bots_found': 'Боты не найдены. Возможно, аккаунт InfiniteBot еще не создан.',
       'bot_status': 'бот',
       'snowflakes': 'Снежинки',
@@ -685,6 +688,7 @@ export const translations = {
       'clear_cache': 'Очистить кэш',
       'cache_cleared_success': 'Кэш успешно очищен.',
       'clear_cache_desc': 'Удаляет временные файлы приложения (изображения, видео). Ваши настройки будут сохранены.',
+      'cache_usage': 'Использование кэша',
     }
   };
   

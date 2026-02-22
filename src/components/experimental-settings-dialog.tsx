@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -133,7 +134,7 @@ const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description }
     <div className="flex items-start justify-between w-full p-4">
         <div className="flex flex-col flex-1 mr-4 min-w-0">
             <Label htmlFor={id} className="font-medium cursor-pointer truncate mb-0.5">{label}</Label>
-            {description && <span className="text-xs text-muted-foreground leading-relaxed">{description}</span>}
+            {description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}
         </div>
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" />
     </div>
@@ -157,6 +158,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
   
   // Subscription state
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -167,7 +169,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [wheelRotation, setWheelRotation] = useState(0);
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
 
-  const cacheSize = useMemo(() => {
+  const calculateCacheSize = () => {
     if (typeof window === 'undefined') return '0 B';
     let total = 0;
     for (let i = 0; i < localStorage.length; i++) {
@@ -181,7 +183,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(total) / Math.log(k));
     return parseFloat((total / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }, [page]); // Recalculate size when switching pages (to update after clear)
+  };
+
+  useEffect(() => {
+    if (open) {
+        setCurrentCacheSize(calculateCacheSize());
+    }
+  }, [open, page]);
 
 
   useEffect(() => {
@@ -349,9 +357,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         }
         keysToRemove.forEach(key => localStorage.removeItem(key));
         toast({ title: t('dm_success'), description: t('cache_cleared_success') });
-        // Force re-render by navigating back and forth or just reloading if needed
-        navigateTo('main');
-        setTimeout(() => handleBack(), 50);
+        setCurrentCacheSize(calculateCacheSize());
     } catch (e) {
         console.error("Clear cache failed", e);
     }
@@ -521,7 +527,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
         <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('theme')} />
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
-        <SettingsSwitchItem id="exp-design-switch" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={t('experimental_design_desc')} />
+        <SettingsSwitchItem 
+            id="exp-design-switch" 
+            label={t('experimental_design_label')} 
+            checked={experimentalDesign} 
+            onCheckedChange={toggleExperimentalDesign} 
+            description={t('experimental_design_desc')} 
+        />
       </>
   );
   
@@ -575,10 +587,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const dataStoragePageContent = (
     <div className='p-4 space-y-4'>
+        <div className="p-6 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col items-center text-center gap-2">
+            <HardDrive className="h-10 w-10 text-primary mb-2" />
+            <h3 className="text-xl font-bold font-headline">{t('cache_usage')}</h3>
+            <p className="text-3xl font-black text-primary">{currentCacheSize}</p>
+        </div>
+
         <div className="p-4 rounded-xl bg-card border flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{t('clear_cache')}</p>
-                <p className="text-xs text-muted-foreground line-clamp-2">{t('clear_cache_desc')} ({cacheSize})</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{t('clear_cache_desc')}</p>
             </div>
             <Button variant="outline" size="sm" onClick={handleClearCache} className="shrink-0">
                 {t('clear_cache')}
@@ -630,6 +648,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <div className='p-4 space-y-4 text-center flex flex-col items-center justify-center h-full min-h-[50vh]'>
       <h2 className="text-6xl font-bold font-headline">0.3</h2>
       <p className="text-muted-foreground">{t('beta_badge')}</p>
+      <p className="text-sm text-muted-foreground max-w-xs mt-2">{t('version_info_detail')}</p>
        <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left mt-8">
             <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />
             <AlertDescription className="text-yellow-700 dark:text-yellow-400">
