@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +55,8 @@ import { VerifiedBadge } from './ui/verified-badge';
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage';
 
 type SubscriptionTierId = 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
+
+const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang'];
 
 const subscriptionTiers: {
     id: SubscriptionTierId;
@@ -122,19 +123,19 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
         </div>
         <div className="flex items-center gap-2 text-muted-foreground ml-2 shrink-0">
             {value && <span className='capitalize text-sm max-w-[100px] truncate'>{value}</span>}
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5 shrink-0" />
         </div>
   </button>
 );
 
 
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string }) => (
-    <div className="flex items-center justify-between w-full p-4">
+    <div className="flex items-start justify-between w-full p-4">
         <div className="flex flex-col flex-1 mr-4 min-w-0">
-            <Label htmlFor={id} className="font-medium cursor-pointer truncate">{label}</Label>
-            {description && <span className="text-xs text-muted-foreground truncate">{description}</span>}
+            <Label htmlFor={id} className="font-medium cursor-pointer truncate mb-0.5">{label}</Label>
+            {description && <span className="text-xs text-muted-foreground leading-relaxed">{description}</span>}
         </div>
-        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" />
     </div>
 );
 
@@ -165,6 +166,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isSpinning, setSpinning] = useState(false);
   const [wheelRotation, setWheelRotation] = useState(0);
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
+
+  const cacheSize = useMemo(() => {
+    if (typeof window === 'undefined') return '0 B';
+    let total = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !SETTINGS_KEYS.includes(key)) {
+        total += (localStorage.getItem(key) || '').length * 2;
+      }
+    }
+    if (total === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(total) / Math.log(k));
+    return parseFloat((total / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }, [page]); // Recalculate size when switching pages (to update after clear)
 
 
   useEffect(() => {
@@ -322,13 +339,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 };
 
   const handleClearCache = () => {
-    // We clear localStorage but carefully keep or let reset non-auth things.
-    // Firebase auth is stored in IndexedDB, so localStorage.clear() shouldn't log out.
     try {
-        localStorage.clear();
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && !SETTINGS_KEYS.includes(key)) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
         toast({ title: t('dm_success'), description: t('cache_cleared_success') });
-        // Optionally reload or state will reset on next access.
-        setTimeout(() => window.location.reload(), 1000);
+        // Force re-render by navigating back and forth or just reloading if needed
+        navigateTo('main');
+        setTimeout(() => handleBack(), 50);
     } catch (e) {
         console.error("Clear cache failed", e);
     }
@@ -555,7 +578,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <div className="p-4 rounded-xl bg-card border flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{t('clear_cache')}</p>
-                <p className="text-xs text-muted-foreground line-clamp-2">{t('clear_cache_desc')}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{t('clear_cache_desc')} ({cacheSize})</p>
             </div>
             <Button variant="outline" size="sm" onClick={handleClearCache} className="shrink-0">
                 {t('clear_cache')}

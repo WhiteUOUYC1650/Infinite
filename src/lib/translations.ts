@@ -341,7 +341,7 @@ export const translations = {
       'data_storage': 'Data and Storage',
       'clear_cache': 'Clear Cache',
       'cache_cleared_success': 'Cache cleared successfully.',
-      'clear_cache_desc': 'Clears local app data (themes, language).',
+      'clear_cache_desc': 'Clears local app data (images, videos, temporary files). Your settings will be preserved.',
     },
     ru: {
       'settings': 'Настройки',
@@ -679,12 +679,12 @@ export const translations = {
       'infvid_views': '{count, plural, one {# просмотр} few {# просмотра} other {# просмотров}}',
       'new_message_from': 'Новое сообщение от {name}',
       'experimental_design_label': 'Экспериментальный дизайн',
-      'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле с быстрыми действиями.',
+      'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле\nс быстрыми действиями.',
       'mute': 'Звук',
       'data_storage': 'Данные и память',
       'clear_cache': 'Очистить кэш',
       'cache_cleared_success': 'Кэш успешно очищен.',
-      'clear_cache_desc': 'Сбрасывает локальные данные (темы, язык).',
+      'clear_cache_desc': 'Удаляет временные файлы приложения (изображения, видео). Ваши настройки будут сохранены.',
     }
   };
   
