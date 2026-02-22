@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -82,14 +83,14 @@ export default function SignUpPage() {
           throw new Error(t('username_taken_error'));
         }
         
-        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
+        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot' || usernameWithAt === '@GeminiBot';
 
         transaction.set(userDocRef, {
-          name: isBotUser ? 'Infinite' : usernameWithAt,
+          name: isBotUser ? (usernameWithAt === '@GeminiBot' ? 'Gemini AI' : 'Infinite') : usernameWithAt,
           username: usernameWithAt,
           status: 'online',
           statusMessage: isBotUser 
-            ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!' 
+            ? (usernameWithAt === '@GeminiBot' ? 'I am your AI assistant. Chat with me!' : 'I am the official Infinite bot. I can send you welcome messages and important announcements!')
             : 'Hey there! I am using Infinite.',
           hasSetNickname: true,
           isBot: isBotUser,
@@ -108,9 +109,9 @@ export default function SignUpPage() {
 
       // START: Bot welcome message logic
       try {
-        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
+        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot' || usernameWithAt === '@GeminiBot';
         if (!isBotUser) {
-          // 1. Find the bot user
+          // 1. Find the main bot user
           const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
           const botLinkSnap = await getDoc(botLinkRef);
       
@@ -157,7 +158,6 @@ export default function SignUpPage() {
         }
       } catch (botError) {
           console.error("Could not send welcome message from bot:", botError);
-          // Non-critical error, so we don't bother the user with a toast.
       }
       // END: Bot welcome message logic
       
@@ -172,7 +172,6 @@ export default function SignUpPage() {
 
         console.error('Error signing up:', error);
 
-        // Handle specific errors as form errors first
         if (error.message === t('username_taken_error')) {
             form.setError('username', { message: t('username_taken_error') });
             return;
@@ -192,7 +191,6 @@ export default function SignUpPage() {
             }
         }
         
-        // Fallback to a generic toast for other errors
         toast({
             variant: 'destructive',
             title: t('signup_failed_toast_title'),

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -70,22 +71,15 @@ export default function WelcomePage() {
         );
       case 2:
         return (
-          <div className="flex flex-col items-center space-y-6 w-full max-w-2xl animate-in slide-in-from-right duration-500">
+          <div className="flex flex-col items-center space-y-6 w-full max-w-md animate-in slide-in-from-right duration-500">
             <ScrollText className="h-12 w-12" />
             <h2 className="text-3xl font-bold font-headline">{t('terms_of_use')}</h2>
             <div 
                 ref={termsRef}
                 onScroll={() => handleScroll(termsRef, setHasScrolledTerms)}
-                className="w-full h-80 bg-white/10 rounded-2xl p-6 overflow-y-auto border border-white/20 text-left text-sm space-y-4"
+                className="w-full h-64 bg-white/10 rounded-2xl p-6 overflow-y-auto border border-white/20 text-left text-sm whitespace-pre-wrap"
             >
-                <p className="font-bold underline">1. Acceptance of Terms</p>
-                <p>By using Infinite, you agree to these terms. Infinite is a modern, real-time communication platform. Our service is provided "as is" and we expect users to behave respectfully within the community.</p>
-                <p className="font-bold underline">2. User Conduct</p>
-                <p>You may not use Infinite for any illegal activities, spamming, harassment, or distributing malicious content. We reserve the right to ban users who violate community guidelines.</p>
-                <p className="font-bold underline">3. Service Updates</p>
-                <p>Infinite is currently in Beta (v0.3). Features may change, and the service may experience temporary interruptions during updates.</p>
-                <p className="font-bold underline">4. Virtual Currency (InfGold)</p>
-                <p>InfGold is a virtual currency with no real-world cash value. It can be earned or purchased to unlock cosmetic or functional features within the app. Refunds are not provided for virtual items.</p>
+                {t('legal_terms_content')}
                 <p className="pt-10 text-center font-bold text-white/50 italic">--- End of Terms ---</p>
             </div>
             {!hasScrolledTerms && <p className="text-xs animate-bounce text-white/70">{t('scroll_to_bottom_hint')}</p>}
@@ -101,22 +95,15 @@ export default function WelcomePage() {
         );
       case 3:
         return (
-          <div className="flex flex-col items-center space-y-6 w-full max-w-2xl animate-in slide-in-from-right duration-500">
+          <div className="flex flex-col items-center space-y-6 w-full max-w-md animate-in slide-in-from-right duration-500">
             <ShieldCheck className="h-12 w-12" />
             <h2 className="text-3xl font-bold font-headline">{t('privacy_policy')}</h2>
             <div 
                 ref={privacyRef}
                 onScroll={() => handleScroll(privacyRef, setHasScrolledPrivacy)}
-                className="w-full h-80 bg-white/10 rounded-2xl p-6 overflow-y-auto border border-white/20 text-left text-sm space-y-4"
+                className="w-full h-64 bg-white/10 rounded-2xl p-6 overflow-y-auto border border-white/20 text-left text-sm whitespace-pre-wrap"
             >
-                <p className="font-bold underline">1. Data Collection</p>
-                <p>We collect your email, username, and encrypted password for account creation. Your messages and profile information are stored securely on our servers using Google Firebase.</p>
-                <p className="font-bold underline">2. Data Security</p>
-                <p>We use industry-standard encryption and security protocols provided by Firebase. Your private messages are protected by strict access control rules.</p>
-                <p className="font-bold underline">3. Third-party Services</p>
-                <p>We use Google Firebase for authentication, database, and storage services. We may also use AI models (Genkit/Gemini) to provide features like AI summaries and user reporting.</p>
-                <p className="font-bold underline">4. Your Rights</p>
-                <p>You can delete your account at any time from the settings menu. Deleting your account will anonymize your data and prevent any further logins.</p>
+                {t('legal_privacy_content')}
                 <p className="pt-10 text-center font-bold text-white/50 italic">--- End of Policy ---</p>
             </div>
             

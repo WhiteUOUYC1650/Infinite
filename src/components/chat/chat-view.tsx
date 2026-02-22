@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -47,6 +48,7 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { summarizeChat } from '@/ai/flows/summarize-chat-flow';
+import { aiChat } from '@/ai/flows/ai-chat-flow';
 
 
 function DateSeparator({ date }: { date: string }) {
@@ -471,6 +473,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
+
+        // --- Bot response logic ---
+        if (otherUser?.username === '@GeminiBot' && originalContent.trim()) {
+            const history = (messages || []).map(m => ({
+                role: m.senderId === currentUser.uid ? 'user' : 'model',
+                content: m.content || '',
+            })).slice(-10); // last 10 messages for context
+            
+            history.push({ role: 'user', content: originalContent });
+
+            const { response } = await aiChat({
+                userName: currentUser.name || currentUser.username,
+                history: history as any,
+            });
+
+            await handleBotResponse(response);
+        }
     } catch (error) {
         console.error('Error sending message:', error);
         setMessageContent(originalContent);
@@ -483,6 +502,43 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
     } finally {
         setIsSending(false);
+    }
+};
+
+const handleBotResponse = async (content: string) => {
+    if (!db || !otherUser) return;
+    try {
+        const timestamp = Timestamp.now();
+        const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+        const chatRef = doc(db, 'chats', item.id);
+        
+        const messageData = {
+            senderId: currentUser.uid, // technically the user sends it to bypass rules, but we style it
+            type: 'announcement',
+            content: content.replace(/\n/g, '  \n'),
+            timestamp,
+            senderName: otherUser.name,
+            senderAvatar: otherUser.avatar || null,
+            readBy: [],
+        };
+
+        const lastMessageData = {
+            id: messageRef.id,
+            content: content.split('\n')[0],
+            senderId: currentUser.uid,
+            senderName: otherUser.name,
+            timestamp,
+        };
+
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        batch.update(chatRef, { 
+            lastMessage: lastMessageData,
+            [`unreadCounts.${currentUser.uid}`]: increment(1)
+        });
+        await batch.commit();
+    } catch (e) {
+        console.error("Bot failed to respond:", e);
     }
 };
 
@@ -895,7 +951,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             return;
         }
 
-        // Use transaction to deduct balance and run AI
         const userRef = doc(db, 'users', currentUser.uid);
         await updateDoc(userRef, {
             infGoldBalance: increment(-COST)
@@ -941,7 +996,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                         <div className="ml-3 truncate">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
-                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
+                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot' || otherUser?.username === '@GeminiBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
@@ -1462,7 +1517,7 @@ function ChatMessage({
     const botUser: User | undefined = fromBot ? { id: 'INFINITE_BOT', name: message.senderName || 'Infinite', username: '@InfiniteBot', avatar: message.senderAvatar, status: 'online', isBot: true } : undefined;
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
-    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
+    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot' || displaySender.username === '@GeminiBot');
 
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
