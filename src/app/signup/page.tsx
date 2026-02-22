@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -102,7 +101,13 @@ export default function SignUpPage() {
         transaction.set(usernameRef, { uid: createdUser!.uid });
 
         if (isBotUser) {
-            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/' + values.username));
+            let botPath = values.username;
+            // Map specific usernames to shorter /B/ links
+            if (usernameWithAt === '@GeminiBot') botPath = 'Gemini';
+            if (usernameWithAt === '@InfiniteBot') botPath = 'Infinite';
+            if (usernameWithAt === '@VeoBot') botPath = 'Veo';
+
+            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/' + botPath));
             transaction.set(botLinkRef, { botId: createdUser!.uid });
         }
       });

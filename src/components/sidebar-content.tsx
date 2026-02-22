@@ -95,7 +95,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showUserProfilePopover, setShowUserProfilePopover] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
-  const [infiniteBot, setInfiniteBot] = useState<User | null>(null);
+  const [primaryBots, setPrimaryBots] = useState<User[]>([]);
   const [isBotLoading, setIsBotLoading] = useState(true);
 
   const chatsQuery = useMemo(() => {
@@ -117,22 +117,24 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
         if (!otherUserId) return false;
-        if (infiniteBot && otherUserId === infiniteBot.id) return false;
+        
+        // Don't show primary bots in the standard DM list if they are in the bots section
+        if (primaryBots.some(bot => bot.id === otherUserId)) return false;
         
         const otherUser = dmUsers[otherUserId];
         return otherUser && otherUser.isBot;
     });
-  }, [directMessages, dmUsers, currentUser.uid, infiniteBot]);
+  }, [directMessages, dmUsers, currentUser.uid, primaryBots]);
 
   const userDirectMessages = useMemo(() => {
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
         if (!otherUserId) return true;
-        if (infiniteBot && otherUserId === infiniteBot.id) return false;
+        if (primaryBots.some(bot => bot.id === otherUserId)) return false;
         const otherUser = dmUsers[otherUserId];
         return !otherUser || !otherUser.isBot;
     });
-  }, [directMessages, dmUsers, currentUser.uid, infiniteBot]);
+  }, [directMessages, dmUsers, currentUser.uid, primaryBots]);
 
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
@@ -142,33 +144,34 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [currentUser, editProfileInitiallyShown]);
 
   useEffect(() => {
-    const findBot = async () => {
+    const findBots = async () => {
         if (!db) return;
         setIsBotLoading(true);
         try {
-            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
-            const botLinkSnap = await getDoc(botLinkRef);
+            const botLinks = ['/B/Infinite', '/B/Gemini'];
+            const botsFound: User[] = [];
 
-            if (botLinkSnap.exists()) {
-                const botId = botLinkSnap.data().botId;
-                const botUserRef = doc(db, 'users', botId);
-                const botUserSnap = await getDoc(botUserRef);
-                if (botUserSnap.exists()) {
-                    setInfiniteBot({ id: botUserSnap.id, ...botUserSnap.data() } as User);
-                } else {
-                    setInfiniteBot(null);
+            for (const link of botLinks) {
+                const botLinkRef = doc(db, 'botLinks', encodeURIComponent(link));
+                const botLinkSnap = await getDoc(botLinkRef);
+
+                if (botLinkSnap.exists()) {
+                    const botId = botLinkSnap.data().botId;
+                    const botUserRef = doc(db, 'users', botId);
+                    const botUserSnap = await getDoc(botUserRef);
+                    if (botUserSnap.exists()) {
+                        botsFound.push({ id: botUserSnap.id, ...botUserSnap.data() } as User);
+                    }
                 }
-            } else {
-                setInfiniteBot(null);
             }
+            setPrimaryBots(botsFound);
         } catch (error) {
-            console.error("Error finding Infinite bot:", error);
-            setInfiniteBot(null);
+            console.error("Error finding bots:", error);
         } finally {
             setIsBotLoading(false);
         }
     };
-    findBot();
+    findBots();
   }, [db]);
 
 
@@ -267,16 +270,9 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
   };
 
-  const handleSelectInfiniteBot = async () => {
-    if (!db || !infiniteBot) {
-        toast({
-            variant: 'destructive',
-            title: 'Bot not found',
-            description: 'The Infinite bot account may not have been created yet.'
-        });
-        return;
-    }
-    const chatId = [currentUser.uid, infiniteBot.id].sort().join('_');
+  const handleSelectBot = async (bot: User) => {
+    if (!db) return;
+    const chatId = [currentUser.uid, bot.id].sort().join('_');
     const chatRef = doc(db, 'chats', chatId);
 
     try {
@@ -287,12 +283,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             chatData = {
                 id: chatId,
                 type: 'dm',
-                members: [currentUser.uid, infiniteBot.id],
+                members: [currentUser.uid, bot.id],
                 icon: 'Bot',
             };
             await setDoc(chatRef, {
                 type: 'dm',
-                members: [currentUser.uid, infiniteBot.id],
+                members: [currentUser.uid, bot.id],
                 icon: 'Bot',
             });
         } else {
@@ -385,22 +381,25 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 <div className="space-y-1">
                     {isBotLoading ? (
                         <DMChatItemSkeleton />
-                    ) : infiniteBot ? (
-                        <Button
-                            variant="ghost"
-                            onClick={handleSelectInfiniteBot}
-                            className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && 'bg-sidebar-accent')}
-                        >
-                            <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                                <UserAvatarWithStatus user={infiniteBot} isSelected={selectedId === [currentUser.uid, infiniteBot.id].sort().join('_')} />
-                                <div className="flex-1 w-0 min-w-0 overflow-hidden">
-                                     <div className="flex items-center gap-2">
-                                        <div className={cn("font-semibold truncate", selectedId === [currentUser.uid, infiniteBot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{infiniteBot.name}</div>
-                                        <VerifiedBadge className="w-4 h-4 shrink-0" />
+                    ) : primaryBots.length > 0 ? (
+                        primaryBots.map(bot => (
+                            <Button
+                                key={bot.id}
+                                variant="ghost"
+                                onClick={() => handleSelectBot(bot)}
+                                className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", selectedId === [currentUser.uid, bot.id].sort().join('_') && 'bg-sidebar-accent')}
+                            >
+                                <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                                    <UserAvatarWithStatus user={bot} isSelected={selectedId === [currentUser.uid, bot.id].sort().join('_')} />
+                                    <div className="flex-1 w-0 min-w-0 overflow-hidden">
+                                         <div className="flex items-center gap-2">
+                                            <div className={cn("font-semibold truncate", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
+                                            <VerifiedBadge className="w-4 h-4 shrink-0" />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </Button>
+                            </Button>
+                        ))
                     ) : (
                         <div className='px-4 text-xs text-muted-foreground'>{t('no_bots_found')}</div>
                     )}
@@ -582,7 +581,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
-  const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot';
+  const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@GeminiBot';
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
   const lastMessage = item.lastMessage;
