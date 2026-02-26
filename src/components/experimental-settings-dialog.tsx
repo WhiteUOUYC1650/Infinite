@@ -604,7 +604,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <h2 className="text-3xl font-bold font-headline">{t('rustore_development')}</h2>
             <p className="text-muted-foreground max-w-sm">{t('rustore_note')}</p>
         </div>
-        <Badge variant="outline" className="px-4 py-1 border-primary/50 text-primary animate-pulse">COMING SOON TO RUSTORE</Badge>
     </div>
   );
 
