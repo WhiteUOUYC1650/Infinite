@@ -7,11 +7,10 @@ import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/context/language-context';
-import { Loader2, Star, ShieldCheck, ScrollText, CheckCircle2 } from 'lucide-react';
+import { Loader2, Star, ShieldCheck, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function WelcomePage() {
   const { user, loading } = useUser();
@@ -115,7 +114,7 @@ export default function WelcomePage() {
                     disabled={!hasScrolledPrivacy}
                     className="border-white data-[state=checked]:bg-white data-[state=checked]:text-[#FF8C00]"
                 />
-                <Label htmlFor="agree" className="text-sm font-medium leading-none cursor-pointer">
+                <Label htmlFor="agree" className="text-sm font-medium leading-none cursor-pointer text-white">
                     {t('i_agree_legal')}
                 </Label>
             </div>
@@ -154,14 +153,16 @@ export default function WelcomePage() {
   return (
     <div
       className={cn(
-        'relative flex min-h-svh flex-col items-center justify-center p-8 text-center transition-colors duration-700 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(2rem+env(safe-area-inset-right))]',
+        'relative flex min-h-svh flex-col items-center justify-center p-8 text-center transition-colors duration-700 overflow-hidden',
         step === 4 ? 'bg-[#FFAA00] text-gray-900' : 'bg-[#FF8C00] text-white'
       )}
     >
-      {renderContent()}
+      <div className="w-full flex-1 flex flex-col items-center justify-center max-w-4xl py-[env(safe-area-inset-top)]">
+        {renderContent()}
+      </div>
 
       <div className={cn(
-        'absolute bottom-4 right-4 transition-colors duration-700',
+        'absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] transition-colors duration-700',
         step === 4 ? 'text-gray-900' : 'text-white'
       )}>
         <Badge variant="outline" className="border-current text-current font-bold">{t('beta_badge')}</Badge>

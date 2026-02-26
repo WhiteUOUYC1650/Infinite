@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useLanguage } from '@/context/language-context';
@@ -24,8 +25,8 @@ export default function GoodbyePage() {
   }, []);
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-background text-center p-8 relative pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(2rem+env(safe-area-inset-right))]">
-       <div className="absolute top-4 right-4 flex items-center gap-2">
+    <div className="flex min-h-svh flex-col items-center justify-center bg-background text-center p-8 relative overflow-hidden">
+       <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] flex items-center gap-2 z-10">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -50,7 +51,7 @@ export default function GoodbyePage() {
         </Button>
       </div>
 
-      <div className="space-y-8 flex flex-col items-center">
+      <div className="space-y-8 flex flex-col items-center flex-1 justify-center py-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         <InfinityIcon className="h-24 w-24 text-muted-foreground" />
         <div className="space-y-4">
           <h1 className="text-5xl font-bold font-headline">{t('goodbye_title')}</h1>

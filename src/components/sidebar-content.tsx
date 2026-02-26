@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -308,7 +309,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   return (
     <>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold font-headline text-primary">
@@ -327,7 +328,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       </SidebarHeader>
 
       <ScrollArea className="flex-1">
-        <SidebarBody>
+        <SidebarBody className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
             <div className="py-1 md:px-4 space-y-1">
                 <Button
                     variant="ghost"
@@ -493,7 +494,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <Separator />
 
-      <SidebarFooter className={cn("p-2", experimentalDesign && "bg-muted/30 rounded-t-2xl border-t shadow-[0_-4px_12px_rgba(0,0,0,0.05)]")}>
+      <SidebarFooter className={cn("p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[calc(0.5rem+env(safe-area-inset-left))] pr-[calc(0.5rem+env(safe-area-inset-right))]", experimentalDesign && "bg-muted/30 rounded-t-2xl border-t shadow-[0_-4px_12px_rgba(0,0,0,0.05)]")}>
         <div className="flex items-center gap-2">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>

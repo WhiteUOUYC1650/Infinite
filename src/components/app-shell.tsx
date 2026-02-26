@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -68,7 +69,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     if (isMobile) {
         // On mobile, the sidebar content takes the full screen.
         return (
-            <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+            <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground">
                 <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />
             </div>
         );

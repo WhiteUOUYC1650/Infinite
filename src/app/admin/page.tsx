@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -221,14 +222,14 @@ function AdminPage() {
   }
 
   return (
-    <div className="flex h-svh flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b px-4">
+    <div className="flex h-svh flex-col bg-background overflow-hidden">
+      <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b px-4 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
         <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-bold font-headline">{t('admin_panel_title')}</h1>
       </header>
-      <main className="flex-1 p-4 overflow-hidden">
+      <main className="flex-1 p-4 overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
         <Tabs defaultValue="users" className="flex h-full flex-col">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="users">{t('admin_users_tab')} ({users?.length || 0})</TabsTrigger>
@@ -437,5 +438,3 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
 }
 
 export default AdminPage;
-
-    

@@ -932,6 +932,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         return;
     }
 
+    setIsSending(true); // Re-using isSending state for UI feedback or create a new one
     setIsSummarizing(true);
     try {
         const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
@@ -968,16 +969,17 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         toast({ variant: 'destructive', title: 'Error', description: 'AI Summary failed.' });
     } finally {
         setIsSummarizing(false);
+        setIsSending(false);
     }
   };
   
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
-    <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]", isMobile ? 'w-screen' : 'w-full')}>
+    <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       {/* Chat Header */}
       <header className={cn(
-          "flex-shrink-0 flex items-center p-4 border-b",
+          "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' && (item.type === 'dm' ? 'bg-card/80' : 'bg-card')
       )}>
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
@@ -1126,7 +1128,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto">
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -1186,7 +1188,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
       {/* Message Input */}
       {canSendMessage && (
         <footer className={cn(
-            "flex-shrink-0 p-4 border-t",
+            "flex-shrink-0 p-4 border-t pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
             colorTheme === 'frutiger' && 'bg-card/80'
         )}>
           {editingMessage && (
@@ -1250,7 +1252,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
           <form onSubmit={handleSubmit} className="relative">
             <Textarea
               placeholder={t('message_placeholder')}
-              className="pr-24 py-3 resize-none"
+              className="pr-24 py-3 resize-none min-h-[44px]"
               rows={1}
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
