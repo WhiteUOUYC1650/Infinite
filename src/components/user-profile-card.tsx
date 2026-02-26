@@ -58,7 +58,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
       <div className="flex flex-col overflow-hidden max-h-[80vh]">
         {/* Experimental Header Background */}
         <div className="flex flex-col items-center pt-6 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent shrink-0">
-          <UserAvatarWithStatus user={user as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl rounded-full" />
+          <UserAvatarWithStatus user={user as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl rounded-full experimental-glow" />
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
               {displayName}
@@ -72,7 +72,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
         <div className="px-4 pb-6 space-y-4 overflow-y-auto">
           {!user.isDeleted && !user.isBot && (
             <div className="flex items-center justify-center gap-2 py-2">
-              <InfGoldIcon className="h-6 w-6" />
+              <InfGoldIcon className="h-6 w-6 experimental-glow" />
               <span className="font-bold text-2xl tracking-tighter">{user.infGoldBalance ?? 0}</span>
             </div>
           )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -59,11 +58,12 @@ type SubscriptionTierId = 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
 
 const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang'];
 
-const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean }) => (
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
         <div className={cn(
             "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-4 transition-colors",
-            showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20"
+            showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20",
+            isGlow && "experimental-glow"
         )}>
             <Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} />
         </div>
@@ -318,7 +318,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const ExperimentalProfileHeader = () => (
     <div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent">
-        <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full" />
+        <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full experimental-glow" />
         <div className="text-center space-y-1.5">
             <h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">
                 {currentUser.name}
@@ -389,6 +389,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             showExpColors={experimentalDesign}
             iconBg="bg-amber-500/15"
             iconColor="text-amber-600"
+            isGlow={experimentalDesign}
           />
           <SettingsItem 
             icon={User} 
@@ -582,7 +583,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       <>
         <div className="p-4 text-center space-y-2">
             <h2 className="text-4xl font-bold flex items-center justify-center gap-2">
-                <InfGoldIcon className="w-8 h-8" />
+                <InfGoldIcon className={cn("w-8 h-8", experimentalDesign && "experimental-glow")} />
                 <span>{currentUser.infGoldBalance ?? 0}</span>
             </h2>
             <p className="text-muted-foreground">{t('inf_gold_balance')}</p>
@@ -598,7 +599,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <div className="p-8 space-y-8 flex flex-col items-center justify-center text-center h-full min-h-[50vh]">
         <div className="relative">
             <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full animate-pulse" />
-            <ShoppingBag className="h-20 w-20 text-primary relative z-10" />
+            <ShoppingBag className="h-20 w-20 text-primary relative z-10 experimental-glow" />
         </div>
         <div className="space-y-3">
             <h2 className="text-3xl font-bold font-headline">{t('rustore_development')}</h2>
