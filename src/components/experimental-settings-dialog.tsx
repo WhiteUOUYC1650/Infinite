@@ -603,7 +603,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         </div>
         <div className="space-y-3">
             <h2 className="text-3xl font-bold font-headline">{t('rustore_development')}</h2>
-            <p className="text-muted-foreground max-w-sm">{t('rustore_note')}</p>
+            <p className="text-muted-foreground max-sm">{t('rustore_note')}</p>
         </div>
     </div>
   );
@@ -672,8 +672,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   return (
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
-      <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
-        <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-background border-b">
+      <DialogContent className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
+        <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           {pageHistory.length > 1 && (
             <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
               <ArrowLeft />

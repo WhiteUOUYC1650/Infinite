@@ -142,13 +142,21 @@ body {
 
   /* Frutiger Aero Dialog Overlay Overrides */
   .theme-frutiger [data-dialog-overlay] {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
 
   .dark.theme-frutiger [data-dialog-overlay] {
-    background-color: rgba(0, 0, 0, 0.2) !important;
+    background-color: rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Fix transparency in Frutiger dialogs and popovers */
+  .theme-frutiger [role="dialog"],
+  .theme-frutiger [data-radix-popper-content-wrapper] > div {
+    background-color: hsl(var(--card)) !important;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
   }
 
   /* Shining Gold Theme Enhancement */
