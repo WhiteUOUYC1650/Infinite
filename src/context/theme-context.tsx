@@ -405,7 +405,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const bgImageKey = themeConfig.backgroundImage;
 
       if (bgImageKey && (placeholderImages as any)[bgImageKey]) {
-        body.style.backgroundImage = `url(${(placeholderImages as any)[bgImageKey].url})`;
+        const imageUrl = (placeholderImages as any)[bgImageKey].url;
+        body.style.backgroundImage = `url(${imageUrl})`;
         body.style.backgroundSize = 'cover';
         body.style.backgroundPosition = 'center';
         body.style.backgroundAttachment = 'fixed';
