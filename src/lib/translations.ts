@@ -1,7 +1,3 @@
-
-
-
-
 export const translations = {
     en: {
       'settings': 'Settings',
@@ -364,6 +360,9 @@ export const translations = {
       'ai_summary_title': 'Conversation Summary',
       'legal_terms_content': '1. Acceptance of Terms\nBy using Infinite, you agree to these terms. Infinite is a modern, real-time communication platform. Our service is provided "as is".\n\n2. User Conduct\nYou may not use Infinite for illegal activities, spam, or harassment.\n\n3. Virtual Currency\nInfGold is a virtual currency with no real-world value. Refunds are not provided.',
       'legal_privacy_content': '1. Data Collection\nWe collect your email, username, and messages to provide the service.\n\n2. Data Security\nWe use Firebase to store your data securely.\n\n3. AI Services\nWe use AI models to provide features like summaries and reporting.',
+      'privacy_security': 'Privacy & Security',
+      'login_protection_label': 'Login Protection',
+      'login_protection_desc': 'Require an additional check when logging in to your account.',
     },
     ru: {
       'settings': 'Настройки',
@@ -726,6 +725,9 @@ export const translations = {
       'ai_summary_title': 'Краткий пересказ чата',
       'legal_terms_content': '1. Принятие условий\nИспользуя Infinite, вы соглашаетесь с этими условиями. Infinite — это современная платформа для общения в реальном времени. Сервис предоставляется "как есть".\n\n2. Поведение пользователя\nЗапрещено использовать Infinite для незаконной деятельности, спама или домогательств.\n\n3. Виртуальная валюта\nInfGold — это виртуальная валюта, не имеющая реальной денежной ценности. Возврат средств не предусмотрен.',
       'legal_privacy_content': '1. Сбор данных\nМы собираем вашу почту, имя пользователя и сообщения для обеспечения работы сервиса.\n\n2. Безопасность\nМы используем Firebase для безопасного хранения ваших данных.\n\n3. ИИ-сервисы\nМы используем модели ИИ для предоставления таких функций, как пересказы и отчеты.',
+      'privacy_security': 'Конфиденциальность',
+      'login_protection_label': 'Защита входа',
+      'login_protection_desc': 'Требовать дополнительную проверку при входе в ваш аккаунт.',
     }
   };
   

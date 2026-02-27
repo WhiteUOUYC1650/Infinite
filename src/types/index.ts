@@ -18,6 +18,7 @@ export type User = {
   infGoldBalance?: number;
   subscriptionTier?: 'none' | 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
   lastDailyBonusClaimed?: Timestamp;
+  loginProtectionEnabled?: boolean;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };

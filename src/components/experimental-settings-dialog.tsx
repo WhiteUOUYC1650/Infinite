@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -34,7 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -55,7 +53,7 @@ import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy';
 
 const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-intensity'];
 
@@ -80,13 +78,13 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
 );
 
 
-const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string }) => (
+const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean }) => (
     <div className="flex items-start justify-between w-full p-4">
         <div className="flex flex-col flex-1 mr-4 min-w-0">
-            <Label htmlFor={id} className="font-medium cursor-pointer truncate mb-0.5">{label}</Label>
+            <Label htmlFor={id} className={cn("font-medium cursor-pointer truncate mb-0.5", disabled && "opacity-50")}>{label}</Label>
             {description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}
         </div>
-        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" />
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" disabled={disabled} />
     </div>
 );
 
@@ -109,6 +107,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
+  const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -234,6 +233,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
+  const handleToggleLoginProtection = async (enabled: boolean) => {
+    if (!db || !currentUser.uid) return;
+    setIsUpdatingPrivacy(true);
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, { loginProtectionEnabled: enabled });
+        toast({ title: t('dm_success'), description: t('profile_update_success') });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update privacy settings.' });
+    } finally {
+        setIsUpdatingPrivacy(false);
+    }
+  };
+
   const handleSpin = async (): Promise<void> => {
     const totalWeight = PRIZES_WITH_ANGLES.reduce((sum, p) => sum + p.weight, 0);
     let randomWeight = Math.random() * totalWeight;
@@ -300,6 +314,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'dailyBonus': return t('daily_bonus');
       case 'whatsNew': return t('whats_new');
       case 'dataStorage': return t('data_storage');
+      case 'privacy': return t('privacy_security');
       default: return t('settings');
     }
   };
@@ -364,6 +379,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             iconColor="text-green-500"
           />
           <SettingsItem 
+            icon={ShieldCheck} 
+            label={t('privacy_security')} 
+            description={t('privacy_security')} 
+            onClick={() => navigateTo('privacy')} 
+            showExpColors={experimentalDesign}
+            iconBg="bg-rose-500/15"
+            iconColor="text-rose-500"
+          />
+          <SettingsItem 
             icon={HardDrive} 
             label={t('data_storage')} 
             description={t('data_storage')} 
@@ -416,8 +440,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             description={t('faq_desc')} 
             onClick={() => navigateTo('help')} 
             showExpColors={experimentalDesign}
-            iconBg="bg-rose-500/15"
-            iconColor="text-rose-500"
+            iconBg="bg-pink-500/15"
+            iconColor="text-pink-500"
           />
           <SettingsItem 
             icon={Info} 
@@ -521,6 +545,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <div className='divide-y'>
         <SettingsSwitchItem id="send-on-enter-switch" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} />
         <SettingsSwitchItem id="minimize-call-switch" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} />
+    </div>
+  );
+
+  const privacyPageContent = (
+    <div className='divide-y'>
+        <SettingsSwitchItem 
+            id="login-protection-switch" 
+            label={t('login_protection_label')} 
+            checked={currentUser.loginProtectionEnabled ?? false} 
+            onCheckedChange={handleToggleLoginProtection} 
+            description={t('login_protection_desc')}
+            disabled={isUpdatingPrivacy}
+        />
     </div>
   );
 
@@ -683,6 +720,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'dailyBonus': return dailyBonusPageContent;
       case 'whatsNew': return whatsNewPageContent;
       case 'dataStorage': return dataStoragePageContent;
+      case 'privacy': return privacyPageContent;
       default: return null;
     }
   };
