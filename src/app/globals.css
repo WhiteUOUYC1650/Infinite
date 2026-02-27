@@ -143,31 +143,44 @@ body {
 
   .theme-frutiger header,
   .theme-frutiger footer {
-    background-color: hsl(var(--card)) !important;
+    background-color: hsla(0, 0%, 100%, 0.85) !important;
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .dark.theme-frutiger header,
+  .dark.theme-frutiger footer {
+    background-color: hsla(0, 0%, 0%, 0.8) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 
   /* Frutiger Aero Dialog Overlay Overrides */
   .theme-frutiger [data-dialog-overlay] {
     background-color: rgba(255, 255, 255, 0.15) !important;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .dark.theme-frutiger [data-dialog-overlay] {
-    background-color: rgba(0, 0, 0, 0.3) !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
   }
 
   /* Fix transparency in Frutiger dialogs and popovers */
   .theme-frutiger [role="dialog"],
   .theme-frutiger [data-radix-popper-content-wrapper] > div {
-    background-color: hsl(var(--card)) !important;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    background-color: hsla(0, 0%, 100%, 0.9) !important;
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .dark.theme-frutiger [role="dialog"],
+  .dark.theme-frutiger [data-radix-popper-content-wrapper] > div {
+    background-color: hsla(0, 0%, 5%, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 
   /* Frutiger Aero Switch Styling - Glossy & Glassy */
