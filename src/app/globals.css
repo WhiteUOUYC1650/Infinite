@@ -137,6 +137,7 @@ body {
 @layer components {
   .theme-frutiger [data-sidebar="sidebar"],
   .theme-frutiger main {
+    background-color: transparent !important;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
