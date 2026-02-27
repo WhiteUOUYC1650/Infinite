@@ -1,6 +1,7 @@
 
 
 
+
 export const translations = {
     en: {
       'settings': 'Settings',
@@ -188,7 +189,7 @@ export const translations = {
       'red': 'Red',
       'yellow': 'Yellow',
       'pink': 'Pink',
-      'frutiger_aero': 'Frutiger Aero (Beta)',
+      'frutiger_aero': 'Frutiger Aero (Dev)',
       'shining_gold': 'Shining Gold',
       'light_mode': 'Light Mode',
       'dark_mode': 'Dark Mode',
@@ -326,8 +327,8 @@ export const translations = {
       'whats_new_media_desc': 'You can now send images, videos, and music to your friends. Large files are automatically chunked for reliable delivery.',
       'whats_new_calls_title': 'Audio Calls',
       'whats_new_calls_desc': 'Stay connected with experimental one-on-one audio calls. You can even minimize the call window to continue browsing the app.',
-      'whats_new_themes_title': 'New Themes & UI',
-      'whats_new_themes_desc': 'Explore new color themes, including the experimental "Frutiger Aero". The entire settings menu has also been redesigned!',
+      'whats_new_themes_title': 'Experimental Design',
+      'whats_new_themes_desc': 'Try out the new mobile-style settings layout and the "Glass Effect" slider to give your app a classic glossy look.',
       'inftube': 'InfVid',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Upload Video',
@@ -340,6 +341,8 @@ export const translations = {
       'new_message_from': 'New message from {name}',
       'experimental_design_label': 'Experimental Design',
       'experimental_design_desc': 'Try out the new mobile-style settings layout\nwith quick actions.',
+      'glass_effect_label': 'Glass Effect (Beta)',
+      'glass_effect_desc': 'Adds a glossy, reflective Aero-style look to buttons and messages.',
       'mute': 'Mute',
       'data_storage': 'Data and Storage',
       'clear_cache': 'Clear Cache',
@@ -548,7 +551,7 @@ export const translations = {
       'red': 'Красный',
       'yellow': 'Желтый',
       'pink': 'Розовый',
-      'frutiger_aero': 'Режим "Frutiger Aero" (Бета)',
+      'frutiger_aero': 'Режим "Frutiger Aero" (В разраб.)',
       'shining_gold': 'Сияющее золото',
       'light_mode': 'Светлая тема',
       'dark_mode': 'Темная тема',
@@ -686,8 +689,8 @@ export const translations = {
       'whats_new_media_desc': 'Теперь вы можете отправлять изображения, видео и музыку своим друзьям. Большие файлы автоматически разбиваются на части для надежной доставки.',
       'whats_new_calls_title': 'Аудиозвонки',
       'whats_new_calls_desc': 'Оставайтесь на связи с помощью экспериментальных аудиозвонков один на один. Вы даже можете свернуть окно звонка, чтобы продолжить пользоваться приложением.',
-      'whats_new_themes_title': 'Новые темы и интерфейс',
-      'whats_new_themes_desc': 'Исследуйте новые цветовые темы, включая экспериментальную "Frutiger Aero". Все меню настроек также было переработано!',
+      'whats_new_themes_title': 'Экспериментальный дизайн',
+      'whats_new_themes_desc': 'Попробуйте новый макет настроек в мобильном стиле и ползунок «Эффект стекла» для придания приложению классического глянцевого вида.',
       'inftube': 'InfVid',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Загрузить видео',
@@ -700,6 +703,8 @@ export const translations = {
       'new_message_from': 'Новое сообщение от {name}',
       'experimental_design_label': 'Экспериментальный дизайн',
       'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле\nс быстрыми действиями.',
+      'glass_effect_label': 'Эффект стекла (Бета)',
+      'glass_effect_desc': 'Добавляет глянцевый, объемный вид кнопкам и сообщениям в стиле Aero.',
       'mute': 'Звук',
       'data_storage': 'Данные и память',
       'clear_cache': 'Очистить кэш',

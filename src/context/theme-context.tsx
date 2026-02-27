@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -331,6 +332,8 @@ interface ThemeContextType {
   toggleMinimizeCallOnClose: () => void;
   experimentalDesign: boolean;
   toggleExperimentalDesign: () => void;
+  glassIntensity: number;
+  setGlassIntensity: (value: number) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -342,6 +345,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [sendOnEnter, setSendOnEnter] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
+  const [glassIntensity, setGlassIntensityState] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -351,6 +355,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedSendOnEnter = localStorage.getItem('app-send-on-enter');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
     const storedExperimental = localStorage.getItem('app-experimental-design');
+    const storedGlassIntensity = localStorage.getItem('app-glass-intensity');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -378,6 +383,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setExperimentalDesign(storedExperimental === 'true');
     }
 
+    if (storedGlassIntensity) {
+      setGlassIntensityState(Number(storedGlassIntensity));
+    }
+
     setIsMounted(true);
   }, []);
 
@@ -388,6 +397,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       root.classList.toggle('dark', isDarkMode);
       localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
+
+      root.setAttribute('data-glass-effect', glassIntensity > 0 ? 'true' : 'false');
+      root.style.setProperty('--glass-intensity', String(glassIntensity / 100));
 
       if (theme === 'frutiger') {
         root.classList.add('theme-frutiger');
@@ -450,7 +462,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         body.style.backgroundColor = '';
       }
     }
-  }, [theme, isDarkMode, isMounted]);
+  }, [theme, isDarkMode, glassIntensity, isMounted]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -493,6 +505,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const setGlassIntensity = (value: number) => {
+    setGlassIntensityState(value);
+    localStorage.setItem('app-glass-intensity', String(value));
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -506,6 +523,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
     experimentalDesign,
     toggleExperimentalDesign: handleToggleExperimentalDesign,
+    glassIntensity,
+    setGlassIntensity,
   };
 
   if (!isMounted) {

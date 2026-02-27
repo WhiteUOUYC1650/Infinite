@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -51,6 +52,7 @@ body {
     --sidebar-primary-foreground: 25 85% 95%;
     --sidebar-accent: 30 50% 88%;
     --sidebar-accent-foreground: 20 14.3% 4.1%;
+    --glass-intensity: 0;
     color-scheme: light;
   }
 
@@ -134,6 +136,34 @@ body {
   animation: experimental-glow 3s infinite ease-in-out;
 }
 
+/* Universal Glass Effect Styles */
+[data-glass-effect="true"] .bg-primary,
+[data-glass-effect="true"] .outgoing-msg > div,
+[data-glass-effect="true"] .incoming-msg > div {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, calc(0.15 * var(--glass-intensity))),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.4 * var(--glass-intensity)));
+  border: 1px solid rgba(255, 255, 255, calc(0.2 * var(--glass-intensity)));
+}
+
+[data-glass-effect="true"] .bg-primary::before,
+[data-glass-effect="true"] .outgoing-msg > div::before,
+[data-glass-effect="true"] .incoming-msg > div::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; 
+  height: 45%;
+  background: linear-gradient(
+    to bottom, 
+    rgba(255, 255, 255, calc(0.45 * var(--glass-intensity))), 
+    rgba(255, 255, 255, calc(0.05 * var(--glass-intensity)))
+  );
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 @layer components {
   .theme-frutiger [data-sidebar="sidebar"],
   .theme-frutiger main {
@@ -157,7 +187,6 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 
-  /* Frutiger Aero Dialog Overlay Overrides */
   .theme-frutiger [data-dialog-overlay] {
     background-color: rgba(255, 255, 255, 0.15) !important;
     backdrop-filter: blur(20px);
@@ -168,7 +197,6 @@ body {
     background-color: rgba(0, 0, 0, 0.4) !important;
   }
 
-  /* Fix transparency in Frutiger dialogs and popovers */
   .theme-frutiger [role="dialog"],
   .theme-frutiger [data-radix-popper-content-wrapper] > div {
     background-color: hsla(0, 0%, 100%, 0.9) !important;
@@ -184,7 +212,6 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 
-  /* Frutiger Aero Switch Styling - Glossy & Glassy */
   .theme-frutiger button[role="switch"] {
     background-color: rgba(255, 255, 255, 0.4);
     border: 1.5px solid rgba(255, 255, 255, 0.6);
@@ -217,7 +244,6 @@ body {
     border: 0.5px solid rgba(0,0,0,0.1);
   }
 
-  /* Shining Gold Theme Enhancement */
   .theme-shining-gold .bg-primary {
     position: relative;
     overflow: hidden;
@@ -236,12 +262,11 @@ body {
     pointer-events: none;
   }
 
-  /* Frutiger Aero Glossy Buttons */
   .theme-frutiger .bg-primary {
     position: relative;
     overflow: hidden;
     background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--primary) / 0.85)) !important;
-    border: 1px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 4px 12px hsl(var(--primary) / 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
@@ -249,7 +274,7 @@ body {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; height: 45%;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.05));
     border-radius: inherit;
     pointer-events: none;
   }

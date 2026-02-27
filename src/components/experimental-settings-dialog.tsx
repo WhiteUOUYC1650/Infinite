@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -31,8 +32,9 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -55,7 +57,7 @@ import { VerifiedBadge } from './ui/verified-badge';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage';
 
-const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang'];
+const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-intensity'];
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
@@ -98,7 +100,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassIntensity, setGlassIntensity } = useTheme();
   
   const auth = useAuth();
   const db = useFirestore();
@@ -446,6 +448,23 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       <>
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
         <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('theme')} />
+        
+        <div className="p-4 space-y-4">
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <Label className="font-medium">{t('glass_effect_label')}</Label>
+                </div>
+                <Slider 
+                    value={[glassIntensity]} 
+                    onValueChange={(val) => setGlassIntensity(val[0])} 
+                    max={100} 
+                    step={1}
+                />
+                <p className="text-xs text-muted-foreground">{t('glass_effect_desc')}</p>
+            </div>
+        </div>
+
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
         <SettingsSwitchItem 
             id="exp-design-switch" 
@@ -460,7 +479,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const currentTierLevel = currentUser.subscriptionTier ? ['none', 'super', 'mega', 'prem', 'giga', 'ultra'].indexOf(currentUser.subscriptionTier) : 0;
   const premTierLevel = 3;
   const hasPremAccess = currentTierLevel >= premTierLevel;
-  const allThemes: Theme[] = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger', 'shining_gold'];
+  const allThemes: Theme[] = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'];
   
   const themePageContent = (
     <RadioGroup value={theme} onValueChange={(v) => setTheme(v as any)} className="p-4 space-y-1">
