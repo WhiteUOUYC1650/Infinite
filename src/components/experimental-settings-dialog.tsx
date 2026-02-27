@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -54,8 +55,6 @@ import { VerifiedBadge } from './ui/verified-badge';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage';
 
-type SubscriptionTierId = 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
-
 const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang'];
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
@@ -67,12 +66,12 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
         )}>
             <Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} />
         </div>
-        <div className="flex-1 flex flex-col justify-center min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col justify-center min-w-0 overflow-hidden mr-2">
             <span className="font-medium truncate">{label}</span>
             {description && <span className="text-xs text-muted-foreground truncate">{description}</span>}
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground ml-2 shrink-0">
-            {value && <span className='capitalize text-sm max-w-[100px] truncate'>{value}</span>}
+        <div className="flex items-center gap-2 text-muted-foreground shrink-0">
+            {value && <span className='capitalize text-sm max-w-[80px] truncate'>{value}</span>}
             <ChevronRight className="h-5 w-5 shrink-0" />
         </div>
   </button>

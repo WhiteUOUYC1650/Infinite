@@ -1,5 +1,6 @@
 
 
+
 export const translations = {
     en: {
       'settings': 'Settings',
@@ -338,7 +339,7 @@ export const translations = {
       'infvid_views': '{count} views',
       'new_message_from': 'New message from {name}',
       'experimental_design_label': 'Experimental Design',
-      'experimental_design_desc': 'Try out the new mobile-style settings layout with quick actions.',
+      'experimental_design_desc': 'Try out the new mobile-style settings layout\nwith quick actions.',
       'mute': 'Mute',
       'data_storage': 'Data and Storage',
       'clear_cache': 'Clear Cache',
@@ -555,7 +556,7 @@ export const translations = {
       'faq_title': 'Часто задаваемые вопросы',
       'faq_desc': 'Найдите ответы на распространенные вопросы об Infinite.',
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
-      'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__bold__` для **жирного текста**\n- `~~зачеркнутый~~` for ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
+      'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__bold__` for **жирного текста**\n- `~~зачеркнутый~~` for ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
       'faq_create_chat_q': "Как создать новую группу или канал?",
       'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Откроется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
       'faq_invite_q': "Как пригласить людей в группу?",
