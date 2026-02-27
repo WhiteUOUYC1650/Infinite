@@ -980,7 +980,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
       {/* Chat Header */}
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
-          colorTheme === 'frutiger' && (item.type === 'dm' ? 'bg-card/80' : 'bg-card')
+          colorTheme === 'frutiger' && 'bg-card backdrop-blur-xl'
       )}>
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
             <X className="h-5 w-5" />
@@ -1189,7 +1189,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
       {canSendMessage && (
         <footer className={cn(
             "flex-shrink-0 p-4 border-t pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
-            colorTheme === 'frutiger' && 'bg-card/80'
+            colorTheme === 'frutiger' && 'bg-card backdrop-blur-xl'
         )}>
           {editingMessage && (
             <div className="pb-2">
