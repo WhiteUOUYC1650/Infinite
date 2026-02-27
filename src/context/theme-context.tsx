@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -256,12 +257,12 @@ const THEMES: Record<Theme, ThemeConfig> = {
   },
   frutiger: {
     light: {
-      primary: '205 80% 55%',
+      primary: '205 90% 55%',
       foreground: '205 50% 98%',
-      background: '205 60% 94% / 0.1',
-      card: '130 40% 97% / 0.85',
-      'sidebar-background': '130 40% 97% / 0.85',
-      popover: '130 40% 97% / 0.85',
+      background: '205 60% 94% / 0.05',
+      card: '130 40% 97% / 0.88',
+      'sidebar-background': '130 40% 97% / 0.88',
+      popover: '130 40% 97% / 0.88',
       muted: '130 30% 90% / 0.8',
       border: '130 20% 85% / 0.7',
       input: '130 20% 88%',
@@ -270,12 +271,12 @@ const THEMES: Record<Theme, ThemeConfig> = {
       sidebarAccentForeground: '215 25% 25%',
     },
     dark: {
-      primary: '205 80% 60%',
+      primary: '205 90% 60%',
       foreground: '205 50% 98%',
-      background: '140 15% 10% / 0.2',
-      card: '140 15% 10% / 0.9',
-      'sidebar-background': '140 15% 10% / 0.9',
-      popover: '140 15% 10% / 0.9',
+      background: '140 15% 10% / 0.15',
+      card: '140 15% 10% / 0.92',
+      'sidebar-background': '140 15% 10% / 0.92',
+      popover: '140 15% 10% / 0.92',
       muted: '140 10% 15% / 0.8',
       border: '140 10% 20% / 0.7',
       input: '140 10% 20%',
@@ -443,7 +444,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (theme === 'frutiger') {
-        body.style.backgroundColor = isDarkMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.2)';
+        body.style.backgroundColor = isDarkMode ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.1)';
       } else {
         body.style.backgroundColor = '';
       }
