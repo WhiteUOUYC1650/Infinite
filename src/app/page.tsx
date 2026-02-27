@@ -3,25 +3,25 @@
 import { AppShell } from '@/components/app-shell';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { doc, setDoc, getDoc, query, where, collection, getDocs, addDoc, Timestamp, updateDoc, increment } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { doc, setDoc, getDoc, collection, addDoc, Timestamp, updateDoc, increment } from 'firebase/firestore';
 import type { User } from '@/types';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const { user, loading } = useUser();
+  const { user, loading: authLoading } = useUser();
   const router = useRouter();
   const db = useFirestore();
   const auth = useAuth();
+  
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
     // If an account is being deleted, don't do anything.
-    // The redirect to /goodbye will be handled by the delete function.
     const isDeleting = sessionStorage.getItem('isDeletingAccount');
-    if (isDeleting) {
-        return;
-    }
+    if (isDeleting) return;
 
-    if (loading) return;
+    if (authLoading) return;
 
     if (!user) {
       router.push('/login');
@@ -30,71 +30,85 @@ export default function Home() {
     
     if (!db || !auth) return;
 
-    const userRef = doc(db, 'users', user.uid);
-
-    // Set user to online when they connect
-    setDoc(userRef, { status: 'online' }, { merge: true });
-
-    // --- Bot Login Message Logic ---
-    const justLoggedIn = sessionStorage.getItem('justLoggedIn');
-    if (justLoggedIn) {
-      sessionStorage.removeItem('justLoggedIn');
-
-      const sendLoginMessage = async () => {
-        if (!db) return;
-        try {
-          const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
-          const botLinkSnap = await getDoc(botLinkRef);
-
-          if (botLinkSnap.exists()) {
-            const botId = botLinkSnap.data().botId;
-            const botUserRef = doc(db, 'users', botId);
-            const botUserSnap = await getDoc(botUserRef);
-
-            if (botUserSnap.exists()) {
-              const botData = botUserSnap.data() as User;
-              const members = [user.uid, botId].sort();
-              const chatId = members.join('_');
-              const chatRef = doc(db, 'chats', chatId);
-
-              const chatSnap = await getDoc(chatRef);
-              if (!chatSnap.exists()) {
-                await setDoc(chatRef, {
-                  type: 'dm',
-                  members: members,
-                  unreadCounts: { [user.uid]: 1 },
-                  icon: 'Bot',
-                });
-              } else {
-                await updateDoc(chatRef, { [`unreadCounts.${user.uid}`]: increment(1) });
-              }
-
-              const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
-              const loginMessage = {
-                senderId: user.uid, // sender is current user to pass security rules
-                type: 'announcement',
-                content: 'Welcome back!',
-                timestamp: Timestamp.now(),
-                senderName: botData.name,
-                senderAvatar: botData.avatar || null,
-              };
-              const msgRef = await addDoc(messagesCollectionRef, loginMessage);
-              await updateDoc(chatRef, { lastMessage: { ...loginMessage, id: msgRef.id } });
+    const checkSecurity = async () => {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+            const data = userDoc.data();
+            const isVerified = sessionStorage.getItem('isVerified') === 'true';
+            
+            if (data.loginProtectionEnabled && !isVerified) {
+                router.push('/login');
+                return;
             }
-          }
-        } catch (e) {
-          console.error('Failed to send bot login message', e);
+            
+            // User is valid and verified
+            setIsVerifying(false);
+            
+            // Set user to online
+            setDoc(userRef, { status: 'online' }, { merge: true });
+
+            // --- Bot Login Message Logic ---
+            const justLoggedIn = sessionStorage.getItem('justLoggedIn');
+            if (justLoggedIn) {
+              sessionStorage.removeItem('justLoggedIn');
+
+              try {
+                const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+                const botLinkSnap = await getDoc(botLinkRef);
+
+                if (botLinkSnap.exists()) {
+                  const botId = botLinkSnap.data().botId;
+                  const botUserRef = doc(db, 'users', botId);
+                  const botUserSnap = await getDoc(botUserRef);
+
+                  if (botUserSnap.exists()) {
+                    const botData = botUserSnap.data() as User;
+                    const members = [user.uid, botId].sort();
+                    const chatId = members.join('_');
+                    const chatRef = doc(db, 'chats', chatId);
+
+                    const chatSnap = await getDoc(chatRef);
+                    if (!chatSnap.exists()) {
+                      await setDoc(chatRef, {
+                        type: 'dm',
+                        members: members,
+                        unreadCounts: { [user.uid]: 1 },
+                        icon: 'Bot',
+                      });
+                    } else {
+                      await updateDoc(chatRef, { [`unreadCounts.${user.uid}`]: increment(1) });
+                    }
+
+                    const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
+                    const loginMessage = {
+                      senderId: user.uid,
+                      type: 'announcement',
+                      content: 'Welcome back!',
+                      timestamp: Timestamp.now(),
+                      senderName: botData.name,
+                      senderAvatar: botData.avatar || null,
+                    };
+                    const msgRef = await addDoc(messagesCollectionRef, loginMessage);
+                    await updateDoc(chatRef, { lastMessage: { ...loginMessage, id: msgRef.id } });
+                  }
+                }
+              } catch (e) {
+                console.error('Failed to send bot login message', e);
+              }
+            }
+        } else {
+            setIsVerifying(false);
         }
-      };
+    };
 
-      sendLoginMessage();
-    }
-    // --- End Bot Login Message Logic ---
-
+    checkSecurity();
 
     const handleVisibilityChange = () => {
       if (!auth.currentUser) return;
       const newStatus = document.visibilityState === 'hidden' ? 'away' : 'online';
+      const userRef = doc(db, 'users', user.uid);
       setDoc(userRef, { status: newStatus }, { merge: true });
     };
 
@@ -102,15 +116,13 @@ export default function Home() {
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      // 'offline' status is handled on explicit logout. If a user just closes the tab,
-      // their status will remain 'away' as 'beforeunload' is not reliable for async operations.
     };
-  }, [user, loading, router, db, auth]);
+  }, [user, authLoading, router, db, auth]);
 
-  if (loading || !user) {
+  if (authLoading || isVerifying || !user) {
     return (
-        <div className="flex h-screen items-center justify-center">
-            Loading...
+        <div className="flex h-screen items-center justify-center bg-background">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
         </div>
     );
   }

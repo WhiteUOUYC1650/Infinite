@@ -31,12 +31,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 
 import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
-import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -108,6 +109,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
+  const [cloudPassword, setCloudPassword] = useState('');
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -243,6 +245,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to update privacy settings.' });
+    } finally {
+        setIsUpdatingPrivacy(false);
+    }
+  };
+
+  const handleSaveCloudPassword = async () => {
+    if (!db || !currentUser.uid || !cloudPassword.trim()) return;
+    setIsUpdatingPrivacy(true);
+    try {
+        const securityRef = doc(db, 'users', currentUser.uid, 'private', 'security');
+        await setDoc(securityRef, { cloudPassword: cloudPassword.trim() }, { merge: true });
+        toast({ title: t('dm_success'), description: t('profile_update_success') });
+        setCloudPassword('');
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save password.' });
     } finally {
         setIsUpdatingPrivacy(false);
     }
@@ -558,6 +576,27 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             description={t('login_protection_desc')}
             disabled={isUpdatingPrivacy}
         />
+        
+        {currentUser.loginProtectionEnabled && (
+            <div className="p-4 space-y-4">
+                <div className="flex flex-col gap-2">
+                    <Label className="font-medium">{t('login_protection_setup_title')}</Label>
+                    <div className="flex gap-2">
+                        <Input 
+                            type="password" 
+                            placeholder={t('set_cloud_password_placeholder')}
+                            value={cloudPassword}
+                            onChange={(e) => setCloudPassword(e.target.value)}
+                            disabled={isUpdatingPrivacy}
+                        />
+                        <Button onClick={handleSaveCloudPassword} disabled={isUpdatingPrivacy || !cloudPassword.trim()}>
+                            {isUpdatingPrivacy ? <Loader2 className="h-4 w-4 animate-spin" /> : t('save')}
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t('cloud_password_desc')}</p>
+                </div>
+            </div>
+        )}
     </div>
   );
 

@@ -363,6 +363,14 @@ export const translations = {
       'privacy_security': 'Privacy & Security',
       'login_protection_label': 'Login Protection',
       'login_protection_desc': 'Require an additional check when logging in to your account.',
+      'cloud_password_label': 'Cloud Password',
+      'cloud_password_desc': 'An additional password requested when you log in.',
+      'verify_identity_title': 'Identity Verification',
+      'enter_cloud_password': 'Enter your Cloud Password',
+      'verify_button': 'Verify',
+      'incorrect_cloud_password': 'Incorrect cloud password.',
+      'login_protection_setup_title': 'Setup Login Protection',
+      'set_cloud_password_placeholder': 'Enter new cloud password',
     },
     ru: {
       'settings': 'Настройки',
@@ -502,7 +510,7 @@ export const translations = {
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
       'update_required_title': 'Требуется обновление',
       'update_required_description': 'Для использования этой функции требуется более новая версия приложения. Пожалуйста, обновитесь до последней версии, чтобы получить доступ к новым функциям.',
-      'update_available_title': 'Доступно обновление',
+      'update_available_title': 'Доступное обновление',
       'update_available_description': 'Доступна новая версия приложения. Пожалуйста, обновитесь, чтобы получить доступ к последним функциям.',
       'invalid_credentials_error': 'Неверный адрес электронной почты или пароль. Пожалуйста, проверьте свои данные и попробуйте еще раз.',
       'user_disabled_error': 'Эта учетная запись была отключена.',
@@ -728,6 +736,14 @@ export const translations = {
       'privacy_security': 'Конфиденциальность',
       'login_protection_label': 'Защита входа',
       'login_protection_desc': 'Требовать дополнительную проверку при входе в ваш аккаунт.',
+      'cloud_password_label': 'Облачный пароль',
+      'cloud_password_desc': 'Дополнительный пароль, запрашиваемый при входе.',
+      'verify_identity_title': 'Подтверждение личности',
+      'enter_cloud_password': 'Введите ваш облачный пароль',
+      'verify_button': 'Подтвердить',
+      'incorrect_cloud_password': 'Неверный облачный пароль.',
+      'login_protection_setup_title': 'Настройка защиты входа',
+      'set_cloud_password_placeholder': 'Введите новый облачный пароль',
     }
   };
   

@@ -45,6 +45,11 @@ service cloud.firestore {
                         )
                       );
       allow delete: if isOwner(userId) || isAdmin();
+
+      // Secure storage for private security data like cloud passwords
+      match /private/security {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /usernames/{username} {
