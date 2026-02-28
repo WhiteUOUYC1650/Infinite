@@ -1541,7 +1541,7 @@ function ChatMessage({
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-10rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
+            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-14rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2">
                         <div className="truncate">{displayName}</div>
@@ -1560,7 +1560,7 @@ function ChatMessage({
                     ) : hasMusic ? (
                         <div className="relative my-1">{(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && <div className="w-full flex items-center justify-center bg-secondary rounded-lg p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>}{musicStatus === 'complete' && !isLoadingMusic && musicUrl && <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />}{musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}</div>
                     ) : message.imageUrl ? <div className="relative my-1"><img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} /></div> : null}
-                    {message.content && <div className={cn("text-sm break-all prose prose-sm max-w-none", alignRight ? "prose-invert text-white" : "dark:prose-invert")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: renderLink }}>{message.content}</ReactMarkdown></div>}
+                    {message.content && <div className={cn("text-sm break-words prose prose-sm max-w-none whitespace-pre-wrap", alignRight ? "prose-invert text-white" : "dark:prose-invert")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: renderLink }}>{message.content}</ReactMarkdown></div>}
                 </div>
                 <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
             </div>
