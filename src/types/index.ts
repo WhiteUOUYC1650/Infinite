@@ -20,6 +20,7 @@ export type User = {
   lastDailyBonusClaimed?: Timestamp;
   loginProtectionEnabled?: boolean;
   subscriptions?: string[]; // Array of user IDs the user is subscribed to
+  subscriberCount?: number;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };

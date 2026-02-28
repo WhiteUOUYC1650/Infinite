@@ -14,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
-    // This rule is for collection group queries on 'messages'.
+    // Это правило нужно для поиска сообщений (Collection Group)
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
@@ -43,10 +43,14 @@ service cloud.firestore {
                             request.resource.data.username == '@deleted_' + userId
                           )
                         )
+                      ) ||
+                      (
+                        isSignedIn() &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscriberCount'])
                       );
       allow delete: if isOwner(userId) || isAdmin();
 
-      // Secure storage for private security data like cloud passwords
+      // Защищенное хранилище для облачных паролей
       match /private/security {
         allow read, write: if isOwner(userId);
       }
@@ -75,7 +79,6 @@ service cloud.firestore {
                         (request.resource.data.type != 'dm' && request.resource.data.ownerId == request.auth.uid)
                      );
       
-      // Allow members to update the chat, and allow non-members to join groups/channels.
       allow update: if isSignedIn() && (
         request.auth.uid in resource.data.members ||
         (
@@ -97,19 +100,20 @@ service cloud.firestore {
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      // Allow update if owner OR if only the 'views' field is being updated by a viewer
+      
+      // Разрешаем обновление, если это владелец ИЛИ если зритель просто увеличивает просмотры (views) или ставит лайк
       allow update: if isSignedIn() && (
         request.auth.uid == resource.data.senderId || 
         isAdmin() || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy'])
       );
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin());
 
-      // Rules for video comments
+      // Правила для комментариев к видео
       match /comments/{commentId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+        allow delete: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
       }
     }
     

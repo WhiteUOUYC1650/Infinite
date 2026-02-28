@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User } from '@/types';
 import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -244,6 +244,9 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     // Likes and Subscriptions State
     const [likedBy, setLikedBy] = useState<string[]>(video.likedBy || []);
     const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []);
+    
+    // Prevent infinite loop by tracking if view was already incremented for this instance
+    const viewIncremented = useRef(false);
 
     const isLiked = likedBy.includes(currentUser.uid);
     const isSubscribed = userSubscriptions.includes(video.senderId);
@@ -263,9 +266,12 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                 const assembledBase64 = chunksData.map(c => c.data).join('');
                 setVideoUrl(`data:${video.videoMimeType};base64,${assembledBase64}`);
                 
-                // Increment view
-                const videoRef = doc(db, 'videos', video.id);
-                updateDoc(videoRef, { views: increment(1) });
+                // Increment view only ONCE per mount
+                if (!viewIncremented.current) {
+                    viewIncremented.current = true;
+                    const videoRef = doc(db, 'videos', video.id);
+                    updateDoc(videoRef, { views: increment(1) });
+                }
             } catch (e) {
                 console.error(e);
             } finally {
@@ -343,14 +349,21 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     const handleToggleSubscribe = async () => {
         if (!db || sender?.id === currentUser.uid) return;
         const userRef = doc(db, 'users', currentUser.uid);
+        const authorRef = doc(db, 'users', video.senderId);
+        
         try {
+            const batch = writeBatch(db);
             if (isSubscribed) {
-                await updateDoc(userRef, { subscriptions: arrayRemove(video.senderId) });
+                batch.update(userRef, { subscriptions: arrayRemove(video.senderId) });
+                batch.update(authorRef, { subscriberCount: increment(-1) });
             } else {
-                await updateDoc(userRef, { subscriptions: arrayUnion(video.senderId) });
+                batch.update(userRef, { subscriptions: arrayUnion(video.senderId) });
+                batch.update(authorRef, { subscriberCount: increment(1) });
             }
+            await batch.commit();
         } catch (e) {
             console.error("Subscription toggle failed", e);
+            toast({ variant: "destructive", title: "Error", description: "Failed to update subscription." });
         }
     };
 
@@ -413,7 +426,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                             {(sender?.username === '@InfiniteBot' || sender?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}
                                         </div>
                                         <p className="text-xs text-muted-foreground font-medium">
-                                            {t('subscribers_count', { count: (sender as any)?.subscriberCount || 1200 })}
+                                            {t('subscribers_count', { count: sender?.subscriberCount || 0 })}
                                         </p>
                                     </div>
                                     <Button 
