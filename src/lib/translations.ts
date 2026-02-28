@@ -379,6 +379,10 @@ export const translations = {
       'enter_recovery_code': 'Enter your 8-digit Recovery Code',
       'incorrect_recovery_code': 'Incorrect recovery code.',
       'recovery_success': 'Access restored. Cloud protection has been disabled.',
+      'recovery_via_bot': 'Get Code via Bot',
+      'enter_bot_code': 'Enter code from @Infinite',
+      'bot_code_sent': 'Verification code sent to your chat with @Infinite',
+      'incorrect_bot_code': 'Incorrect verification code from bot.',
     },
     ru: {
       'settings': 'Настройки',
@@ -760,6 +764,10 @@ export const translations = {
       'enter_recovery_code': 'Введите 8-значный код восстановления',
       'incorrect_recovery_code': 'Неверный код восстановления.',
       'recovery_success': 'Доступ восстановлен. Защита облачным паролем отключена.',
+      'recovery_via_bot': 'Получить код через бота',
+      'enter_bot_code': 'Введите код от @Infinite',
+      'bot_code_sent': 'Код подтверждения отправлен в ваш чат с @Infinite',
+      'incorrect_bot_code': 'Неверный код подтверждения от бота.',
     }
   };
   

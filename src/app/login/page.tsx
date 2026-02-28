@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, collection, Timestamp, increment, addDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
-import { Sun, Moon, Languages, Loader2, Lock, ShieldAlert } from 'lucide-react';
+import { Sun, Moon, Languages, Loader2, Lock, ShieldAlert, MessageSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
+import type { User } from '@/types';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -49,7 +50,9 @@ export default function LoginPage() {
   const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const [cloudPasswordInput, setCloudPasswordInput] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
+  const [botCodeInput, setBotCodeInput] = useState('');
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [isBotCodeMode, setIsBotCodeMode] = useState(false);
   const [userId, setUserId] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -153,7 +156,6 @@ export default function LoginPage() {
         const securitySnap = await getDoc(securityRef);
         
         if (securitySnap.exists() && securitySnap.data().recoveryCode === recoveryCodeInput.trim().toUpperCase()) {
-            // Success: Disable protection and log in
             const userRef = doc(db, 'users', userId);
             await updateDoc(userRef, { loginProtectionEnabled: false });
             
@@ -170,6 +172,93 @@ export default function LoginPage() {
                 variant: 'destructive',
                 title: t('sign_in_failed_toast_title'),
                 description: t('incorrect_recovery_code'),
+            });
+            setIsLoading(false);
+        }
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
+        setIsLoading(false);
+    }
+  };
+
+  const handleSendBotCode = async () => {
+    if (!db || !userId) return;
+    setIsLoading(true);
+    try {
+        const code = Math.random().toString().substring(2, 10);
+        const securityRef = doc(db, 'users', userId, 'private', 'security');
+        await setDoc(securityRef, { tempBotCode: code }, { merge: true });
+
+        const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+        const botLinkSnap = await getDoc(botLinkRef);
+
+        if (botLinkSnap.exists()) {
+            const botId = botLinkSnap.data().botId;
+            const botUserRef = doc(db, 'users', botId);
+            const botUserSnap = await getDoc(botUserRef);
+
+            if (botUserSnap.exists()) {
+                const botData = botUserSnap.data() as User;
+                const members = [userId, botId].sort();
+                const chatId = members.join('_');
+                const chatRef = doc(db, 'chats', chatId);
+
+                const chatSnap = await getDoc(chatRef);
+                if (!chatSnap.exists()) {
+                    await setDoc(chatRef, {
+                        type: 'dm',
+                        members: members,
+                        unreadCounts: { [userId]: 1 },
+                        icon: 'Bot',
+                    });
+                } else {
+                    await updateDoc(chatRef, { [`unreadCounts.${userId}`]: increment(1) });
+                }
+
+                const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
+                const recoveryMessage = {
+                    senderId: userId, // Current user is signed in but limited
+                    type: 'announcement',
+                    content: `Your login verification code is: **${code}**`,
+                    timestamp: Timestamp.now(),
+                    senderName: botData.name,
+                    senderAvatar: botData.avatar || null,
+                };
+                const msgRef = await addDoc(messagesCollectionRef, recoveryMessage);
+                await updateDoc(chatRef, { lastMessage: { ...recoveryMessage, id: msgRef.id } });
+            }
+        }
+
+        setIsBotCodeMode(true);
+        setIsRecoveryMode(false);
+        toast({ title: t('dm_success'), description: t('bot_code_sent') });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleVerifyBotCode = async () => {
+    if (!db || !userId || !botCodeInput.trim()) return;
+    setIsLoading(true);
+    try {
+        const securityRef = doc(db, 'users', userId, 'private', 'security');
+        const securitySnap = await getDoc(securityRef);
+        
+        if (securitySnap.exists() && securitySnap.data().tempBotCode === botCodeInput.trim()) {
+            // Success
+            await updateDoc(securityRef, { tempBotCode: null }); // Clear it
+            localStorage.setItem('justLoggedIn', 'true');
+            localStorage.setItem('isVerified', 'true');
+            router.push('/');
+        } else {
+            toast({
+                variant: 'destructive',
+                title: t('sign_in_failed_toast_title'),
+                description: t('incorrect_bot_code'),
             });
             setIsLoading(false);
         }
@@ -262,14 +351,14 @@ export default function LoginPage() {
             <div className="space-y-6 text-center animate-in fade-in zoom-in duration-300">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                        {isRecoveryMode ? <ShieldAlert className="h-8 w-8 text-primary" /> : <Lock className="h-8 w-8 text-primary" />}
+                        {isRecoveryMode ? <ShieldAlert className="h-8 w-8 text-primary" /> : isBotCodeMode ? <MessageSquare className="h-8 w-8 text-primary" /> : <Lock className="h-8 w-8 text-primary" />}
                     </div>
                     <div className="space-y-1">
                         <h2 className="text-2xl font-bold font-headline">
-                            {isRecoveryMode ? t('use_recovery_code') : t('verify_identity_title')}
+                            {isRecoveryMode ? t('use_recovery_code') : isBotCodeMode ? t('enter_bot_code') : t('verify_identity_title')}
                         </h2>
                         <p className="text-muted-foreground text-sm">
-                            {isRecoveryMode ? t('enter_recovery_code') : t('enter_cloud_password')}
+                            {isRecoveryMode ? t('enter_recovery_code') : isBotCodeMode ? t('enter_bot_code') : t('enter_cloud_password')}
                         </p>
                     </div>
                 </div>
@@ -281,6 +370,16 @@ export default function LoginPage() {
                             value={recoveryCodeInput} 
                             onChange={(e) => setRecoveryCodeInput(e.target.value.toUpperCase())}
                             onKeyDown={(e) => e.key === 'Enter' && handleVerifyRecoveryCode()}
+                            className="text-center text-lg font-mono tracking-widest"
+                            autoFocus
+                        />
+                    ) : isBotCodeMode ? (
+                        <Input 
+                            type="text" 
+                            placeholder="XXXXXXXX" 
+                            value={botCodeInput} 
+                            onChange={(e) => setBotCodeInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyBotCode()}
                             className="text-center text-lg font-mono tracking-widest"
                             autoFocus
                         />
@@ -296,19 +395,27 @@ export default function LoginPage() {
                         />
                     )}
                     
-                    <Button className="w-full" onClick={isRecoveryMode ? handleVerifyRecoveryCode : handleVerifyCloudPassword} disabled={isLoading || (isRecoveryMode ? !recoveryCodeInput.trim() : !cloudPasswordInput.trim())}>
+                    <Button className="w-full" onClick={isRecoveryMode ? handleVerifyRecoveryCode : isBotCodeMode ? handleVerifyBotCode : handleVerifyCloudPassword} disabled={isLoading}>
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('verify_button')}
                     </Button>
 
-                    {!isRecoveryMode && (
-                        <Button variant="link" className="text-xs text-muted-foreground" onClick={() => setIsRecoveryMode(true)}>
-                            {t('forgot_cloud_password')}
-                        </Button>
-                    )}
+                    <div className="flex flex-col gap-1">
+                        {!isRecoveryMode && !isBotCodeMode && (
+                            <>
+                                <Button variant="link" className="text-xs text-muted-foreground h-auto p-1" onClick={() => setIsRecoveryMode(true)}>
+                                    {t('forgot_cloud_password')}
+                                </Button>
+                                <Button variant="link" className="text-xs text-muted-foreground h-auto p-1" onClick={handleSendBotCode}>
+                                    {t('recovery_via_bot')}
+                                </Button>
+                            </>
+                        )}
+                    </div>
 
                     <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => {
-                        if (isRecoveryMode) {
+                        if (isRecoveryMode || isBotCodeMode) {
                             setIsRecoveryMode(false);
+                            setIsBotCodeMode(false);
                         } else {
                             setNeedsTwoFactor(false);
                         }
