@@ -18,6 +18,7 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, ru } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
 
 // --- InfVid Icon ---
 const InfVidIcon = ({ className }: { className?: string }) => (
@@ -284,8 +285,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
             setIsSubscribed(true);
             return;
         }
-        // In a real app, you'd check a 'subscriptions' collection.
-        // For prototype, we'll just use a local state.
     }, [sender?.id, currentUser.uid]);
 
     const handleAddComment = async () => {
@@ -316,53 +315,56 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background animate-in fade-in duration-300">
             {/* Overlay Header */}
-            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md">
+            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20">
                 <Button variant="ghost" size="icon" onClick={onClose}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div className="ml-4 flex items-center gap-2">
                     <InfVidIcon className="h-6 w-6" />
-                    <span className="font-bold font-headline">{video.title}</span>
+                    <span className="font-bold font-headline truncate">{video.title}</span>
                 </div>
             </header>
 
-            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Main Player Area */}
-                <div className="flex-1 bg-black flex flex-col min-h-0">
-                    <div className="flex-1 relative flex items-center justify-center">
+            <div className="flex-1 overflow-y-auto">
+                {/* Theater Section (Player inside black part) */}
+                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden" style={{ minHeight: '40vh', maxHeight: '75vh' }}>
+                    <div className="w-full h-full max-w-6xl aspect-video flex items-center justify-center">
                         {isLoading ? (
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                                 <p className="text-white/60 text-sm font-medium animate-pulse">{t('infvid_uploading')}</p>
                             </div>
                         ) : videoUrl ? (
-                            <video src={videoUrl} controls autoPlay className="max-w-full max-h-full aspect-video" />
+                            <video src={videoUrl} controls autoPlay className="w-full h-full object-contain" />
                         ) : (
                             <p className="text-destructive font-bold">Assembly Failed</p>
                         )}
                     </div>
-                    
-                    {/* Video Info Below Player */}
-                    <div className="bg-background p-4 lg:p-6 border-t">
-                        <div className="max-w-5xl mx-auto space-y-4">
-                            <h2 className="text-xl font-bold font-headline leading-tight">{video.title}</h2>
+                </section>
+                
+                {/* Main Content Area Below Player */}
+                <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6">
+                    {/* Left: Info & Description */}
+                    <div className="flex-1 space-y-6">
+                        <div className="space-y-4">
+                            <h2 className="text-2xl font-bold font-headline leading-tight">{video.title}</h2>
                             
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="h-10 w-10 border">
+                                    <Avatar className="h-12 w-12 border">
                                         <AvatarImage src={sender?.avatar} />
                                         <AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p className="font-bold text-sm leading-tight flex items-center gap-1">
+                                        <p className="font-bold text-base leading-tight flex items-center gap-1">
                                             {sender?.name}
-                                            {sender?.id === 'INFINITE_BOT' && <VerifiedBadge className='w-3 h-3' />}
+                                            {(sender?.username === '@InfiniteBot' || sender?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}
                                         </p>
-                                        <p className="text-[11px] text-muted-foreground font-medium">1.2K {t('subscribers_count').split(' ')[1]}</p>
+                                        <p className="text-xs text-muted-foreground font-medium">1.2K {t('subscribers_count').split(' ')[1]}</p>
                                     </div>
                                     <Button 
                                         variant={isSubscribed ? "secondary" : "default"} 
-                                        className={cn("ml-2 rounded-full h-9 px-6 font-bold", !isSubscribed && "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90")}
+                                        className={cn("ml-4 rounded-full h-10 px-6 font-bold", !isSubscribed && "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90")}
                                         onClick={handleToggleSubscribe}
                                     >
                                         {isSubscribed ? t('subscribed') : t('subscribe')}
@@ -370,19 +372,19 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <Button variant="secondary" className="rounded-full gap-2 h-9 px-4">
+                                    <Button variant="secondary" className="rounded-full gap-2 h-10 px-5">
                                         <ThumbsUp className="h-4 w-4" />
                                         <span className="text-xs font-bold">124</span>
                                     </Button>
-                                    <Button variant="secondary" className="rounded-full gap-2 h-9 px-4">
+                                    <Button variant="secondary" className="rounded-full gap-2 h-10 px-5">
                                         <Share2 className="h-4 w-4" />
                                         <span className="text-xs font-bold">{t('copy_text')}</span>
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="bg-muted/50 rounded-xl p-4 text-sm leading-relaxed">
-                                <div className="flex items-center gap-2 font-bold mb-1">
+                            <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50">
+                                <div className="flex items-center gap-2 font-bold mb-2">
                                     <span>{t('infvid_views', { count: video.views || 0 })}</span>
                                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                     <span>{timeAgo}</span>
@@ -390,75 +392,84 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                 <p className="text-muted-foreground whitespace-pre-wrap">{video.description || 'No description provided.'}</p>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* Sidebar: Comments */}
-                <aside className="w-full lg:w-96 border-l flex flex-col bg-background overflow-hidden">
-                    <div className="p-4 border-b shrink-0 flex items-center justify-between">
-                        <h3 className="font-bold flex items-center gap-2">
-                            {t('comments')}
-                            <Badge variant="secondary" className="font-mono">{comments.length}</Badge>
-                        </h3>
+                        {/* Comments section for Mobile (hidden on Desktop) */}
+                        <div className="block lg:hidden pt-6">
+                            <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} />
+                        </div>
                     </div>
-                    
-                    <div className="p-4 border-b shrink-0">
-                        <div className="flex gap-3">
-                            <Avatar className="h-8 w-8 shrink-0">
-                                <AvatarImage src={currentUser.avatar} />
-                                <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-2">
-                                <Textarea 
-                                    placeholder={t('add_comment_placeholder')} 
-                                    className="min-h-[40px] h-10 py-2.5 resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/30 rounded-xl"
-                                    value={commentText}
-                                    onChange={(e) => setAddCommentText(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAddComment())}
-                                />
-                                {commentText.trim() && (
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => setAddCommentText('')}>{t('cancel')}</Button>
-                                        <Button size="sm" className="rounded-full px-4" onClick={handleAddComment}>{t('ok')}</Button>
-                                    </div>
-                                )}
+
+                    {/* Right: Sidebar Comments (hidden on Mobile) */}
+                    <aside className="hidden lg:block w-96 shrink-0 border-l pl-6">
+                        <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} />
+                    </aside>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText }: { video: SharedVideo, comments: any[], currentUser: AuthenticatedUser, onAddComment: () => void, commentText: string, setAddCommentText: (v: string) => void }) {
+    const { t, language } = useLanguage();
+    
+    return (
+        <div className="space-y-6">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+                {t('comments')}
+                <Badge variant="secondary" className="font-mono px-2">{comments.length}</Badge>
+            </h3>
+            
+            <div className="flex gap-3">
+                <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarImage src={currentUser.avatar} />
+                    <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                    <Textarea 
+                        placeholder={t('add_comment_placeholder')} 
+                        className="min-h-[44px] h-11 py-3 resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 rounded-xl"
+                        value={commentText}
+                        onChange={(e) => setAddCommentText(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onAddComment())}
+                    />
+                    {commentText.trim() && (
+                        <div className="flex justify-end gap-2 pt-1">
+                            <Button variant="ghost" size="sm" onClick={() => setAddCommentText('')} className="rounded-full px-4">{t('cancel')}</Button>
+                            <Button size="sm" className="rounded-full px-6 font-bold" onClick={onAddComment}>{t('ok')}</Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="space-y-6 pt-2">
+                {comments.length > 0 ? comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-3 group">
+                        <Avatar className="h-9 w-9 shrink-0">
+                            <AvatarImage src={comment.userAvatar} />
+                            <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm leading-none">@{comment.userName}</span>
+                                <span className="text-[10px] text-muted-foreground font-medium">
+                                    {comment.timestamp ? formatDistanceToNow(comment.timestamp.toDate(), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
+                                </span>
+                            </div>
+                            <p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p>
+                            <div className="flex items-center gap-4 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                                    <ThumbsUp className="h-3 w-3" />
+                                    <span className="text-[10px] font-bold">0</span>
+                                </button>
+                                <button className="text-[10px] font-bold text-muted-foreground hover:underline">{t('reply')}</button>
                             </div>
                         </div>
                     </div>
-
-                    <ScrollArea className="flex-1">
-                        <div className="p-4 space-y-6">
-                            {comments.length > 0 ? comments.map((comment) => (
-                                <div key={comment.id} className="flex gap-3">
-                                    <Avatar className="h-8 w-8 shrink-0">
-                                        <AvatarImage src={comment.userAvatar} />
-                                        <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-xs leading-none">@{comment.userName}</span>
-                                            <span className="text-[10px] text-muted-foreground">
-                                                {comment.timestamp ? formatDistanceToNow(comment.timestamp.toDate(), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm leading-relaxed">{comment.text}</p>
-                                        <div className="flex items-center gap-4 mt-1">
-                                            <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
-                                                <ThumbsUp className="h-3 w-3" />
-                                                <span className="text-[10px] font-bold">0</span>
-                                            </button>
-                                            <button className="text-[10px] font-bold text-muted-foreground hover:underline">{t('reply')}</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="py-12 text-center text-muted-foreground italic text-sm">
-                                    {t('no_comments_yet')}
-                                </div>
-                            )}
-                        </div>
-                    </ScrollArea>
-                </aside>
+                )) : (
+                    <div className="py-12 text-center text-muted-foreground italic text-sm bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">
+                        {t('no_comments_yet')}
+                    </div>
+                )}
             </div>
         </div>
     );
