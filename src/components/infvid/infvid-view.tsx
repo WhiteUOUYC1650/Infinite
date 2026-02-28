@@ -362,8 +362,8 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     };
 
     const handleShare = () => {
-        const url = window.location.origin + '/infvid/' + video.id;
-        navigator.clipboard.writeText(url);
+        const internalLink = `/IV/V/${video.id}`;
+        navigator.clipboard.writeText(internalLink);
         toast({ title: t('video_link_copied') });
     };
 
@@ -385,14 +385,14 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
 
             <div className="flex-1 overflow-y-auto">
                 <section className="w-full bg-black flex items-center justify-center relative overflow-hidden" style={{ minHeight: '30vh', maxHeight: '70vh' }}>
-                    <div className="w-full h-full max-w-6xl flex items-center justify-center">
+                    <div className="h-full flex items-center justify-center">
                         {isLoading ? (
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                                 <p className="text-white/60 text-sm font-medium animate-pulse">{t('infvid_uploading')}</p>
                             </div>
                         ) : videoUrl ? (
-                            <video src={videoUrl} controls autoPlay className="max-w-full max-h-full object-contain" />
+                            <video src={videoUrl} controls autoPlay className="h-full max-h-full object-contain" />
                         ) : (
                             <p className="text-destructive font-bold">Assembly Failed</p>
                         )}
