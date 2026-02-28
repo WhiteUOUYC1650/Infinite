@@ -114,6 +114,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [cloudPassword, setCloudPassword] = useState('');
   const [recoveryCodeToShow, setRecoveryCodeToShow] = useState<string | null>(null);
   const [isPasswordSet, setIsPasswordSet] = useState(false);
+  const [showCloudPasswordDialog, setShowCloudPasswordDialog] = useState(false);
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -284,6 +285,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         setRecoveryCodeToShow(recoveryCode);
         toast({ title: t('dm_success'), description: t('profile_update_success') });
         setCloudPassword('');
+        setShowCloudPasswordDialog(false);
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save password.' });
@@ -619,19 +621,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                             </Badge>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                        <Input 
-                            type="password" 
-                            placeholder={t('set_cloud_password_placeholder')}
-                            value={cloudPassword}
-                            onChange={(e) => setCloudPassword(e.target.value)}
-                            disabled={isUpdatingPrivacy}
-                            className="bg-background"
-                        />
-                        <Button onClick={handleSaveCloudPassword} disabled={isUpdatingPrivacy || !cloudPassword.trim()}>
-                            {isUpdatingPrivacy ? <Loader2 className="h-4 w-4 animate-spin" /> : t('save')}
-                        </Button>
-                    </div>
+                    
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start gap-2 bg-background border-primary/20 hover:bg-primary/5 h-12" 
+                        onClick={() => setShowCloudPasswordDialog(true)}
+                        disabled={isUpdatingPrivacy}
+                    >
+                        <Lock className="h-4 w-4 text-primary" />
+                        <span className="font-semibold">
+                            {isPasswordSet ? t('change_cloud_password_button') : t('set_cloud_password_button')}
+                        </span>
+                    </Button>
+
                     <p className="text-[10px] text-muted-foreground leading-relaxed italic">{t('cloud_password_desc')}</p>
                 </div>
             </div>
@@ -855,6 +857,43 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Cloud Password Dialog */}
+      <Dialog open={showCloudPasswordDialog} onOpenChange={setShowCloudPasswordDialog}>
+        <DialogContent className="max-w-sm">
+            <DialogHeader>
+                <div className="flex justify-center mb-4">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Lock className="h-8 w-8 text-primary" />
+                    </div>
+                </div>
+                <DialogTitle className="text-center">{t('cloud_password_label')}</DialogTitle>
+                <DialogDescription className="text-center">
+                    {t('set_cloud_password_placeholder')}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <Input 
+                    type="password" 
+                    placeholder="********"
+                    value={cloudPassword}
+                    onChange={(e) => setCloudPassword(e.target.value)}
+                    disabled={isUpdatingPrivacy}
+                    autoFocus
+                    className="text-center text-lg tracking-widest"
+                />
+                <p className="text-[10px] text-muted-foreground text-center italic">{t('cloud_password_desc')}</p>
+            </div>
+            <DialogFooter className="flex-col gap-2">
+                <Button className="w-full" onClick={handleSaveCloudPassword} disabled={isUpdatingPrivacy || !cloudPassword.trim()}>
+                    {isUpdatingPrivacy ? <Loader2 className="h-4 w-4 animate-spin" /> : t('save')}
+                </Button>
+                <Button variant="ghost" className="w-full" onClick={() => setShowCloudPasswordDialog(false)} disabled={isUpdatingPrivacy}>
+                    {t('cancel')}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Recovery Code Dialog */}
       <Dialog open={!!recoveryCodeToShow} onOpenChange={(open) => !open && setRecoveryCodeToShow(null)}>

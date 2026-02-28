@@ -386,6 +386,8 @@ export const translations = {
       'incorrect_bot_code': 'Incorrect verification code from bot.',
       'password_is_set': 'Password is set',
       'password_not_set': 'Password not set',
+      'set_cloud_password_button': 'Set Password',
+      'change_cloud_password_button': 'Change Password',
     },
     ru: {
       'settings': 'Настройки',
@@ -774,6 +776,8 @@ export const translations = {
       'incorrect_bot_code': 'Неверный код подтверждения от бота.',
       'password_is_set': 'Пароль установлен',
       'password_not_set': 'Пароль не установлен',
+      'set_cloud_password_button': 'Установить пароль',
+      'change_cloud_password_button': 'Изменить пароль',
     }
   };
   
