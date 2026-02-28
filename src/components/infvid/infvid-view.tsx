@@ -177,6 +177,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
       {/* Video Player Modal */}
       {selectedVideo && (
           <VideoDetailOverlay 
+            key={selectedVideo.id}
             video={selectedVideo} 
             sender={senders[selectedVideo.senderId]} 
             onClose={() => setSelectedVideoId(null)}
@@ -347,7 +348,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     };
 
     const handleToggleSubscribe = async () => {
-        if (!db || sender?.id === currentUser.uid) return;
+        if (!db || video.senderId === currentUser.uid) return;
         const userRef = doc(db, 'users', currentUser.uid);
         const authorRef = doc(db, 'users', video.senderId);
         
@@ -433,7 +434,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                         variant={isSubscribed ? "secondary" : "default"} 
                                         className={cn("ml-4 rounded-full h-10 px-6 font-bold", !isSubscribed && "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90")}
                                         onClick={handleToggleSubscribe}
-                                        disabled={sender?.id === currentUser.uid}
+                                        disabled={video.senderId === currentUser.uid}
                                     >
                                         {isSubscribed ? t('subscribed') : t('subscribe')}
                                     </Button>
