@@ -84,8 +84,8 @@ export default function LoginPage() {
         setNeedsTwoFactor(true);
         setIsLoading(false);
       } else {
-        sessionStorage.setItem('justLoggedIn', 'true');
-        sessionStorage.setItem('isVerified', 'true');
+        localStorage.setItem('justLoggedIn', 'true');
+        localStorage.setItem('isVerified', 'true');
         router.push('/');
       }
     } catch (error: any) {
@@ -125,8 +125,8 @@ export default function LoginPage() {
         const securitySnap = await getDoc(securityRef);
         
         if (securitySnap.exists() && securitySnap.data().cloudPassword === cloudPasswordInput.trim()) {
-            sessionStorage.setItem('justLoggedIn', 'true');
-            sessionStorage.setItem('isVerified', 'true');
+            localStorage.setItem('justLoggedIn', 'true');
+            localStorage.setItem('isVerified', 'true');
             router.push('/');
         } else {
             toast({

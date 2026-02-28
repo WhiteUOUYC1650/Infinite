@@ -18,7 +18,7 @@ export default function Home() {
 
   useEffect(() => {
     // If an account is being deleted, don't do anything.
-    const isDeleting = sessionStorage.getItem('isDeletingAccount');
+    const isDeleting = localStorage.getItem('isDeletingAccount');
     if (isDeleting) return;
 
     if (authLoading) return;
@@ -36,7 +36,7 @@ export default function Home() {
         
         if (userDoc.exists()) {
             const data = userDoc.data();
-            const isVerified = sessionStorage.getItem('isVerified') === 'true';
+            const isVerified = localStorage.getItem('isVerified') === 'true';
             
             if (data.loginProtectionEnabled && !isVerified) {
                 router.push('/login');
@@ -50,9 +50,9 @@ export default function Home() {
             setDoc(userRef, { status: 'online' }, { merge: true });
 
             // --- Bot Login Message Logic ---
-            const justLoggedIn = sessionStorage.getItem('justLoggedIn');
+            const justLoggedIn = localStorage.getItem('justLoggedIn');
             if (justLoggedIn) {
-              sessionStorage.removeItem('justLoggedIn');
+              localStorage.removeItem('justLoggedIn');
 
               try {
                 const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));

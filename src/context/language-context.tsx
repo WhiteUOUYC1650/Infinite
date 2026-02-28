@@ -12,12 +12,15 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>('ru'); // Default to Russian
 
   useEffect(() => {
     const storedLang = localStorage.getItem('app-lang') as Language | null;
     if (storedLang && translations[storedLang]) {
       setLanguage(storedLang);
+    } else {
+      // If no stored language, explicitly save the default 'ru'
+      localStorage.setItem('app-lang', 'ru');
     }
   }, []);
 
