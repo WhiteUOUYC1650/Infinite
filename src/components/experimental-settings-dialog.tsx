@@ -6,6 +6,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Accordion,
@@ -27,13 +29,13 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -110,6 +112,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   const [cloudPassword, setCloudPassword] = useState('');
+  const [recoveryCodeToShow, setRecoveryCodeToShow] = useState<string | null>(null);
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -235,6 +238,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
+  const generateRecoveryCode = () => {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+  };
+
   const handleToggleLoginProtection = async (enabled: boolean) => {
     if (!db || !currentUser.uid) return;
     setIsUpdatingPrivacy(true);
@@ -254,8 +261,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     if (!db || !currentUser.uid || !cloudPassword.trim()) return;
     setIsUpdatingPrivacy(true);
     try {
+        const recoveryCode = generateRecoveryCode();
         const securityRef = doc(db, 'users', currentUser.uid, 'private', 'security');
-        await setDoc(securityRef, { cloudPassword: cloudPassword.trim() }, { merge: true });
+        await setDoc(securityRef, { 
+            cloudPassword: cloudPassword.trim(),
+            recoveryCode: recoveryCode
+        }, { merge: true });
+        
+        setRecoveryCodeToShow(recoveryCode);
         toast({ title: t('dm_success'), description: t('profile_update_success') });
         setCloudPassword('');
     } catch (e) {
@@ -816,6 +829,41 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Recovery Code Dialog */}
+      <Dialog open={!!recoveryCodeToShow} onOpenChange={(open) => !open && setRecoveryCodeToShow(null)}>
+        <DialogContent className="max-w-sm">
+            <DialogHeader>
+                <div className="flex justify-center mb-4">
+                    <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <ShieldCheck className="h-8 w-8 text-green-500" />
+                    </div>
+                </div>
+                <DialogTitle className="text-center">{t('recovery_code_title')}</DialogTitle>
+                <DialogDescription className="text-center">
+                    {t('recovery_code_desc')}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="bg-muted p-4 rounded-xl border-2 border-dashed border-primary/30 my-4 text-center">
+                <span className="text-2xl font-black tracking-[0.5em] font-mono text-primary">{recoveryCodeToShow}</span>
+            </div>
+            <DialogFooter>
+                <Button 
+                    className="w-full" 
+                    onClick={() => {
+                        if (recoveryCodeToShow) {
+                            navigator.clipboard.writeText(recoveryCodeToShow);
+                            toast({ title: t('copy_success_toast') });
+                        }
+                        setRecoveryCodeToShow(null);
+                    }}
+                >
+                    <Copy className="mr-2 h-4 w-4" />
+                    {t('copy_text')} & {t('ok')}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

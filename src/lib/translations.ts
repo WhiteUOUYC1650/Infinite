@@ -371,6 +371,14 @@ export const translations = {
       'incorrect_cloud_password': 'Incorrect cloud password.',
       'login_protection_setup_title': 'Setup Login Protection',
       'set_cloud_password_placeholder': 'Enter new cloud password',
+      'forgot_cloud_password': 'Forgot Cloud Password?',
+      'recovery_code_title': 'Save your Recovery Code',
+      'recovery_code_desc': 'If you forget your Cloud Password, you can use this code to reset access to your account. Store it in a safe place!',
+      'recovery_code_label': 'Recovery Code',
+      'use_recovery_code': 'Use Recovery Code',
+      'enter_recovery_code': 'Enter your 8-digit Recovery Code',
+      'incorrect_recovery_code': 'Incorrect recovery code.',
+      'recovery_success': 'Access restored. Cloud protection has been disabled.',
     },
     ru: {
       'settings': 'Настройки',
@@ -744,6 +752,14 @@ export const translations = {
       'incorrect_cloud_password': 'Неверный облачный пароль.',
       'login_protection_setup_title': 'Настройка защиты входа',
       'set_cloud_password_placeholder': 'Введите новый облачный пароль',
+      'forgot_cloud_password': 'Забыли облачный пароль?',
+      'recovery_code_title': 'Сохраните код восстановления',
+      'recovery_code_desc': 'Если вы забудете свой облачный пароль, вы сможете использовать этот код для восстановления доступа. Сохраните его в надежном месте!',
+      'recovery_code_label': 'Код восстановления',
+      'use_recovery_code': 'Использовать код восстановления',
+      'enter_recovery_code': 'Введите 8-значный код восстановления',
+      'incorrect_recovery_code': 'Неверный код восстановления.',
+      'recovery_success': 'Доступ восстановлен. Защита облачным паролем отключена.',
     }
   };
   

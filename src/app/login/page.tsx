@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
-import { Sun, Moon, Languages, Loader2, Lock } from 'lucide-react';
+import { Sun, Moon, Languages, Loader2, Lock, ShieldAlert } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +48,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const [cloudPasswordInput, setCloudPasswordInput] = useState('');
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [userId, setUserId] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -143,6 +145,41 @@ export default function LoginPage() {
     }
   };
 
+  const handleVerifyRecoveryCode = async () => {
+    if (!db || !userId || !recoveryCodeInput.trim()) return;
+    setIsLoading(true);
+    try {
+        const securityRef = doc(db, 'users', userId, 'private', 'security');
+        const securitySnap = await getDoc(securityRef);
+        
+        if (securitySnap.exists() && securitySnap.data().recoveryCode === recoveryCodeInput.trim().toUpperCase()) {
+            // Success: Disable protection and log in
+            const userRef = doc(db, 'users', userId);
+            await updateDoc(userRef, { loginProtectionEnabled: false });
+            
+            toast({
+                title: t('dm_success'),
+                description: t('recovery_success'),
+            });
+            
+            localStorage.setItem('justLoggedIn', 'true');
+            localStorage.setItem('isVerified', 'true');
+            router.push('/');
+        } else {
+            toast({
+                variant: 'destructive',
+                title: t('sign_in_failed_toast_title'),
+                description: t('incorrect_recovery_code'),
+            });
+            setIsLoading(false);
+        }
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
+        setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-svh items-center justify-center bg-background relative overflow-hidden">
       <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] flex items-center gap-2 z-10">
@@ -225,27 +262,57 @@ export default function LoginPage() {
             <div className="space-y-6 text-center animate-in fade-in zoom-in duration-300">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Lock className="h-8 w-8 text-primary" />
+                        {isRecoveryMode ? <ShieldAlert className="h-8 w-8 text-primary" /> : <Lock className="h-8 w-8 text-primary" />}
                     </div>
                     <div className="space-y-1">
-                        <h2 className="text-2xl font-bold font-headline">{t('verify_identity_title')}</h2>
-                        <p className="text-muted-foreground text-sm">{t('enter_cloud_password')}</p>
+                        <h2 className="text-2xl font-bold font-headline">
+                            {isRecoveryMode ? t('use_recovery_code') : t('verify_identity_title')}
+                        </h2>
+                        <p className="text-muted-foreground text-sm">
+                            {isRecoveryMode ? t('enter_recovery_code') : t('enter_cloud_password')}
+                        </p>
                     </div>
                 </div>
                 <div className="space-y-4">
-                    <Input 
-                        type="password" 
-                        placeholder="********" 
-                        value={cloudPasswordInput} 
-                        onChange={(e) => setCloudPasswordInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleVerifyCloudPassword()}
-                        className="text-center text-lg tracking-widest"
-                        autoFocus
-                    />
-                    <Button className="w-full" onClick={handleVerifyCloudPassword} disabled={isLoading || !cloudPasswordInput.trim()}>
+                    {isRecoveryMode ? (
+                        <Input 
+                            type="text" 
+                            placeholder="XXXXXXXX" 
+                            value={recoveryCodeInput} 
+                            onChange={(e) => setRecoveryCodeInput(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyRecoveryCode()}
+                            className="text-center text-lg font-mono tracking-widest"
+                            autoFocus
+                        />
+                    ) : (
+                        <Input 
+                            type="password" 
+                            placeholder="********" 
+                            value={cloudPasswordInput} 
+                            onChange={(e) => setCloudPasswordInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyCloudPassword()}
+                            className="text-center text-lg tracking-widest"
+                            autoFocus
+                        />
+                    )}
+                    
+                    <Button className="w-full" onClick={isRecoveryMode ? handleVerifyRecoveryCode : handleVerifyCloudPassword} disabled={isLoading || (isRecoveryMode ? !recoveryCodeInput.trim() : !cloudPasswordInput.trim())}>
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('verify_button')}
                     </Button>
-                    <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => setNeedsTwoFactor(false)}>
+
+                    {!isRecoveryMode && (
+                        <Button variant="link" className="text-xs text-muted-foreground" onClick={() => setIsRecoveryMode(true)}>
+                            {t('forgot_cloud_password')}
+                        </Button>
+                    )}
+
+                    <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => {
+                        if (isRecoveryMode) {
+                            setIsRecoveryMode(false);
+                        } else {
+                            setNeedsTwoFactor(false);
+                        }
+                    }}>
                         {t('cancel')}
                     </Button>
                 </div>
