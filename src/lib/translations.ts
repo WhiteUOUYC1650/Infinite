@@ -336,6 +336,7 @@ export const translations = {
       'infvid_uploading': 'Uploading video...',
       'infvid_upload_success': 'Video uploaded successfully!',
       'infvid_views': '{count} views',
+      'likes': '{count} likes',
       'new_message_from': 'New message from {name}',
       'experimental_design_label': 'Experimental Design',
       'experimental_design_desc': 'Try out the new mobile-style settings layout\nwith quick actions.',
@@ -570,7 +571,6 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
-      'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
@@ -589,7 +589,7 @@ export const translations = {
       'faq_title': 'Часто задаваемые вопросы',
       'faq_desc': 'Найдите ответы на распространенные вопросы об Infinite.',
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
-      'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__bold__` for **жирного текста**\n- `~~зачеркнутый~~` for ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
+      'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__bold__` for **болд текста**\n- `~~зачеркнутый~~` for ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
       'faq_create_chat_q': "Как создать новую группу или канал?",
       'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Откроется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
       'faq_invite_q': "Как пригласить людей в группу?",
@@ -731,6 +731,7 @@ export const translations = {
       'infvid_uploading': 'Загрузка видео...',
       'infvid_upload_success': 'Видео успешно загружено!',
       'infvid_views': '{count, plural, one {# просмотр} few {# просмотра} other {# просмотров}}',
+      'likes': '{count, plural, one {# лайк} few {# лайка} other {# лайков}}',
       'new_message_from': 'Новое сообщение от {name}',
       'experimental_design_label': 'Экспериментальный дизайн',
       'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле\nс быстрыми действиями.',
@@ -808,7 +809,7 @@ export const translations = {
       if (!str) {
         return '';
       }
-      // Basic pluralization for Russian 'members'
+      // Basic pluralization for Russian 'members', 'subscribers', 'likes', 'views'
       if (str.includes('plural') && values.count !== undefined) {
           const count = values.count;
           const options = str.match(/one {(.*?)}|few {(.*?)}|other {(.*?)}/g);
@@ -816,19 +817,35 @@ export const translations = {
           if (options) {
               const pluralRules = new Intl.PluralRules('ru-RU');
               const category = pluralRules.select(count);
+              
+              let typeSuffix = '';
+              if (str.includes('участник')) typeSuffix = 'участник';
+              else if (str.includes('подписчик')) typeSuffix = 'подписчик';
+              else if (str.includes('просмотр')) typeSuffix = 'просмотр';
+              else if (str.includes('лайк')) typeSuffix = 'лайк';
+
               switch(category) {
                   case 'one':
-                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник|\# подписчик|\# просмотр/g, '').trim() || '';
-                      if (str.includes('просмотр')) return `${count} просмотр`;
-                      return `${count} ${str.includes('участник') ? 'участник' : 'подписчик'}`;
+                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник|\# подписчик|\# просмотр|\# лайк/g, '').trim() || '';
+                      if (typeSuffix === 'участник') return `${count} участник`;
+                      if (typeSuffix === 'подписчик') return `${count} подписчик`;
+                      if (typeSuffix === 'просмотр') return `${count} просмотр`;
+                      if (typeSuffix === 'лайк') return `${count} лайк`;
+                      break;
                   case 'few':
-                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника|\# подписчика|\# просмотра/g, '').trim() || '';
-                       if (str.includes('просмотр')) return `${count} просмотра`;
-                       return `${count} ${str.includes('участника') ? 'участника' : 'подписчика'}`;
+                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника|\# подписчика|\# просмотра|\# лайка/g, '').trim() || '';
+                      if (typeSuffix === 'участник') return `${count} участника`;
+                      if (typeSuffix === 'подписчик') return `${count} подписчика`;
+                      if (typeSuffix === 'просмотр') return `${count} просмотра`;
+                      if (typeSuffix === 'лайк') return `${count} лайка`;
+                      break;
                   default:
-                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников|\# подписчиков|\# просмотров/g, '').trim() || '';
-                       if (str.includes('просмотр')) return `${count} просмотров`;
-                       return `${count} ${str.includes('участников') ? 'участников' : 'подписчиков'}`;
+                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников|\# подписчиков|\# просмотров|\# лайков/g, '').trim() || '';
+                      if (typeSuffix === 'участник') return `${count} участников`;
+                      if (typeSuffix === 'подписчик') return `${count} подписчиков`;
+                      if (typeSuffix === 'просмотр') return `${count} просмотров`;
+                      if (typeSuffix === 'лайк') return `${count} лайков`;
+                      break;
               }
           }
       }

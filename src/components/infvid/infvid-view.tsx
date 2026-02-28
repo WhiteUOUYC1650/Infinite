@@ -264,7 +264,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
             }
         };
         load();
-    }, [video.id, db]);
+    }, [video.id, db, video.videoStatus, video.videoChunkIds, video.videoMimeType]);
 
     // Comments Listener
     useEffect(() => {
@@ -356,10 +356,11 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                         <AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p className="font-bold text-base leading-tight flex items-center gap-1">
+                                        {/* Changed p to div to fix hydration nesting error with VerifiedBadge */}
+                                        <div className="font-bold text-base leading-tight flex items-center gap-1">
                                             {sender?.name}
                                             {(sender?.username === '@InfiniteBot' || sender?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}
-                                        </p>
+                                        </div>
                                         <p className="text-xs text-muted-foreground font-medium">1.2K {t('subscribers_count').split(' ')[1]}</p>
                                     </div>
                                     <Button 
@@ -374,7 +375,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                 <div className="flex items-center gap-2">
                                     <Button variant="secondary" className="rounded-full gap-2 h-10 px-5">
                                         <ThumbsUp className="h-4 w-4" />
-                                        <span className="text-xs font-bold">124</span>
+                                        <span className="text-xs font-bold">{t('likes', { count: 124 })}</span>
                                     </Button>
                                     <Button variant="secondary" className="rounded-full gap-2 h-10 px-5">
                                         <Share2 className="h-4 w-4" />
