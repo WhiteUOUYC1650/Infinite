@@ -242,17 +242,14 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     const [commentText, setAddCommentText] = useState('');
     const [comments, setComments] = useState<any[]>([]);
     
-    // Likes and Subscriptions State
     const [likedBy, setLikedBy] = useState<string[]>(video.likedBy || []);
     const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []);
     
-    // Prevent infinite loop by tracking if view was already incremented for this instance
     const viewIncremented = useRef(false);
 
     const isLiked = likedBy.includes(currentUser.uid);
     const isSubscribed = userSubscriptions.includes(video.senderId);
 
-    // Assembly Logic
     useEffect(() => {
         if (!db || video.videoStatus !== 'complete' || !video.videoChunkIds) return;
         
@@ -267,7 +264,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                 const assembledBase64 = chunksData.map(c => c.data).join('');
                 setVideoUrl(`data:${video.videoMimeType};base64,${assembledBase64}`);
                 
-                // Increment view only ONCE per mount
                 if (!viewIncremented.current) {
                     viewIncremented.current = true;
                     const videoRef = doc(db, 'videos', video.id);
@@ -282,7 +278,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         load();
     }, [video.id, db, video.videoStatus, video.videoChunkIds, video.videoMimeType]);
 
-    // Likes Listener
     useEffect(() => {
         if (!db) return;
         const videoRef = doc(db, 'videos', video.id);
@@ -293,7 +288,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         });
     }, [db, video.id]);
 
-    // Comments Listener
     useEffect(() => {
         if (!db) return;
         const commentsQuery = query(
@@ -306,7 +300,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         });
     }, [db, video.id]);
 
-    // Subscriptions Listener
     useEffect(() => {
         if (!db) return;
         const userRef = doc(db, 'users', currentUser.uid);
@@ -380,7 +373,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background animate-in fade-in duration-300">
-            {/* Overlay Header */}
             <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20">
                 <Button variant="ghost" size="icon" onClick={onClose}>
                     <ArrowLeft className="h-5 w-5" />
@@ -392,25 +384,22 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
             </header>
 
             <div className="flex-1 overflow-y-auto">
-                {/* Theater Section (Player inside black part) */}
                 <section className="w-full bg-black flex items-center justify-center relative overflow-hidden" style={{ minHeight: '30vh', maxHeight: '70vh' }}>
-                    <div className="w-full h-full max-w-6xl aspect-video flex items-center justify-center">
+                    <div className="w-full h-full max-w-6xl flex items-center justify-center">
                         {isLoading ? (
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                                 <p className="text-white/60 text-sm font-medium animate-pulse">{t('infvid_uploading')}</p>
                             </div>
                         ) : videoUrl ? (
-                            <video src={videoUrl} controls autoPlay className="w-full h-full object-contain" />
+                            <video src={videoUrl} controls autoPlay className="max-w-full max-h-full object-contain" />
                         ) : (
                             <p className="text-destructive font-bold">Assembly Failed</p>
                         )}
                     </div>
                 </section>
                 
-                {/* Main Content Area Below Player */}
                 <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6">
-                    {/* Left: Info & Description */}
                     <div className="flex-1 space-y-6">
                         <div className="space-y-4">
                             <h2 className="text-2xl font-bold font-headline leading-tight">{video.title}</h2>
@@ -466,13 +455,11 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                             </div>
                         </div>
 
-                        {/* Comments section for Mobile (hidden on Desktop) */}
                         <div className="block lg:hidden pt-6">
                             <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} />
                         </div>
                     </div>
 
-                    {/* Right: Sidebar Comments (hidden on Mobile) */}
                     <aside className="hidden lg:block w-96 shrink-0 border-l pl-6">
                         <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} />
                     </aside>

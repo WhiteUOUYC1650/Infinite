@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -1542,7 +1541,7 @@ function ChatMessage({
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 max-w-[calc(100%-6rem)] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
+            <div className={cn("min-w-0 max-w-[calc(100%-10rem)] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2">
                         <div className="truncate">{displayName}</div>
