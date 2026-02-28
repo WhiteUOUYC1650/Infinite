@@ -981,20 +981,20 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
       )}>
-        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
+        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0">
             <X className="h-5 w-5" />
         </Button>
         
-        <div className="flex-1 flex items-center min-w-0">
+        <div className="flex-1 flex items-center min-w-0 overflow-hidden">
             {item.type === "dm" ? (
                 otherUser ? ( 
                     <button
-                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
+                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0 flex-1 overflow-hidden"
                         onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
-                        <div className="ml-3 truncate">
+                        <div className="ml-3 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
                                 {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot' || otherUser?.username === '@GeminiBot') && <VerifiedBadge className="shrink-0" />}
@@ -1015,11 +1015,11 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                 )
             ) : ( 
                  <button 
-                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0"
+                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0 flex-1 overflow-hidden"
                     onClick={() => setShowChatProfile(true)}
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
-                    <Avatar className="h-10 w-10 mr-3">
+                    <Avatar className="h-10 w-10 mr-3 shrink-0">
                         {item.avatar ? (
                             <AvatarImage src={item.avatar} alt={item.name} />
                         ) : (
@@ -1028,7 +1028,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                             </AvatarFallback>
                         )}
                     </Avatar>
-                    <div className="truncate py-1">
+                    <div className="min-w-0 overflow-hidden py-1">
                         <div className="flex items-center gap-2 min-w-0">
                             <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
                              {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
@@ -1043,17 +1043,17 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             )}
         </div>
 
-        <div className="flex items-center gap-2 ml-2">
+        <div className="flex items-center gap-1 ml-2 shrink-0">
             {item.type !== 'channel' && (
                 <Button 
                     variant="ghost" 
-                    size="sm" 
-                    className="hidden sm:flex gap-2 text-primary hover:text-primary/80" 
+                    size="icon" 
+                    className="text-primary hover:text-primary/80" 
                     onClick={handleGenerateSummary}
                     disabled={isSummarizing || !messages || messages.length < 5}
+                    title={t('ai_summary')}
                 >
                     {isSummarizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    <span className="font-bold">{t('ai_summary')}</span>
                 </Button>
             )}
             {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
@@ -1541,17 +1541,17 @@ function ChatMessage({
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-14rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
+            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
-                    <div className="font-semibold text-sm mb-1 flex items-center gap-2">
+                    <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
-                        {isVerified && <VerifiedBadge />}
-                        {isFromChannel ? <Badge variant="secondary">{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary">BOT</Badge>)}
+                        {isVerified && <VerifiedBadge className='shrink-0' />}
+                        {isFromChannel ? <Badge variant="secondary" className='shrink-0'>{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary" className='shrink-0'>BOT</Badge>)}
                     </div>
                 )}
                 {message.replyTo && (
-                    <button onClick={handleScrollToReply} className={cn("mb-2 p-2 rounded-md w-full text-left transition-colors", alignRight ? "bg-black/10 hover:bg-black/20" : "bg-muted hover:bg-muted/80")}>
-                        <div className="flex items-center gap-2"><CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0"><div className={cn("font-semibold text-sm", alignRight ? "text-primary-foreground/90" : "text-primary")}>{message.replyTo.senderName}</div><div className={cn("text-sm truncate", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.replyTo.content}</div></div></div>
+                    <button onClick={handleScrollToReply} className={cn("mb-2 p-2 rounded-md w-full text-left transition-colors overflow-hidden", alignRight ? "bg-black/10 hover:bg-black/20" : "bg-muted hover:bg-muted/80")}>
+                        <div className="flex items-center gap-2"><CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className={cn("font-semibold text-sm truncate", alignRight ? "text-primary-foreground/90" : "text-primary")}>{message.replyTo.senderName}</div><div className={cn("text-sm truncate", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.replyTo.content}</div></div></div>
                     </button>
                 )}
                 <div className="overflow-hidden">
