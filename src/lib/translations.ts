@@ -396,6 +396,8 @@ export const translations = {
       'add_comment_placeholder': 'Add a comment...',
       'share': 'Share',
       'video_link_copied': 'Video link copied to clipboard!',
+      'infvid_thumbnail_label': 'Thumbnail (optional)',
+      'infvid_select_thumbnail': 'Select Thumbnail',
     },
     ru: {
       'settings': 'Настройки',
@@ -461,7 +463,7 @@ export const translations = {
       'members_count': '{count, plural, one {# участник} few {# участника} other {# участников}}',
       'subscribers_count': '{count, plural, one {# подписчик} few {# подписчика} other {# подписчиков}}',
       'loading_chat': 'Загрузка чата...',
-      'chat_not_selected': 'Чат не выбран',
+      'chat_not_selected': 'Chat not selected',
       'no_messages_yet': 'Здесь пока ничего нет.',
       'message_placeholder': 'Напишите сообщение...',
       'search_button': 'Поиск',
@@ -793,6 +795,8 @@ export const translations = {
       'add_comment_placeholder': 'Оставьте комментарий...',
       'share': 'Поделиться',
       'video_link_copied': 'Ссылка скопирована в буфер обмена!',
+      'infvid_thumbnail_label': 'Обложка (необязательно)',
+      'infvid_select_thumbnail': 'Выбрать обложку',
     }
   };
   

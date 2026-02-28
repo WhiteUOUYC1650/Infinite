@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -19,6 +20,44 @@ import { formatDistanceToNow } from 'date-fns';
 import { enUS, ru } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+
+// Helper to compress thumbnail image
+const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height *= maxDimension / width;
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width *= maxDimension / height;
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context error'));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = (e) => reject(e);
+    };
+    reader.onerror = (e) => reject(e);
+  });
+};
 
 // --- InfVid Icon ---
 const InfVidIcon = ({ className }: { className?: string }) => (
@@ -52,13 +91,18 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
   const senderIds = useMemo(() => Array.from(new Set(videos?.map(v => v.senderId) || [])), [videos]);
   const { users: senders } = useBatchUsers(senderIds);
 
-  const handleUploadVideo = async (file: File, title: string, description: string) => {
+  const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string) => {
     if (!db) return;
     setIsUploading(true);
 
     try {
         const videoDocRef = doc(collection(db, 'videos'));
         const timestamp = Timestamp.now();
+
+        let thumbnailUrl = '';
+        if (thumbnailFile) {
+            thumbnailUrl = await compressImage(thumbnailFile);
+        }
 
         const videoData: Omit<SharedVideo, 'id'> = {
             title,
@@ -69,6 +113,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
             videoStatus: 'uploading',
             views: 0,
             likedBy: [],
+            thumbnailUrl,
         };
 
         await setDoc(videoDocRef, videoData);
@@ -124,10 +169,10 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-                <InfVidIcon className="h-8 w-8" />
-                <h1 className="text-xl font-bold font-headline">{t('infvid_title')}</h1>
-                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none">BETA</Badge>
+            <div className="flex items-center gap-2 overflow-hidden">
+                <InfVidIcon className="h-8 w-8 shrink-0" />
+                <h1 className="text-xl font-bold font-headline truncate">{t('infvid_title')}</h1>
+                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
             </div>
         </div>
         
@@ -205,9 +250,13 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
         <div className="flex flex-col gap-3 group cursor-pointer" onClick={onClick}>
             {/* Thumbnail */}
             <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-sm transition-transform hover:scale-[1.02] duration-200">
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
-                    <Play className="h-12 w-12 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
+                {video.thumbnailUrl ? (
+                    <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+                ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                        <Play className="h-12 w-12 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                )}
                 <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">
                     HD
                 </div>
@@ -536,39 +585,53 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
     );
 }
 
-function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, title: string, description: string) => Promise<void>, isUploading: boolean }) {
+function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, thumbnailFile: File | null, title: string, description: string) => Promise<void>, isUploading: boolean }) {
     const { t } = useLanguage();
     const [file, setFile] = useState<File | null>(null);
+    const [thumbnail, setThumbnail] = useState<File | null>(null);
+    const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
-            setFile(e.target.files[0]);
-            if (!title) setTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
+            const selectedFile = e.target.files[0];
+            setFile(selectedFile);
+            if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
+        }
+    };
+
+    const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            const selectedFile = e.target.files[0];
+            setThumbnail(selectedFile);
+            setThumbnailPreview(URL.createObjectURL(selectedFile));
         }
     };
 
     const handleSubmit = async () => {
         if (!file || !title.trim()) return;
-        await onUpload(file, title, description);
+        await onUpload(file, thumbnail, title, description);
         setFile(null);
+        setThumbnail(null);
+        setThumbnailPreview(null);
         setTitle('');
         setDescription('');
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] rounded-2xl">
+            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold font-headline">{t('infvid_upload_title')}</DialogTitle>
                 </DialogHeader>
                 
-                <div className="space-y-4 py-4">
+                <div className="space-y-6 py-4">
                     <div 
                         className={cn(
-                            "border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all",
+                            "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
                             file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30"
                         )}
                         onClick={() => fileInputRef.current?.click()}
@@ -576,27 +639,51 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boo
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />
                         {file ? (
                             <div className="text-center">
-                                <PlayCircle className="h-16 w-16 text-primary mx-auto mb-3" />
-                                <p className="font-bold truncate max-w-[300px]">{file.name}</p>
+                                <PlayCircle className="h-12 w-12 text-primary mx-auto mb-2" />
+                                <p className="font-bold truncate max-w-[300px] text-sm">{file.name}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
                             </div>
                         ) : (
                             <div className="text-center">
-                                <Upload className="h-16 w-16 text-muted-foreground/40 mx-auto mb-3" />
+                                <Upload className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
                                 <p className="font-bold text-muted-foreground">{t('video')}</p>
                                 <p className="text-xs text-muted-foreground mt-1">MP4, WebM up to 10MB</p>
                             </div>
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold ml-1">{t('infvid_video_title_label')}</label>
-                        <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter video title" disabled={isUploading} className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary" />
-                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_thumbnail_label')}</label>
+                            <div 
+                                className={cn(
+                                    "aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-muted/20 relative",
+                                    thumbnailPreview ? "border-solid border-primary" : "hover:border-primary/50"
+                                )}
+                                onClick={() => thumbnailInputRef.current?.click()}
+                            >
+                                <input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />
+                                {thumbnailPreview ? (
+                                    <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="text-center">
+                                        <ImageIcon className="h-8 w-8 text-muted-foreground/40 mx-auto mb-1" />
+                                        <p className="text-[10px] font-bold text-muted-foreground">{t('infvid_select_thumbnail')}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold ml-1">{t('infvid_video_desc_label')}</label>
-                        <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Tell viewers about your video" className="resize-none rounded-xl bg-muted/30 border-none focus-visible:ring-primary" rows={3} disabled={isUploading} />
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_title_label')}</label>
+                                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter video title" disabled={isUploading} className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_desc_label')}</label>
+                                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Tell viewers about your video" className="resize-none rounded-xl bg-muted/30 border-none focus-visible:ring-primary min-h-[100px]" rows={3} disabled={isUploading} />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
