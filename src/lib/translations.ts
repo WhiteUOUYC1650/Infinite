@@ -281,6 +281,7 @@ export const translations = {
       'prem_benefit_1': 'Exclusive profile badge',
       'prem_benefit_2': 'Access to exclusive themes',
       'subscribe': 'Subscribe',
+      'subscribed': 'Subscribed',
       'already_subscribed': 'You are already subscribed',
       'not_enough_gold': 'Not enough InfGold to subscribe.',
       'subscription_successful_title': 'Congratulations!',
@@ -388,6 +389,9 @@ export const translations = {
       'password_not_set': 'Password not set',
       'set_cloud_password_button': 'Set Password',
       'change_cloud_password_button': 'Change Password',
+      'comments': 'Comments',
+      'no_comments_yet': 'No comments yet. Be the first to comment!',
+      'add_comment_placeholder': 'Add a comment...',
     },
     ru: {
       'settings': 'Настройки',
@@ -566,6 +570,7 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
+      'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
@@ -671,6 +676,7 @@ export const translations = {
       'prem_benefit_1': 'Эксклюзивный значок в профиле',
       'prem_benefit_2': 'Доступ к эксклюзивным темам',
       'subscribe': 'Подписаться',
+      'subscribed': 'Вы подписаны',
       'already_subscribed': 'Вы уже подписаны',
       'not_enough_gold': 'Недостаточно InfGold для подписки.',
       'subscription_successful_title': 'Поздравляем!',
@@ -778,6 +784,9 @@ export const translations = {
       'password_not_set': 'Пароль не установлен',
       'set_cloud_password_button': 'Установить пароль',
       'change_cloud_password_button': 'Изменить пароль',
+      'comments': 'Комментарии',
+      'no_comments_yet': 'Комментариев пока нет. Будьте первым!',
+      'add_comment_placeholder': 'Оставьте комментарий...',
     }
   };
   
