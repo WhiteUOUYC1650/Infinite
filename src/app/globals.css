@@ -1,5 +1,3 @@
-
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -139,7 +137,8 @@ body {
 /* Universal Glass Effect Styles */
 [data-glass-effect="true"] .bg-primary,
 [data-glass-effect="true"] .outgoing-msg > div,
-[data-glass-effect="true"] .incoming-msg > div {
+[data-glass-effect="true"] .incoming-msg > div,
+[data-glass-effect="true"] button[role="switch"] {
   position: relative;
   overflow: hidden;
   box-shadow: 
@@ -150,7 +149,8 @@ body {
 
 [data-glass-effect="true"] .bg-primary::before,
 [data-glass-effect="true"] .outgoing-msg > div::before,
-[data-glass-effect="true"] .incoming-msg > div::before {
+[data-glass-effect="true"] .incoming-msg > div::before,
+[data-glass-effect="true"] button[role="switch"]::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; 
@@ -162,6 +162,25 @@ body {
   );
   border-radius: inherit;
   pointer-events: none;
+  z-index: 1;
+}
+
+[data-glass-effect="true"] button[role="switch"] {
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 
+    inset 0 2px 4px rgba(0,0,0,0.1), 
+    0 1px 2px rgba(255,255,255,0.3) !important;
+}
+
+[data-glass-effect="true"] button[role="switch"][data-state="checked"] {
+  background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--primary) / 0.8)) !important;
+}
+
+[data-glass-effect="true"] button[role="switch"] span {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25), inset 0 1px 0 #ffffff !important;
+  border: 0.5px solid rgba(0,0,0,0.1) !important;
+  z-index: 2;
 }
 
 @layer components {

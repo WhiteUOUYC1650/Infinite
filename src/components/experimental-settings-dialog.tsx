@@ -58,7 +58,7 @@ import { VerifiedBadge } from './ui/verified-badge';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy';
 
-const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-intensity'];
+const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect'];
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
@@ -101,7 +101,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassIntensity, setGlassIntensity } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect } = useTheme();
   
   const auth = useAuth();
   const db = useFirestore();
@@ -515,26 +515,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   );
 
   const appearancePageContent = (
-      <>
+      <div className='divide-y'>
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
         <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('theme')} />
-        
-        <div className="p-4 space-y-4">
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <Label className="font-medium">{t('glass_effect_label')}</Label>
-                </div>
-                <Slider 
-                    value={[glassIntensity]} 
-                    onValueChange={(val) => setGlassIntensity(val[0])} 
-                    max={100} 
-                    step={1}
-                />
-                <p className="text-xs text-muted-foreground">{t('glass_effect_desc')}</p>
-            </div>
-        </div>
-
+        <SettingsSwitchItem 
+            id="glass-effect-switch" 
+            label={t('glass_effect_label')} 
+            checked={glassEffect} 
+            onCheckedChange={toggleGlassEffect} 
+            description={t('glass_effect_desc')}
+        />
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
         <SettingsSwitchItem 
             id="exp-design-switch" 
@@ -543,7 +533,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             onCheckedChange={toggleExperimentalDesign} 
             description={t('experimental_design_desc')} 
         />
-      </>
+      </div>
   );
   
   const currentTierLevel = currentUser.subscriptionTier ? ['none', 'super', 'mega', 'prem', 'giga', 'ultra'].indexOf(currentUser.subscriptionTier) : 0;
