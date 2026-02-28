@@ -39,7 +39,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedVideo, setSelectedVideo] = useState<SharedVideo | null>(null);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
 
   // --- Fetch Videos ---
   const videosQuery = useMemo(() => {
@@ -68,6 +68,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
             videoMimeType: file.type,
             videoStatus: 'uploading',
             views: 0,
+            likedBy: [],
         };
 
         await setDoc(videoDocRef, videoData);
@@ -112,6 +113,8 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
         setIsUploading(false);
     }
   };
+
+  const selectedVideo = videos?.find(v => v.id === selectedVideoId);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
@@ -159,7 +162,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
                         key={video.id} 
                         video={video} 
                         sender={senders[video.senderId]} 
-                        onClick={() => setSelectedVideo(video)}
+                        onClick={() => setSelectedVideoId(video.id)}
                     />
                 ))}
             </div>
@@ -176,7 +179,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
           <VideoDetailOverlay 
             video={selectedVideo} 
             sender={senders[selectedVideo.senderId]} 
-            onClose={() => setSelectedVideo(null)}
+            onClose={() => setSelectedVideoId(null)}
             currentUser={currentUser}
           />
       )}
@@ -232,11 +235,18 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
 function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser }) {
     const { t, language } = useLanguage();
     const db = useFirestore();
+    const { toast } = useToast();
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [commentText, setAddCommentText] = useState('');
     const [comments, setComments] = useState<any[]>([]);
-    const [isSubscribed, setIsSubscribed] = useState(false);
+    
+    // Likes and Subscriptions State
+    const [likedBy, setLikedBy] = useState<string[]>(video.likedBy || []);
+    const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []);
+
+    const isLiked = likedBy.includes(currentUser.uid);
+    const isSubscribed = userSubscriptions.includes(video.senderId);
 
     // Assembly Logic
     useEffect(() => {
@@ -245,7 +255,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         const load = async () => {
             setIsLoading(true);
             try {
-                // Fetch chunks
                 const chunkSnaps = await Promise.all(
                     video.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
                 );
@@ -266,6 +275,17 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         load();
     }, [video.id, db, video.videoStatus, video.videoChunkIds, video.videoMimeType]);
 
+    // Likes Listener
+    useEffect(() => {
+        if (!db) return;
+        const videoRef = doc(db, 'videos', video.id);
+        return onSnapshot(videoRef, (snapshot) => {
+            if (snapshot.exists()) {
+                setLikedBy(snapshot.data().likedBy || []);
+            }
+        });
+    }, [db, video.id]);
+
     // Comments Listener
     useEffect(() => {
         if (!db) return;
@@ -279,13 +299,16 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         });
     }, [db, video.id]);
 
-    // Subscription Mock Check
+    // Subscriptions Listener
     useEffect(() => {
-        if (sender?.id === currentUser.uid) {
-            setIsSubscribed(true);
-            return;
-        }
-    }, [sender?.id, currentUser.uid]);
+        if (!db) return;
+        const userRef = doc(db, 'users', currentUser.uid);
+        return onSnapshot(userRef, (snapshot) => {
+            if (snapshot.exists()) {
+                setUserSubscriptions(snapshot.data().subscriptions || []);
+            }
+        });
+    }, [db, currentUser.uid]);
 
     const handleAddComment = async () => {
         if (!db || !commentText.trim()) return;
@@ -303,9 +326,38 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         }
     };
 
-    const handleToggleSubscribe = () => {
-        if (sender?.id === currentUser.uid) return;
-        setIsSubscribed(!isSubscribed);
+    const handleToggleLike = async () => {
+        if (!db) return;
+        const videoRef = doc(db, 'videos', video.id);
+        try {
+            if (isLiked) {
+                await updateDoc(videoRef, { likedBy: arrayRemove(currentUser.uid) });
+            } else {
+                await updateDoc(videoRef, { likedBy: arrayUnion(currentUser.uid) });
+            }
+        } catch (e) {
+            console.error("Like toggle failed", e);
+        }
+    };
+
+    const handleToggleSubscribe = async () => {
+        if (!db || sender?.id === currentUser.uid) return;
+        const userRef = doc(db, 'users', currentUser.uid);
+        try {
+            if (isSubscribed) {
+                await updateDoc(userRef, { subscriptions: arrayRemove(video.senderId) });
+            } else {
+                await updateDoc(userRef, { subscriptions: arrayUnion(video.senderId) });
+            }
+        } catch (e) {
+            console.error("Subscription toggle failed", e);
+        }
+    };
+
+    const handleShare = () => {
+        const url = window.location.origin + '/infvid/' + video.id;
+        navigator.clipboard.writeText(url);
+        toast({ title: t('video_link_copied') });
     };
 
     const timeAgo = video.timestamp 
@@ -327,7 +379,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
 
             <div className="flex-1 overflow-y-auto">
                 {/* Theater Section (Player inside black part) */}
-                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden" style={{ minHeight: '40vh', maxHeight: '75vh' }}>
+                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden" style={{ minHeight: '30vh', maxHeight: '70vh' }}>
                     <div className="w-full h-full max-w-6xl aspect-video flex items-center justify-center">
                         {isLoading ? (
                             <div className="text-center space-y-4">
@@ -356,30 +408,36 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                         <AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        {/* Changed p to div to fix hydration nesting error with VerifiedBadge */}
                                         <div className="font-bold text-base leading-tight flex items-center gap-1">
                                             {sender?.name}
                                             {(sender?.username === '@InfiniteBot' || sender?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}
                                         </div>
-                                        <p className="text-xs text-muted-foreground font-medium">1.2K {t('subscribers_count').split(' ')[1]}</p>
+                                        <p className="text-xs text-muted-foreground font-medium">
+                                            {t('subscribers_count', { count: (sender as any)?.subscriberCount || 1200 })}
+                                        </p>
                                     </div>
                                     <Button 
                                         variant={isSubscribed ? "secondary" : "default"} 
                                         className={cn("ml-4 rounded-full h-10 px-6 font-bold", !isSubscribed && "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90")}
                                         onClick={handleToggleSubscribe}
+                                        disabled={sender?.id === currentUser.uid}
                                     >
                                         {isSubscribed ? t('subscribed') : t('subscribe')}
                                     </Button>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <Button variant="secondary" className="rounded-full gap-2 h-10 px-5">
-                                        <ThumbsUp className="h-4 w-4" />
-                                        <span className="text-xs font-bold">{t('likes', { count: 124 })}</span>
+                                    <Button 
+                                        variant={isLiked ? "default" : "secondary"} 
+                                        className={cn("rounded-full gap-2 h-10 px-5 transition-all", isLiked && "bg-primary text-primary-foreground")}
+                                        onClick={handleToggleLike}
+                                    >
+                                        <ThumbsUp className={cn("h-4 w-4", isLiked && "fill-current")} />
+                                        <span className="text-xs font-bold">{t('likes', { count: likedBy.length })}</span>
                                     </Button>
-                                    <Button variant="secondary" className="rounded-full gap-2 h-10 px-5">
+                                    <Button variant="secondary" className="rounded-full gap-2 h-10 px-5" onClick={handleShare}>
                                         <Share2 className="h-4 w-4" />
-                                        <span className="text-xs font-bold">{t('copy_text')}</span>
+                                        <span className="text-xs font-bold">{t('share')}</span>
                                     </Button>
                                 </div>
                             </div>
@@ -433,12 +491,13 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                         onChange={(e) => setAddCommentText(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onAddComment())}
                     />
-                    {commentText.trim() && (
-                        <div className="flex justify-end gap-2 pt-1">
-                            <Button variant="ghost" size="sm" onClick={() => setAddCommentText('')} className="rounded-full px-4">{t('cancel')}</Button>
-                            <Button size="sm" className="rounded-full px-6 font-bold" onClick={onAddComment}>{t('ok')}</Button>
-                        </div>
-                    )}
+                    <div className="flex justify-end gap-2 pt-1">
+                        <Button variant="ghost" size="sm" onClick={() => setAddCommentText('')} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button>
+                        <Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onAddComment} disabled={!commentText.trim()}>
+                            <Send className="h-3 w-3" />
+                            {t('ok')}
+                        </Button>
+                    </div>
                 </div>
             </div>
 

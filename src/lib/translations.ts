@@ -335,8 +335,8 @@ export const translations = {
       'infvid_no_videos': 'No videos yet. Be the first to upload!',
       'infvid_uploading': 'Uploading video...',
       'infvid_upload_success': 'Video uploaded successfully!',
-      'infvid_views': '{count} views',
-      'likes': '{count} likes',
+      'infvid_views': '{count, plural, one {# view} other {# views}}',
+      'likes': '{count, plural, one {# like} other {# likes}}',
       'new_message_from': 'New message from {name}',
       'experimental_design_label': 'Experimental Design',
       'experimental_design_desc': 'Try out the new mobile-style settings layout\nwith quick actions.',
@@ -393,6 +393,8 @@ export const translations = {
       'comments': 'Comments',
       'no_comments_yet': 'No comments yet. Be the first to comment!',
       'add_comment_placeholder': 'Add a comment...',
+      'share': 'Share',
+      'video_link_copied': 'Video link copied to clipboard!',
     },
     ru: {
       'settings': 'Настройки',
@@ -788,6 +790,8 @@ export const translations = {
       'comments': 'Комментарии',
       'no_comments_yet': 'Комментариев пока нет. Будьте первым!',
       'add_comment_placeholder': 'Оставьте комментарий...',
+      'share': 'Поделиться',
+      'video_link_copied': 'Ссылка скопирована в буфер обмена!',
     }
   };
   
@@ -804,50 +808,36 @@ export const translations = {
 
   export type TranslationKey = FlattenKeys<typeof translations['en']>;
   
-  // A simple interpolation function
+  // A simple interpolation function with enhanced pluralization logic
   export const interpolate = (str: string, values: Record<string, any>): string => {
       if (!str) {
         return '';
       }
-      // Basic pluralization for Russian 'members', 'subscribers', 'likes', 'views'
-      if (str.includes('plural') && values.count !== undefined) {
-          const count = values.count;
-          const options = str.match(/one {(.*?)}|few {(.*?)}|other {(.*?)}/g);
-          let result = '';
-          if (options) {
-              const pluralRules = new Intl.PluralRules('ru-RU');
-              const category = pluralRules.select(count);
-              
-              let typeSuffix = '';
-              if (str.includes('участник')) typeSuffix = 'участник';
-              else if (str.includes('подписчик')) typeSuffix = 'подписчик';
-              else if (str.includes('просмотр')) typeSuffix = 'просмотр';
-              else if (str.includes('лайк')) typeSuffix = 'лайк';
 
-              switch(category) {
-                  case 'one':
-                      result = options.find(o => o.startsWith('one'))?.replace(/one {|}|\# участник|\# подписчик|\# просмотр|\# лайк/g, '').trim() || '';
-                      if (typeSuffix === 'участник') return `${count} участник`;
-                      if (typeSuffix === 'подписчик') return `${count} подписчик`;
-                      if (typeSuffix === 'просмотр') return `${count} просмотр`;
-                      if (typeSuffix === 'лайк') return `${count} лайк`;
-                      break;
-                  case 'few':
-                      result = options.find(o => o.startsWith('few'))?.replace(/few {|}|\# участника|\# подписчика|\# просмотра|\# лайка/g, '').trim() || '';
-                      if (typeSuffix === 'участник') return `${count} участника`;
-                      if (typeSuffix === 'подписчик') return `${count} подписчика`;
-                      if (typeSuffix === 'просмотр') return `${count} просмотра`;
-                      if (typeSuffix === 'лайк') return `${count} лайка`;
-                      break;
-                  default:
-                      result = options.find(o => o.startsWith('other'))?.replace(/other {|}|\# участников|\# подписчиков|\# просмотров|\# лайков/g, '').trim() || '';
-                      if (typeSuffix === 'участник') return `${count} участников`;
-                      if (typeSuffix === 'подписчик') return `${count} подписчиков`;
-                      if (typeSuffix === 'просмотр') return `${count} просмотров`;
-                      if (typeSuffix === 'лайк') return `${count} лайков`;
-                      break;
-              }
+      // Handle ICU-like pluralization syntax: {count, plural, one {...} other {...}}
+      const pluralMatch = str.match(/{(\w+),\s*plural,\s*(.*)}/);
+      if (pluralMatch && values[pluralMatch[1]] !== undefined) {
+          const count = values[pluralMatch[1]];
+          const optionsStr = pluralMatch[2];
+          
+          // Basic parser for plural options
+          const options: Record<string, string> = {};
+          const optionRegex = /(\w+)\s*{(.*?)}/g;
+          let match;
+          while ((match = optionRegex.exec(optionsStr)) !== null) {
+              options[match[1]] = match[2];
           }
+
+          const pr = new Intl.PluralRules('ru-RU');
+          const rule = pr.select(count); // 'one', 'few', 'many', 'other'
+          
+          let selectedOption = options[rule] || options['other'];
+          
+          // Re-interpolate the selected option (e.g. replace # with count)
+          const result = selectedOption.replace('#', String(count));
+          
+          // Replace the entire plural block in the original string
+          return str.replace(pluralMatch[0], result);
       }
 
       return str.replace(/{(\w+)}/g, (match, key) => {

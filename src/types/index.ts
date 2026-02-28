@@ -19,6 +19,7 @@ export type User = {
   subscriptionTier?: 'none' | 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
   lastDailyBonusClaimed?: Timestamp;
   loginProtectionEnabled?: boolean;
+  subscriptions?: string[]; // Array of user IDs the user is subscribed to
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };
@@ -104,6 +105,7 @@ export type SharedVideo = {
   videoChunkIds?: string[];
   thumbnailUrl?: string;
   views?: number;
+  likedBy?: string[]; // Array of user IDs who liked the video
 };
 
 export type Channel = Chat & {
