@@ -13,9 +13,9 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
@@ -57,6 +57,7 @@ interface ChatProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCloseChat: () => void;
+  onJoinDiscussion?: (id: string) => void;
 }
 
 const chatEditSchema = z.object({
@@ -136,7 +137,7 @@ async function getCroppedImg(
 }
 
 
-export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChange, onCloseChat }: ChatProfileDialogProps) {
+export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChange, onCloseChat, onJoinDiscussion }: ChatProfileDialogProps) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -147,6 +148,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
   const [isSaving, setIsSaving] = useState(false);
   const [ownedGroups, setOwnedGroups] = useState<Chat[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const isOwner = chat.ownerId === currentUser.uid;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -290,8 +292,6 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         });
         toast({ title: t('dm_success'), description: t('leave_chat_success')});
         onOpenChange(false);
-        // Do not close the chat view, let the user see they've left.
-        // onCloseChat();
     } catch (error) {
         console.error("Error leaving chat:", error);
         toast({ variant: 'destructive', title: 'Error', description: t('leave_chat_error')});
@@ -305,8 +305,6 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     setIsDeleting(true);
     const chatRef = doc(db, 'chats', chat.id);
     try {
-        // In a real app, you'd also delete messages and chatLinks in a transaction or cloud function.
-        // For this prototype, we'll just delete the chat doc.
         await deleteDoc(chatRef);
         toast({ title: t('dm_success'), description: t('delete_chat_success')});
         onOpenChange(false);
@@ -364,7 +362,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-sm flex flex-col p-0 overflow-hidden", experimentalDesign && !isEditing ? "rounded-[2rem] border-none" : "rounded-lg")}>
+      <DialogContent className={cn("max-w-sm flex flex-col p-0 overflow-hidden max-h-[90vh]", experimentalDesign && !isEditing ? "rounded-[2rem] border-none" : "rounded-lg")}>
         {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
@@ -482,23 +480,29 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     </DialogHeader>
                     <div className="text-center pt-4">
                         <div className="flex items-center justify-center gap-2">
-                            <h2 className="text-2xl font-bold font-headline">{chat.name}</h2>
+                            <h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{chat.name}</h2>
                             {(chat.link === '/G/Infinite' || chat.link === '/C/Infinite') && <VerifiedBadge />}
                         </div>
                         <p className="text-muted-foreground font-medium">{chat.link}</p>
                     </div>
 
                     {experimentalDesign && (
-                        <div className="grid grid-cols-3 gap-3 w-full mt-6">
-                            <button 
-                                onClick={() => onOpenChange(false)}
-                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
-                            >
-                                <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
-                                    <MessageSquare className="w-5 h-5 text-blue-500" />
-                                </div>
-                                <span className="text-[10px] font-bold uppercase tracking-tight">{t('open')}</span>
-                            </button>
+                        <div className={cn("grid gap-3 w-full mt-6", chat.type === 'channel' ? "grid-cols-3" : "grid-cols-2")}>
+                            {chat.type === 'channel' && (
+                                <button 
+                                    onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)}
+                                    disabled={!chat.discussionChatId}
+                                    className={cn(
+                                        "flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm transition-all active:scale-95",
+                                        !chat.discussionChatId ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-md"
+                                    )}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
+                                        <MessageSquare className="w-5 h-5 text-blue-500" />
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase tracking-tight">{t('join_discussion_button')}</span>
+                                </button>
+                            )}
                             <button 
                                 onClick={handleCopyLink}
                                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
@@ -508,9 +512,12 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span>
                             </button>
-                            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                    <Bell className="w-5 h-5 text-muted-foreground" />
+                            <button 
+                                onClick={() => setIsMuted(!isMuted)}
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
+                                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-muted")}>
+                                    {isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="w-5 h-5 text-muted-foreground" />}
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span>
                             </button>

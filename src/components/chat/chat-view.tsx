@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -1314,6 +1315,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             open={showChatProfile}
             onOpenChange={setShowChatProfile}
             onCloseChat={onClose}
+            onJoinDiscussion={handleJoinDiscussion}
         />
       )}
 
