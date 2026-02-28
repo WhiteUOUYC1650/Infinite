@@ -35,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2 } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -113,6 +113,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   const [cloudPassword, setCloudPassword] = useState('');
   const [recoveryCodeToShow, setRecoveryCodeToShow] = useState<string | null>(null);
+  const [isPasswordSet, setIsPasswordSet] = useState(false);
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -140,6 +141,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         setCurrentCacheSize(calculateCacheSize());
     }
   }, [open, page]);
+
+  useEffect(() => {
+    if (page === 'privacy' && db && currentUser.uid) {
+        const checkSecurity = async () => {
+            const securityRef = doc(db, 'users', currentUser.uid, 'private', 'security');
+            const snap = await getDoc(securityRef);
+            setIsPasswordSet(snap.exists() && !!snap.data().cloudPassword);
+        };
+        checkSecurity();
+    }
+  }, [page, db, currentUser.uid]);
 
 
   useEffect(() => {
@@ -268,6 +280,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             recoveryCode: recoveryCode
         }, { merge: true });
         
+        setIsPasswordSet(true);
         setRecoveryCodeToShow(recoveryCode);
         toast({ title: t('dm_success'), description: t('profile_update_success') });
         setCloudPassword('');
@@ -591,9 +604,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         />
         
         {currentUser.loginProtectionEnabled && (
-            <div className="p-4 space-y-4">
-                <div className="flex flex-col gap-2">
-                    <Label className="font-medium">{t('login_protection_setup_title')}</Label>
+            <div className="p-4 space-y-4 bg-muted/30">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <Label className="font-semibold">{t('login_protection_setup_title')}</Label>
+                        {isPasswordSet ? (
+                            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-200 gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {t('password_is_set')}
+                            </Badge>
+                        ) : (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-200">
+                                {t('password_not_set')}
+                            </Badge>
+                        )}
+                    </div>
                     <div className="flex gap-2">
                         <Input 
                             type="password" 
@@ -601,12 +626,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                             value={cloudPassword}
                             onChange={(e) => setCloudPassword(e.target.value)}
                             disabled={isUpdatingPrivacy}
+                            className="bg-background"
                         />
                         <Button onClick={handleSaveCloudPassword} disabled={isUpdatingPrivacy || !cloudPassword.trim()}>
                             {isUpdatingPrivacy ? <Loader2 className="h-4 w-4 animate-spin" /> : t('save')}
                         </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">{t('cloud_password_desc')}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed italic">{t('cloud_password_desc')}</p>
                 </div>
             </div>
         )}
