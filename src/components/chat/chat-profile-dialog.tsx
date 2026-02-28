@@ -366,7 +366,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
-                    <DialogHeader>
+                    <DialogHeader className="shrink-0">
                         <DialogTitle>{t('edit_chat_title')}</DialogTitle>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto py-4">
@@ -452,7 +452,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                             )}
                         </div>
                     </div>
-                    <DialogFooter className="mt-auto pt-4 border-t gap-2">
+                    <DialogFooter className="shrink-0 mt-auto pt-4 border-t gap-2">
                         <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button>
                         <Button type="submit" disabled={isSaving}>
                             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -463,7 +463,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
             </Form>
         ) : (
             <>
-                <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
+                <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6 shrink-0")}>
                     <DialogHeader className="p-0">
                         <DialogTitle className="sr-only">{chat.name}'s Profile</DialogTitle>
                         <div className='relative mx-auto flex justify-center'>
@@ -558,7 +558,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     )}
                 </div>
             
-                <div className={cn('flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "mt-auto")}>
+                <div className={cn('shrink-0 flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "mt-auto")}>
                     <div className="flex gap-2 w-full">
                         {isOwner && chat.id !== 'GENERAL_CHAT' && chat.type !== 'dm' && (
                             <Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl">

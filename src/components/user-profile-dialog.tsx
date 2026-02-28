@@ -105,21 +105,21 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
             )}
         </div>
 
-        <div className={cn("px-6 pb-8 overflow-y-auto", !experimentalDesign && "pt-0")}>
+        <div className={cn("px-6 pb-8 overflow-y-auto flex-1", !experimentalDesign && "pt-6")}>
             {user.statusMessage && !user.isDeleted && (
                 <div className="text-center p-4 bg-muted/50 rounded-2xl mb-6">
                     <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
                 </div>
             )}
-        
-            {!experimentalDesign && (
-                <DialogFooter className='!justify-center p-0'>
-                    <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8">
-                        {t('message')}
-                    </Button>
-                </DialogFooter>
-            )}
         </div>
+
+        {!experimentalDesign && (
+            <DialogFooter className='!justify-center p-6 border-t shrink-0'>
+                <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8">
+                    {t('message')}
+                </Button>
+            </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,3 +1,4 @@
+
 {
   "name": "nextn",
   "version": "1.0.0",
@@ -19,6 +20,7 @@
     "@capacitor/cli": "^7.4.5",
     "@capacitor/core": "^8.0.1",
     "@capacitor/local-notifications": "^7.0.0",
+    "@capacitor/screen-orientation": "^7.0.0",
     "@genkit-ai/google-genai": "^1.20.0",
     "@genkit-ai/next": "^1.20.0",
     "@hookform/resolvers": "^4.1.3",

@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
@@ -8,6 +9,7 @@ import { UpdatePromptProvider } from '@/context/update-prompt-context';
 import { ThemeProvider } from '@/context/theme-context';
 import { Snowfall } from '@/components/ui/snowfall';
 import { NotificationProvider } from '@/context/notification-context';
+import { OrientationManager } from '@/components/OrientationManager';
 
 export const metadata: Metadata = {
   title: 'Infinite',
@@ -29,6 +31,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
+          <OrientationManager />
           <LanguageProvider>
             <ThemeProvider>
               <Snowfall />
