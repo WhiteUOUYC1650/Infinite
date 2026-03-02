@@ -60,6 +60,21 @@ const nextConfig: NextConfig = {
         util: false,
         process: false,
         async_hooks: false,
+        canvas: false,
+        'node:async_hooks': false,
+        'node:child_process': false,
+        'node:fs': false,
+        'node:path': false,
+        'node:os': false,
+        'node:crypto': false,
+        'node:stream': false,
+        'node:http': false,
+        'node:https': false,
+        'node:zlib': false,
+        'node:util': false,
+        'node:dns': false,
+        'node:net': false,
+        'node:tls': false,
       };
     }
     return config;
