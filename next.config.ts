@@ -2,7 +2,6 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   output: 'export',
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -37,6 +36,44 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       }
     ],
+  },
+  transpilePackages: [
+    '@genkit-ai/google-genai',
+    '@genkit-ai/core',
+    '@genkit-ai/next',
+    'genkit',
+    'google-auth-library',
+    'gcp-metadata',
+    '@opentelemetry/sdk-node',
+    '@opentelemetry/sdk-trace-node',
+    '@opentelemetry/context-async-hooks'
+  ],
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        child_process: false,
+        net: false,
+        tls: false,
+        os: false,
+        path: false,
+        stream: false,
+        crypto: false,
+        http: false,
+        https: false,
+        zlib: false,
+        dns: false,
+        vm: false,
+        perf_hooks: false,
+        worker_threads: false,
+        module: false,
+        util: false,
+        process: false,
+        async_hooks: false,
+      };
+    }
+    return config;
   },
 };
 
