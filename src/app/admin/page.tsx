@@ -4,11 +4,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, query, where, orderBy, limit, getDocs, collectionGroup } from 'firebase/firestore';
-import type { User, Chat, Message } from '@/types';
+import { collection, doc, getDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, User2, MoreVertical, Bot, Ban } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,13 +160,13 @@ function AdminPage() {
 
   return (
     <div className="flex h-svh flex-col bg-background overflow-hidden">
-      <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b px-4 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-bold font-headline">{t('admin_panel_title')}</h1>
       </header>
-      <main className="flex-1 p-4 overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <main className="flex-1 overflow-hidden pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Tabs defaultValue="users" className="flex h-full flex-col">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="users">{t('admin_users_tab')} ({users?.length || 0})</TabsTrigger>
