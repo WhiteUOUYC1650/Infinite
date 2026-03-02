@@ -276,7 +276,7 @@ function UserItem({ user, onBan }: { user: User; onBan: (user: User) => void; })
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AccordionCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => { onBan(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
             {t('admin_ban_user_button')}
             </AlertDialogAction>
