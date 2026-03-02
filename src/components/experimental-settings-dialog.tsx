@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -496,7 +495,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             icon={Info} 
             label={t('version')} 
             description={t('version_info')} 
-            value="0.3.0 Beta" 
+            value={t('beta_badge')} 
             onClick={() => navigateTo('about')} 
             showExpColors={experimentalDesign}
             iconBg="bg-gray-500/15"
