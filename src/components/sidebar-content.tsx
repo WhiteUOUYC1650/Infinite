@@ -39,6 +39,7 @@ import { Skeleton } from './ui/skeleton';
 import { VerifiedBadge } from './ui/verified-badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
+import { useUpdatePrompt } from '@/context/update-prompt-context';
 
 const iconMap = {
     Users,
@@ -71,6 +72,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { toast } = useToast();
   const { toggleTheme, isDarkMode, experimentalDesign } = useTheme();
   const { setOpenMobile } = useSidebar();
+  const { isUpdateAvailable } = useUpdatePrompt();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -505,8 +507,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn(experimentalDesign && "rounded-xl bg-background/50")}>
-              <Cog className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative", experimentalDesign && "rounded-xl bg-background/50")}>
+              <div className="relative">
+                <Cog className="h-5 w-5" />
+                {isUpdateAvailable && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 rounded-full bg-orange-500 ring-2 ring-background animate-pulse" />
+                )}
+              </div>
           </Button>
         </div>
       </SidebarFooter>

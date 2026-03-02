@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -35,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -55,6 +56,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
+import { useUpdatePrompt } from '@/context/update-prompt-context';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy';
 
@@ -102,6 +104,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect } = useTheme();
+  const { isUpdateAvailable, promptUpdate } = useUpdatePrompt();
   
   const auth = useAuth();
   const db = useFirestore();
@@ -493,7 +496,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             icon={Info} 
             label={t('version')} 
             description={t('version_info')} 
-            value="0.3" 
+            value="0.3.0 Beta" 
             onClick={() => navigateTo('about')} 
             showExpColors={experimentalDesign}
             iconBg="bg-gray-500/15"
@@ -509,6 +512,18 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 iconBg="bg-indigo-500/15"
                 iconColor="text-indigo-500"
               />
+          )}
+          {isUpdateAvailable && (
+            <SettingsItem 
+              icon={Download} 
+              label={t('update_infinite')} 
+              description={t('update_available_title')} 
+              onClick={promptUpdate} 
+              showExpColors={true}
+              iconBg="bg-orange-500/15"
+              iconColor="text-orange-600"
+              isGlow={true}
+            />
           )}
         </div>
       </>
@@ -692,7 +707,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const aboutPageContent = (
     <div className='p-4 space-y-4 text-center flex flex-col items-center justify-center h-full min-h-[50vh]'>
-      <h2 className="text-6xl font-bold font-headline">0.3</h2>
+      <h2 className="text-6xl font-bold font-headline">0.3.0 Beta</h2>
       <p className="text-muted-foreground">{t('beta_badge')}</p>
       <p className="text-sm text-muted-foreground max-w-xs mt-2">{t('version_info_detail')}</p>
        <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left mt-8">
