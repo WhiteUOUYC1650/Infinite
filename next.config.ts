@@ -39,7 +39,6 @@ const nextConfig: NextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Robust fix for Node.js modules in client-side bundles (like APK/Browser)
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,

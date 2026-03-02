@@ -14,13 +14,10 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
-    // Collection Group rule for admin search
-    match /{path=**}/messages/{messageId} {
-        allow read: if isAdmin();
-    }
-    
-    match /calls/{callId} {
-      allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
+    // Rule for app version checking (Public)
+    match /info/ver {
+      allow get: if true;
+      allow write: if false;
     }
 
     match /config/version {
@@ -28,10 +25,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Rule for app version checking (Public)
-    match /info/ver {
-      allow get: if true;
-      allow write: if false;
+    // Collection Group rule for admin search
+    match /{path=**}/messages/{messageId} {
+        allow read: if isAdmin();
+    }
+    
+    match /calls/{callId} {
+      allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
     }
 
     match /users/{userId} {
