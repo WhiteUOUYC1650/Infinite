@@ -117,6 +117,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [recoveryCodeToShow, setRecoveryCodeToShow] = useState<string | null>(null);
   const [isPasswordSet, setIsPasswordSet] = useState(false);
   const [showCloudPasswordDialog, setShowCloudPasswordDialog] = useState(false);
+  const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -343,6 +344,31 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         setCurrentCacheSize(calculateCacheSize());
     } catch (e) {
         console.error("Clear cache failed", e);
+    }
+  };
+
+  const handlePurchasePrem = async () => {
+    if (!db || !currentUser.uid) return;
+    const price = 500;
+    if ((currentUser.infGoldBalance || 0) < price) {
+        toast({ variant: 'destructive', title: t('not_enough_gold') });
+        return;
+    }
+
+    setIsProcessingPurchase(true);
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+            infGoldBalance: increment(-price),
+            subscriptionTier: 'prem'
+        });
+        toast({ title: t('subscription_successful_title'), description: t('subscription_successful_desc') });
+        navigateTo('main');
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('subscription_failed') });
+    } finally {
+        setIsProcessingPurchase(false);
     }
   };
 
@@ -738,11 +764,37 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <div className="p-8 space-y-8 flex flex-col items-center justify-center text-center h-full min-h-[50vh]">
         <div className="relative">
             <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full animate-pulse" />
-            <ShoppingBag className="h-20 w-20 text-primary relative z-10 experimental-glow" />
+            <Crown className="h-20 w-20 text-primary relative z-10 experimental-glow" />
         </div>
         <div className="space-y-3">
-            <h2 className="text-3xl font-bold font-headline">{t('rustore_development')}</h2>
-            <p className="text-muted-foreground max-sm">{t('rustore_note')}</p>
+            <h2 className="text-3xl font-bold font-headline">{t('infinite_prem')}</h2>
+            <p className="text-muted-foreground max-sm">{t('prem_description')}</p>
+        </div>
+        <div className="w-full space-y-4 pt-4">
+            <div className="flex flex-col gap-2 text-sm text-left">
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>{t('prem_feature_1')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>{t('prem_feature_2')}</span>
+                </div>
+            </div>
+            
+            {hasPremAccess ? (
+                <div className="p-4 rounded-xl bg-green-500/10 border border-green-200 text-green-600 font-bold">
+                    {t('subscribed')}
+                </div>
+            ) : (
+                <Button 
+                    onClick={handlePurchasePrem} 
+                    disabled={isProcessingPurchase} 
+                    className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
+                >
+                    {isProcessingPurchase ? <Loader2 className="animate-spin" /> : `500 InfGold`}
+                </Button>
+            )}
         </div>
     </div>
   );
