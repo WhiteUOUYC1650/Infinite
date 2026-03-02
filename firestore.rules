@@ -14,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
-    // Это правило нужно для поиска сообщений (Collection Group)
+    // Collection Group rule for admin search
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
@@ -28,7 +28,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Правило для проверки версии приложения
+    // Rule for app version checking (Public)
     match /info/ver {
       allow get: if true;
       allow write: if false;
@@ -56,7 +56,7 @@ service cloud.firestore {
                       );
       allow delete: if isOwner(userId) || isAdmin();
 
-      // Защищенное хранилище для облачных паролей
+      // Protected storage for cloud passwords
       match /private/security {
         allow read, write: if isOwner(userId);
       }
@@ -106,8 +106,6 @@ service cloud.firestore {
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      
-      // Разрешаем обновление, если это владелец ИЛИ если зритель просто увеличивает просмотры (views) или ставит лайк
       allow update: if isSignedIn() && (
         request.auth.uid == resource.data.senderId || 
         isAdmin() || 
@@ -115,7 +113,6 @@ service cloud.firestore {
       );
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin());
 
-      // Правила для комментариев к видео
       match /comments/{commentId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
