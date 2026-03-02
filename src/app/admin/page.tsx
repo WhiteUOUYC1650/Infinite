@@ -33,9 +33,6 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 
 
@@ -48,11 +45,6 @@ function AdminPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportContent, setReportContent] = useState('');
-  const [reportingUser, setReportingUser] = useState<User | null>(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // --- Auth and Admin Check ---
   useEffect(() => {
@@ -86,61 +78,6 @@ function AdminPage() {
 
   const groups = useMemo(() => chats?.filter(c => c.type === 'group') || [], [chats]);
   const channels = useMemo(() => chats?.filter(c => c.type === 'channel') || [], [chats]);
-
-  // --- Action Logic ---
-  
-  const handleGenerateReport = async (userToReport: User) => {
-    if (!db) return;
-    setIsGeneratingReport(true);
-    setReportingUser(userToReport);
-    
-    try {
-        const messagesGroupRef = collectionGroup(db, 'messages');
-        const q = query(messagesGroupRef, where('senderId', '==', userToReport.id), orderBy('timestamp', 'desc'), limit(50));
-        const querySnapshot = await getDocs(q);
-        
-        const messages = querySnapshot.docs.map(doc => {
-            const data = doc.data() as Message;
-            return {
-                content: data.content || '',
-                imageUrl: data.imageUrl,
-            };
-        });
-
-        if (messages.length === 0) {
-            setReportContent('Не найдено сообщений пользователя для анализа.');
-            setReportDialogOpen(true);
-            setIsGeneratingReport(false);
-            setReportingUser(null);
-            return;
-        }
-
-        const { report } = await generateUserReport({
-            userName: userToReport.name,
-            userUsername: userToReport.username,
-            messages: messages,
-        });
-        setReportContent(report);
-        setReportDialogOpen(true);
-    } catch (error: any) {
-        console.error("Error generating AI report:", error);
-        if (error.code === 'failed-precondition') {
-          toast({
-            variant: "destructive",
-            title: 'AI Report Failed',
-            description: "The necessary search index is being created. Please wait a few minutes and try again.",
-          });
-        } else {
-          toast({
-              variant: "destructive",
-              title: t('admin_toast_error_title'),
-              description: t('ai_report_failed'),
-          });
-        }
-    } finally {
-        setIsGeneratingReport(false);
-    }
-  };
 
   const handleDeleteChat = async (chatId: string) => {
     if (!db) return;
@@ -240,7 +177,7 @@ function AdminPage() {
             <ItemList
               items={users}
               loading={usersLoading}
-              renderItem={(user: User) => <UserItem key={user.id} user={user} onBan={handleBanUser} onGenerateReport={handleGenerateReport} isGenerating={isGeneratingReport} isCurrentUserReport={reportingUser?.id === user.id} />}
+              renderItem={(user: User) => <UserItem key={user.id} user={user} onBan={handleBanUser} />}
             />
           </TabsContent>
           <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
@@ -259,26 +196,6 @@ function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
-      
-      <AlertDialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
-        <AlertDialogContent className="max-w-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('ai_report_title', { username: reportingUser?.name || '' })}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('ai_report_desc')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="prose prose-sm dark:prose-invert max-w-none max-h-[60vh] overflow-y-auto p-1 rounded-md border">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} className="p-4">
-              {reportContent}
-            </ReactMarkdown>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => { setReportDialogOpen(false); setReportingUser(null); }}>{t('ok')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </div>
   );
 }
@@ -305,7 +222,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user, onBan, onGenerateReport, isGenerating, isCurrentUserReport }: { user: User; onBan: (user: User) => void; onGenerateReport: (user: User) => void; isGenerating: boolean; isCurrentUserReport: boolean; }) {
+function UserItem({ user, onBan }: { user: User; onBan: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -331,20 +248,15 @@ function UserItem({ user, onBan, onGenerateReport, isGenerating, isCurrentUserRe
       )}
        
       <div className="flex items-center gap-2">
-        {isCurrentUserReport && <Loader2 className="h-4 w-4 animate-spin" />}
         {!isProtectedUser && !user.isDeleted && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isGenerating}>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => onGenerateReport(user)} disabled={isGenerating}>
-                <Bot className="mr-2 h-4 w-4" />
-                <span>{t('admin_ai_report_exp')}</span>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                 <Ban className="mr-2 h-4 w-4" />
@@ -364,7 +276,7 @@ function UserItem({ user, onBan, onGenerateReport, isGenerating, isCurrentUserRe
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AccordionCancel>
             <AlertDialogAction onClick={() => { onBan(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
             {t('admin_ban_user_button')}
             </AlertDialogAction>

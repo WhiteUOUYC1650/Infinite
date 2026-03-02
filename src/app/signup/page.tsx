@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import Link from 'next/link';
+import Link from 'link';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
 import { Sun, Moon, Languages } from 'lucide-react';
@@ -65,15 +65,12 @@ export default function SignUpPage() {
     form.clearErrors();
     const usernameWithAt = '@' + values.username;
     
-    // Hold the created user temporarily for potential cleanup
     let createdUser: import('firebase/auth').User | null = null;
 
     try {
-      // 1. Create the auth user first
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       createdUser = userCredential.user;
 
-      // 2. Run a transaction to create the firestore documents
       await runTransaction(db, async (transaction) => {
         const usernameRef = doc(db, 'usernames', usernameWithAt);
         const userDocRef = doc(db, 'users', createdUser!.uid);
@@ -83,14 +80,14 @@ export default function SignUpPage() {
           throw new Error(t('username_taken_error'));
         }
         
-        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot' || usernameWithAt === '@GeminiBot';
+        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
 
         transaction.set(userDocRef, {
-          name: isBotUser ? (usernameWithAt === '@GeminiBot' ? 'Gemini AI' : 'Infinite') : usernameWithAt,
+          name: isBotUser ? 'Infinite' : usernameWithAt,
           username: usernameWithAt,
           status: 'online',
           statusMessage: isBotUser 
-            ? (usernameWithAt === '@GeminiBot' ? 'I am your AI assistant. Chat with me!' : 'I am the official Infinite bot. I can send you welcome messages and important announcements!')
+            ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!'
             : 'Hey there! I am using Infinite.',
           hasSetNickname: true,
           isBot: isBotUser,
@@ -98,13 +95,10 @@ export default function SignUpPage() {
           subscriptionTier: 'none',
         });
 
-        // Reserve the username
         transaction.set(usernameRef, { uid: createdUser!.uid });
 
         if (isBotUser) {
             let botPath = values.username;
-            // Map specific usernames to shorter /B/ links
-            if (usernameWithAt === '@GeminiBot') botPath = 'Gemini';
             if (usernameWithAt === '@InfiniteBot') botPath = 'Infinite';
             if (usernameWithAt === '@VeoBot') botPath = 'Veo';
 
@@ -113,11 +107,9 @@ export default function SignUpPage() {
         }
       });
 
-      // START: Bot welcome message logic
       try {
-        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot' || usernameWithAt === '@GeminiBot';
+        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
         if (!isBotUser) {
-          // 1. Find the main bot user
           const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
           const botLinkSnap = await getDoc(botLinkRef);
       
@@ -128,8 +120,6 @@ export default function SignUpPage() {
 
               if (botUserSnap.exists()) {
                 const botData = botUserSnap.data() as User;
-        
-                // 2. Create the DM chat
                 const newUserId = createdUser!.uid;
                 const members = [newUserId, botId].sort();
                 const chatId = members.join('_');
@@ -145,19 +135,16 @@ export default function SignUpPage() {
                     });
                 }
                 
-                // 3. Send the welcome message
                 const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
                 const welcomeMessage = {
-                    senderId: newUserId, // Must be current user to pass security rules
+                    senderId: newUserId,
                     type: 'announcement',
                     content: 'Welcome to Infinite!',
                     timestamp: Timestamp.now(),
-                    senderName: botData.name, // Display bot's name
-                    senderAvatar: botData.avatar || null // Display bot's avatar
+                    senderName: botData.name,
+                    senderAvatar: botData.avatar || null
                 };
                 const msgRef = await addDoc(messagesCollectionRef, welcomeMessage);
-                
-                // 4. Update lastMessage for the new chat
                 await updateDoc(chatRef, { lastMessage: { ...welcomeMessage, id: msgRef.id } });
               }
           }
@@ -165,7 +152,6 @@ export default function SignUpPage() {
       } catch (botError) {
           console.error("Could not send welcome message from bot:", botError);
       }
-      // END: Bot welcome message logic
       
       router.push('/welcome');
 

@@ -4,8 +4,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, VideoChunk, MusicChunk } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Ghost, Clock, Sparkles } from 'lucide-react';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -47,8 +47,6 @@ import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
-import { summarizeChat } from '@/ai/flows/summarize-chat-flow';
-import { aiChat } from '@/ai/flows/ai-chat-flow';
 
 
 function DateSeparator({ date }: { date: string }) {
@@ -118,7 +116,7 @@ const compressImage = (file: File, quality = 0.85, maxDimension = 1920): Promise
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { promptUpdate } = useUpdatePrompt();
   const { theme: colorTheme, sendOnEnter } = useTheme();
@@ -141,10 +139,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
-  
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
 
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -156,7 +150,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const item = useMemo(() => {
     if (!liveChatData) return initialItem;
-    // important to merge with iconComponent
     const newChatData = { ...initialItem, ...liveChatData };
      if (newChatData.type === 'dm' && newChatData.id === currentUser.uid) {
       newChatData.icon = 'Bookmark';
@@ -298,7 +291,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!isMember) return false;
     if (otherUser?.isDeleted) return false;
     if (item.type === 'channel' && item.ownerId !== currentUser.uid) {
-        if (item.discussionChatId) return true; // Can send to discussion
+        if (item.discussionChatId) return true;
         return false;
     }
     return true;
@@ -473,23 +466,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
-
-        // --- Bot response logic ---
-        if (otherUser?.username === '@GeminiBot' && originalContent.trim()) {
-            const history = (messages || []).map(m => ({
-                role: m.senderId === currentUser.uid ? 'user' : 'model',
-                content: m.content || '',
-            })).slice(-10); // last 10 messages for context
-            
-            history.push({ role: 'user', content: originalContent });
-
-            const { response } = await aiChat({
-                userName: currentUser.name || currentUser.username,
-                history: history as any,
-            });
-
-            await handleBotResponse(response);
-        }
     } catch (error) {
         console.error('Error sending message:', error);
         setMessageContent(originalContent);
@@ -498,47 +474,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (error instanceof FirestorePermissionError) {
             errorEmitter.emit('permission-error', error);
         } else {
-            toast({ variant: 'destructive', title: t('admin_toast_error_title'), description: (error as Error).message || t('unexpected_error') });
+            toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || t('unexpected_error') });
         }
     } finally {
         setIsSending(false);
-    }
-};
-
-const handleBotResponse = async (content: string) => {
-    if (!db || !otherUser) return;
-    try {
-        const timestamp = Timestamp.now();
-        const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
-        const chatRef = doc(db, 'chats', item.id);
-        
-        const messageData = {
-            senderId: currentUser.uid, // technically the user sends it to bypass rules, but we style it
-            type: 'announcement',
-            content: content.replace(/\n/g, '  \n'),
-            timestamp,
-            senderName: otherUser.name,
-            senderAvatar: otherUser.avatar || null,
-            readBy: [],
-        };
-
-        const lastMessageData = {
-            id: messageRef.id,
-            content: content.split('\n')[0],
-            senderId: currentUser.uid,
-            senderName: otherUser.name,
-            timestamp,
-        };
-
-        const batch = writeBatch(db);
-        batch.set(messageRef, messageData);
-        batch.update(chatRef, { 
-            lastMessage: lastMessageData,
-            [`unreadCounts.${currentUser.uid}`]: increment(1)
-        });
-        await batch.commit();
-    } catch (e) {
-        console.error("Bot failed to respond:", e);
     }
 };
 
@@ -923,56 +862,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     setIncomingCall(null);
   };
 
-  const handleGenerateSummary = async () => {
-    if (!db || isSummarizing) return;
-    
-    const COST = 10;
-    if ((currentUser.infGoldBalance ?? 0) < COST) {
-        toast({ variant: 'destructive', title: t('not_enough_gold') });
-        return;
-    }
-
-    setIsSending(true); // Re-using isSending state for UI feedback or create a new one
-    setIsSummarizing(true);
-    try {
-        const messagesCollectionRef = collection(db, 'chats', item.id, 'messages');
-        const q = query(messagesCollectionRef, orderBy('timestamp', 'desc'), limit(50));
-        const querySnapshot = await getDocs(q);
-        
-        const summaryMessages = querySnapshot.docs.map(doc => {
-            const data = doc.data() as Message;
-            return {
-                senderName: memberDetails[data.senderId]?.name || data.senderName || 'Unknown',
-                content: data.content || '',
-            };
-        }).reverse();
-
-        if (summaryMessages.length < 5) {
-            toast({ title: 'Error', description: 'Not enough messages to summarize.' });
-            return;
-        }
-
-        const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, {
-            infGoldBalance: increment(-COST)
-        });
-
-        const { summary } = await summarizeChat({
-            chatName: getChatName() || 'Unknown Chat',
-            messages: summaryMessages,
-        });
-
-        setAiSummary(summary);
-        setShowSummaryDialog(true);
-    } catch (e) {
-        console.error("Summary failed:", e);
-        toast({ variant: 'destructive', title: 'Error', description: 'AI Summary failed.' });
-    } finally {
-        setIsSummarizing(false);
-        setIsSending(false);
-    }
-  };
-  
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
@@ -998,7 +887,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                         <div className="ml-3 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
-                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot' || otherUser?.username === '@GeminiBot') && <VerifiedBadge className="shrink-0" />}
+                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
@@ -1045,18 +934,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         </div>
 
         <div className="flex items-center gap-1 ml-2 shrink-0">
-            {item.type !== 'channel' && (
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="text-primary hover:text-primary/80" 
-                    onClick={handleGenerateSummary}
-                    disabled={isSummarizing || !messages || messages.length < 5}
-                    title={t('ai_summary')}
-                >
-                    {isSummarizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                </Button>
-            )}
             {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
               <>
                 <Button variant="ghost" size="icon" onClick={handleInitiateCall} title={t('audio_call')}>
@@ -1080,11 +957,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={handleGenerateSummary} disabled={isSummarizing || item.type === 'channel'}>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            <span>{t('ai_summary')} (10 InfGold)</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                         {item.type === 'dm' && otherUser ? (
                             <>
                                 {otherUser.id !== currentUser.uid ? (
@@ -1165,7 +1037,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                           <div ref={messagesEndRef} />
                       </div>
                   ) : (
-                      <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground p-4">
+                      <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">
                           {isMember ? (
                               <p>{t('no_messages_yet')}</p>
                           ) : (
@@ -1354,28 +1226,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         </AlertDialogContent>
     </AlertDialog>
 
-    <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
-        <AlertDialogContent className="max-w-2xl">
-            <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    {t('ai_summary_title')}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                    {t('ai_report_desc')}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="prose prose-sm dark:prose-invert max-w-none max-h-[60vh] overflow-y-auto p-4 rounded-xl border bg-muted/30">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {aiSummary || ''}
-                </ReactMarkdown>
-            </div>
-            <AlertDialogFooter>
-                <AlertDialogAction onClick={() => setShowSummaryDialog(false)}>{t('ok')}</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-
     <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
     </div>
   );
@@ -1520,7 +1370,7 @@ function ChatMessage({
     const botUser: User | undefined = fromBot ? { id: 'INFINITE_BOT', name: message.senderName || 'Infinite', username: '@InfiniteBot', avatar: message.senderAvatar, status: 'online', isBot: true } : undefined;
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
-    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot' || displaySender.username === '@GeminiBot');
+    const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
 
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {

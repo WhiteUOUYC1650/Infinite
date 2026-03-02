@@ -25,18 +25,7 @@ import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Boo
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
-import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
 import { useLanguage } from '@/context/language-context';
@@ -44,10 +33,7 @@ import { SearchDialog } from './search-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { UserProfileCard } from './user-profile-card';
-import { Alert, AlertDescription } from './ui/alert';
-import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { useTheme } from '@/context/theme-context';
-import { FaqDialog } from './faq-dialog';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { Skeleton } from './ui/skeleton';
 import { VerifiedBadge } from './ui/verified-badge';
@@ -62,7 +48,6 @@ const iconMap = {
     Bot,
 };
 
-// Custom InfVid Icon: Infinite logo inside a Play triangle
 const InfVidIcon = ({ className }: { className?: string }) => (
   <div className={cn("relative flex items-center justify-center", className)}>
     <svg viewBox="0 0 24 24" fill="#FF8C00" className="absolute w-full h-full">
@@ -81,13 +66,10 @@ interface SidebarContentProps {
 }
 
 export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarContentProps) {
-  const auth = useAuth();
   const db = useFirestore();
-  const router = useRouter();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
   const { toast } = useToast();
-  const { promptUpdate } = useUpdatePrompt();
-  const { theme: colorTheme, setTheme: setColorTheme, isDarkMode, toggleTheme, experimentalDesign } = useTheme();
+  const { toggleTheme, isDarkMode, experimentalDesign } = useTheme();
   const { setOpenMobile } = useSidebar();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -118,14 +100,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     return directMessages.filter(chat => {
         const otherUserId = chat.members.find(id => id !== currentUser.uid);
         if (!otherUserId) return false;
-        
-        // Don't show primary bots in the standard DM list if they are in the bots section
         if (primaryBots.some(bot => bot.id === otherUserId)) return false;
-        
         const otherUser = dmUsers[otherUserId];
         return otherUser && otherUser.isBot;
     });
-  }, [directMessages, dmUsers, currentUser.uid, primaryBots]);
+  }, [directMessages, dmUsers, primaryBots, currentUser.uid]);
 
   const userDirectMessages = useMemo(() => {
     return directMessages.filter(chat => {
@@ -135,7 +114,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         const otherUser = dmUsers[otherUserId];
         return !otherUser || !otherUser.isBot;
     });
-  }, [directMessages, dmUsers, currentUser.uid, primaryBots]);
+  }, [directMessages, dmUsers, primaryBots, currentUser.uid]);
 
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
@@ -149,7 +128,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         if (!db) return;
         setIsBotLoading(true);
         try {
-            const botLinks = ['/B/Infinite', '/B/Gemini'];
+            const botLinks = ['/B/Infinite', '/B/Veo'];
             const botsFound: User[] = [];
 
             for (const link of botLinks) {
@@ -582,7 +561,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
-  const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@GeminiBot';
+  const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot';
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
   const lastMessage = item.lastMessage;
@@ -659,7 +638,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     if (item.type === 'group') {
         return lastMessage.readBy.some(id => id !== currentUserId);
     }
-    return false; // No read receipts for channels in sidebar
+    return false;
   }, [lastMessage, senderIsCurrentUser, item.type, currentUserId]);
   
   let lastMessageContent: string | undefined;

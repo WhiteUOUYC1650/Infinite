@@ -37,17 +37,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  transpilePackages: [
-    '@genkit-ai/google-genai',
-    '@genkit-ai/core',
-    '@genkit-ai/next',
-    'genkit',
-    'google-auth-library',
-    'gcp-metadata',
-    '@opentelemetry/sdk-node',
-    '@opentelemetry/sdk-trace-node',
-    '@opentelemetry/context-async-hooks'
-  ],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
