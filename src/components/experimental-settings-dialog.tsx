@@ -707,8 +707,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const aboutPageContent = (
     <div className='p-4 space-y-4 text-center flex flex-col items-center justify-center h-full min-h-[50vh]'>
-      <h2 className="text-6xl font-bold font-headline">0.3.0 Beta</h2>
-      <p className="text-muted-foreground">{t('beta_badge')}</p>
+      <h2 className="text-6xl font-bold font-headline text-primary">Infinite</h2>
+      <p className="text-xl font-bold">{t('beta_badge')}</p>
       <p className="text-sm text-muted-foreground max-w-xs mt-2">{t('version_info_detail')}</p>
        <Alert className="border-yellow-400 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 text-left mt-8">
             <Star className="h-4 w-4 !text-yellow-500 dark:!text-yellow-600" />

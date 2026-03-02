@@ -1,4 +1,6 @@
 
+export type Language = 'en' | 'ru';
+
 export const translations = {
     en: {
       'settings': 'Settings',
@@ -16,7 +18,7 @@ export const translations = {
       'saved_messages': 'Saved Messages',
       'app_version': 'App Version',
       'version_info': 'Infinite Version',
-      'version_info_detail': 'You are currently running version 0.3.0 Beta of Infinite messenger.',
+      'version_info_detail': 'Thank you for choosing Infinite Messenger. We are constantly working on improvements.',
       'ok': 'OK',
       'new_conversation': 'New Conversation',
       'new_conversation_desc': 'Start a new direct message, group discussion, or broadcast channel.',
@@ -420,7 +422,7 @@ export const translations = {
       'saved_messages': 'Избранное',
       'app_version': 'Версия приложения',
       'version_info': 'Версия Infinite',
-      'version_info_detail': 'Вы используете версию 0.3.0 Beta мессенджера Infinite.',
+      'version_info_detail': 'Благодарим вас за выбор Infinite Messenger. Мы постоянно работаем над улучшениями.',
       'ok': 'OK',
       'new_conversation': 'Новый диалог',
       'new_conversation_desc': 'Начните новое личное сообщение, групповое обсуждение или канал.',
@@ -652,7 +654,7 @@ export const translations = {
       'music_attachment_placeholder': '[Музыка]',
       'image_attachment_alt': 'Прикрепленное изображение',
       'photo': 'Фото',
-      'video': 'Видео',
+      'video': 'Video',
       'music': 'Музыка',
       'invalid_file_type': 'Неверный тип файла',
       'select_an_image': 'Пожалуйста, выберите изображение.',
@@ -809,53 +811,11 @@ export const translations = {
       'update_infinite': 'Обновить Infinite',
     }
   };
-  
-  export type Language = keyof typeof translations;
-  
-  type NestedTranslation = { [key: string]: string | NestedTranslation };
 
-  // This flattens the nested objects into dot notation keys
-  type FlattenKeys<T extends NestedTranslation, P extends string | '' = ''> = {
-      [K in keyof T]: T[K] extends string
-          ? `${P}${K & string}`
-          : FlattenKeys<T[K] & NestedTranslation, `${P}${K & string}.`>
-  }[keyof T];
+export type TranslationKey = keyof typeof translations.en;
 
-  export type TranslationKey = FlattenKeys<typeof translations['en']>;
-  
-  // A simple interpolation function with enhanced pluralization logic
-  export const interpolate = (str: string, values: Record<string, any>): string => {
-      if (!str) {
-        return '';
-      }
-
-      // Handle ICU-like pluralization syntax: {count, plural, one {...} other {...}}
-      const pluralMatch = str.match(/{(\w+),\s*plural,\s*(.*)}/);
-      if (pluralMatch && values[pluralMatch[1]] !== undefined) {
-          const count = values[pluralMatch[1]];
-          const optionsStr = pluralMatch[2];
-          
-          // Basic parser for plural options
-          const options: Record<string, string> = {};
-          const optionRegex = /(\w+)\s*{(.*?)}/g;
-          let match;
-          while ((match = optionRegex.exec(optionsStr)) !== null) {
-              options[match[1]] = match[2];
-          }
-
-          const pr = new Intl.PluralRules('ru-RU');
-          const rule = pr.select(count); // 'one', 'few', 'many', 'other'
-          
-          let selectedOption = options[rule] || options['other'];
-          
-          // Re-interpolate the selected option (e.g. replace # with count)
-          const result = selectedOption.replace('#', String(count));
-          
-          // Replace the entire plural block in the original string
-          return str.replace(pluralMatch[0], result);
-      }
-
-      return str.replace(/{(\w+)}/g, (match, key) => {
-          return values[key] !== undefined ? String(values[key]) : match;
-      });
-  };
+export function interpolate(str: string, values: Record<string, any>): string {
+  return str.replace(/{(\w+)}/g, (match, key) => {
+    return values[key] !== undefined ? String(values[key]) : match;
+  });
+}
