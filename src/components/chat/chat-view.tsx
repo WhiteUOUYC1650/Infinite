@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2 } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -36,6 +36,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
@@ -128,6 +134,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1113,6 +1120,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                           setEditingMessage={handleSetEditingMessage}
                                           onMediaLoad={handleMediaLoad}
                                           localMediaUrl={localMediaCache[message.id]}
+                                          onPreviewImage={setPreviewImage}
                                       />
                                   </React.Fragment>
                               );
@@ -1325,6 +1333,19 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     </AlertDialog>
 
     <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
+
+    {/* Image Preview Dialog */}
+    <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-transparent shadow-none overflow-hidden flex items-center justify-center">
+            <DialogHeader className='sr-only'><DialogTitle>Image Preview</DialogTitle></DialogHeader>
+            <div className="relative group w-full h-full flex items-center justify-center">
+                <img src={previewImage || ''} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
+                <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-black/50 text-white rounded-full hover:bg-black/70" onClick={() => setPreviewImage(null)}>
+                    <X className="h-6 w-6" />
+                </Button>
+            </div>
+        </DialogContent>
+    </Dialog>
     </div>
   );
 }
@@ -1342,6 +1363,7 @@ function ChatMessage({
     setEditingMessage,
     onMediaLoad,
     localMediaUrl,
+    onPreviewImage,
 }: { 
     message: Message, 
     sender?: User, 
@@ -1355,6 +1377,7 @@ function ChatMessage({
     setEditingMessage: (message: Message | null) => void,
     onMediaLoad: () => void,
     localMediaUrl?: string;
+    onPreviewImage: (url: string) => void;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -1399,8 +1422,9 @@ function ChatMessage({
             chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
             chunksData.sort((a, b) => a.part - b.part);
             const dataUrl = `data:${message.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`;
-            setVideoUrl(dataUrl);
             await cacheFile(message.id, dataUrl);
+            const newLocalUrl = await getCachedFile(message.id);
+            setVideoUrl(newLocalUrl);
             onMediaLoad();
         } catch (e) {
             console.error("Error assembling video:", e);
@@ -1419,8 +1443,9 @@ function ChatMessage({
             chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
             chunksData.sort((a, b) => a.part - b.part);
             const dataUrl = `data:${message.musicMimeType};base64,${chunksData.map(c => c.data).join('')}`;
-            setMusicUrl(dataUrl);
             await cacheFile(message.id, dataUrl);
+            const newLocalUrl = await getCachedFile(message.id);
+            setMusicUrl(newLocalUrl);
             onMediaLoad();
         } catch (e) {
             console.error("Error assembling music:", e);
@@ -1439,8 +1464,9 @@ function ChatMessage({
             chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
             chunksData.sort((a, b) => a.part - b.part);
             const dataUrl = `data:${message.fileMimeType};base64,${chunksData.map(c => c.data).join('')}`;
-            setFileUrl(dataUrl);
             await cacheFile(message.id, dataUrl);
+            const newLocalUrl = await getCachedFile(message.id);
+            setFileUrl(newLocalUrl);
         } catch (e) {
             console.error("Error downloading file:", e);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to download file.' });
@@ -1454,7 +1480,6 @@ function ChatMessage({
         let currentName = message.fileName || (hasVideo ? 'video.mp4' : hasMusic ? 'music.mp3' : 'file');
 
         if (!currentUrl) {
-            // Need to fetch first if not in cache
             if (hasVideo) await fetchAndCacheVideo();
             else if (hasMusic) await fetchAndCacheMusic();
             else if (hasGenericFile) await fetchAndCacheFile();
@@ -1468,6 +1493,12 @@ function ChatMessage({
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+    };
+
+    const handleOpenFile = () => {
+        if (fileUrl) {
+            window.open(fileUrl, '_blank');
         }
     };
 
@@ -1593,9 +1624,9 @@ function ChatMessage({
                         </div>
                     ) : hasGenericFile ? (
                         <div className="relative my-1">
-                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border border-border shadow-sm transition-all", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50", (fileUrl || isLoadingFile) ? "cursor-default" : "cursor-pointer active:scale-[0.98]")} onClick={!fileUrl ? fetchAndCacheFile : handleSaveToDevice}>
+                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border border-border shadow-sm transition-all", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50", (fileUrl || isLoadingFile) ? "cursor-pointer hover:bg-muted/80" : "cursor-pointer active:scale-[0.98]")} onClick={!fileUrl ? fetchAndCacheFile : handleOpenFile}>
                                 <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background border shadow-sm", alignRight ? "text-primary" : "text-primary")}>
-                                    {isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileIcon className="h-5 w-5" />}
+                                    {isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileIcon className="h-5 w-5 !text-primary !opacity-100" style={{ strokeWidth: 2.5 }} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold truncate">{message.fileName}</p>
@@ -1607,7 +1638,14 @@ function ChatMessage({
                             </div>
                             {fileStatus === 'failed' && <p className='text-[10px] text-destructive font-bold mt-1'>{t('file_upload_failed')}</p>}
                         </div>
-                    ) : message.imageUrl ? <div className="relative my-1"><img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} /></div> : null}
+                    ) : message.imageUrl ? (
+                        <div className="relative my-1 cursor-pointer group/img" onClick={() => onPreviewImage(message.imageUrl!)}>
+                            <img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} />
+                            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center rounded-lg">
+                                <Maximize2 className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" />
+                            </div>
+                        </div>
+                    ) : null}
                     {message.content && <div className={cn("text-sm break-words prose prose-sm max-w-none whitespace-pre-wrap", alignRight ? "prose-invert text-white" : "dark:prose-invert")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: renderLink }}>{message.content}</ReactMarkdown></div>}
                 </div>
                 <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading' || message.fileStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
