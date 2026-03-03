@@ -8,7 +8,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIc
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDocs, query, where, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -141,6 +141,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
+  const chatOpenedAt = useRef<number>(Date.now());
 
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [isCaller, setIsCaller] = useState(false);
@@ -317,6 +318,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Scroll on media load ---
   const handleMediaLoad = useCallback(() => {
+    // Only scroll if media loads within first 3 seconds of opening the chat
+    const timeSinceOpen = Date.now() - chatOpenedAt.current;
+    if (timeSinceOpen > 3000) return;
+
     setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
