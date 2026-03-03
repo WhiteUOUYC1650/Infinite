@@ -1339,7 +1339,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-transparent shadow-none overflow-hidden flex items-center justify-center">
             <DialogHeader className='sr-only'><DialogTitle>Image Preview</DialogTitle></DialogHeader>
             <div className="relative group w-full h-full flex items-center justify-center">
-                <img src={previewImage || ''} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
+                {previewImage && (
+                    <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
+                )}
                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-black/50 text-white rounded-full hover:bg-black/70" onClick={() => setPreviewImage(null)}>
                     <X className="h-6 w-6" />
                 </Button>
@@ -1592,13 +1594,13 @@ function ChatMessage({
                     {hasVideo ? (
                         <div className="relative my-1">
                             {!videoUrl ? (
-                                <div className="w-full max-w-xs aspect-video flex flex-col items-center justify-center bg-secondary rounded-lg gap-2 cursor-pointer group/vid" onClick={fetchAndCacheVideo}>
+                                <div className="w-full max-w-xs aspect-video flex flex-col items-center justify-center bg-secondary/80 backdrop-blur-sm rounded-lg gap-2 cursor-pointer group/vid border border-white/10" onClick={fetchAndCacheVideo}>
                                     {isLoadingVideo ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (
                                         <>
-                                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center group-hover/vid:bg-primary/30 transition-colors">
-                                                <Download className="h-6 w-6 text-primary" />
+                                            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center group-hover/vid:scale-110 transition-transform shadow-lg">
+                                                <Download className="h-6 w-6 text-primary-foreground" />
                                             </div>
-                                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('download')}</span>
+                                            <span className="text-[11px] font-black uppercase tracking-widest text-primary drop-shadow-sm">{t('video')}</span>
                                         </>
                                     )}
                                 </div>
@@ -1610,12 +1612,14 @@ function ChatMessage({
                     ) : hasMusic ? (
                         <div className="relative my-1">
                             {!musicUrl ? (
-                                <div className="w-full flex items-center justify-between gap-3 p-3 bg-secondary rounded-lg cursor-pointer group/music" onClick={fetchAndCacheMusic}>
+                                <div className="w-full flex items-center justify-between gap-3 p-4 bg-secondary/80 backdrop-blur-sm rounded-lg cursor-pointer group/music border border-white/10" onClick={fetchAndCacheMusic}>
                                     <div className="flex items-center gap-3">
-                                        <MusicIcon className="h-6 w-6 text-primary" />
-                                        <span className="text-xs font-bold uppercase tracking-widest opacity-60">{t('music')}</span>
+                                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-md">
+                                            <MusicIcon className="h-5 w-5 text-primary-foreground" />
+                                        </div>
+                                        <span className="text-sm font-black uppercase tracking-widest text-primary drop-shadow-sm">{t('music')}</span>
                                     </div>
-                                    {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary opacity-60 group-hover/music:opacity-100 transition-opacity" />}
+                                    {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />}
                                 </div>
                             ) : (
                                 <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
@@ -1633,7 +1637,7 @@ function ChatMessage({
                                     <p className="text-[10px] opacity-70">{(message.fileSize ? (message.fileSize / 1024 / 1024).toFixed(2) : 0)} MB</p>
                                 </div>
                                 {!fileUrl && !isLoadingFile && (
-                                    <Download className="h-4 w-4 text-primary opacity-60" />
+                                    <Download className={cn("h-4 w-4 shrink-0", alignRight ? "text-primary-foreground" : "text-primary")} />
                                 )}
                             </div>
                             {fileStatus === 'failed' && <p className='text-[10px] text-destructive font-bold mt-1'>{t('file_upload_failed')}</p>}
