@@ -416,6 +416,8 @@ export const translations = {
       'infvid_video_limits': 'MP4, WebM up to 10MB',
       'infvid_no_description': 'No description provided.',
       'infvid_assembly_failed': 'Assembly Failed',
+      'save_to_device': 'Save to device',
+      'download': 'Download',
     },
     ru: {
       'settings': 'Настройки',
@@ -832,6 +834,8 @@ export const translations = {
       'infvid_video_limits': 'MP4, WebM до 10 МБ',
       'infvid_no_description': 'Описание отсутствует.',
       'infvid_assembly_failed': 'Ошибка сборки',
+      'save_to_device': 'Сохранить на устройство',
+      'download': 'Загрузить',
     }
   };
 

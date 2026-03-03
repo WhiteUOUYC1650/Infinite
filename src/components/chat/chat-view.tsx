@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -46,6 +46,7 @@ import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
+import { getCachedFile, cacheFile } from '@/lib/cache-utils';
 
 
 function DateSeparator({ date }: { date: string }) {
@@ -1358,93 +1359,115 @@ function ChatMessage({
     const db = useFirestore();
     const { t } = useLanguage();
     const { toast } = useToast();
-    const [videoUrl, setVideoUrl] = useState<string | null>(message.videoMimeType && localMediaUrl ? localMediaUrl : null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
     const hasVideo = !!message.videoMimeType;
     const videoStatus = message.videoStatus;
-    const [musicUrl, setMusicUrl] = useState<string | null>(message.musicMimeType && localMediaUrl ? localMediaUrl : null);
+    
+    const [musicUrl, setMusicUrl] = useState<string | null>(null);
     const [isLoadingMusic, setIsLoadingMusic] = useState(false);
     const hasMusic = !!message.musicMimeType;
     const musicStatus = message.musicStatus;
 
-    // --- File state ---
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [isLoadingFile, setIsLoadingFile] = useState(false);
     const hasGenericFile = !!message.fileName && !hasVideo && !hasMusic && !message.imageUrl;
     const fileStatus = message.fileStatus;
 
+    // Check cache on mount
     useEffect(() => {
-        if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
-            const fetchAndAssembleVideo = async () => {
-                if (videoUrl) { onMediaLoad(); return; }
-                setIsLoadingVideo(true);
-                setVideoUrl(null);
-                try {
-                    const chunkSnaps = await Promise.all(message.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id))));
-                    const chunksData: {part: number, data: string}[] = [];
-                    chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
-                    if (chunksData.length !== message.videoChunkIds!.length) throw new Error("Failed to fetch all video chunks.");
-                    chunksData.sort((a, b) => a.part - b.part);
-                    setVideoUrl(`data:${message.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`);
-                } catch (e) {
-                    console.error("Error assembling video:", e);
-                    setVideoUrl(null);
-                    if (e instanceof FirestorePermissionError) errorEmitter.emit('permission-error', e);
-                } finally {
-                    setIsLoadingVideo(false);
-                }
-            };
-            fetchAndAssembleVideo();
-        }
-    }, [videoStatus, hasVideo, db, message.videoChunkIds, message.videoMimeType, message.id, chat.id]);
-    
-    useEffect(() => {
-        if (hasMusic && musicStatus === 'complete' && db && message.musicChunkIds && message.musicChunkIds.length > 0) {
-            const fetchAndAssembleMusic = async () => {
-                if (musicUrl) { onMediaLoad(); return; }
-                setIsLoadingMusic(true);
-                setMusicUrl(null);
-                try {
-                    const chunkSnaps = await Promise.all(message.musicChunkIds!.map(id => getDoc(doc(db, 'musicChunks', id))));
-                    const chunksData: {part: number, data: string}[] = [];
-                    chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
-                    if (chunksData.length !== message.musicChunkIds!.length) throw new Error("Failed to fetch all music chunks.");
-                    chunksData.sort((a, b) => a.part - b.part);
-                    setMusicUrl(`data:${message.musicMimeType};base64,${chunksData.map(c => c.data).join('')}`);
-                } catch (e) {
-                    console.error("Error assembling music:", e);
-                    setMusicUrl(null);
-                    if (e instanceof FirestorePermissionError) errorEmitter.emit('permission-error', e);
-                } finally {
-                    setIsLoadingMusic(false);
-                }
-            };
-            fetchAndAssembleMusic();
-        }
-    }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id]);
+        const checkCache = async () => {
+            const cached = await getCachedFile(message.id);
+            if (cached) {
+                if (hasVideo) setVideoUrl(cached);
+                else if (hasMusic) setMusicUrl(cached);
+                else if (hasGenericFile) setFileUrl(cached);
+            } else if (localMediaUrl) {
+                if (hasVideo) setVideoUrl(localMediaUrl);
+                else if (hasMusic) setMusicUrl(localMediaUrl);
+            }
+        };
+        checkCache();
+    }, [message.id, hasVideo, hasMusic, hasGenericFile, localMediaUrl]);
 
-    const fetchAndDownloadFile = async () => {
-        if (!db || !message.fileChunkIds || isLoadingFile) return;
+    const fetchAndCacheVideo = async () => {
+        if (!db || !message.videoChunkIds || videoUrl || isLoadingVideo) return;
+        setIsLoadingVideo(true);
+        try {
+            const chunkSnaps = await Promise.all(message.videoChunkIds.map(id => getDoc(doc(db, 'videoChunks', id))));
+            const chunksData: {part: number, data: string}[] = [];
+            chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
+            chunksData.sort((a, b) => a.part - b.part);
+            const dataUrl = `data:${message.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            setVideoUrl(dataUrl);
+            await cacheFile(message.id, dataUrl);
+            onMediaLoad();
+        } catch (e) {
+            console.error("Error assembling video:", e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to download video.' });
+        } finally {
+            setIsLoadingVideo(false);
+        }
+    };
+
+    const fetchAndCacheMusic = async () => {
+        if (!db || !message.musicChunkIds || musicUrl || isLoadingMusic) return;
+        setIsLoadingMusic(true);
+        try {
+            const chunkSnaps = await Promise.all(message.musicChunkIds.map(id => getDoc(doc(db, 'musicChunks', id))));
+            const chunksData: {part: number, data: string}[] = [];
+            chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
+            chunksData.sort((a, b) => a.part - b.part);
+            const dataUrl = `data:${message.musicMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            setMusicUrl(dataUrl);
+            await cacheFile(message.id, dataUrl);
+            onMediaLoad();
+        } catch (e) {
+            console.error("Error assembling music:", e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to download music.' });
+        } finally {
+            setIsLoadingMusic(false);
+        }
+    };
+
+    const fetchAndCacheFile = async () => {
+        if (!db || !message.fileChunkIds || fileUrl || isLoadingFile) return;
         setIsLoadingFile(true);
         try {
             const chunkSnaps = await Promise.all(message.fileChunkIds.map(id => getDoc(doc(db, 'fileChunks', id))));
             const chunksData: {part: number, data: string}[] = [];
             chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
             chunksData.sort((a, b) => a.part - b.part);
-            const base64Content = chunksData.map(c => c.data).join('');
-            const dataUrl = `data:${message.fileMimeType};base64,${base64Content}`;
-            
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = message.fileName || 'file';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const dataUrl = `data:${message.fileMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            setFileUrl(dataUrl);
+            await cacheFile(message.id, dataUrl);
         } catch (e) {
             console.error("Error downloading file:", e);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to download file.' });
         } finally {
             setIsLoadingFile(false);
+        }
+    };
+
+    const handleSaveToDevice = async () => {
+        let currentUrl = videoUrl || musicUrl || fileUrl;
+        let currentName = message.fileName || (hasVideo ? 'video.mp4' : hasMusic ? 'music.mp3' : 'file');
+
+        if (!currentUrl) {
+            // Need to fetch first if not in cache
+            if (hasVideo) await fetchAndCacheVideo();
+            else if (hasMusic) await fetchAndCacheMusic();
+            else if (hasGenericFile) await fetchAndCacheFile();
+            currentUrl = videoUrl || musicUrl || fileUrl;
+        }
+
+        if (currentUrl) {
+            const link = document.createElement('a');
+            link.href = currentUrl;
+            link.download = currentName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     };
 
@@ -1536,23 +1559,50 @@ function ChatMessage({
                 )}
                 <div className="overflow-hidden">
                     {hasVideo ? (
-                        <div className="relative my-1">{(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg"><Loader2 className="h-8 w-8 animate-spin" /></div>}{videoStatus === 'complete' && !isLoadingVideo && videoUrl && <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />}{videoStatus === 'failed' && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p></div>}</div>
+                        <div className="relative my-1">
+                            {!videoUrl ? (
+                                <div className="w-full max-w-xs aspect-video flex flex-col items-center justify-center bg-secondary rounded-lg gap-2 cursor-pointer group/vid" onClick={fetchAndCacheVideo}>
+                                    {isLoadingVideo ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (
+                                        <>
+                                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center group-hover/vid:bg-primary/30 transition-colors">
+                                                <Download className="h-6 w-6 text-primary" />
+                                            </div>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('download')}</span>
+                                        </>
+                                    )}
+                                </div>
+                            ) : (
+                                <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />
+                            )}
+                            {videoStatus === 'failed' && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p></div>}
+                        </div>
                     ) : hasMusic ? (
-                        <div className="relative my-1">{(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && <div className="w-full flex items-center justify-center bg-secondary rounded-lg p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>}{musicStatus === 'complete' && !isLoadingMusic && musicUrl && <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />}{musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}</div>
+                        <div className="relative my-1">
+                            {!musicUrl ? (
+                                <div className="w-full flex items-center justify-between gap-3 p-3 bg-secondary rounded-lg cursor-pointer group/music" onClick={fetchAndCacheMusic}>
+                                    <div className="flex items-center gap-3">
+                                        <MusicIcon className="h-6 w-6 text-primary" />
+                                        <span className="text-xs font-bold uppercase tracking-widest opacity-60">{t('music')}</span>
+                                    </div>
+                                    {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary opacity-60 group-hover/music:opacity-100 transition-opacity" />}
+                                </div>
+                            ) : (
+                                <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
+                            )}
+                            {musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}
+                        </div>
                     ) : hasGenericFile ? (
                         <div className="relative my-1">
-                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50")}>
+                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50")} onClick={!fileUrl ? fetchAndCacheFile : undefined}>
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
-                                    {fileStatus === 'uploading' || isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <FileIcon className="h-5 w-5 text-primary" />}
+                                    {isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <FileIcon className="h-5 w-5 text-primary" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold truncate">{message.fileName}</p>
                                     <p className="text-[10px] opacity-70">{(message.fileSize ? (message.fileSize / 1024 / 1024).toFixed(2) : 0)} MB</p>
                                 </div>
-                                {fileStatus === 'complete' && (
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={fetchAndDownloadFile} disabled={isLoadingFile}>
-                                        <Download className="h-4 w-4" />
-                                    </Button>
+                                {!fileUrl && !isLoadingFile && (
+                                    <Download className="h-4 w-4 text-primary opacity-60" />
                                 )}
                             </div>
                             {fileStatus === 'failed' && <p className='text-[10px] text-destructive font-bold mt-1'>{t('file_upload_failed')}</p>}
@@ -1564,7 +1614,7 @@ function ChatMessage({
             </div>
 
             <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>
-                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}>{chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}{message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}{(isCurrentUser && !fromBot) || canDeleteMessage ? <DropdownMenuSeparator /> : null}{isCurrentUser && !fromBot && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}>{chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}{(hasVideo || hasMusic || hasGenericFile || message.imageUrl) && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}{message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}{(isCurrentUser && !fromBot) || canDeleteMessage ? <DropdownMenuSeparator /> : null}{isCurrentUser && !fromBot && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );

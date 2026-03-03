@@ -56,6 +56,7 @@ import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
+import { clearCacheDB } from '@/lib/cache-utils';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy';
 
@@ -133,6 +134,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         total += (localStorage.getItem(key) || '').length * 2;
       }
     }
+    // Estimate IndexedDB size if possible, or just note it's cleared
     if (total === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -330,7 +332,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }, 5000);
 };
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
     try {
         const keysToRemove = [];
         for (let i = 0; i < localStorage.length; i++) {
@@ -340,6 +342,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             }
         }
         keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        // Clear IndexedDB Persistent Cache
+        await clearCacheDB();
+
         toast({ title: t('dm_success'), description: t('cache_cleared_success') });
         setCurrentCacheSize(calculateCacheSize());
     } catch (e) {
