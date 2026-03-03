@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useLanguage } from "@/context/language-context";
+import { Sparkles, Clock } from "lucide-react";
 
 interface UpdatePromptDialogProps {
     open: boolean;
@@ -25,15 +26,26 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>{title}</AlertDialogTitle>
-                <AlertDialogDescription>
-                    {description}
-                </AlertDialogDescription>
+            <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                <AlertDialogHeader className="items-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        {isUpdateAvailable ? (
+                            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                        ) : (
+                            <Clock className="h-8 w-8 text-primary" />
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <AlertDialogTitle className="text-2xl font-bold font-headline">{title}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground leading-relaxed">
+                            {description}
+                        </AlertDialogDescription>
+                    </div>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogAction onClick={() => onOpenChange(false)}>{t('ok')}</AlertDialogAction>
+                <AlertDialogFooter className="sm:justify-center pt-2">
+                    <AlertDialogAction onClick={() => onOpenChange(false)} className="rounded-xl px-8 h-12 font-bold min-w-[140px]">
+                        {t('ok')}
+                    </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

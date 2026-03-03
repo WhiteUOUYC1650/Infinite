@@ -503,12 +503,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 const handleSendTextOrImage = async (imageUrl: string | null | undefined, content: string, replyTo: Message | null) => {
     if (!db) return;
     try {
-        const contentForMessage = content.replace(/\n/g, '  \n');
         const contentForPreview = imageUrl ? t('image_attachment_placeholder') : content.split('\n')[0];
         const timestamp = Timestamp.now();
         const messageData: { [key: string]: any } = {
             senderId: currentUser.uid,
-            content: contentForMessage,
+            content: content,
             timestamp,
             type: 'user',
             readBy: [],
@@ -558,7 +557,7 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
     const timestamp = Timestamp.now();
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
-        content: content.replace(/\n/g, '  \n'),
+        content: content,
         timestamp,
         videoMimeType: videoFile.type,
         videoStatus: 'uploading',
@@ -632,7 +631,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     const timestamp = Timestamp.now();
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
-        content: content.replace(/\n/g, '  \n'),
+        content: content,
         timestamp,
         musicMimeType: musicFile.type,
         musicStatus: 'uploading',
@@ -706,7 +705,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     const timestamp = Timestamp.now();
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
-        content: content.replace(/\n/g, '  \n'),
+        content: content,
         timestamp,
         fileName: file.name,
         fileMimeType: file.type || 'application/octet-stream',
@@ -808,7 +807,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   
   useEffect(() => {
     if (editingMessage) {
-        setMessageContent(editingMessage.content.replace(/  \n/g, '\n'));
+        setMessageContent(editingMessage.content);
         if (editingMessage.imageUrl) {
             setFileToSend({ file: new File([], ''), previewUrl: editingMessage.imageUrl, type: 'image' });
         } else {
@@ -830,9 +829,8 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     if (!db || !editingMessage || (!messageContent.trim() && !fileToSend)) return;
     setIsSending(true);
     const messageRef = doc(db, 'chats', item.id, 'messages', editingMessage.id);
-    const newContent = messageContent.replace(/\n/g, '  \n');
     try {
-        await updateDoc(messageRef, { content: newContent, editedAt: serverTimestamp() });
+        await updateDoc(messageRef, { content: messageContent, editedAt: serverTimestamp() });
         if (item.lastMessage?.id === editingMessage.id) {
             const chatRef = doc(db, 'chats', item.id);
             const contentForPreview = fileToSend ? t('image_attachment_placeholder') : messageContent.split('\n')[0];
@@ -840,7 +838,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         }
         setEditingMessage(null);
     } catch (serverError) {
-        const permissionError = new FirestorePermissionError({ path: messageRef.path, operation: 'update', requestResourceData: { content: newContent } });
+        const permissionError = new FirestorePermissionError({ path: messageRef.path, operation: 'update', requestResourceData: { content: messageContent } });
         errorEmitter.emit('permission-error', permissionError);
     } finally {
         setIsSending(false);
@@ -1655,7 +1653,19 @@ function ChatMessage({
                             </div>
                         </div>
                     ) : null}
-                    {message.content && <div className={cn("text-sm break-words prose prose-sm max-w-none whitespace-pre-wrap", alignRight ? "prose-invert text-white" : "dark:prose-invert")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: renderLink }}>{message.content}</ReactMarkdown></div>}
+                    {message.content && (
+                        <div className={cn("text-sm break-words prose prose-sm max-w-none", alignRight ? "prose-invert text-white" : "dark:prose-invert")}>
+                            <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]} 
+                                components={{ 
+                                    a: renderLink,
+                                    p: ({children}) => <p className="whitespace-pre-wrap mb-2 last:mb-0 leading-relaxed">{children}</p>
+                                }}
+                            >
+                                {message.content}
+                            </ReactMarkdown>
+                        </div>
+                    )}
                 </div>
                 <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading' || message.fileStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
             </div>
