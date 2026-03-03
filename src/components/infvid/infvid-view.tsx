@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -443,7 +442,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                         ) : videoUrl ? (
                             <video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />
                         ) : (
-                            <p className="text-destructive font-bold">Assembly Failed</p>
+                            <p className="text-destructive font-bold">{t('infvid_assembly_failed')}</p>
                         )}
                     </div>
                 </section>
@@ -500,7 +499,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                     <span>{timeAgo}</span>
                                 </div>
-                                <p className="text-muted-foreground whitespace-pre-wrap">{video.description || 'No description provided.'}</p>
+                                <p className="text-muted-foreground whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p>
                             </div>
                         </div>
 
@@ -647,7 +646,7 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boo
                             <div className="text-center">
                                 <Upload className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
                                 <p className="font-bold text-muted-foreground">{t('video')}</p>
-                                <p className="text-xs text-muted-foreground mt-1">MP4, WebM up to 10MB</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t('infvid_video_limits')}</p>
                             </div>
                         )}
                     </div>
@@ -677,11 +676,11 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boo
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_title_label')}</label>
-                                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter video title" disabled={isUploading} className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary" />
+                                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('infvid_video_title_placeholder')} disabled={isUploading} className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_desc_label')}</label>
-                                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Tell viewers about your video" className="resize-none rounded-xl bg-muted/30 border-none focus-visible:ring-primary min-h-[100px]" rows={3} disabled={isUploading} />
+                                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('infvid_video_desc_placeholder')} className="resize-none rounded-xl bg-muted/30 border-none focus-visible:ring-primary min-h-[100px]" rows={3} disabled={isUploading} />
                             </div>
                         </div>
                     </div>

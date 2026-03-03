@@ -411,6 +411,11 @@ export const translations = {
       'video_link_copied': 'Video link copied to clipboard!',
       'infvid_thumbnail_label': 'Thumbnail (optional)',
       'infvid_select_thumbnail': 'Select Thumbnail',
+      'infvid_video_title_placeholder': 'Enter video title',
+      'infvid_video_desc_placeholder': 'Tell viewers about your video',
+      'infvid_video_limits': 'MP4, WebM up to 10MB',
+      'infvid_no_description': 'No description provided.',
+      'infvid_assembly_failed': 'Assembly Failed',
     },
     ru: {
       'settings': 'Настройки',
@@ -661,7 +666,7 @@ export const translations = {
       'file_attachment_placeholder': '[Файл]',
       'image_attachment_alt': 'Прикрепленное изображение',
       'photo': 'Фото',
-      'video': 'Video',
+      'video': 'Видео',
       'music': 'Музыка',
       'file': 'Файл',
       'max_file_size_label': 'Макс. размер: {size}',
@@ -822,6 +827,11 @@ export const translations = {
       'infvid_thumbnail_label': 'Обложка (необязательно)',
       'infvid_select_thumbnail': 'Выбрать обложку',
       'update_infinite': 'Обновить Infinite',
+      'infvid_video_title_placeholder': 'Введите название',
+      'infvid_video_desc_placeholder': 'Расскажите о чем ваше видео',
+      'infvid_video_limits': 'MP4, WebM до 10 МБ',
+      'infvid_no_description': 'Описание отсутствует.',
+      'infvid_assembly_failed': 'Ошибка сборки',
     }
   };
 
