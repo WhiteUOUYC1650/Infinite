@@ -790,10 +790,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
                     <span>{t('prem_benefit_3')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span>{t('prem_benefit_4')}</span>
-                </div>
             </div>
             
             {hasPremAccess ? (

@@ -40,7 +40,7 @@ interface DailyBonusWheelProps {
   rotation: number;
 }
 
-export function DailyBonusWheel({ onSpin, isSpinning, canSpin, rotation }: DailyBonusWheelProps) {
+export function DailyBonusWheel({ onSpin, isSpinning, setSpinning, canSpin, rotation }: DailyBonusWheelProps) {
   const { t } = useLanguage();
 
   const handleSpinClick = async () => {
