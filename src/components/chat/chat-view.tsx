@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -127,7 +126,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music'} | null>(null);
+  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null);
   const isMobile = useIsMobile();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -139,6 +138,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isCaller, setIsCaller] = useState(false);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
+
+  // --- Limits based on Prem ---
+  const isPrem = currentUser.subscriptionTier === 'prem';
+  const maxFileSizeText = isPrem ? '4GB' : '1GB';
+  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
 
   // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
@@ -463,6 +467,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             await handleSendVideo(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'music') {
             await handleSendMusic(originalFile, originalContent, originalReplyTo);
+        } else if (originalFile?.type === 'file') {
+            await handleSendGenericFile(originalFile, originalContent, originalReplyTo);
         } else {
             await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
         }
@@ -678,6 +684,81 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         throw new FirestorePermissionError({ path: 'musicChunks', operation: 'create', requestResourceData: { note: "Music chunk upload failed.", originalError: (error as Error).message } });
     }
 };
+
+const handleSendGenericFile = async (filePayload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
+    if (!db) throw new Error("Database not initialized");
+    const { file, previewUrl } = filePayload;
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const chatRef = doc(db, 'chats', item.id);
+    const timestamp = Timestamp.now();
+    const messageData: Omit<Message, 'id'> = {
+        senderId: currentUser.uid,
+        content: content.replace(/\n/g, '  \n'),
+        timestamp,
+        fileName: file.name,
+        fileMimeType: file.type || 'application/octet-stream',
+        fileSize: file.size,
+        fileStatus: 'uploading',
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
+    try {
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        const lastMessageData = {
+            id: messageRef.id,
+            content: content || t('file_attachment_placeholder'),
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
+            timestamp,
+            fileName: file.name,
+            fileStatus: 'uploading',
+        };
+        const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
+        if (item.type !== 'channel') {
+            item.members.forEach((memberId) => {
+                if (memberId !== currentUser.uid) {
+                    updateData[`unreadCounts.${memberId}`] = increment(1);
+                }
+            });
+        }
+        batch.update(chatRef, updateData);
+        await batch.commit();
+        const fileBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (error) => reject(error);
+        });
+        const CHUNK_SIZE = 900 * 1024;
+        const chunks: string[] = [];
+        for (let i = 0; i < fileBase64.length; i += CHUNK_SIZE) {
+            chunks.push(fileBase64.substring(i, i + CHUNK_SIZE));
+        }
+        const chunkIds: string[] = [];
+        for (const [index, chunkData] of chunks.entries()) {
+            const chunkDocRef = doc(collection(db, 'fileChunks'));
+            await setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
+            chunkIds.push(chunkDocRef.id);
+            await new Promise(res => setTimeout(res, 0));
+        }
+        await updateDoc(messageRef, { fileStatus: 'complete', fileChunkIds: chunkIds });
+        const chatDoc = await getDoc(chatRef);
+        if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
+            await updateDoc(chatRef, { 'lastMessage.fileStatus': 'complete' });
+        }
+    } catch (error) {
+        console.error("Error during file upload process:", error);
+        await updateDoc(messageRef, { fileStatus: 'failed' }).catch(() => {});
+        throw new FirestorePermissionError({ path: 'fileChunks', operation: 'create', requestResourceData: { note: "File chunk upload failed.", originalError: (error as Error).message } });
+    }
+};
   
   const handleReply = (message: Message) => {
     setReplyToMessage(message);
@@ -770,12 +851,15 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
       setEditingMessage(null);
       try {
         setIsSending(true);
+        
+        // --- Validation based on Prem ---
+        if (file.size > maxFileSizeInBytes) {
+            toast({ variant: 'destructive', title: t(file.type.startsWith('video/') ? 'video_too_large' : file.type.startsWith('audio/') ? 'music_too_large' : 'file_too_large', { size: maxFileSizeText }) });
+            setIsSending(false);
+            return;
+        }
+
         if (file.type.startsWith('video/')) {
-            if (file.size > 10 * 1024 * 1024) { 
-                toast({ variant: 'destructive', title: t('video_too_large') });
-                setIsSending(false);
-                return;
-            }
             const previewUrl = URL.createObjectURL(file);
             setFileToSend({ file, previewUrl, type: 'video' });
         } else if (file.type.startsWith('image/')) {
@@ -799,17 +883,12 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             }
             setFileToSend({ file, previewUrl: dataUrl, type: 'image' });
         } else if (file.type.startsWith('audio/')) {
-            if (file.size > 10 * 1024 * 1024) { 
-                toast({ variant: 'destructive', title: t('music_too_large') });
-                setIsSending(false);
-                return;
-            }
             const previewUrl = URL.createObjectURL(file);
             setFileToSend({ file, previewUrl, type: 'music' });
         } else {
-            toast({ variant: 'destructive', title: t('invalid_file_type') });
-            setIsSending(false);
-            return;
+            // Generic file
+            const previewUrl = ''; // No preview for generic files
+            setFileToSend({ file, previewUrl, type: 'file' });
         }
       } catch(e) {
         console.error("Error processing file:", e);
@@ -820,9 +899,12 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     }
   };
   
-  const handleAttachmentClick = (type: 'image' | 'video' | 'music') => {
+  const handleAttachmentClick = (type: 'image' | 'video' | 'music' | 'file') => {
     if (fileInputRef.current) {
-        fileInputRef.current.accept = type === 'image' ? 'image/*' : type === 'video' ? 'video/*' : 'audio/*';
+        if (type === 'image') fileInputRef.current.accept = 'image/*';
+        else if (type === 'video') fileInputRef.current.accept = 'video/*';
+        else if (type === 'music') fileInputRef.current.accept = 'audio/*';
+        else fileInputRef.current.accept = '*/*';
         fileInputRef.current.click();
     }
   };
@@ -1106,6 +1188,14 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                             <MusicIcon className="h-8 w-8 text-primary" />
                             <p className="text-sm text-muted-foreground truncate max-w-xs">{fileToSend.file.name}</p>
                         </div>
+                    ) : fileToSend.type === 'file' ? (
+                        <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                            <FileIcon className="h-8 w-8 text-primary" />
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold truncate max-w-xs">{fileToSend.file.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{(fileToSend.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                        </div>
                     ) : null}
                      {isSending ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
@@ -1147,19 +1237,26 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                             <Paperclip className="h-5 w-5" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent side="top" align="end" className="w-auto p-1">
+                    <PopoverContent side="top" align="end" className="w-48 p-1">
                         <div className="flex flex-col">
-                            <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('image')}>
+                            <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-b mb-1">
+                                {t('max_file_size_label', { size: maxFileSizeText })}
+                            </div>
+                            <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('image')}>
                                 <ImageIcon className="mr-2 h-4 w-4" />
                                 <span>{t('photo')}</span>
                             </Button>
-                            <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('video')}>
+                            <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('video')}>
                                 <VideoIcon className="mr-2 h-4 w-4" />
                                 <span>{t('video')}</span>
                             </Button>
-                             <Button variant="ghost" className="justify-start" onClick={() => handleAttachmentClick('music')}>
+                             <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('music')}>
                                 <MusicIcon className="mr-2 h-4 w-4" />
                                 <span>{t('music')}</span>
+                            </Button>
+                            <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('file')}>
+                                <FileIcon className="mr-2 h-4 w-4" />
+                                <span>{t('file')}</span>
                             </Button>
                         </div>
                     </PopoverContent>
@@ -1270,6 +1367,12 @@ function ChatMessage({
     const hasMusic = !!message.musicMimeType;
     const musicStatus = message.musicStatus;
 
+    // --- File state ---
+    const [fileUrl, setFileUrl] = useState<string | null>(null);
+    const [isLoadingFile, setIsLoadingFile] = useState(false);
+    const hasGenericFile = !!message.fileName && !hasVideo && !hasMusic && !message.imageUrl;
+    const fileStatus = message.fileStatus;
+
     useEffect(() => {
         if (hasVideo && videoStatus === 'complete' && db && message.videoChunkIds && message.videoChunkIds.length > 0) {
             const fetchAndAssembleVideo = async () => {
@@ -1319,6 +1422,31 @@ function ChatMessage({
             fetchAndAssembleMusic();
         }
     }, [musicStatus, hasMusic, db, message.musicChunkIds, message.musicMimeType, message.id, chat.id]);
+
+    const fetchAndDownloadFile = async () => {
+        if (!db || !message.fileChunkIds || isLoadingFile) return;
+        setIsLoadingFile(true);
+        try {
+            const chunkSnaps = await Promise.all(message.fileChunkIds.map(id => getDoc(doc(db, 'fileChunks', id))));
+            const chunksData: {part: number, data: string}[] = [];
+            chunkSnaps.forEach(snap => { if (snap.exists()) chunksData.push(snap.data() as {part: number, data: string}); });
+            chunksData.sort((a, b) => a.part - b.part);
+            const base64Content = chunksData.map(c => c.data).join('');
+            const dataUrl = `data:${message.fileMimeType};base64,${base64Content}`;
+            
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = message.fileName || 'file';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (e) {
+            console.error("Error downloading file:", e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to download file.' });
+        } finally {
+            setIsLoadingFile(false);
+        }
+    };
 
     const otherUserId = useMemo(() => {
         if (chat.type !== 'dm') return null;
@@ -1393,7 +1521,7 @@ function ChatMessage({
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", (hasMusic && !message.content.trim()) && "min-w-64")}>
+            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64")}>
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
@@ -1411,10 +1539,28 @@ function ChatMessage({
                         <div className="relative my-1">{(videoStatus === 'uploading' || (videoStatus === 'complete' && isLoadingVideo)) && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-secondary rounded-lg"><Loader2 className="h-8 w-8 animate-spin" /></div>}{videoStatus === 'complete' && !isLoadingVideo && videoUrl && <video src={videoUrl} controls className="max-w-xs max-h-80 object-cover rounded-lg" onLoadedData={onMediaLoad} />}{videoStatus === 'failed' && <div className="w-full max-w-xs aspect-video flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('video_upload_failed')}</p></div>}</div>
                     ) : hasMusic ? (
                         <div className="relative my-1">{(musicStatus === 'uploading' || (musicStatus === 'complete' && isLoadingMusic)) && <div className="w-full flex items-center justify-center bg-secondary rounded-lg p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>}{musicStatus === 'complete' && !isLoadingMusic && musicUrl && <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />}{musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}</div>
+                    ) : hasGenericFile ? (
+                        <div className="relative my-1">
+                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50")}>
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
+                                    {fileStatus === 'uploading' || isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <FileIcon className="h-5 w-5 text-primary" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold truncate">{message.fileName}</p>
+                                    <p className="text-[10px] opacity-70">{(message.fileSize ? (message.fileSize / 1024 / 1024).toFixed(2) : 0)} MB</p>
+                                </div>
+                                {fileStatus === 'complete' && (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={fetchAndDownloadFile} disabled={isLoadingFile}>
+                                        <Download className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            {fileStatus === 'failed' && <p className='text-[10px] text-destructive font-bold mt-1'>{t('file_upload_failed')}</p>}
+                        </div>
                     ) : message.imageUrl ? <div className="relative my-1"><img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} /></div> : null}
                     {message.content && <div className={cn("text-sm break-words prose prose-sm max-w-none whitespace-pre-wrap", alignRight ? "prose-invert text-white" : "dark:prose-invert")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: renderLink }}>{message.content}</ReactMarkdown></div>}
                 </div>
-                <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
+                <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading' || message.fileStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>

@@ -131,6 +131,12 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow update, delete: if false;
     }
+
+    match /fileChunks/{chunkId} {
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update, delete: if false;
+    }
     
     match /chatLinks/{linkId} {
       allow get: if true;

@@ -35,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -774,11 +774,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <div className="flex flex-col gap-2 text-sm text-left">
                 <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span>{t('prem_feature_1')}</span>
+                    <span>{t('prem_benefit_1')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span>{t('prem_feature_2')}</span>
+                    <span>{t('prem_benefit_2')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>{t('prem_benefit_3')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>{t('prem_benefit_4')}</span>
                 </div>
             </div>
             
@@ -792,7 +800,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     disabled={isProcessingPurchase} 
                     className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
                 >
-                    {isProcessingPurchase ? <Loader2 className="animate-spin" /> : `500 InfGold`}
+                    {isProcessingPurchase ? <Loader2 className="animate-spin" /> : t('subscribe_monthly')}
                 </Button>
             )}
         </div>

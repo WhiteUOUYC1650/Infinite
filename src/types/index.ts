@@ -42,6 +42,11 @@ export type Message = {
   musicMimeType?: string;
   musicStatus?: 'uploading' | 'complete' | 'failed';
   musicChunkIds?: string[];
+  fileName?: string;
+  fileMimeType?: string;
+  fileSize?: number;
+  fileStatus?: 'uploading' | 'complete' | 'failed';
+  fileChunkIds?: string[];
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;
@@ -64,6 +69,12 @@ export type VideoChunk = {
 export type MusicChunk = {
   chatId: string;
   messageId: string;
+  data: string;
+  part: number;
+  senderId: string;
+};
+
+export type FileChunk = {
   data: string;
   part: number;
   senderId: string;
