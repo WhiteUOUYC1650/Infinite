@@ -1593,9 +1593,9 @@ function ChatMessage({
                         </div>
                     ) : hasGenericFile ? (
                         <div className="relative my-1">
-                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border cursor-pointer", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50")} onClick={!fileUrl ? fetchAndCacheFile : undefined}>
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20">
-                                    {isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <FileIcon className="h-5 w-5 text-primary" />}
+                            <div className={cn("flex items-center gap-3 p-3 rounded-lg border border-border shadow-sm transition-all", alignRight ? "bg-black/10 border-white/20" : "bg-muted/50", (fileUrl || isLoadingFile) ? "cursor-default" : "cursor-pointer active:scale-[0.98]")} onClick={!fileUrl ? fetchAndCacheFile : handleSaveToDevice}>
+                                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background border shadow-sm", alignRight ? "text-primary" : "text-primary")}>
+                                    {isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileIcon className="h-5 w-5" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold truncate">{message.fileName}</p>

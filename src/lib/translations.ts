@@ -434,7 +434,7 @@ export const translations = {
       'loading_chats': 'Загрузка чатов...',
       'saved_messages': 'Избранное',
       'app_version': 'Версия приложения',
-      'version_info': 'Версия Infinite',
+      'version_info': 'Версия Infinite (Инфинит)',
       'version_info_detail': 'Благодарим вас за выбор Infinite. Мы постоянно работаем над улучшениями.',
       'ok': 'OK',
       'new_conversation': 'Новый диалог',
