@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -467,7 +468,7 @@ export const translations = {
       'group_link_label': 'Уникальная ссылка',
       'group_link_placeholder': 'vasha-gruppa',
       'link_taken': 'Эта ссылка уже занята. Пожалуйста, выберите другую.',
-      'channel_success': 'Канал "{channelName}" создан.',
+      'channel_success': 'Канал "{channelName}" создана.',
       'channel_error': 'Не удалось создать канал.',
       'create_channel': 'Создать канал',
       'edit_profile': 'Редактировать профиль',
