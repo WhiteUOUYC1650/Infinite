@@ -433,7 +433,7 @@ export const translations = {
       'saved_messages': 'Избранное',
       'app_version': 'Версия приложения',
       'version_info': 'Версия Infinite (Инфинит)',
-      'version_info_detail': 'Благодарим вас за выбор Infinite. Мы постоянно работаем над улучшениями.',
+      'version_info_detail': 'Благодарим вас за выбор Infinite (Инфинит). Мы постоянно работаем над улучшениями.',
       'ok': 'OK',
       'new_conversation': 'Новый диалог',
       'new_conversation_desc': 'Начните новое личное сообщение, групповое обсуждение или канал.',
