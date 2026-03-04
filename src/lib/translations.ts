@@ -595,7 +595,6 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
-      'admin_toast_user_banned_desc': 'Профиль был анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
@@ -839,25 +838,22 @@ export const translations = {
 export type TranslationKey = keyof typeof translations.en;
 
 export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
-  // First, handle plurals with nested brace support: {count, plural, one {# thing} other {# things}}
-  // Robust regex to handle one level of nested braces (like {# ...})
-  let result = str.replace(/\{(\w+),\s*plural,\s*((?:[^{}]|\{[^{}]*\})+)\}/g, (match, key, optionsStr) => {
-    const count = values[key];
-    if (count === undefined) return match;
+  // Regex to match ICU plural format: {count, plural, one {# thing} few {# things} other {# things}}
+  let result = str.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
+    const count = Number(values[key]);
+    if (isNaN(count)) return match;
 
     const options: Record<string, string> = {};
-    // Match options like "one {# thing}"
-    const optionMatches = optionsStr.matchAll(/(\w+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g);
-    for (const m of optionMatches) {
+    const optionRegex = /(\w+)\s*\{([^}]*)\}/g;
+    let m;
+    while ((m = optionRegex.exec(optionsStr)) !== null) {
       options[m[1]] = m[2];
     }
 
     let category = 'other';
-    const n = Number(count);
-
     if (lang === 'ru') {
-      const mod10 = n % 10;
-      const mod100 = n % 100;
+      const mod10 = count % 10;
+      const mod100 = count % 100;
       if (mod10 === 1 && mod100 !== 11) {
         category = 'one';
       } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
@@ -866,15 +862,13 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
         category = 'other';
       }
     } else {
-      if (n === 1) category = 'one';
+      if (count === 1) category = 'one';
     }
 
     const template = options[category] || options['other'] || '';
-    // Replace the # marker with the actual count value
-    return template.replace(/#/g, String(n));
+    return template.replace(/#/g, String(count));
   });
 
-  // Then, handle simple variables: {name}
   return result.replace(/\{(\w+)\}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });
