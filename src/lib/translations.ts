@@ -63,8 +63,8 @@ export const translations = {
       'save': 'Save',
       'saving': 'Saving...',
       'profile_update_success': 'Your profile has been updated.',
-      'members_count': '{count} members',
-      'subscribers_count': '{count} subscribers',
+      'members_count': '{count, plural, one {# member} other {# members}}',
+      'subscribers_count': '{count, plural, one {# subscriber} other {# subscribers}}',
       'loading_chat': 'Loading chat...',
       'chat_not_selected': 'Chat not selected',
       'no_messages_yet': 'There is nothing here yet.',
@@ -755,8 +755,8 @@ export const translations = {
       'whats_new_media_desc': 'Теперь можно отправлять любые файлы. Мы внедрили локальное кэширование для мгновенного доступа к медиа.',
       'whats_new_calls_title': 'Экспериментальные звонки',
       'whats_new_calls_desc': 'Аудиозвонки теперь доступны в личных чатах. Окно звонка можно сворачивать, не прерывая общение.',
-      'whats_new_themes_title': 'Дизайн и Безопасность',
-      'whats_new_themes_desc': 'Облачный пароль для защиты аккаунта, экспериментальный режим дизайна и глянцевый эффект стекла (Aero).',
+      'whats_new_themes_title': 'Design & Security',
+      'whats_new_themes_desc': 'New Cloud Password protection, Experimental Design mode, and glossy Aero-style Glass Effect.',
       'inftube': 'InfVid',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Загрузить видео',
@@ -839,8 +839,42 @@ export const translations = {
 
 export type TranslationKey = keyof typeof translations.en;
 
-export function interpolate(str: string, values: Record<string, any>): string {
-  return str.replace(/{(\w+)}/g, (match, key) => {
+export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
+  // First, handle plurals: {count, plural, one {# thing} other {# things}}
+  let result = str.replace(/{(\w+),\s*plural,\s*([^}]+)}/g, (match, key, optionsStr) => {
+    const count = values[key];
+    if (count === undefined) return match;
+
+    const options: Record<string, string> = {};
+    // Regex to match "one {# thing}" or "other {# things}"
+    const optionMatches = optionsStr.matchAll(/(\w+)\s*{([^}]+)}/g);
+    for (const m of optionMatches) {
+      options[m[1]] = m[2];
+    }
+
+    let category = 'other';
+    const n = Number(count);
+
+    if (lang === 'ru') {
+      const mod10 = n % 10;
+      const mod100 = n % 100;
+      if (mod10 === 1 && mod100 !== 11) {
+        category = 'one';
+      } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+        category = 'few';
+      } else {
+        category = 'other'; // Matches "many" in some systems
+      }
+    } else {
+      if (n === 1) category = 'one';
+    }
+
+    const template = options[category] || options['other'] || '';
+    return template.replace('#', String(n));
+  });
+
+  // Then, handle simple variables: {name}
+  return result.replace(/{(\w+)}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });
 }

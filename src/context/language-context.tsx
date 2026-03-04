@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
@@ -34,7 +35,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       (key: TranslationKey, values?: Record<string, any>): string => {
         const translationString = translations[language]?.[key] || translations['en'][key];
         if (values) {
-          return interpolate(translationString, values);
+          // Pass the current language to interpolate for correct plural rules
+          return interpolate(translationString, values, language);
         }
         return translationString;
       },
