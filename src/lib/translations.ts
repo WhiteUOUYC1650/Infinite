@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -596,6 +595,7 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
+      'admin_toast_user_banned_desc': 'Профиль был анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
@@ -755,8 +755,8 @@ export const translations = {
       'whats_new_media_desc': 'Теперь можно отправлять любые файлы. Мы внедрили локальное кэширование для мгновенного доступа к медиа.',
       'whats_new_calls_title': 'Экспериментальные звонки',
       'whats_new_calls_desc': 'Аудиозвонки теперь доступны в личных чатах. Окно звонка можно сворачивать, не прерывая общение.',
-      'whats_new_themes_title': 'Design & Security',
-      'whats_new_themes_desc': 'New Cloud Password protection, Experimental Design mode, and glossy Aero-style Glass Effect.',
+      'whats_new_themes_title': 'Дизайн и Безопасность',
+      'whats_new_themes_desc': 'Новая защита Облачным паролем, Экспериментальный дизайн и глянцевый эффект стекла в стиле Aero.',
       'inftube': 'InfVid',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Загрузить видео',
@@ -826,7 +826,6 @@ export const translations = {
       'video_link_copied': 'Ссылка скопирована в буфер обмена!',
       'infvid_thumbnail_label': 'Обложка (необязательно)',
       'infvid_select_thumbnail': 'Выбрать обложку',
-      'update_infinite': 'Обновить Infinite',
       'infvid_video_title_placeholder': 'Введите название',
       'infvid_video_desc_placeholder': 'Расскажите о чем ваше видео',
       'infvid_video_limits': 'MP4, WebM до 10 МБ',
@@ -840,14 +839,15 @@ export const translations = {
 export type TranslationKey = keyof typeof translations.en;
 
 export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
-  // First, handle plurals: {count, plural, one {# thing} other {# things}}
-  let result = str.replace(/{(\w+),\s*plural,\s*([^}]+)}/g, (match, key, optionsStr) => {
+  // First, handle plurals with nested brace support: {count, plural, one {# thing} other {# things}}
+  // Robust regex to handle one level of nested braces (like {# ...})
+  let result = str.replace(/\{(\w+),\s*plural,\s*((?:[^{}]|\{[^{}]*\})+)\}/g, (match, key, optionsStr) => {
     const count = values[key];
     if (count === undefined) return match;
 
     const options: Record<string, string> = {};
-    // Regex to match "one {# thing}" or "other {# things}"
-    const optionMatches = optionsStr.matchAll(/(\w+)\s*{([^}]+)}/g);
+    // Match options like "one {# thing}"
+    const optionMatches = optionsStr.matchAll(/(\w+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g);
     for (const m of optionMatches) {
       options[m[1]] = m[2];
     }
@@ -863,18 +863,19 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
       } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
         category = 'few';
       } else {
-        category = 'other'; // Matches "many" in some systems
+        category = 'other';
       }
     } else {
       if (n === 1) category = 'one';
     }
 
     const template = options[category] || options['other'] || '';
-    return template.replace('#', String(n));
+    // Replace the # marker with the actual count value
+    return template.replace(/#/g, String(n));
   });
 
   // Then, handle simple variables: {name}
-  return result.replace(/{(\w+)}/g, (match, key) => {
+  return result.replace(/\{(\w+)\}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });
 }

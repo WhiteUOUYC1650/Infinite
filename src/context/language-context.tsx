@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
@@ -20,7 +19,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (storedLang && translations[storedLang]) {
       setLanguage(storedLang);
     } else {
-      // If no stored language, explicitly save the default 'ru'
       localStorage.setItem('app-lang', 'ru');
     }
   }, []);

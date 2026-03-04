@@ -1,11 +1,10 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
-import { doc, runTransaction, collection, query, where, getDocs, getDoc, setDoc, Timestamp, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, runTransaction, collection, getDoc, setDoc, Timestamp, addDoc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
