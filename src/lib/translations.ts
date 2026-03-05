@@ -355,6 +355,7 @@ export const translations = {
       'forgot_password_desc': 'Enter your @username. We will send a recovery code to your bot chat.',
       'recovery_code_sent_title': 'Code Sent',
       'recovery_code_sent_desc': 'A temporary verification code has been sent to your chat with /B/Infinite.',
+      'recovery_code_sent_desc_email': 'A password reset link has been sent to your email address.',
       'login_with_recovery_code': 'Login with Code',
     },
     ru: {
@@ -535,6 +536,7 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
+      'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
@@ -555,7 +557,7 @@ export const translations = {
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
       'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__bold__` for **болд текста**\n- `~~зачеркнутый~~` for ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
       'faq_create_chat_q': "Как создать новую группу или канал?",
-      'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Откроется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
+      'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Открыется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
       'faq_invite_q': "Как пригласить людей в группу?",
       'faq_invite_a': "Чтобы пригласить кого-то в группу, владельцем которой вы являетесь, просто поделитесь с ним уникальной ссылкой на группу (например, `/G/your-group-name`). Когда он откроет ссылку в поиске приложения, он увидит возможность присоединиться к вашей группе.",
       'faq_security_q': "Защищены ли мои данные?",
@@ -567,7 +569,7 @@ export const translations = {
       'faq_calls_q': "Как мне позвонить?",
       'faq_calls_a': "Вы можете совершать аудиозвонки один на один в любом личном чате. Просто откройте чат и нажмите на иконку телефона в заголовке. Обратите внимание, что это экспериментальная функция.",
       'faq_media_q': "Как я могу отправить фото, видео или музыку?",
-      'faq_media_a': "В поле ввода сообщения нажмите на иконку скрепки, чтобы открыть меню вложений. Оттуда вы можете выбрать 'Фото', 'Видео' или 'Музыка', чтобы выбрать файл с вашего устройства.",
+      'faq_media_a': "В поле ввода сообщения нажмите на иконку скрепки, чтобы открыть меню вложений. Оттуда вы можете выбрать 'Фото', 'Video' или 'Music', чтобы выбрать файл с вашего устройства.",
       'faq_infgold_q': "Что такое InfGold и как его получить?",
       'faq_infgold_a': "InfGold — это наша виртуальная валюта. Вы можете зарабатывать её бесплатно каждый день, вращая колесо 'Ежедневного бонуса' в настройках InfGold. Затем вы можете использовать InfGold для покупки подписок 'Infinite Prem'.",
       'faq_prem_q': "Что такое 'Infinite Prem'?",
@@ -774,9 +776,10 @@ export const translations = {
       'download': 'Загрузить',
       'forgot_password_link': 'Забыли пароль?',
       'forgot_password_title': 'Восстановление аккаунта',
-      'forgot_password_desc': 'Введите ваш @username. Мы отправим код восстановления в чат с ботом.',
+      'forgot_password_desc': 'Введите адрес эл. почты. Мы отправим письмо для сброса пароля.',
       'recovery_code_sent_title': 'Код отправлен',
       'recovery_code_sent_desc': 'Временный код подтверждения был отправлен в ваш чат с /B/Infinite.',
+      'recovery_code_sent_desc_email': 'Ссылка для сброса пароля была отправлена на вашу почту.',
       'login_with_recovery_code': 'Войти по коду',
     }
   };
@@ -786,38 +789,40 @@ export type TranslationKey = keyof typeof translations.en;
 export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
   if (!str) return '';
   
-  // Logic for ICU plural format: {count, plural, one {# thing} few {# things} other {# things}}
-  let result = str.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
-    const count = Number(values[key]);
-    if (isNaN(count)) return match;
+  const parsePart = (text: string): string => {
+    return text.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
+      const count = Number(values[key]);
+      if (isNaN(count)) return match;
 
-    const options: Record<string, string> = {};
-    const optionRegex = /(\w+)\s*\{([^}]*)\}/g;
-    let m;
-    while ((m = optionRegex.exec(optionsStr)) !== null) {
-      options[m[1]] = m[2];
-    }
-
-    let category = 'other';
-    if (lang === 'ru') {
-      const mod10 = count % 10;
-      const mod100 = count % 100;
-      if (mod10 === 1 && mod100 !== 11) {
-        category = 'one';
-      } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-        category = 'few';
-      } else {
-        category = 'other';
+      const options: Record<string, string> = {};
+      let remaining = optionsStr;
+      const optionRegex = /(\w+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g;
+      let m;
+      while ((m = optionRegex.exec(optionsStr)) !== null) {
+        options[m[1]] = m[2];
       }
-    } else {
-      if (count === 1) category = 'one';
-    }
 
-    const template = options[category] || options['other'] || '';
-    return template.replace(/#/g, String(count));
-  });
+      let category = 'other';
+      if (lang === 'ru') {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod10 === 1 && mod100 !== 11) {
+          category = 'one';
+        } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+          category = 'few';
+        } else {
+          category = 'other';
+        }
+      } else {
+        if (count === 1) category = 'one';
+      }
 
-  // Standard interpolation: {name}
+      const template = options[category] || options['other'] || '';
+      return template.replace(/#/g, String(count));
+    });
+  };
+
+  let result = parsePart(str);
   return result.replace(/\{(\w+)\}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });
