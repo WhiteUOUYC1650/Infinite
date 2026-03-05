@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, updateDoc, setDoc, collection, Timestamp, increment, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, collection, Timestamp, increment, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
-import { Sun, Moon, Languages, Loader2, Lock, ShieldAlert, MessageSquare, KeyRound, Mail } from 'lucide-react';
+import { Sun, Moon, Languages, Loader2, Lock, ShieldAlert, MessageSquare, KeyRound, Mail, User as UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +48,9 @@ export default function LoginPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
+  const [isBotRecoveryMode, setIsBotRecoveryMode] = useState(false);
+  const [recoveryEmailInput, setRecoveryEmailInput] = useState('');
+  
   const [cloudPasswordInput, setCloudPasswordInput] = useState('');
   const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
   const [botCodeInput, setBotCodeInput] = useState('');
@@ -122,30 +125,75 @@ export default function LoginPage() {
     }
   };
 
-  const handleResetPasswordEmail = async () => {
-    const email = form.getValues('email');
-    if (!email || !z.string().email().safeParse(email).success) {
-        toast({
-            variant: 'destructive',
-            title: t('sign_in_failed_toast_title'),
-            description: t('invalid_email_error'),
-        });
-        return;
-    }
-
+  const handleSendBotCodeByEmail = async () => {
+    if (!db || !recoveryEmailInput.trim()) return;
     setIsLoading(true);
     try {
-        await sendPasswordResetEmail(auth!, email);
-        toast({
-            title: t('dm_success'),
-            description: t('recovery_code_sent_desc_email'),
-        });
-    } catch (e: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: e.message,
-        });
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', recoveryEmailInput.trim()), limit(1));
+        const querySnap = await getDocs(q);
+
+        if (querySnap.empty) {
+            toast({ variant: 'destructive', title: t('sign_in_failed_toast_title'), description: t('user_not_found') });
+            setIsLoading(false);
+            return;
+        }
+
+        const foundUserDoc = querySnap.docs[0];
+        const foundUserId = foundUserDoc.id;
+        setUserId(foundUserId);
+
+        const code = Math.random().toString().substring(2, 10);
+        const securityRef = doc(db, 'users', foundUserId, 'private', 'security');
+        await setDoc(securityRef, { tempBotCode: code }, { merge: true });
+
+        const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+        const botLinkSnap = await getDoc(botLinkRef);
+
+        if (botLinkSnap.exists()) {
+            const botId = botLinkSnap.data().botId;
+            const botUserRef = doc(db, 'users', botId);
+            const botUserSnap = await getDoc(botUserRef);
+
+            if (botUserSnap.exists()) {
+                const botData = botUserSnap.data() as User;
+                const members = [foundUserId, botId].sort();
+                const chatId = members.join('_');
+                const chatRef = doc(db, 'chats', chatId);
+
+                const chatSnap = await getDoc(chatRef);
+                if (!chatSnap.exists()) {
+                    await setDoc(chatRef, {
+                        type: 'dm',
+                        members: members,
+                        unreadCounts: { [foundUserId]: 1 },
+                        icon: 'Bot',
+                    });
+                } else {
+                    await updateDoc(chatRef, { [`unreadCounts.${foundUserId}`]: increment(1) });
+                }
+
+                const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
+                const recoveryMessage = {
+                    senderId: foundUserId,
+                    type: 'announcement',
+                    content: `Your login verification code is: **${code}**`,
+                    timestamp: Timestamp.now(),
+                    senderName: botData.name,
+                    senderAvatar: botData.avatar || null,
+                };
+                const msgRef = await addDoc(messagesCollectionRef, recoveryMessage);
+                await updateDoc(chatRef, { lastMessage: { ...recoveryMessage, id: msgRef.id } });
+            }
+        }
+
+        setIsBotCodeMode(true);
+        setNeedsTwoFactor(true);
+        setIsBotRecoveryMode(false);
+        toast({ title: t('dm_success'), description: t('bot_code_sent') });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
     } finally {
         setIsLoading(false);
     }
@@ -325,7 +373,41 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md p-8 space-y-8">
-        {!needsTwoFactor ? (
+        {isBotRecoveryMode ? (
+            <div className="space-y-6 text-center animate-in fade-in zoom-in duration-300">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <KeyRound className="h-8 w-8 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                        <h2 className="text-2xl font-bold font-headline">{t('forgot_password_title')}</h2>
+                        <p className="text-muted-foreground text-sm">
+                            {t('enter_email_for_recovery')}
+                        </p>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="space-y-2 text-left">
+                        <Label htmlFor="recovery-email">{t('email_label')}</Label>
+                        <Input 
+                            id="recovery-email"
+                            type="email" 
+                            placeholder="name@example.com" 
+                            value={recoveryEmailInput} 
+                            onChange={(e) => setRecoveryEmailInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSendBotCodeByEmail()}
+                            autoFocus
+                        />
+                    </div>
+                    <Button className="w-full" onClick={handleSendBotCodeByEmail} disabled={isLoading || !recoveryEmailInput.includes('@')}>
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('verify_button')}
+                    </Button>
+                    <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => setIsBotRecoveryMode(false)}>
+                        {t('cancel')}
+                    </Button>
+                </div>
+            </div>
+        ) : !needsTwoFactor ? (
             <>
                 <div className="text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
@@ -357,7 +439,7 @@ export default function LoginPage() {
                             <FormItem>
                             <div className="flex items-center justify-between">
                                 <FormLabel>{t('password_label')}</FormLabel>
-                                <Button variant="link" className="px-0 h-auto text-xs text-primary" type="button" onClick={handleResetPasswordEmail}>
+                                <Button variant="link" className="px-0 h-auto text-xs text-primary" type="button" onClick={() => setIsBotRecoveryMode(true)}>
                                     {t('forgot_password_link')}
                                 </Button>
                             </div>

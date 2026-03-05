@@ -352,11 +352,12 @@ export const translations = {
       'download': 'Download',
       'forgot_password_link': 'Forgot Password?',
       'forgot_password_title': 'Account Recovery',
-      'forgot_password_desc': 'Enter your @username. We will send a recovery code to your bot chat.',
+      'forgot_password_desc': 'Enter your account email. We will send a recovery code to your official /B/Infinite bot chat.',
       'recovery_code_sent_title': 'Code Sent',
       'recovery_code_sent_desc': 'A temporary verification code has been sent to your chat with /B/Infinite.',
       'recovery_code_sent_desc_email': 'A password reset link has been sent to your email address.',
       'login_with_recovery_code': 'Login with Code',
+      'enter_email_for_recovery': 'Enter your email address for recovery',
     },
     ru: {
       'settings': 'Настройки',
@@ -535,7 +536,6 @@ export const translations = {
       'admin_toast_cannot_delete_admin_desc': 'Этот защищенный аккаунт не может быть заблокирован.',
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
-      'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
@@ -776,11 +776,12 @@ export const translations = {
       'download': 'Загрузить',
       'forgot_password_link': 'Забыли пароль?',
       'forgot_password_title': 'Восстановление аккаунта',
-      'forgot_password_desc': 'Введите адрес эл. почты. Мы отправим письмо для сброса пароля.',
+      'forgot_password_desc': 'Введите адрес вашей эл. почты. Мы найдем ваш аккаунт и отправим код в чат с официальным ботом /B/Infinite.',
       'recovery_code_sent_title': 'Код отправлен',
       'recovery_code_sent_desc': 'Временный код подтверждения был отправлен в ваш чат с /B/Infinite.',
       'recovery_code_sent_desc_email': 'Ссылка для сброса пароля была отправлена на вашу почту.',
       'login_with_recovery_code': 'Войти по коду',
+      'enter_email_for_recovery': 'Введите адрес электронной почты для восстановления',
     }
   };
 
