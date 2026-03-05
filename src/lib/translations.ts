@@ -343,72 +343,6 @@ export const translations = {
       'inftube': 'InfVid',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Upload Video',
-      'infvid_video_title_label': 'Title',
-      'infvid_video_desc_label': 'Description',
-      'infvid_no_videos': 'No videos yet. Be the first to upload!',
-      'infvid_uploading': 'Uploading video...',
-      'infvid_upload_success': 'Video uploaded successfully!',
-      'infvid_views': '{count, plural, one {# view} other {# views}}',
-      'likes': '{count, plural, one {# like} other {# likes}}',
-      'new_message_from': 'New message from {name}',
-      'experimental_design_label': 'Experimental Design',
-      'experimental_design_desc': 'Try out the new mobile-style settings layout\nwith quick actions.',
-      'glass_effect_label': 'Glass Effect (Beta)',
-      'glass_effect_desc': 'Adds a glossy, reflective Aero-style look to buttons and messages.',
-      'mute': 'Mute',
-      'data_storage': 'Data and Storage',
-      'clear_cache': 'Clear Cache',
-      'cache_cleared_success': 'Cache cleared successfully.',
-      'clear_cache_desc': 'Clears local app data (images, videos, temporary files). Your settings will be preserved.',
-      'cache_usage': 'Cache Usage',
-      'welcome_legal_title': 'Legal Information',
-      'welcome_legal_subtitle': 'Please read and accept the following documents before starting.',
-      'terms_of_use': 'Terms of Use',
-      'privacy_policy': 'Privacy Policy',
-      'i_agree_legal': 'I agree to the Terms of Use and Privacy Policy',
-      'scroll_to_bottom_hint': 'Please scroll to the bottom to continue.',
-      'legal_accept_error': 'You must accept the legal documents to proceed.',
-      'rustore_development': 'Subcription tiers in development...',
-      'rustore_note': 'All premium features will be available for InfGold soon. Stay tuned!',
-      'ai_summary': 'AI Summary',
-      'ai_summary_cost': 'Summarize (10 InfGold)',
-      'ai_summary_loading': 'AI is analyzing...',
-      'ai_summary_title': 'Conversation Summary',
-      'legal_terms_content': '1. Acceptance of Terms\nBy using Infinite, you agree to these terms. Infinite is a modern, real-time communication platform. Our service is provided "as is".\n\n2. User Conduct\nYou may not use Infinite for illegal activities, spam, or harassment.\n\n3. Virtual Currency\nInfGold is a virtual currency with no real-world value. Refunds are not provided.',
-      'legal_privacy_content': '1. Data Collection\nWe collect your email, username, and messages to provide the service.\n\n2. Data Security\nWe use Firebase to store your data securely.\n\n3. AI Services\nWe use AI models to provide features like summaries and reporting.',
-      'privacy_security': 'Privacy & Security',
-      'login_protection_label': 'Login Protection',
-      'login_protection_desc': 'Require an additional check when logging in to your account.',
-      'cloud_password_label': 'Cloud Password',
-      'cloud_password_desc': 'An additional password requested when you log in.',
-      'verify_identity_title': 'Identity Verification',
-      'verify_button': 'Verify',
-      'incorrect_cloud_password': 'Incorrect cloud password.',
-      'login_protection_setup_title': 'Setup Login Protection',
-      'set_cloud_password_placeholder': 'Enter new cloud password',
-      'forgot_cloud_password': 'Forgot Cloud Password?',
-      'recovery_code_title': 'Save your Recovery Code',
-      'recovery_code_desc': 'If you forget your Cloud Password, you can use this code to reset access to your account. Store it in a safe place!',
-      'recovery_code_label': 'Recovery Code',
-      'use_recovery_code': 'Use Recovery Code',
-      'enter_recovery_code': 'Enter your 8-digit Recovery Code',
-      'incorrect_recovery_code': 'Incorrect recovery code.',
-      'recovery_success': 'Access restored. Cloud protection has been disabled.',
-      'recovery_via_bot': 'Get Code via Bot',
-      'enter_bot_code': 'Enter code from /B/Infinite',
-      'bot_code_sent': 'Verification code sent to your chat with /B/Infinite',
-      'incorrect_bot_code': 'Incorrect verification code from bot.',
-      'password_is_set': 'Password is set',
-      'password_not_set': 'Password not set',
-      'set_cloud_password_button': 'Set Password',
-      'change_cloud_password_button': 'Change Password',
-      'comments': 'Comments',
-      'no_comments_yet': 'No comments yet. Be the first to comment!',
-      'add_comment_placeholder': 'Add a comment...',
-      'share': 'Share',
-      'video_link_copied': 'Video link copied to clipboard!',
-      'infvid_thumbnail_label': 'Thumbnail (optional)',
-      'infvid_select_thumbnail': 'Select Thumbnail',
       'infvid_video_title_placeholder': 'Enter video title',
       'infvid_video_desc_placeholder': 'Tell viewers about your video',
       'infvid_video_limits': 'MP4, WebM up to 10MB',
@@ -416,6 +350,12 @@ export const translations = {
       'infvid_assembly_failed': 'Assembly Failed',
       'save_to_device': 'Save to device',
       'download': 'Download',
+      'forgot_password_link': 'Forgot Password?',
+      'forgot_password_title': 'Account Recovery',
+      'forgot_password_desc': 'Enter your @username. We will send a recovery code to your bot chat.',
+      'recovery_code_sent_title': 'Code Sent',
+      'recovery_code_sent_desc': 'A temporary verification code has been sent to your chat with /B/Infinite.',
+      'login_with_recovery_code': 'Login with Code',
     },
     ru: {
       'settings': 'Настройки',
@@ -832,13 +772,21 @@ export const translations = {
       'infvid_assembly_failed': 'Ошибка сборки',
       'save_to_device': 'Сохранить на устройство',
       'download': 'Загрузить',
+      'forgot_password_link': 'Забыли пароль?',
+      'forgot_password_title': 'Восстановление аккаунта',
+      'forgot_password_desc': 'Введите ваш @username. Мы отправим код восстановления в чат с ботом.',
+      'recovery_code_sent_title': 'Код отправлен',
+      'recovery_code_sent_desc': 'Временный код подтверждения был отправлен в ваш чат с /B/Infinite.',
+      'login_with_recovery_code': 'Войти по коду',
     }
   };
 
 export type TranslationKey = keyof typeof translations.en;
 
 export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
-  // Regex to match ICU plural format: {count, plural, one {# thing} few {# things} other {# things}}
+  if (!str) return '';
+  
+  // Logic for ICU plural format: {count, plural, one {# thing} few {# things} other {# things}}
   let result = str.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
     const count = Number(values[key]);
     if (isNaN(count)) return match;
@@ -869,6 +817,7 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
     return template.replace(/#/g, String(count));
   });
 
+  // Standard interpolation: {name}
   return result.replace(/\{(\w+)\}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });

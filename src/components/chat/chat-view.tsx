@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -305,7 +304,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!isMember) return false;
     if (otherUser?.isDeleted) return false;
     if (item.type === 'channel' && item.ownerId !== currentUser.uid) {
-        if (item.discussionChatId) return true;
         return false;
     }
     return true;
@@ -541,6 +539,21 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
                 }
             });
         }
+        
+        // Forward to discussion if needed
+        if (item.type === 'channel' && item.discussionChatId) {
+            const discChatRef = doc(db, 'chats', item.discussionChatId);
+            const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            const forwardedMsg = {
+                ...messageData,
+                type: 'announcement',
+                senderName: item.name,
+                senderAvatar: 'is_channel_message'
+            };
+            batch.set(discMsgRef, forwardedMsg);
+            batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
+        }
+
         batch.update(chatRef, updateData);
         await batch.commit();
     } catch (error) {
@@ -591,6 +604,21 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
                 }
             });
         }
+
+        // Forward to discussion if needed
+        if (item.type === 'channel' && item.discussionChatId) {
+            const discChatRef = doc(db, 'chats', item.discussionChatId);
+            const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            const forwardedMsg = {
+                ...messageData,
+                type: 'announcement',
+                senderName: item.name,
+                senderAvatar: 'is_channel_message'
+            };
+            batch.set(discMsgRef, forwardedMsg);
+            batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
+        }
+
         batch.update(chatRef, updateData);
         await batch.commit();
         const videoBase64 = await new Promise<string>((resolve, reject) => {
@@ -665,6 +693,21 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                 }
             });
         }
+
+        // Forward to discussion if needed
+        if (item.type === 'channel' && item.discussionChatId) {
+            const discChatRef = doc(db, 'chats', item.discussionChatId);
+            const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            const forwardedMsg = {
+                ...messageData,
+                type: 'announcement',
+                senderName: item.name,
+                senderAvatar: 'is_channel_message'
+            };
+            batch.set(discMsgRef, forwardedMsg);
+            batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
+        }
+
         batch.update(chatRef, updateData);
         await batch.commit();
         const musicBase64 = await new Promise<string>((resolve, reject) => {
@@ -741,6 +784,21 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 }
             });
         }
+
+        // Forward to discussion if needed
+        if (item.type === 'channel' && item.discussionChatId) {
+            const discChatRef = doc(db, 'chats', item.discussionChatId);
+            const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            const forwardedMsg = {
+                ...messageData,
+                type: 'announcement',
+                senderName: item.name,
+                senderAvatar: 'is_channel_message'
+            };
+            batch.set(discMsgRef, forwardedMsg);
+            batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
+        }
+
         batch.update(chatRef, updateData);
         await batch.commit();
         const fileBase64 = await new Promise<string>((resolve, reject) => {
