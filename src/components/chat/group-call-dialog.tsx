@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -48,7 +47,6 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
       }
     });
 
-    // Request permissions and setup local stream
     if (canStream) {
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
@@ -60,18 +58,19 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
         });
     }
 
-    // Join call logic
     const participant: CallParticipant = {
       uid: currentUser.uid,
       name: currentUser.name || currentUser.username || 'User',
-      avatar: currentUser.avatar,
+      avatar: currentUser.avatar || '',
       joinedAt: Timestamp.now(),
     };
 
     updateDoc(callRef, {
       participants: arrayUnion(participant),
       status: 'active'
-    }).catch(console.error);
+    }).catch(e => {
+        console.error("Failed to join call document:", e);
+    });
 
     return () => {
       unsubscribe();
@@ -150,7 +149,6 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
             </div>
           )}
 
-          {/* Participant Overlay */}
           <div className="absolute bottom-20 left-6 flex flex-wrap gap-2 max-w-[200px]">
             {callData?.participants?.slice(0, 5).map(p => (
               <Avatar key={p.uid} className="w-8 h-8 border-2 border-black">

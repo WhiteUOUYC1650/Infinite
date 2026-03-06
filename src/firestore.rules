@@ -14,6 +14,7 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
+    // Правила для версии приложения
     match /info/ver {
       allow get: if true;
       allow write: if false;
@@ -24,15 +25,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Глобальный поиск сообщений для админа
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
     
+    // Звонки (личные и групповые)
     match /calls/{callId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if isSignedIn();
     }
 
+    // Пользователи
     match /users/{userId} {
       allow read: if true; 
       allow list: if true; 
@@ -45,6 +48,7 @@ service cloud.firestore {
       }
     }
 
+    // Уникальные никнеймы
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
@@ -53,9 +57,9 @@ service cloud.firestore {
         allow delete: if resource.data.uid == request.auth.uid || isAdmin();
     }
 
+    // Чаты (ЛС, Группы, Каналы)
     match /chats/{chatId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn();
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
@@ -71,6 +75,7 @@ service cloud.firestore {
       }
     }
     
+    // Видео (InfVid)
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
@@ -84,21 +89,20 @@ service cloud.firestore {
       }
     }
     
+    // Чанки файлов
     match /videoChunks/{chunkId} {
-      allow create: if true; 
-      allow read: if true;
+      allow create, read: if isSignedIn();
     }
 
     match /musicChunks/{chunkId} {
-      allow create: if true;
-      allow read: if true;
+      allow create, read: if isSignedIn();
     }
 
     match /fileChunks/{chunkId} {
-      allow create: if true;
-      allow read: if true;
+      allow create, read: if isSignedIn();
     }
     
+    // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;

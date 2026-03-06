@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -134,7 +133,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const db = useFirestore();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { promptUpdate } = useUpdatePrompt();
   const { theme: colorTheme, sendOnEnter } = useTheme();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -188,7 +186,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const isOwner = item.ownerId === currentUser.uid;
 
-  // Listen for group calls/broadcasts
   useEffect(() => {
     if (!db || item.type === 'dm' || !isMember) return;
     const callRef = doc(db, 'calls', item.id);
@@ -1030,6 +1027,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       setShowGroupCallDialog(true);
     } catch (e) {
       console.error("Failed to start group call", e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to start call. Check rules.' });
     }
   };
 
