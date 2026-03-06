@@ -152,12 +152,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
 
-  // --- Limits based on Prem ---
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
 
-  // --- Get live chat data ---
   const chatDocRef = useMemoFirebase(() => {
     if (!db) return null;
     return doc(db, 'chats', initialItem.id);
@@ -179,7 +177,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return item.members.includes(currentUser.uid);
   }, [item?.members, currentUser.uid]);
 
-  // --- Call listener ---
   useEffect(() => {
     if (!db || item.type !== 'dm' || !isMember || !item.id.includes('_')) return; 
     const callDocRef = doc(db, 'calls', item.id);
@@ -196,7 +193,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return () => unsubscribe();
   }, [db, item.id, item.type, currentUser.uid, isMember]);
 
-  // --- Fetch messages and members ---
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !isMember) return null;
     return collection(db, 'chats', item.id, 'messages');
@@ -213,8 +209,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const { users: memberDetails, loading: membersLoading } = useBatchUsers(allUserIdsToFetch);
 
-
-  // --- Read Receipts Logic ---
   useEffect(() => {
     if (!db || !isMember || !messages || messages.length === 0) return;
 
@@ -245,8 +239,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   }, [db, isMember, messages, currentUser.uid, item.id]);
 
-
-  // --- Reset unread count ---
   useEffect(() => {
     if (db && currentUser?.uid && item.id && item.id !== 'GENERAL_CHAT' && isMember) {
       const unreadCountForCurrentUser = item.unreadCounts?.[currentUser.uid] || 0;
@@ -313,15 +305,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return true;
   }, [isMember, item, currentUser.uid, otherUser]);
 
-
-  // --- Auto-scroll ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, item, chatLoading, messagesLoading, membersLoading]);
 
-  // --- Scroll on media load ---
   const handleMediaLoad = useCallback(() => {
-    // Only scroll if media loads within first 3 seconds of opening the chat
     const timeSinceOpen = Date.now() - chatOpenedAt.current;
     if (timeSinceOpen > 3000) return;
 
@@ -330,7 +318,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }, 100);
   }, []);
 
-  // --- Sticky Date Header Logic & Scroll Detection ---
     const handleScroll = useCallback(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
@@ -544,7 +531,6 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
             });
         }
         
-        // Forward to discussion if needed
         if (item.type === 'channel' && item.discussionChatId) {
             const discChatRef = doc(db, 'chats', item.discussionChatId);
             const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
@@ -609,7 +595,6 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
             });
         }
 
-        // Forward to discussion if needed
         if (item.type === 'channel' && item.discussionChatId) {
             const discChatRef = doc(db, 'chats', item.discussionChatId);
             const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
@@ -698,7 +683,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             });
         }
 
-        // Forward to discussion if needed
         if (item.type === 'channel' && item.discussionChatId) {
             const discChatRef = doc(db, 'chats', item.discussionChatId);
             const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
@@ -789,7 +773,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             });
         }
 
-        // Forward to discussion if needed
         if (item.type === 'channel' && item.discussionChatId) {
             const discChatRef = doc(db, 'chats', item.discussionChatId);
             const discMsgRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
@@ -925,8 +908,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       setEditingMessage(null);
       try {
         setIsSending(true);
-        
-        // --- Validation based on Prem ---
         if (file.size > maxFileSizeInBytes) {
             toast({ variant: 'destructive', title: t(file.type.startsWith('video/') ? 'video_too_large' : file.type.startsWith('audio/') ? 'music_too_large' : 'file_too_large', { size: maxFileSizeText }) });
             setIsSending(false);
@@ -960,8 +941,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const previewUrl = URL.createObjectURL(file);
             setFileToSend({ file, previewUrl, type: 'music' });
         } else {
-            // Generic file
-            const previewUrl = ''; // No preview for generic files
+            const previewUrl = '';
             setFileToSend({ file, previewUrl, type: 'file' });
         }
       } catch(e) {
@@ -1022,7 +1002,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
-      {/* Chat Header */}
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
@@ -1148,7 +1127,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         </div>
       </header>
 
-      {/* Message List Area */}
       <div className="relative flex-1 min-h-0">
           <div className="absolute inset-0 flex flex-col">
               {stickyDate && (
@@ -1214,7 +1192,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           </div>
       </div>
 
-      {/* Message Input */}
       {canSendMessage && (
         <footer className={cn(
             "flex-shrink-0 p-4 border-t pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
@@ -1400,7 +1377,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
     <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
 
-    {/* Image Preview Dialog */}
     <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-transparent shadow-none overflow-hidden flex items-center justify-center">
             <DialogHeader className='sr-only'><DialogTitle>Image Preview</DialogTitle></DialogHeader>
@@ -1465,7 +1441,6 @@ function ChatMessage({
     const hasGenericFile = !!message.fileName && !hasVideo && !hasMusic && !message.imageUrl;
     const fileStatus = message.fileStatus;
 
-    // Check cache on mount
     useEffect(() => {
         const checkCache = async () => {
             const cached = await getCachedFile(message.id);
