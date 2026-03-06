@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -358,6 +359,7 @@ export const translations = {
       'recovery_code_sent_desc_email': 'A password reset link has been sent to your email address.',
       'login_with_recovery_code': 'Login with Code',
       'enter_email_for_recovery': 'Enter your email address for recovery',
+      'reactions': 'Reactions',
     },
     ru: {
       'settings': 'Настройки',
@@ -782,6 +784,7 @@ export const translations = {
       'recovery_code_sent_desc_email': 'Ссылка для сброса пароля была отправлена на вашу почту.',
       'login_with_recovery_code': 'Войти по коду',
       'enter_email_for_recovery': 'Введите адрес электронной почты для восстановления',
+      'reactions': 'Реакции',
     }
   };
 

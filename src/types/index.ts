@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -56,6 +57,7 @@ export type Message = {
   readBy?: string[];
   replyTo?: ReplyInfo;
   editedAt?: Timestamp;
+  reactions?: Record<string, string[]>; // emoji -> array of user IDs
 };
 
 export type VideoChunk = {

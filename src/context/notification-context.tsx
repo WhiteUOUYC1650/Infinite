@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, type Unsubscribe } from 'firebase/firestore';
-import type { Chat, Message } from '@/types';
+import type { Chat } from '@/types';
 import { useLanguage } from './language-context';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -24,17 +25,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const appLoadedAt = useRef<number>(Date.now());
 
   useEffect(() => {
-    // Request permissions on mount
     const requestPermission = async () => {
-      if (Capacitor.isNativePlatform()) {
-        const status = await LocalNotifications.checkPermissions();
-        if (status.display !== 'granted') {
-          await LocalNotifications.requestPermissions();
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const status = await LocalNotifications.checkPermissions();
+          if (status.display !== 'granted') {
+            await LocalNotifications.requestPermissions();
+          }
+        } else if ('Notification' in window) {
+          if (Notification.permission === 'default') {
+            await Notification.requestPermission();
+          }
         }
-      } else if ('Notification' in window) {
-        if (Notification.permission === 'default') {
-          await Notification.requestPermission();
-        }
+      } catch (e) {
+        console.warn("Notification permissions request failed", e);
       }
     };
     requestPermission();
@@ -58,12 +62,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           // 2. Don't notify if this is the chat currently open
           if (chat.id === activeChatId) return;
 
-          // 3. Don't notify if we've already seen this message ID in this session
+          // 3. Don't notify if we've already seen this message ID
           if (notifiedMessageIds.current.has(lastMessage.id)) return;
 
-          // 4. Only notify for messages sent AFTER the app was loaded
+          // 4. Only notify for messages sent around or after app load
+          // We allow a small buffer (30s) for server/local clock differences
           const messageTime = lastMessage.timestamp?.toMillis() || 0;
-          if (messageTime < appLoadedAt.current) return;
+          if (messageTime < (appLoadedAt.current - 30000)) return;
 
           // Record this message as notified
           notifiedMessageIds.current.add(lastMessage.id);
@@ -82,9 +87,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       ? t('new_message_from', { name: message.senderName || 'User' })
       : `${chat.name}`;
     
-    const body = chat.type === 'dm' 
+    // Clean up content for display (remove markdown symbols if possible)
+    let body = chat.type === 'dm' 
       ? message.content 
       : `${message.senderName}: ${message.content}`;
+    
+    if (body.length > 150) body = body.substring(0, 147) + '...';
 
     if (Capacitor.isNativePlatform()) {
       try {
@@ -92,13 +100,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           notifications: [
             {
               title,
-              body: body.substring(0, 100),
+              body,
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
               sound: undefined,
               attachments: [],
               actionTypeId: "",
-              extra: null
+              extra: { chatId: chat.id }
             }
           ]
         });
@@ -106,10 +114,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         console.error("Failed to show local notification", e);
       }
     } else if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, {
-        body: body.substring(0, 100),
-        icon: '/favicon.ico', // Fallback icon
-      });
+      try {
+        new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+        });
+      } catch (e) {
+        console.error("Browser notification failed", e);
+      }
     }
   };
 

@@ -1,14 +1,15 @@
+
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2 } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -25,6 +26,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -1597,6 +1601,27 @@ function ChatMessage({
         });
     };
 
+    const handleToggleReaction = async (emoji: string) => {
+        if (!db) return;
+        const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
+        const currentReactions = message.reactions || {};
+        const voters = currentReactions[emoji] || [];
+        
+        try {
+            if (voters.includes(currentUser.uid)) {
+                await updateDoc(messageRef, {
+                    [`reactions.${emoji}`]: arrayRemove(currentUser.uid)
+                });
+            } else {
+                await updateDoc(messageRef, {
+                    [`reactions.${emoji}`]: arrayUnion(currentUser.uid)
+                });
+            }
+        } catch (e) {
+            console.error("Failed to toggle reaction", e);
+        }
+    };
+
     const handleScrollToReply = () => {
         if (message.replyTo) {
             const repliedMsgElement = document.getElementById(`message-${message.replyTo.messageId}`);
@@ -1626,7 +1651,9 @@ function ChatMessage({
     };
 
     const canDeleteMessage = (isCurrentUser && !fromBot) || (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') || (chat.type === 'group' && chat.ownerId === currentUser.uid);
-    
+    const reactionList = message.reactions ? Object.entries(message.reactions).filter(([_, voters]) => voters.length > 0) : [];
+    const commonEmojis = ['👍', '❤️', '🔥', '😂', '😮', '😢', '🙏'];
+
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
             {showAvatar ? (
@@ -1639,7 +1666,7 @@ function ChatMessage({
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64")}>
+            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col relative", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64")}>
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
@@ -1706,7 +1733,9 @@ function ChatMessage({
                         </div>
                     ) : message.imageUrl ? (
                         <div className="relative my-1 cursor-pointer group/img" onClick={() => onPreviewImage(message.imageUrl!)}>
-                            <img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} />
+                            {message.imageUrl && (
+                                <img src={message.imageUrl} alt={t('image_attachment_alt')} className="max-w-xs max-h-80 object-cover rounded-lg" onLoad={onMediaLoad} />
+                            )}
                             <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center rounded-lg">
                                 <Maximize2 className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" />
                             </div>
@@ -1726,11 +1755,61 @@ function ChatMessage({
                         </div>
                     )}
                 </div>
+                
+                {reactionList.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                        {reactionList.map(([emoji, voters]) => (
+                            <button
+                                key={emoji}
+                                onClick={() => handleToggleReaction(emoji)}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all",
+                                    voters.includes(currentUser.uid) 
+                                        ? (alignRight ? "bg-white/20 border-white/40 text-white" : "bg-primary/10 border-primary/20 text-primary")
+                                        : (alignRight ? "bg-black/10 border-white/10 text-white/80" : "bg-muted border-border text-muted-foreground")
+                                )}
+                            >
+                                <span>{emoji}</span>
+                                <span>{voters.length}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading' || message.fileStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>
-                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}>{chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}{(hasVideo || hasMusic || hasGenericFile || message.imageUrl) && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}{message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}{(isCurrentUser && !fromBot) || canDeleteMessage ? <DropdownMenuSeparator /> : null}{isCurrentUser && !fromBot && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <SmilePlus className="mr-2 h-4 w-4" />
+                                <span>{t('reactions')}</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="flex flex-wrap max-w-[120px] p-1 gap-1">
+                                {commonEmojis.map(emoji => (
+                                    <button 
+                                        key={emoji} 
+                                        className="text-xl hover:bg-muted p-1 rounded transition-colors"
+                                        onClick={() => handleToggleReaction(emoji)}
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}
+                        {(hasVideo || hasMusic || hasGenericFile || message.imageUrl) && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
+                        {message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                        {(isCurrentUser && !fromBot) || canDeleteMessage ? <DropdownMenuSeparator /> : null}
+                        {isCurrentUser && !fromBot && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
     );
