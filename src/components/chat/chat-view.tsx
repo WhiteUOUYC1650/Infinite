@@ -1580,18 +1580,31 @@ function ChatMessage({
         if (!db) return;
         const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
         const currentReactions = message.reactions || {};
-        const voters = currentReactions[emoji] || [];
         
-        try {
+        // Find if user already has a reaction
+        let alreadyMatchedEmoji: string | null = null;
+        Object.entries(currentReactions).forEach(([key, voters]) => {
             if (voters.includes(currentUser.uid)) {
-                await updateDoc(messageRef, {
-                    [`reactions.${emoji}`]: arrayRemove(currentUser.uid)
-                });
-            } else {
-                await updateDoc(messageRef, {
-                    [`reactions.${emoji}`]: arrayUnion(currentUser.uid)
-                });
+                alreadyMatchedEmoji = key;
             }
+        });
+
+        const updates: Record<string, any> = {};
+
+        // If user is clicking the same emoji they already have, just remove it
+        if (alreadyMatchedEmoji === emoji) {
+            updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
+        } else {
+            // Remove previous reaction if exists
+            if (alreadyMatchedEmoji) {
+                updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
+            }
+            // Add new reaction
+            updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
+        }
+
+        try {
+            await updateDoc(messageRef, updates);
         } catch (e) {
             console.error("Failed to toggle reaction", e);
         }
@@ -1626,8 +1639,12 @@ function ChatMessage({
     };
 
     const canDeleteMessage = (isCurrentUser && !fromBot) || (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') || (chat.type === 'group' && chat.ownerId === currentUser.uid);
-    const reactionList = message.reactions ? Object.entries(message.reactions).filter(([_, voters]) => voters.length > 0) : [];
-    const commonEmojis = ['👍', '❤️', '🔥', '😂', '😮', '😢', '🙏'];
+    const reactionEntries = message.reactions ? Object.entries(message.reactions).filter(([_, voters]) => voters.length > 0) : [];
+    const commonEmojis = [
+        '👍', '❤️', '🔥', '😂', '😮', '😢', '🙏', 
+        '👏', '🎉', '🤔', '🤩', '😡', '💩', '💯', 
+        '👀', '✅', '❌', '✨', '⚡️', '🚀', '🤝'
+    ];
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
@@ -1731,14 +1748,14 @@ function ChatMessage({
                     )}
                 </div>
                 
-                {reactionList.length > 0 && (
+                {reactionEntries.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                        {reactionList.map(([emoji, voters]) => (
+                        {reactionEntries.map(([emoji, voters]) => (
                             <button
                                 key={emoji}
                                 onClick={() => handleToggleReaction(emoji)}
                                 className={cn(
-                                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all",
+                                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all shadow-sm",
                                     voters.includes(currentUser.uid) 
                                         ? (alignRight ? "bg-white/20 border-white/40 text-white" : "bg-primary/10 border-primary/20 text-primary")
                                         : (alignRight ? "bg-black/10 border-white/10 text-white/80" : "bg-muted border-border text-muted-foreground")
@@ -1765,7 +1782,7 @@ function ChatMessage({
                                 <SmilePlus className="mr-2 h-4 w-4" />
                                 <span>{t('reactions')}</span>
                             </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="flex flex-wrap max-w-[120px] p-1 gap-1">
+                            <DropdownMenuSubContent className="flex flex-wrap max-w-[160px] p-1 gap-1">
                                 {commonEmojis.map(emoji => (
                                     <button 
                                         key={emoji} 
