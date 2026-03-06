@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -114,8 +113,8 @@ export type Call = {
   isGroupCall?: boolean;
   callType?: 'video_chat' | 'broadcast';
   participants?: CallParticipant[];
-  offer?: RTCPessionDescriptionInit;
-  answer?: RTCPessionDescriptionInit;
+  offer?: RTCSessionDescriptionInit;
+  answer?: RTCSessionDescriptionInit;
   callerCandidates?: RTCIceCandidateInit[];
   calleeCandidates?: RTCIceCandidateInit[];
 };

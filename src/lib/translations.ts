@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -814,16 +813,33 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
   if (!str) return '';
   
   const parsePart = (text: string): string => {
+    // This regex looks for {key, plural, ...} blocks
     return text.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
       const count = Number(values[key]);
       if (isNaN(count)) return match;
 
       const options: Record<string, string> = {};
-      let remaining = optionsStr;
-      const optionRegex = /(\w+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g;
-      let m;
-      while ((m = optionRegex.exec(optionsStr)) !== null) {
-        options[m[1]] = m[2];
+      
+      // Manual parsing of options to handle nested braces
+      let i = 0;
+      while (i < optionsStr.length) {
+        // Find option key (e.g., 'one', 'few', 'other')
+        const keyMatch = optionsStr.slice(i).match(/^\s*(\w+)\s*\{/);
+        if (!keyMatch) break;
+        
+        const optionKey = keyMatch[1];
+        i += keyMatch[0].length;
+        
+        // Find matching closing brace
+        let braceCount = 1;
+        let start = i;
+        while (i < optionsStr.length && braceCount > 0) {
+          if (optionsStr[i] === '{') braceCount++;
+          else if (optionsStr[i] === '}') braceCount--;
+          i++;
+        }
+        
+        options[optionKey] = optionsStr.slice(start, i - 1);
       }
 
       let category = 'other';
@@ -847,6 +863,7 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
   };
 
   let result = parsePart(str);
+  // Interpolate simple {key} values
   return result.replace(/\{(\w+)\}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });
