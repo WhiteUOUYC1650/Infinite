@@ -360,6 +360,8 @@ export const translations = {
       'login_with_recovery_code': 'Login with Code',
       'enter_email_for_recovery': 'Enter your email address for recovery',
       'reactions': 'Reactions',
+      'manage_reactions_label': 'Available Reactions',
+      'manage_reactions_desc': 'Select which emojis participants can use to react to messages.',
     },
     ru: {
       'settings': 'Настройки',
@@ -785,6 +787,8 @@ export const translations = {
       'login_with_recovery_code': 'Войти по коду',
       'enter_email_for_recovery': 'Введите адрес электронной почты для восстановления',
       'reactions': 'Реакции',
+      'manage_reactions_label': 'Доступные реакции',
+      'manage_reactions_desc': 'Выберите эмодзи, которыми участники смогут реагировать на сообщения.',
     }
   };
 

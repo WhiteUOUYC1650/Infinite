@@ -96,6 +96,7 @@ export type Chat = {
   description?: string;
   link?: string;
   discussionChatId?: string;
+  allowedReactions?: string[]; // List of allowed emojis
 };
 
 export type Call = {

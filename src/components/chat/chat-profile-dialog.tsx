@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +49,8 @@ import ReactCrop, {
 import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
+import { COMMON_EMOJIS } from './chat-view';
+import { Checkbox } from '../ui/checkbox';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -65,6 +67,7 @@ const chatEditSchema = z.object({
   description: z.string().max(200, 'Description must be 200 characters or less.').optional(),
   discussionChatId: z.string().optional(),
   avatar: z.string().optional(),
+  allowedReactions: z.array(z.string()).optional(),
 });
 
 function centerAspectCrop(
@@ -151,7 +154,6 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null | undefined>(chat.avatar);
   const [imageToCrop, setImageToCrop] = useState('');
   const [crop, setCrop] = useState<Crop>();
@@ -166,6 +168,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         description: chat.description || '',
         discussionChatId: chat.discussionChatId || '',
         avatar: chat.avatar || '',
+        allowedReactions: chat.allowedReactions || COMMON_EMOJIS,
     },
   });
 
@@ -197,6 +200,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
             description: chat.description || '',
             discussionChatId: chat.discussionChatId || '',
             avatar: chat.avatar || '',
+            allowedReactions: chat.allowedReactions || COMMON_EMOJIS,
         });
         setAvatarPreview(chat.avatar);
         setImageToCrop('');
@@ -261,6 +265,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     const dataToUpdate: { [key: string]: any } = { 
         name: values.name,
         avatar: values.avatar,
+        allowedReactions: values.allowedReactions,
     };
 
     if (chat.type === 'channel') {
@@ -375,8 +380,8 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                     <DialogHeader className="shrink-0">
                         <DialogTitle>{t('edit_chat_title')}</DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto py-4">
-                        <div className="space-y-4">
+                    <div className="flex-1 overflow-y-auto py-4 -mx-2 px-2">
+                        <div className="space-y-6">
                             <div className="flex justify-center">
                               <div className="relative">
                                 <button type="button" onClick={handleAvatarClick} className="rounded-full overflow-hidden">
@@ -456,6 +461,49 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                     )}
                                 />
                             )}
+
+                            {/* Reaction Management */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <SmilePlus className="h-4 w-4 text-muted-foreground" />
+                                    <FormLabel>{t('manage_reactions_label')}</FormLabel>
+                                </div>
+                                <div className="grid grid-cols-5 gap-2 p-3 bg-muted/30 rounded-xl border">
+                                    {COMMON_EMOJIS.map(emoji => (
+                                        <FormField
+                                            key={emoji}
+                                            control={form.control}
+                                            name="allowedReactions"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-col items-center gap-1 space-y-0">
+                                                    <FormControl>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const current = field.value || [];
+                                                                if (current.includes(emoji)) {
+                                                                    field.onChange(current.filter(e => e !== emoji));
+                                                                } else {
+                                                                    field.onChange([...current, emoji]);
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                "w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all",
+                                                                field.value?.includes(emoji) 
+                                                                    ? "bg-primary/20 border-2 border-primary" 
+                                                                    : "bg-background border border-border opacity-50 grayscale hover:opacity-100 hover:grayscale-0"
+                                                            )}
+                                                        >
+                                                            {emoji}
+                                                        </button>
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">{t('manage_reactions_desc')}</p>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter className="shrink-0 mt-auto pt-4 border-t gap-2">

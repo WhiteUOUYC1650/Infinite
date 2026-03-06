@@ -58,6 +58,11 @@ import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile } from '@/lib/cache-utils';
 
+export const COMMON_EMOJIS = [
+    '👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', 
+    '👏', '🎉', '🤔', '🤩', '😡', '💩', '💯', 
+    '👀', '✅', '❌', '✨', '⚡️', '🚀', '🤝', '🤡', '💘', '🌚'
+];
 
 function DateSeparator({ date }: { date: string }) {
   return (
@@ -203,7 +208,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const allUserIdsToFetch = useMemo(() => {
     const ids = new Set<string>(item.members || []);
-    messages?.forEach(m => ids.add(m.senderId));
+    messages?.forEach(m => {
+        ids.add(m.senderId);
+        if (m.reactions) {
+            Object.values(m.reactions).flat().forEach(uid => ids.add(uid));
+        }
+    });
     return Array.from(ids);
   }, [item.members, messages]);
 
@@ -998,7 +1008,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     setIncomingCall(null);
   };
 
-  const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
+  const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && (membersLoading || membersLoading));
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -1165,6 +1175,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                           onMediaLoad={handleMediaLoad}
                                           localMediaUrl={localMediaCache[message.id]}
                                           onPreviewImage={setPreviewImage}
+                                          memberDetails={memberDetails}
                                       />
                                   </React.Fragment>
                               );
@@ -1408,6 +1419,7 @@ function ChatMessage({
     onMediaLoad,
     localMediaUrl,
     onPreviewImage,
+    memberDetails,
 }: { 
     message: Message, 
     sender?: User, 
@@ -1422,6 +1434,7 @@ function ChatMessage({
     onMediaLoad: () => void,
     localMediaUrl?: string;
     onPreviewImage: (url: string) => void;
+    memberDetails: Record<string, User>;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -1595,7 +1608,7 @@ function ChatMessage({
         if (alreadyMatchedEmoji === emoji) {
             updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
         } else {
-            // Remove previous reaction if exists
+            // Remove previous reaction if exists from ANY emoji (ensure one reaction per user)
             if (alreadyMatchedEmoji) {
                 updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
             }
@@ -1640,11 +1653,29 @@ function ChatMessage({
 
     const canDeleteMessage = (isCurrentUser && !fromBot) || (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') || (chat.type === 'group' && chat.ownerId === currentUser.uid);
     const reactionEntries = message.reactions ? Object.entries(message.reactions).filter(([_, voters]) => voters.length > 0) : [];
-    const commonEmojis = [
-        '👍', '❤️', '🔥', '😂', '😮', '😢', '🙏', 
-        '👏', '🎉', '🤔', '🤩', '😡', '💩', '💯', 
-        '👀', '✅', '❌', '✨', '⚡️', '🚀', '🤝'
-    ];
+    
+    const allowedReactions = chat.allowedReactions || COMMON_EMOJIS;
+
+    const renderReactionContent = (voters: string[]) => {
+        if (chatType === 'channel') return <span>{voters.length}</span>;
+        
+        if (chatType === 'dm' || (chatType === 'group' && voters.length <= 3)) {
+            return (
+                <div className="flex -space-x-1.5 overflow-hidden">
+                    {voters.map(uid => {
+                        const user = memberDetails[uid];
+                        return (
+                            <Avatar key={uid} className="w-4 h-4 border-2 border-background">
+                                <AvatarImage src={user?.avatar} />
+                                <AvatarFallback className="text-[6px]">{user?.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        )
+                    })}
+                </div>
+            )
+        }
+        return <span>{voters.length}</span>;
+    };
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
@@ -1762,7 +1793,7 @@ function ChatMessage({
                                 )}
                             >
                                 <span>{emoji}</span>
-                                <span>{voters.length}</span>
+                                {renderReactionContent(voters)}
                             </button>
                         ))}
                     </div>
@@ -1783,7 +1814,7 @@ function ChatMessage({
                                 <span>{t('reactions')}</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuSubContent className="flex flex-wrap max-w-[160px] p-1 gap-1">
-                                {commonEmojis.map(emoji => (
+                                {allowedReactions.map(emoji => (
                                     <button 
                                         key={emoji} 
                                         className="text-xl hover:bg-muted p-1 rounded transition-colors"
