@@ -362,6 +362,14 @@ export const translations = {
       'reactions': 'Reactions',
       'manage_reactions_label': 'Available Reactions',
       'manage_reactions_desc': 'Select which emojis participants can use to react to messages.',
+      'start_video_chat': 'Start Video Chat',
+      'start_broadcast': 'Start Broadcast',
+      'join_call': 'Join',
+      'broadcast_live': 'LIVE',
+      'video_chat_live': 'Video Chat Live',
+      'video_chat_title': 'Video Chat',
+      'broadcast_title': 'Broadcast',
+      'participants': 'Participants',
     },
     ru: {
       'settings': 'Настройки',
@@ -789,6 +797,14 @@ export const translations = {
       'reactions': 'Реакции',
       'manage_reactions_label': 'Доступные реакции',
       'manage_reactions_desc': 'Выберите эмодзи, которыми участники смогут реагировать на сообщения.',
+      'start_video_chat': 'Видеочат',
+      'start_broadcast': 'Трансляция',
+      'join_call': 'Присоединиться',
+      'broadcast_live': 'ПРЯМОЙ ЭФИР',
+      'video_chat_live': 'Идет видеочат',
+      'video_chat_title': 'Видеочат',
+      'broadcast_title': 'Трансляция',
+      'participants': 'Участники',
     }
   };
 

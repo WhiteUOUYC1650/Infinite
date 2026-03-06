@@ -30,7 +30,8 @@ service cloud.firestore {
     }
     
     match /calls/{callId} {
-      allow read, write: if isSignedIn() && request.auth.uid in callId.split('_');
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /users/{userId} {

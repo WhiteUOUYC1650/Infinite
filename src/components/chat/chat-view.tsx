@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
 import { CallDialog } from './call-dialog';
+import { GroupCallDialog } from './group-call-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,6 +158,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
 
+  const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
+  const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
+
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
@@ -181,6 +185,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!item?.members) return false;
     return item.members.includes(currentUser.uid);
   }, [item?.members, currentUser.uid]);
+
+  const isOwner = item.ownerId === currentUser.uid;
+
+  // Listen for group calls/broadcasts
+  useEffect(() => {
+    if (!db || item.type === 'dm' || !isMember) return;
+    const callRef = doc(db, 'calls', item.id);
+    const unsubscribe = onSnapshot(callRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as Call;
+        if (data.status === 'active') {
+          setActiveGroupCall(data);
+        } else {
+          setActiveGroupCall(null);
+        }
+      } else {
+        setActiveGroupCall(null);
+      }
+    });
+    return () => unsubscribe();
+  }, [db, item.id, item.type, isMember]);
 
   useEffect(() => {
     if (!db || item.type !== 'dm' || !isMember || !item.id.includes('_')) return; 
@@ -986,6 +1011,28 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     }
   };
 
+  const handleStartGroupCall = async () => {
+    if (!db || !isOwner) return;
+    try {
+      const callRef = doc(db, 'calls', item.id);
+      await setDoc(callRef, {
+        callerId: currentUser.uid,
+        status: 'active',
+        isGroupCall: true,
+        callType: item.type === 'channel' ? 'broadcast' : 'video_chat',
+        participants: [{
+          uid: currentUser.uid,
+          name: currentUser.name || currentUser.username,
+          avatar: currentUser.avatar,
+          joinedAt: Timestamp.now()
+        }]
+      });
+      setShowGroupCallDialog(true);
+    } catch (e) {
+      console.error("Failed to start group call", e);
+    }
+  };
+
   const handleAcceptCall = async () => {
     if (!db || !incomingCall) return;
     try {
@@ -1089,6 +1136,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 </Button>
               </>
             )}
+            {(item.type === 'group' || item.type === 'channel') && isOwner && (
+              <Button variant="ghost" size="icon" onClick={handleStartGroupCall} title={item.type === 'channel' ? t('start_broadcast') : t('start_video_chat')}>
+                <Radio className={cn("h-5 w-5", activeGroupCall && "text-red-500 animate-pulse")} />
+              </Button>
+            )}
             {item.type === 'channel' && item.discussionChatId && (
                 <Button variant="ghost" size="icon" onClick={() => handleJoinDiscussion(item.discussionChatId!)} title={t('join_discussion_button')}>
                     <Users className="h-5 w-5" />
@@ -1139,6 +1191,19 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
       <div className="relative flex-1 min-h-0">
           <div className="absolute inset-0 flex flex-col">
+              {activeGroupCall && (
+                <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-sm font-bold text-primary">
+                      {activeGroupCall.callType === 'broadcast' ? t('broadcast_live') : t('video_chat_live')}
+                    </span>
+                  </div>
+                  <Button size="sm" className="h-8 rounded-full font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>
+                    {t('join_call')}
+                  </Button>
+                </div>
+              )}
               {stickyDate && (
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex-shrink-0 flex justify-center py-2 pointer-events-none">
                       <Badge variant="secondary">{stickyDate}</Badge>
@@ -1370,6 +1435,14 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         currentUser={currentUser}
         isCaller={isCaller}
     />}
+
+    <GroupCallDialog 
+      open={showGroupCallDialog}
+      onOpenChange={setShowGroupCallDialog}
+      chat={item}
+      currentUser={currentUser}
+      isOwner={isOwner}
+    />
 
     <AlertDialog open={!!incomingCall}>
         <AlertDialogContent>

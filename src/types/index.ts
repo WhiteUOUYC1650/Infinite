@@ -99,13 +99,23 @@ export type Chat = {
   allowedReactions?: string[]; // List of allowed emojis
 };
 
+export type CallParticipant = {
+  uid: string;
+  name: string;
+  avatar?: string;
+  joinedAt: Timestamp;
+};
+
 export type Call = {
   id: string;
   callerId: string;
-  calleeId: string;
+  calleeId?: string; // Optional for group calls
   status: 'calling' | 'active' | 'ended';
-  offer?: RTCSessionDescriptionInit;
-  answer?: RTCSessionDescriptionInit;
+  isGroupCall?: boolean;
+  callType?: 'video_chat' | 'broadcast';
+  participants?: CallParticipant[];
+  offer?: RTCPessionDescriptionInit;
+  answer?: RTCPessionDescriptionInit;
   callerCandidates?: RTCIceCandidateInit[];
   calleeCandidates?: RTCIceCandidateInit[];
 };
