@@ -1020,7 +1020,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         participants: [{
           uid: currentUser.uid,
           name: currentUser.name || currentUser.username,
-          avatar: currentUser.avatar,
+          avatar: currentUser.avatar || '',
           joinedAt: Timestamp.now()
         }]
       });
@@ -1665,7 +1665,6 @@ function ChatMessage({
         const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
         const currentReactions = message.reactions || {};
         
-        // Find if user already has a reaction
         let alreadyMatchedEmoji: string | null = null;
         Object.entries(currentReactions).forEach(([key, voters]) => {
             if (voters.includes(currentUser.uid)) {
@@ -1675,15 +1674,12 @@ function ChatMessage({
 
         const updates: Record<string, any> = {};
 
-        // If user is clicking the same emoji they already have, just remove it
         if (alreadyMatchedEmoji === emoji) {
             updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
         } else {
-            // Remove previous reaction if exists from ANY emoji (ensure one reaction per user)
             if (alreadyMatchedEmoji) {
                 updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
             }
-            // Add new reaction
             updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
         }
 

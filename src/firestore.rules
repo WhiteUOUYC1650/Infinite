@@ -14,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
-    // Правила для версии приложения
+    // Приложение и версия
     match /info/ver {
       allow get: if true;
       allow write: if false;
@@ -25,26 +25,26 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Глобальный поиск сообщений для админа
+    // Сообщения для админки
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
     
-    // Звонки (личные и групповые)
+    // Звонки (Личные и Групповые)
     match /calls/{callId} {
       allow read, write: if isSignedIn();
     }
 
     // Пользователи
     match /users/{userId} {
-      allow read: if true; 
-      allow list: if true; 
+      allow read: if isSignedIn() || true; // true для поиска по email при восстановлении
+      allow list: if isSignedIn(); 
       allow create: if isOwner(userId);
       allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled']));
       allow delete: if isOwner(userId) || isAdmin();
 
       match /private/security {
-        allow get, write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'botCodeTimestamp']));
+        allow read, write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'botCodeTimestamp']));
       }
     }
 
@@ -75,7 +75,7 @@ service cloud.firestore {
       }
     }
     
-    // Видео (InfVid)
+    // InfVid (Видео)
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
@@ -102,7 +102,7 @@ service cloud.firestore {
       allow create, read: if isSignedIn();
     }
     
-    // Ссылки
+    // Публичные ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;
