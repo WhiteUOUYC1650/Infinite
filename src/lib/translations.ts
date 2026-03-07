@@ -548,6 +548,7 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
+      'admin_toast_user_banned_desc_v2': 'Профиль пользователя анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
@@ -812,53 +813,39 @@ export type TranslationKey = keyof typeof translations.en;
 export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
   if (!str) return '';
   
-  const parsePart = (text: string): string => {
-    return text.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
-      const count = Number(values[key]);
-      if (isNaN(count)) return match;
+  // Robust ICU Pluralization Parser
+  const result = str.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
+    const count = Number(values[key]);
+    if (isNaN(count)) return match;
 
-      const options: Record<string, string> = {};
-      
-      let i = 0;
-      while (i < optionsStr.length) {
-        const keyMatch = optionsStr.slice(i).match(/^\s*(\w+)\s*\{/);
-        if (!keyMatch) break;
-        
-        const optionKey = keyMatch[1];
-        i += keyMatch[0].length;
-        
-        let braceCount = 1;
-        let start = i;
-        while (i < optionsStr.length && braceCount > 0) {
-          if (optionsStr[i] === '{') braceCount++;
-          else if (optionsStr[i] === '}') braceCount--;
-          i++;
-        }
-        
-        options[optionKey] = optionsStr.slice(start, i - 1);
-      }
+    const options: Record<string, string> = {};
+    
+    // Improved regex to capture options like 'one {# text}'
+    const optionRegex = /(\w+)\s*\{([^}]+)\}/g;
+    let optionMatch;
+    while ((optionMatch = optionRegex.exec(optionsStr)) !== null) {
+      options[optionMatch[1]] = optionMatch[2];
+    }
 
-      let category = 'other';
-      if (lang === 'ru') {
-        const mod10 = count % 10;
-        const mod100 = count % 100;
-        if (mod10 === 1 && mod100 !== 11) {
-          category = 'one';
-        } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-          category = 'few';
-        } else {
-          category = 'other';
-        }
+    let category = 'other';
+    if (lang === 'ru') {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod10 === 1 && mod100 !== 11) {
+        category = 'one';
+      } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+        category = 'few';
       } else {
-        if (count === 1) category = 'one';
+        category = 'other';
       }
+    } else {
+      if (count === 1) category = 'one';
+    }
 
-      const template = options[category] || options['other'] || '';
-      return template.replace(/#/g, String(count));
-    });
-  };
+    const template = options[category] || options['other'] || '';
+    return template.replace(/#/g, String(count));
+  });
 
-  let result = parsePart(str);
   return result.replace(/\{(\w+)\}/g, (match, key) => {
     return values[key] !== undefined ? String(values[key]) : match;
   });

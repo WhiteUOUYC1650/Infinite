@@ -134,6 +134,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { t } = useLanguage();
   const { toast } = useToast();
   const { theme: colorTheme, sendOnEnter } = useTheme();
+  const { promptUpdate } = useUpdatePrompt();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -1207,7 +1208,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
