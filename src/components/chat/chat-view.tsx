@@ -1356,7 +1356,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
               }}
               disabled={isSending}
             />
-             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+             <input type="file" opt-ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Popover>
                     <PopoverTrigger asChild>
@@ -1871,7 +1871,7 @@ function ChatMessage({
             </div>
 
             <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>

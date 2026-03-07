@@ -737,8 +737,6 @@ export const translations = {
       'i_agree_legal': 'Я принимаю Условия использования и Политику конфиденциальности',
       'scroll_to_bottom_hint': 'Пожалуйста, пролистайте до конца, чтобы продолжить.',
       'legal_accept_error': 'Вы должны принять условия, чтобы продолжить.',
-      'rustore_development': 'Премиум-статусы в разработке...',
-      'rustore_note': 'Все премиум-функции скоро станут доступны за InfGold. Следите за обновлениями!',
       'ai_summary': 'ИИ-Пересказ',
       'ai_summary_cost': 'Пересказать (10 InfGold)',
       'ai_summary_loading': 'ИИ анализирует чат...',
@@ -819,7 +817,7 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
 
     const options: Record<string, string> = {};
     
-    // Improved regex to capture options like 'one {# text}'
+    // Regex to capture options like 'one {# text}'
     const optionRegex = /(\w+)\s*\{([^}]+)\}/g;
     let optionMatch;
     while ((optionMatch = optionRegex.exec(optionsStr)) !== null) {
