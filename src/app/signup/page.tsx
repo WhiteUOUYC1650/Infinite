@@ -84,7 +84,7 @@ export default function SignUpPage() {
         transaction.set(userDocRef, {
           name: isBotUser ? 'Infinite' : usernameWithAt,
           username: usernameWithAt,
-          email: values.email,
+          email: values.email, // Store email for recovery lookup
           status: 'online',
           statusMessage: isBotUser 
             ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!'

@@ -37,17 +37,17 @@ service cloud.firestore {
 
     // Пользователи
     match /users/{userId} {
-      // Разрешаем чтение для поиска по email и авторизованным
+      // Разрешаем чтение (в т.ч. поиск по email для восстановления)
       allow read: if true; 
-      allow list: if isSignedIn(); 
+      allow list: if true; 
       allow create: if isOwner(userId);
       allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled']));
       allow delete: if isOwner(userId) || isAdmin();
 
       match /private/security {
-        // Разрешаем обновление временного кода бота даже без полной авторизации для восстановления
+        // Разрешаем запись временного кода бота даже без полной авторизации
         allow get: if isOwner(userId);
-        allow write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'botCodeTimestamp']));
+        allow write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'tempBotCodeTimestamp']));
       }
     }
 
@@ -69,7 +69,7 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        // Разрешаем создание сообщений авторизованным
+        // Разрешаем создание сообщений (в т.ч. пересылку каналом или ботом)
         allow create: if isSignedIn() || (request.resource.data.senderId != null); 
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
@@ -95,15 +95,15 @@ service cloud.firestore {
     
     // Чанки файлов
     match /videoChunks/{chunkId} {
-      allow create, read: if isSignedIn();
+      allow create, read: if true;
     }
 
     match /musicChunks/{chunkId} {
-      allow create, read: if isSignedIn();
+      allow create, read: if true;
     }
 
     match /fileChunks/{chunkId} {
-      allow create, read: if isSignedIn();
+      allow create, read: if true;
     }
     
     // Публичные ссылки

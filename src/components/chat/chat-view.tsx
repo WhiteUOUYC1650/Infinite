@@ -1028,7 +1028,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       setShowGroupCallDialog(true);
     } catch (e) {
       console.error("Failed to start group call", e);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to start call. Check rules.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to start call.' });
     }
   };
 

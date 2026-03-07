@@ -548,7 +548,6 @@ export const translations = {
       'admin_toast_user_banned_title': 'Пользователь заблокирован',
       'admin_toast_user_banned_desc': 'Профиль {name} ({username}) был анонимизирован.',
       'admin_toast_user_banned_desc_plain': 'Профиль был анонимизирован.',
-      'admin_toast_user_banned_desc_v2': 'Профиль пользователя анонимизирован.',
       'admin_toast_ban_user_error_desc': 'Не удалось заблокировать пользователя.',
       'color_theme': 'Цветовая тема',
       'orange': 'Оранжевый',
