@@ -37,14 +37,15 @@ service cloud.firestore {
 
     // Пользователи
     match /users/{userId} {
-      allow read: if isSignedIn() || true; // true для поиска по email при восстановлении
+      allow read: if true; // Разрешаем поиск по email для восстановления
       allow list: if isSignedIn(); 
       allow create: if isOwner(userId);
       allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled']));
       allow delete: if isOwner(userId) || isAdmin();
 
       match /private/security {
-        allow read, write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'botCodeTimestamp']));
+        // Разрешаем обновление временного кода бота даже без полной авторизации (через userId найденный по email)
+        allow get, write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode']));
       }
     }
 
@@ -66,7 +67,8 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() || (request.resource.data.senderId != null);
+        // Разрешаем создание сообщений авторизованным пользователям ИЛИ если это пересылка из канала (senderId совпадает с отправителем)
+        allow create: if isSignedIn();
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy'])

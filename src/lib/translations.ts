@@ -672,7 +672,7 @@ export const translations = {
       'get_daily_bonus': 'Получите свой ежедневный бонус',
       'spin_the_wheel': 'Крутить колесо',
       'spinning': 'Вращение...',
-      'bonus_claimed_today': 'Бонус на сегодня уже получен.',
+      'bonus_claimed_today': 'Bonus already claimed today.',
       'come_back_tomorrow': 'Возвращайтесь завтра!',
       'you_won': 'Вы выиграли!',
       'monthly': 'Ежемесячно',
