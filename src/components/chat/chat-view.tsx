@@ -1356,7 +1356,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
               }}
               disabled={isSending}
             />
-             <input type="file" opt-ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <Popover>
                     <PopoverTrigger asChild>
