@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Loader2 } from 'lucide-react';
@@ -30,6 +30,17 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
 
   const isBroadcast = chat.type === 'channel';
   const canStream = isOwner || !isBroadcast;
+
+  // Fix: Filter unique participants by UID to prevent React key errors
+  const uniqueParticipants = useMemo(() => {
+    if (!callData?.participants) return [];
+    const seen = new Set();
+    return callData.participants.filter(p => {
+      if (!p.uid || seen.has(p.uid)) return false;
+      seen.add(p.uid);
+      return true;
+    });
+  }, [callData?.participants]);
 
   useEffect(() => {
     if (!open || !db) return;
@@ -79,7 +90,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
         participants: arrayRemove(participant)
       }).catch(() => {});
     };
-  }, [open, db, chat.id, currentUser.uid, isOwner]);
+  }, [open, db, chat.id, currentUser.uid, isOwner, canStream]);
 
   const handleEndSession = async () => {
     if (!db) return;
@@ -117,7 +128,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
                 <DialogTitle className="text-white text-xl font-headline">{isBroadcast ? t('broadcast_title') : t('video_chat_title')}</DialogTitle>
                 <p className="text-white/60 text-xs flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  {t('participants')}: {callData?.participants?.length || 0}
+                  {t('participants')}: {uniqueParticipants.length}
                 </p>
               </div>
             </div>
@@ -150,15 +161,15 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
           )}
 
           <div className="absolute bottom-20 left-6 flex flex-wrap gap-2 max-w-[200px]">
-            {callData?.participants?.slice(0, 5).map(p => (
+            {uniqueParticipants.slice(0, 5).map(p => (
               <Avatar key={p.uid} className="w-8 h-8 border-2 border-black">
                 <AvatarImage src={p.avatar} />
                 <AvatarFallback className="text-[10px]">{p.name.charAt(0)}</AvatarFallback>
               </Avatar>
             ))}
-            {callData?.participants && callData.participants.length > 5 && (
+            {uniqueParticipants.length > 5 && (
               <div className="w-8 h-8 rounded-full bg-zinc-800 border-2 border-black flex items-center justify-center text-[10px] font-bold">
-                +{callData.participants.length - 5}
+                +{uniqueParticipants.length - 5}
               </div>
             )}
           </div>
