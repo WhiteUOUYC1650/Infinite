@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -111,6 +112,7 @@ export type Call = {
   calleeId?: string; // Optional for group calls
   status: 'calling' | 'active' | 'ended';
   isGroupCall?: boolean;
+  isVideo?: boolean; // New: indicates if it's a video call
   callType?: 'video_chat' | 'broadcast';
   participants?: CallParticipant[];
   offer?: RTCSessionDescriptionInit;

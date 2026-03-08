@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -154,6 +155,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [isCaller, setIsCaller] = useState(false);
+  const [callIsVideo, setCallIsVideo] = useState(false);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
 
@@ -996,15 +998,16 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     }
   };
 
-  const handleInitiateCall = async () => {
+  const handleInitiateCall = async (video: boolean) => {
     if (item.type !== 'dm' || item.id === currentUser.uid) return;
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
         stream.getTracks().forEach(track => track.stop());
         setIsCaller(true);
+        setCallIsVideo(video);
         setShowCallDialog(true);
     } catch(e) {
-        console.error("Mic permission error", e);
+        console.error("Call permission error", e);
         toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc')})
     }
   };
@@ -1035,13 +1038,14 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   const handleAcceptCall = async () => {
     if (!db || !incomingCall) return;
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !!incomingCall.isVideo });
         stream.getTracks().forEach(track => track.stop());
         setIsCaller(false);
+        setCallIsVideo(!!incomingCall.isVideo);
         setShowCallDialog(true);
         setIncomingCall(null);
     } catch(e) {
-        console.error("Mic permission error", e);
+        console.error("Call permission error", e);
         toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc')})
         handleDeclineCall();
     }
@@ -1127,10 +1131,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         <div className="flex items-center gap-1 ml-2 shrink-0">
             {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
               <>
-                <Button variant="ghost" size="icon" onClick={handleInitiateCall} title={t('audio_call')}>
+                <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)} title={t('audio_call')}>
                   <Phone className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={promptUpdate} title={t('video_call')}>
+                <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(true)} title={t('video_call')}>
                   <Video className="h-5 w-5" />
                 </Button>
               </>
@@ -1433,6 +1437,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         otherUser={otherUser}
         currentUser={currentUser}
         isCaller={isCaller}
+        isVideo={callIsVideo}
     />}
 
     <GroupCallDialog 
