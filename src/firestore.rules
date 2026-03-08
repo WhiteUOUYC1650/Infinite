@@ -37,7 +37,7 @@ service cloud.firestore {
 
     // User Profiles
     match /users/{userId} {
-      // Allow read/list for account recovery via email search
+      // Allow read/list for account recovery via email search (publicly accessible for lookup)
       allow read: if true; 
       allow list: if true; 
       allow create: if isOwner(userId);
@@ -69,7 +69,7 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        // Allow creating messages (including system forwards)
+        // Allow creating messages (including system forwards from channel to discussion)
         allow create: if isSignedIn() || (request.resource.data.senderId != null); 
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
@@ -93,18 +93,10 @@ service cloud.firestore {
       }
     }
     
-    // File/Video/Music Chunks
-    match /videoChunks/{chunkId} {
-      allow create, read: if true;
-    }
-
-    match /musicChunks/{chunkId} {
-      allow create, read: if true;
-    }
-
-    match /fileChunks/{chunkId} {
-      allow create, read: if true;
-    }
+    // File/Video/Music Chunks (Universal read/create for assembly)
+    match /videoChunks/{chunkId} { allow create, read: if true; }
+    match /musicChunks/{chunkId} { allow create, read: if true; }
+    match /fileChunks/{chunkId} { allow create, read: if true; }
     
     // Links registry
     match /chatLinks/{linkId} {
