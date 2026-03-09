@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Loader2, Radio } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, Timestamp } from 'firebase/firestore';
 import type { PopulatedChat, AuthenticatedUser, CallParticipant, Call } from '@/types';
@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface GroupCallDialogProps {
   open: boolean;
@@ -110,15 +111,12 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
       if (isOwner) {
         await updateDoc(callRef, { status: 'ended', participants: [] });
       } else {
-        const participant: CallParticipant = {
-          uid: currentUser.uid,
-          name: currentUser.name || currentUser.username || 'User',
-          avatar: currentUser.avatar || '',
-          joinedAt: Timestamp.now(), // dummy for matching
-        };
-        await updateDoc(callRef, {
-          participants: arrayRemove(participant)
-        });
+        const participant = callData?.participants?.find(p => p.uid === currentUser.uid);
+        if (participant) {
+            await updateDoc(callRef, {
+                participants: arrayRemove(participant)
+            });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -142,89 +140,120 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden bg-black text-white border-none rounded-3xl animate-in zoom-in duration-300">
-        <DialogHeader className="p-6 shrink-0 bg-gradient-to-b from-black/80 to-transparent z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center animate-pulse">
-                <span className="text-[10px] font-black">{t('broadcast_live')}</span>
-              </div>
-              <div>
-                <DialogTitle className="text-white text-xl font-headline">{isBroadcast ? t('broadcast_title') : t('video_chat_title')}</DialogTitle>
-                <p className="text-white/60 text-xs flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {t('participants')}: {uniqueParticipants.length}
-                </p>
-              </div>
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden bg-[#0F0F0F] text-white border-none rounded-3xl animate-in zoom-in duration-300">
+        {/* Header */}
+        <div className="h-16 flex items-center justify-between px-6 bg-zinc-900/50 border-b border-white/5 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center text-red-500 animate-pulse">
+              <Radio className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg font-headline leading-none">
+                {isBroadcast ? t('broadcast_title') : t('video_chat_title')}
+              </h2>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1 font-bold">
+                {isBroadcast ? t('broadcast_live') : t('video_chat_live')}
+              </p>
             </div>
           </div>
-        </DialogHeader>
-
-        <div className="flex-1 relative flex items-center justify-center bg-zinc-900">
-          {canStream ? (
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className={cn("w-full h-full object-cover", isVideoOff && "hidden")} 
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-white/80 font-bold">{t('connecting')}...</p>
-            </div>
-          )}
-          
-          {(isVideoOff || !canStream) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
-              <Avatar className="w-32 h-32 text-4xl">
-                <AvatarImage src={currentUser.avatar} />
-                <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
-              </Avatar>
-            </div>
-          )}
-
-          <div className="absolute bottom-20 left-6 flex flex-wrap gap-2 max-w-[200px] z-20">
-            {uniqueParticipants.slice(0, 5).map(p => (
-              <Avatar key={p.uid} className="w-8 h-8 border-2 border-black">
-                <AvatarImage src={p.avatar} />
-                <AvatarFallback className="text-[10px]">{p.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-            ))}
-            {uniqueParticipants.length > 5 && (
-              <div className="w-8 h-8 rounded-full bg-zinc-800 border-2 border-black flex items-center justify-center text-[10px] font-bold">
-                +{uniqueParticipants.length - 5}
-              </div>
-            )}
+          <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+            <Users className="w-4 h-4 text-white/60" />
+            <span className="text-sm font-bold">{uniqueParticipants.length}</span>
           </div>
         </div>
 
-        <DialogFooter className="p-6 shrink-0 bg-gradient-to-t from-black/80 to-transparent z-10 flex-row justify-center gap-4">
+        {/* Main Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Video Stream (Left) */}
+          <div className="flex-1 relative bg-black flex items-center justify-center p-4">
+            <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/5">
+              {canStream ? (
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className={cn("w-full h-full object-cover", isVideoOff && "hidden")} 
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-zinc-900">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <p className="text-white/40 font-bold uppercase tracking-widest text-xs">{t('connecting')}...</p>
+                </div>
+              )}
+              
+              {(isVideoOff || !canStream) && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
+                    <Avatar className="w-32 h-32 text-4xl border-4 border-white/10 relative z-10">
+                      <AvatarImage src={currentUser.avatar} />
+                      <AvatarFallback className="bg-zinc-800 text-white">{currentUser.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Participants Sidebar (Right) */}
+          <div className="w-72 hidden md:flex flex-col bg-zinc-900/30 border-l border-white/5 shrink-0">
+            <div className="p-4 border-b border-white/5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-white/40">{t('participants')}</h3>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-1">
+                {uniqueParticipants.map(p => (
+                  <div key={p.uid} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group">
+                    <Avatar className="w-10 h-10 border border-white/10">
+                      <AvatarImage src={p.avatar} />
+                      <AvatarFallback className="bg-zinc-800 text-xs">{p.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate">{p.name}</p>
+                      <p className="text-[10px] text-white/40 truncate">
+                        {p.uid === currentUser.uid ? t('you_message_preview') : (isBroadcast ? 'Слушатель' : 'Участник')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+
+        {/* Footer Controls */}
+        <div className="h-24 shrink-0 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center gap-6 px-6">
           {canStream && (
-            <>
+            <div className="flex items-center gap-4 bg-zinc-900/80 backdrop-blur-xl p-2 rounded-3xl border border-white/10">
               <Button 
-                variant={isMuted ? "destructive" : "secondary"} 
+                variant={isMuted ? "destructive" : "ghost"} 
                 size="icon" 
-                className="w-14 h-14 rounded-full" 
+                className="w-12 h-12 rounded-2xl transition-all hover:scale-105" 
                 onClick={toggleMic}
               >
-                {isMuted ? <MicOff /> : <Mic />}
+                {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </Button>
               <Button 
-                variant={isVideoOff ? "destructive" : "secondary"} 
+                variant={isVideoOff ? "destructive" : "ghost"} 
                 size="icon" 
-                className="w-14 h-14 rounded-full" 
+                className="w-12 h-12 rounded-2xl transition-all hover:scale-105" 
                 onClick={toggleVideo}
               >
-                {isVideoOff ? <VideoOff /> : <Video />}
+                {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
               </Button>
-            </>
+            </div>
           )}
-          <Button variant="destructive" size="icon" className="w-14 h-14 rounded-full shadow-lg" onClick={handleEndSession}>
-            <PhoneOff />
+          
+          <Button 
+            variant="destructive" 
+            className="h-14 px-8 rounded-2xl shadow-2xl shadow-red-600/20 font-bold gap-3 transition-all hover:scale-105" 
+            onClick={handleEndSession}
+          >
+            <PhoneOff className="w-5 h-5" />
+            <span>{isOwner ? t('delete') : t('leave')}</span>
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
