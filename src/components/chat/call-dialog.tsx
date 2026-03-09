@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -14,6 +13,8 @@ import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { useLanguage } from '@/context/language-context';
 import { useTheme } from '@/context/theme-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { format } from 'date-fns';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 function DraggableCallBubble({ onClick, isVideo, remoteStream }: { onClick: () => void, isVideo: boolean, remoteStream: MediaStream | null }) {
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -81,7 +82,7 @@ function DraggableCallBubble({ onClick, isVideo, remoteStream }: { onClick: () =
       onMouseDown={onMouseDown}
       onClick={() => !dragInfo.current.didMove && onClick()}
       className={cn(
-        "fixed z-[100] cursor-pointer rounded-2xl shadow-2xl backdrop-blur-sm transition-all hover:scale-105 overflow-hidden",
+        "fixed z-[100] cursor-pointer rounded-2xl shadow-2xl backdrop-blur-sm transition-all hover:scale-105 overflow-hidden border border-white/20",
         isVideo ? "w-32 aspect-[9/16] bg-black" : "h-16 w-16 bg-green-500/90 flex items-center justify-center"
       )}
       style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
@@ -275,7 +276,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     <>
         <Dialog open={open && !isMinimized}>
           <DialogContent 
-            className={cn("max-w-md p-0 overflow-hidden bg-black text-white border-none transition-all duration-500", isVideo && "h-[80vh] rounded-3xl")} 
+            className={cn("max-w-md h-[80vh] p-0 overflow-hidden bg-black text-white border-none rounded-3xl animate-in zoom-in duration-300")} 
             hideCloseButton
             onPointerDownOutside={(e) => minimizeCallOnClose && (e.preventDefault(), setIsMinimized(true))}
           >
@@ -298,7 +299,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                   <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", isVideoOff && "hidden")} />
                   {isVideoOff && (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Avatar><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar>
+                      <Avatar className='w-16 h-16'><AvatarFallback className='bg-muted text-foreground'>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar>
                     </div>
                   )}
                 </div>
@@ -310,30 +311,30 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                   <Button variant={isVideoOff ? "destructive" : "secondary"} size="icon" className="w-16 h-16 rounded-full" onClick={toggleVideo}>
                     {isVideoOff ? <VideoOff /> : <VideoIcon />}
                   </Button>
-                  <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full" onClick={() => endCallLocally(true)}>
+                  <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full shadow-lg" onClick={() => endCallLocally(true)}>
                     <PhoneOff />
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center space-y-8">
+              <div className="p-8 text-center space-y-8 flex flex-col items-center justify-center h-full">
                 <DialogHeader className="items-center">
-                  <UserAvatarWithStatus user={otherUser!} className="w-24 h-24 text-4xl" />
-                  <div className="space-y-1">
-                    <DialogTitle className="text-2xl">{otherUser?.name}</DialogTitle>
-                    <DialogDescription className="text-white/60">
+                  <UserAvatarWithStatus user={otherUser!} className="w-32 h-32 text-4xl" />
+                  <div className="space-y-1 mt-4">
+                    <DialogTitle className="text-3xl font-bold">{otherUser?.name}</DialogTitle>
+                    <DialogDescription className="text-white/60 text-lg">
                       {callStatus === 'connecting' && t('connecting')}
                       {callStatus === 'connected' && format(new Date(duration * 1000), 'mm:ss')}
                       {callStatus === 'ended' && t('call_ended')}
                     </DialogDescription>
                   </div>
                 </DialogHeader>
-                <DialogFooter className="flex-row justify-center gap-4">
-                  <Button variant={isMuted ? "default" : "secondary"} size="icon" className="w-16 h-16 rounded-full" onClick={toggleMute}>
-                    {isMuted ? <MicOff /> : <Mic />}
+                <DialogFooter className="flex-row justify-center gap-6">
+                  <Button variant={isMuted ? "destructive" : "secondary"} size="icon" className="w-20 h-20 rounded-full" onClick={toggleMute}>
+                    {isMuted ? <MicOff className='h-8 w-8' /> : <Mic className='h-8 w-8' />}
                   </Button>
-                  <Button variant="destructive" size="icon" className="w-16 h-16 rounded-full" onClick={() => endCallLocally(true)}>
-                    <PhoneOff />
+                  <Button variant="destructive" size="icon" className="w-20 h-20 rounded-full shadow-xl" onClick={() => endCallLocally(true)}>
+                    <PhoneOff className='h-8 w-8' />
                   </Button>
                 </DialogFooter>
               </div>

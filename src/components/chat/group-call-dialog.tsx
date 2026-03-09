@@ -10,6 +10,7 @@ import type { PopulatedChat, AuthenticatedUser, CallParticipant, Call } from '@/
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface GroupCallDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ interface GroupCallDialogProps {
 export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner }: GroupCallDialogProps) {
   const db = useFirestore();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [callData, setCallData] = useState<Call | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -31,7 +33,6 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
   const isBroadcast = chat.type === 'channel';
   const canStream = isOwner || !isBroadcast;
 
-  // Fix: Filter unique participants by UID to prevent React key errors
   const uniqueParticipants = useMemo(() => {
     if (!callData?.participants) return [];
     const seen = new Set();
@@ -51,23 +52,31 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
         const data = snapshot.data() as Call;
         setCallData(data);
         if (data.status === 'ended') {
-          handleEndSession();
+          onOpenChange(false);
         }
       } else if (!isOwner) {
         onOpenChange(false);
       }
     });
 
-    if (canStream) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
+    const setupMedia = async () => {
+      if (canStream) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           setLocalStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
-        })
-        .catch(err => {
+        } catch (err) {
           console.error("Group call media error:", err);
-        });
-    }
+          toast({
+            variant: 'destructive',
+            title: t('microphone_error_title'),
+            description: t('microphone_error_desc'),
+          });
+        }
+      }
+    };
+
+    setupMedia();
 
     const participant: CallParticipant = {
       uid: currentUser.uid,
@@ -85,7 +94,9 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
 
     return () => {
       unsubscribe();
-      if (localStream) localStream.getTracks().forEach(t => t.stop());
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+      }
       updateDoc(callRef, {
         participants: arrayRemove(participant)
       }).catch(() => {});
@@ -95,8 +106,22 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
   const handleEndSession = async () => {
     if (!db) return;
     const callRef = doc(db, 'calls', chat.id);
-    if (isOwner) {
-      await updateDoc(callRef, { status: 'ended', participants: [] });
+    try {
+      if (isOwner) {
+        await updateDoc(callRef, { status: 'ended', participants: [] });
+      } else {
+        const participant: CallParticipant = {
+          uid: currentUser.uid,
+          name: currentUser.name || currentUser.username || 'User',
+          avatar: currentUser.avatar || '',
+          joinedAt: Timestamp.now(), // dummy for matching
+        };
+        await updateDoc(callRef, {
+          participants: arrayRemove(participant)
+        });
+      }
+    } catch (e) {
+      console.error(e);
     }
     onOpenChange(false);
   };
@@ -117,7 +142,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden bg-black text-white border-none rounded-3xl">
+      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden bg-black text-white border-none rounded-3xl animate-in zoom-in duration-300">
         <DialogHeader className="p-6 shrink-0 bg-gradient-to-b from-black/80 to-transparent z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -151,7 +176,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
             </div>
           )}
           
-          {isVideoOff && canStream && (
+          {(isVideoOff || !canStream) && (
             <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
               <Avatar className="w-32 h-32 text-4xl">
                 <AvatarImage src={currentUser.avatar} />
@@ -160,7 +185,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
             </div>
           )}
 
-          <div className="absolute bottom-20 left-6 flex flex-wrap gap-2 max-w-[200px]">
+          <div className="absolute bottom-20 left-6 flex flex-wrap gap-2 max-w-[200px] z-20">
             {uniqueParticipants.slice(0, 5).map(p => (
               <Avatar key={p.uid} className="w-8 h-8 border-2 border-black">
                 <AvatarImage src={p.avatar} />
@@ -196,7 +221,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
               </Button>
             </>
           )}
-          <Button variant="destructive" size="icon" className="w-14 h-14 rounded-full" onClick={handleEndSession}>
+          <Button variant="destructive" size="icon" className="w-14 h-14 rounded-full shadow-lg" onClick={handleEndSession}>
             <PhoneOff />
           </Button>
         </DialogFooter>
