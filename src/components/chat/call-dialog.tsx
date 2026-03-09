@@ -279,6 +279,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             hideCloseButton
             onPointerDownOutside={(e) => minimizeCallOnClose && (e.preventDefault(), setIsMinimized(true))}
           >
+            <DialogTitle className="sr-only">{isVideo ? t('video_call') : t('audio_call')}</DialogTitle>
             {isVideo ? (
               <div className="relative w-full h-full flex flex-col">
                 <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">

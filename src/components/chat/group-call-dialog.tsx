@@ -141,6 +141,9 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden bg-[#0F0F0F] text-white border-none rounded-3xl animate-in zoom-in duration-300">
+        <DialogTitle className="sr-only">
+          {isBroadcast ? t('broadcast_title') : t('video_chat_title')}
+        </DialogTitle>
         {/* Header */}
         <div className="h-16 flex items-center justify-between px-6 bg-zinc-900/50 border-b border-white/5 shrink-0">
           <div className="flex items-center gap-3">
