@@ -113,7 +113,6 @@ const servers = {
 
 export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, isCaller, isVideo = false }: CallDialogProps) {
   const db = useFirestore();
-  const { toast } = useToast();
   const { t } = useLanguage();
   const { minimizeCallOnClose } = useTheme();
   
@@ -274,7 +273,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
 
   return (
     <>
-        <Dialog open={open && !isMinimized}>
+        <Dialog open={open && !isMinimized} onOpenChange={(val) => !val && endCallLocally(true)}>
           <DialogContent 
             className={cn("max-w-md h-[80vh] p-0 overflow-hidden bg-black text-white border-none rounded-3xl animate-in zoom-in duration-300")} 
             hideCloseButton
