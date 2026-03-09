@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -166,9 +167,9 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
         </div>
 
         {/* Main Area */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Video Stream (Left) */}
-          <div className="flex-1 relative bg-black flex items-center justify-center p-4">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          {/* Video Stream (Top on Mobile, Left on Desktop) */}
+          <div className="flex-1 relative bg-black flex items-center justify-center p-4 min-h-[40vh] md:min-h-0">
             <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/5">
               {canStream ? (
                 <video 
@@ -199,9 +200,9 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
             </div>
           </div>
 
-          {/* Participants Sidebar (Right) */}
-          <div className="w-72 hidden md:flex flex-col bg-zinc-900/30 border-l border-white/5 shrink-0">
-            <div className="p-4 border-b border-white/5">
+          {/* Participants (Bottom on Mobile, Right on Desktop) */}
+          <div className="h-48 md:h-auto md:w-72 flex flex-col bg-zinc-900/30 border-t md:border-t-0 md:border-l border-white/5 shrink-0">
+            <div className="p-4 border-b border-white/5 hidden md:block">
               <h3 className="text-xs font-bold uppercase tracking-widest text-white/40">{t('participants')}</h3>
             </div>
             <ScrollArea className="flex-1">

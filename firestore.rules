@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -14,7 +15,7 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
-    // Public app info and versioning
+    // Публичная информация о версии
     match /info/ver {
       allow get: if true;
       allow write: if false;
@@ -25,19 +26,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Message access for admin panel search
+    // Сообщения (для поиска админом)
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
     
-    // Group and Personal Calls
+    // Звонки и трансляции
     match /calls/{callId} {
       allow read, write: if isSignedIn();
     }
 
-    // User Profiles
+    // Профили пользователей
     match /users/{userId} {
-      // Allow read/list for account recovery via email search (publicly accessible for lookup)
       allow read: if true; 
       allow list: if true; 
       allow create: if isOwner(userId);
@@ -45,13 +45,12 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin();
 
       match /private/security {
-        // Allow updating tempBotCode for recovery
         allow get: if isOwner(userId);
         allow write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'cloudPassword', 'recoveryCode']));
       }
     }
 
-    // Unique Username registry
+    // Реестр имен
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
@@ -60,7 +59,7 @@ service cloud.firestore {
         allow delete: if resource.data.uid == request.auth.uid || isAdmin();
     }
 
-    // Chat rooms (DMs, Groups, Channels)
+    // Чаты (DMs, Группы, Каналы)
     match /chats/{chatId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
@@ -69,7 +68,6 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        // Allow creating messages (including system forwards from channel to discussion)
         allow create: if isSignedIn() || (request.resource.data.senderId != null); 
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
@@ -79,7 +77,7 @@ service cloud.firestore {
       }
     }
     
-    // InfVid - Shared Videos
+    // InfVid
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
@@ -93,12 +91,12 @@ service cloud.firestore {
       }
     }
     
-    // File/Video/Music Chunks (Universal read/create for assembly)
+    // Чанки файлов
     match /videoChunks/{chunkId} { allow create, read: if true; }
     match /musicChunks/{chunkId} { allow create, read: if true; }
     match /fileChunks/{chunkId} { allow create, read: if true; }
     
-    // Links registry
+    // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;

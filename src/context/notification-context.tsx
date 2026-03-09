@@ -24,25 +24,34 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const notifiedMessageIds = useRef<Set<string>>(new Set());
   const appLoadedAt = useRef<number>(Date.now());
 
-  useEffect(() => {
-    const requestPermission = async () => {
-      try {
-        if (Capacitor.isNativePlatform()) {
-          const status = await LocalNotifications.checkPermissions();
-          if (status.display !== 'granted') {
-            await LocalNotifications.requestPermissions();
-          }
-        } else if ('Notification' in window) {
-          if (Notification.permission === 'default') {
-            await Notification.requestPermission();
-          }
+  const requestPermission = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const status = await LocalNotifications.checkPermissions();
+        if (status.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
         }
-      } catch (e) {
-        console.warn("Notification permissions request failed", e);
+      } else if ('Notification' in window) {
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
       }
-    };
+    } catch (e) {
+      console.warn("Notification permissions request failed", e);
+    }
+  };
+
+  // Request permission on app load
+  useEffect(() => {
     requestPermission();
   }, []);
+
+  // Proactively request permission when a user is authenticated (login/signup)
+  useEffect(() => {
+    if (user) {
+      requestPermission();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -66,7 +75,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           if (notifiedMessageIds.current.has(lastMessage.id)) return;
 
           // 4. Only notify for messages sent around or after app load
-          // We allow a small buffer (30s) for server/local clock differences
           const messageTime = lastMessage.timestamp?.toMillis() || 0;
           if (messageTime < (appLoadedAt.current - 30000)) return;
 
@@ -87,7 +95,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       ? t('new_message_from', { name: message.senderName || 'User' })
       : `${chat.name}`;
     
-    // Clean up content for display (remove markdown symbols if possible)
     let body = chat.type === 'dm' 
       ? message.content 
       : `${message.senderName}: ${message.content}`;
