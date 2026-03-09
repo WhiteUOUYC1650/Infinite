@@ -47,7 +47,7 @@ service cloud.firestore {
       match /private/security {
         // Allow updating tempBotCode for recovery
         allow get: if isOwner(userId);
-        allow write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode']));
+        allow write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'cloudPassword', 'recoveryCode']));
       }
     }
 
@@ -73,7 +73,7 @@ service cloud.firestore {
         allow create: if isSignedIn() || (request.resource.data.senderId != null); 
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'editedAt', 'content'])
         );
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
       }
@@ -83,7 +83,7 @@ service cloud.firestore {
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy']));
+      allow update: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy', 'videoStatus', 'videoChunkIds']));
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin());
 
       match /comments/{commentId} {
