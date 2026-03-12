@@ -1128,7 +1128,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         </div>
 
         <div className="flex items-center gap-1 ml-2 shrink-0">
-            {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && (
+            {item.type === 'dm' && otherUser && otherUser.id !== currentUser.uid && !otherUser.isDeleted && !otherUser.isBot && (
               <>
                 <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)} title={t('audio_call')}>
                   <Phone className="h-5 w-5" />

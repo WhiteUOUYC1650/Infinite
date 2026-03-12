@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -30,6 +29,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const isBroadcast = chat.type === 'channel';
@@ -44,6 +44,40 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
       return true;
     });
   }, [callData?.participants]);
+
+  // Speaking detection for current user
+  useEffect(() => {
+    if (localStream && !isMuted) {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(localStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let animationFrame: number;
+
+      const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let values = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          values += dataArray[i];
+        }
+        const average = values / dataArray.length;
+        setIsSpeaking(average > 15); // Threshold for speaking
+        animationFrame = requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+
+      return () => {
+        cancelAnimationFrame(animationFrame);
+        audioContext.close();
+      };
+    } else {
+      setIsSpeaking(false);
+    }
+  }, [localStream, isMuted]);
 
   useEffect(() => {
     if (!open || !db) return;
@@ -141,7 +175,10 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden bg-[#0F0F0F] text-white border-none rounded-3xl animate-in zoom-in duration-300">
+      <DialogContent 
+        className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden bg-[#0F0F0F] text-white border-none rounded-3xl animate-in zoom-in duration-300"
+        hideCloseButton
+      >
         <DialogTitle className="sr-only">
           {isBroadcast ? t('broadcast_title') : t('video_chat_title')}
         </DialogTitle>
@@ -207,20 +244,34 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
-                {uniqueParticipants.map(p => (
-                  <div key={p.uid} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group">
-                    <Avatar className="w-10 h-10 border border-white/10">
-                      <AvatarImage src={p.avatar} />
-                      <AvatarFallback className="bg-zinc-800 text-xs">{p.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate">{p.name}</p>
-                      <p className="text-[10px] text-white/40 truncate">
-                        {p.uid === currentUser.uid ? t('you_message_preview') : (isBroadcast ? 'Слушатель' : 'Участник')}
-                      </p>
+                {uniqueParticipants.map(p => {
+                  const isMe = p.uid === currentUser.uid;
+                  return (
+                    <div key={p.uid} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group">
+                      <Avatar className="w-10 h-10 border border-white/10">
+                        <AvatarImage src={p.avatar} />
+                        <AvatarFallback className="bg-zinc-800 text-xs">{p.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold truncate">{p.name}</p>
+                          {isMe && (
+                            <div className="shrink-0">
+                              {isMuted ? (
+                                <MicOff className="w-3.5 h-3.5 text-red-500" />
+                              ) : (
+                                <Mic className={cn("w-3.5 h-3.5 transition-colors", isSpeaking ? "text-green-500" : "text-white/40")} />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-white/40 truncate">
+                          {isMe ? t('you_message_preview') : (isBroadcast ? 'Слушатель' : 'Участник')}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>
