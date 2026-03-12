@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -166,6 +167,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingVideoRef = useRef<HTMLVideoElement>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -558,7 +561,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 const handleSendVoice = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
     if (!db) throw new Error("Database not initialized");
-    const { file, previewUrl } = payload;
+    const { file } = payload;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
@@ -580,7 +583,7 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
     try {
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
-        batch.update(chatRef, { lastMessage: { id: messageRef.id, content: t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp } });
+        batch.update(chatRef, { lastMessage: { id: messageRef.id, content: t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp } });
         await batch.commit();
         
         const base64 = await new Promise<string>((resolve) => {
@@ -885,7 +888,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
 
 const handleSendGenericFile = async (filePayload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
     if (!db) throw new Error("Database not initialized");
-    const { file, previewUrl } = filePayload;
+    const { file } = filePayload;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
@@ -1146,6 +1149,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   const startCircleRecording = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        recordingStreamRef.current = stream;
+        if (recordingVideoRef.current) recordingVideoRef.current.srcObject = stream;
+        
         const recorder = new MediaRecorder(stream);
         audioChunksRef.current = [];
         recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
@@ -1155,6 +1161,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const previewUrl = URL.createObjectURL(blob);
             await handleSendCircle({ file, previewUrl }, '', null);
             stream.getTracks().forEach(t => t.stop());
+            recordingStreamRef.current = null;
         };
         mediaRecorderRef.current = recorder;
         recorder.start();
@@ -1230,10 +1237,40 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     setIncomingCall(null);
   };
 
-  const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && (membersLoading || membersLoading));
+  const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+      {/* Recording Overlays */}
+      {isRecordingCircle && (
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+              <div className="relative">
+                  <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-primary shadow-2xl relative bg-zinc-900">
+                      <video ref={recordingVideoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
+                  </div>
+                  <div className="absolute -top-4 -right-4">
+                      <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">REC</div>
+                  </div>
+              </div>
+              <div className="mt-12 text-center text-white">
+                  <p className="text-2xl font-bold font-headline">{t('video_call')}</p>
+                  <p className="text-sm opacity-70 mt-2">{t('release_to_send')}</p>
+              </div>
+          </div>
+      )}
+
+      {isRecordingVoice && (
+          <div className="fixed inset-x-0 bottom-0 z-[100] bg-primary p-10 flex flex-col items-center justify-center gap-4 animate-in slide-in-from-bottom duration-300 rounded-t-[3rem] shadow-2xl">
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-bounce">
+                  <Mic className="h-8 w-8 text-white" />
+              </div>
+              <div className="text-center text-white">
+                  <p className="text-2xl font-bold font-headline">{t('music')}</p>
+                  <p className="text-sm opacity-70">{t('release_to_send')}</p>
+              </div>
+          </div>
+      )}
+
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
@@ -1575,7 +1612,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             variant={isRecordingCircle ? "destructive" : "ghost"} 
                             size="icon" 
                             className={cn("h-10 w-10 rounded-full", isRecordingCircle && "animate-pulse")}
-                            onClick={isRecordingCircle ? stopCircleRecording : startCircleRecording}
+                            onMouseDown={startCircleRecording}
+                            onMouseUp={stopCircleRecording}
+                            onMouseLeave={stopCircleRecording}
+                            onTouchStart={(e) => { e.preventDefault(); startCircleRecording(); }}
+                            onTouchEnd={(e) => { e.preventDefault(); stopCircleRecording(); }}
                         >
                             <Camera className="h-5 w-5" />
                         </Button>
@@ -1586,6 +1627,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             className={cn("h-10 w-10 rounded-full", isRecordingVoice && "animate-pulse")}
                             onMouseDown={startVoiceRecording}
                             onMouseUp={stopVoiceRecording}
+                            onMouseLeave={stopVoiceRecording}
                             onTouchStart={(e) => { e.preventDefault(); startVoiceRecording(); }}
                             onTouchEnd={(e) => { e.preventDefault(); stopVoiceRecording(); }}
                         >

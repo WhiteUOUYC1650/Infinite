@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -207,8 +208,10 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
                 />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-zinc-900">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-white/40 font-bold uppercase tracking-widest text-xs">{t('connecting')}...</p>
+                  <div className="text-center space-y-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                    <p className="text-white/40 font-bold uppercase tracking-widest text-xs">{t('connecting')}...</p>
+                  </div>
                 </div>
               )}
               
@@ -216,7 +219,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
-                    <Avatar className="w-32 h-32 text-4xl border-4 border-white/10 relative z-10">
+                    <Avatar className="w-32 h-32 text-4xl border-4 border-white/10 relative z-10 shadow-2xl">
                       <AvatarImage src={currentUser.avatar} />
                       <AvatarFallback className="bg-zinc-800 text-white">{currentUser.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
@@ -276,7 +279,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
                 <LogOut className="mr-2 h-5 w-5" /> {t('leave')}
             </Button>
             {isOwner && (
-                <Button variant="destructive" className="h-14 px-6 rounded-2xl font-bold gap-2" onClick={handleEndSession}>
+                <Button variant="destructive" className="h-14 px-6 rounded-2xl font-bold gap-2 shadow-xl shadow-destructive/20" onClick={handleEndSession}>
                     <PhoneOff className="h-5 w-5" /> {t('delete')}
                 </Button>
             )}
