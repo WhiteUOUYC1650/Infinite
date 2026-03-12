@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -44,6 +43,12 @@ export type Message = {
   musicMimeType?: string;
   musicStatus?: 'uploading' | 'complete' | 'failed';
   musicChunkIds?: string[];
+  voiceMimeType?: string;
+  voiceStatus?: 'uploading' | 'complete' | 'failed';
+  voiceChunkIds?: string[];
+  circleMimeType?: string;
+  circleStatus?: 'uploading' | 'complete' | 'failed';
+  circleChunkIds?: string[];
   fileName?: string;
   fileMimeType?: string;
   fileSize?: number;
@@ -77,6 +82,18 @@ export type MusicChunk = {
   senderId: string;
 };
 
+export type VoiceChunk = {
+  data: string;
+  part: number;
+  senderId: string;
+};
+
+export type CircleChunk = {
+  data: string;
+  part: number;
+  senderId: string;
+};
+
 export type FileChunk = {
   data: string;
   part: number;
@@ -97,6 +114,7 @@ export type Chat = {
   link?: string;
   discussionChatId?: string;
   allowedReactions?: string[]; // List of allowed emojis
+  typingStatus?: Record<string, boolean>; // uid -> typing boolean
 };
 
 export type CallParticipant = {
@@ -104,6 +122,7 @@ export type CallParticipant = {
   name: string;
   avatar?: string;
   joinedAt: Timestamp;
+  isSpeaking?: boolean;
 };
 
 export type Call = {

@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Loader2, Radio } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Loader2, Radio, LogOut } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, Timestamp, getDoc } from 'firebase/firestore';
 import type { PopulatedChat, AuthenticatedUser, CallParticipant, Call } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -29,7 +29,6 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const isBroadcast = chat.type === 'channel';
@@ -44,40 +43,6 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
       return true;
     });
   }, [callData?.participants]);
-
-  // Speaking detection for current user
-  useEffect(() => {
-    if (localStream && !isMuted) {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const source = audioContext.createMediaStreamSource(localStream);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      let animationFrame: number;
-
-      const checkVolume = () => {
-        analyser.getByteFrequencyData(dataArray);
-        let values = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          values += dataArray[i];
-        }
-        const average = values / dataArray.length;
-        setIsSpeaking(average > 15); // Threshold for speaking
-        animationFrame = requestAnimationFrame(checkVolume);
-      };
-
-      checkVolume();
-
-      return () => {
-        cancelAnimationFrame(animationFrame);
-        audioContext.close();
-      };
-    } else {
-      setIsSpeaking(false);
-    }
-  }, [localStream, isMuted]);
 
   useEffect(() => {
     if (!open || !db) return;
@@ -101,6 +66,37 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           setLocalStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
+
+          // Speaking Detection Logic
+          const audioContext = new AudioContext();
+          const analyser = audioContext.createAnalyser();
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(analyser);
+          analyser.fftSize = 256;
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          const checkSpeaking = async () => {
+            if (!open) return;
+            analyser.getByteFrequencyData(dataArray);
+            let volume = 0;
+            for (let i = 0; i < dataArray.length; i++) volume += dataArray[i];
+            const avg = volume / dataArray.length;
+            const isSpeaking = avg > 30 && !isMuted;
+
+            // Sync speaking status to Firestore
+            const callSnap = await getDoc(callRef);
+            if (callSnap.exists()) {
+                const parts = (callSnap.data().participants || []) as CallParticipant[];
+                const meIndex = parts.findIndex(p => p.uid === currentUser.uid);
+                if (meIndex !== -1 && parts[meIndex].isSpeaking !== isSpeaking) {
+                    parts[meIndex].isSpeaking = isSpeaking;
+                    updateDoc(callRef, { participants: parts });
+                }
+            }
+            if (open) setTimeout(checkSpeaking, 500);
+          };
+          checkSpeaking();
+
         } catch (err) {
           console.error("Group call media error:", err);
           toast({
@@ -119,6 +115,7 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
       name: currentUser.name || currentUser.username || 'User',
       avatar: currentUser.avatar || '',
       joinedAt: Timestamp.now(),
+      isSpeaking: false
     };
 
     updateDoc(callRef, {
@@ -137,25 +134,18 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
         participants: arrayRemove(participant)
       }).catch(() => {});
     };
-  }, [open, db, chat.id, currentUser.uid, isOwner, canStream]);
+  }, [open, db, chat.id, currentUser.uid, isOwner, canStream, isMuted]);
+
+  const handleLeave = async () => {
+    onOpenChange(false);
+  };
 
   const handleEndSession = async () => {
-    if (!db) return;
+    if (!db || !isOwner) return;
     const callRef = doc(db, 'calls', chat.id);
     try {
-      if (isOwner) {
-        await updateDoc(callRef, { status: 'ended', participants: [] });
-      } else {
-        const participant = callData?.participants?.find(p => p.uid === currentUser.uid);
-        if (participant) {
-            await updateDoc(callRef, {
-                participants: arrayRemove(participant)
-            });
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
+      await updateDoc(callRef, { status: 'ended', participants: [] });
+    } catch (e) { console.error(e); }
     onOpenChange(false);
   };
 
@@ -205,7 +195,6 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
 
         {/* Main Area */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Video Stream (Top on Mobile, Left on Desktop) */}
           <div className="flex-1 relative bg-black flex items-center justify-center p-4 min-h-[40vh] md:min-h-0">
             <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/5">
               {canStream ? (
@@ -237,16 +226,13 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
             </div>
           </div>
 
-          {/* Participants (Bottom on Mobile, Right on Desktop) */}
           <div className="h-48 md:h-auto md:w-72 flex flex-col bg-zinc-900/30 border-t md:border-t-0 md:border-l border-white/5 shrink-0">
             <div className="p-4 border-b border-white/5 hidden md:block">
               <h3 className="text-xs font-bold uppercase tracking-widest text-white/40">{t('participants')}</h3>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
-                {uniqueParticipants.map(p => {
-                  const isMe = p.uid === currentUser.uid;
-                  return (
+                {uniqueParticipants.map(p => (
                     <div key={p.uid} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group">
                       <Avatar className="w-10 h-10 border border-white/10">
                         <AvatarImage src={p.avatar} />
@@ -255,59 +241,46 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-bold truncate">{p.name}</p>
-                          {isMe && (
-                            <div className="shrink-0">
-                              {isMuted ? (
-                                <MicOff className="w-3.5 h-3.5 text-red-500" />
-                              ) : (
-                                <Mic className={cn("w-3.5 h-3.5 transition-colors", isSpeaking ? "text-green-500" : "text-white/40")} />
-                              )}
-                            </div>
-                          )}
+                          <div className="shrink-0">
+                            {p.uid === currentUser.uid ? (
+                                isMuted ? <MicOff className="w-3.5 h-3.5 text-red-500" /> : <Mic className={cn("w-3.5 h-3.5", p.isSpeaking ? "text-green-500" : "text-white/40")} />
+                            ) : (
+                                <Mic className={cn("w-3.5 h-3.5", p.isSpeaking ? "text-green-500" : "text-white/40")} />
+                            )}
+                          </div>
                         </div>
-                        <p className="text-[10px] text-white/40 truncate">
-                          {isMe ? t('you_message_preview') : (isBroadcast ? 'Слушатель' : 'Участник')}
-                        </p>
+                        <p className="text-[10px] text-white/40 truncate">{p.uid === currentUser.uid ? t('you_message_preview') : (isBroadcast ? 'Слушатель' : 'Участник')}</p>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             </ScrollArea>
           </div>
         </div>
 
         {/* Footer Controls */}
-        <div className="h-24 shrink-0 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center gap-6 px-6">
+        <div className="h-24 shrink-0 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center gap-4 px-6">
           {canStream && (
             <div className="flex items-center gap-4 bg-zinc-900/80 backdrop-blur-xl p-2 rounded-3xl border border-white/10">
-              <Button 
-                variant={isMuted ? "destructive" : "ghost"} 
-                size="icon" 
-                className="w-12 h-12 rounded-2xl transition-all hover:scale-105" 
-                onClick={toggleMic}
-              >
+              <Button variant={isMuted ? "destructive" : "ghost"} size="icon" className="w-12 h-12 rounded-2xl" onClick={toggleMic}>
                 {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </Button>
-              <Button 
-                variant={isVideoOff ? "destructive" : "ghost"} 
-                size="icon" 
-                className="w-12 h-12 rounded-2xl transition-all hover:scale-105" 
-                onClick={toggleVideo}
-              >
+              <Button variant={isVideoOff ? "destructive" : "ghost"} size="icon" className="w-12 h-12 rounded-2xl" onClick={toggleVideo}>
                 {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
               </Button>
             </div>
           )}
           
-          <Button 
-            variant="destructive" 
-            className="h-14 px-8 rounded-2xl shadow-2xl shadow-red-600/20 font-bold gap-3 transition-all hover:scale-105" 
-            onClick={handleEndSession}
-          >
-            <PhoneOff className="w-5 h-5" />
-            <span>{isOwner ? t('delete') : t('leave')}</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="h-14 px-6 rounded-2xl font-bold bg-white/10 border-white/10 hover:bg-white/20 text-white" onClick={handleLeave}>
+                <LogOut className="mr-2 h-5 w-5" /> {t('leave')}
+            </Button>
+            {isOwner && (
+                <Button variant="destructive" className="h-14 px-6 rounded-2xl font-bold gap-2" onClick={handleEndSession}>
+                    <PhoneOff className="h-5 w-5" /> {t('delete')}
+                </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

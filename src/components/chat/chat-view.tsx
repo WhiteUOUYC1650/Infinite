@@ -4,11 +4,11 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -142,7 +142,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null);
+  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
@@ -160,6 +160,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
+
+  // Recording states
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isRecordingCircle, setIsRecordingCircle] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -187,6 +193,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [item?.members, currentUser.uid]);
 
   const isOwner = item.ownerId === currentUser.uid;
+
+  // Typing Status Logic
+  useEffect(() => {
+    if (!db || !isMember || item.type !== 'dm' || !messageContent.trim()) return;
+    
+    const typingRef = doc(db, 'chats', item.id);
+    updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: true });
+
+    const timeout = setTimeout(() => {
+        updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: false });
+    }, 3000);
+
+    return () => {
+        clearTimeout(timeout);
+        updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
+    };
+  }, [messageContent, db, isMember, item.id, item.type, currentUser.uid]);
 
   useEffect(() => {
     if (!db || item.type === 'dm' || !isMember) return;
@@ -224,11 +247,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !isMember) return null;
-    return collection(db, 'chats', item.id, 'messages');
+    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp'));
   }, [db, item.id, isMember]);
 
-  const collectionOptions = useMemo(() => ({ orderBy: 'timestamp' as const }), []);
-  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery, collectionOptions);
+  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
   
   const allUserIdsToFetch = useMemo(() => {
     const ids = new Set<string>(item.members || []);
@@ -297,6 +319,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return memberDetails[otherUserId] || null;
   }, [otherUserId, memberDetails]);
 
+  const isOtherUserTyping = useMemo(() => {
+    if (item.type !== 'dm' || !otherUserId) return false;
+    return item.typingStatus?.[otherUserId] === true;
+  }, [item.typingStatus, otherUserId, item.type]);
+
 
   const getChatName = () => {
     if (item.type === 'dm') {
@@ -313,6 +340,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const getStatusText = (user: User | null | undefined) => {
     if (!user || user.isDeleted) return null;
+    if (isOtherUserTyping) return <span className="text-primary font-bold animate-pulse">{t('searching')}...</span>;
 
     if (user.isBot) {
       return t('bot_status');
@@ -502,6 +530,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         if (originalFile?.type === 'video') {
             await handleSendVideo(originalFile, originalContent, originalReplyTo);
+        } else if (originalFile?.type === 'voice') {
+            await handleSendVoice(originalFile, originalContent, originalReplyTo);
+        } else if (originalFile?.type === 'circle') {
+            await handleSendCircle(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'music') {
             await handleSendMusic(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'file') {
@@ -522,6 +554,94 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } finally {
         setIsSending(false);
     }
+};
+
+const handleSendVoice = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
+    if (!db) throw new Error("Database not initialized");
+    const { file, previewUrl } = payload;
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const chatRef = doc(db, 'chats', item.id);
+    const timestamp = Timestamp.now();
+    const messageData: any = {
+        senderId: currentUser.uid,
+        content: content,
+        timestamp,
+        voiceMimeType: file.type,
+        voiceStatus: 'uploading',
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
+    try {
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        batch.update(chatRef, { lastMessage: { id: messageRef.id, content: t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp } });
+        await batch.commit();
+        
+        const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        });
+        
+        const CHUNK_SIZE = 900 * 1024;
+        const chunkIds: string[] = [];
+        for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+            const chunkRef = doc(collection(db, 'voiceChunks'));
+            await setDoc(chunkRef, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
+            chunkIds.push(chunkRef.id);
+        }
+        await updateDoc(messageRef, { voiceStatus: 'complete', voiceChunkIds: chunkIds });
+    } catch (e) { console.error(e); }
+};
+
+const handleSendCircle = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
+    if (!db) throw new Error("Database not initialized");
+    const { file } = payload;
+    const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+    const chatRef = doc(db, 'chats', item.id);
+    const timestamp = Timestamp.now();
+    const messageData: any = {
+        senderId: currentUser.uid,
+        content: content,
+        timestamp,
+        circleMimeType: file.type,
+        circleStatus: 'uploading',
+        readBy: [],
+        ...(replyTo && {
+            replyTo: {
+                messageId: replyTo.id,
+                content: replyTo.content,
+                senderName: replyTo.sender?.name || replyTo.senderName || '',
+            },
+        }),
+    };
+    try {
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        batch.update(chatRef, { lastMessage: { id: messageRef.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp } });
+        await batch.commit();
+        
+        const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        });
+        
+        const CHUNK_SIZE = 900 * 1024;
+        const chunkIds: string[] = [];
+        for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+            const chunkRef = doc(collection(db, 'circleChunks'));
+            await setDoc(chunkRef, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
+            chunkIds.push(chunkRef.id);
+        }
+        await updateDoc(messageRef, { circleStatus: 'complete', circleChunkIds: chunkIds });
+    } catch (e) { console.error(e); }
 };
 
 const handleSendTextOrImage = async (imageUrl: string | null | undefined, content: string, replyTo: Message | null) => {
@@ -997,6 +1117,58 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     }
   };
 
+  const startVoiceRecording = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+        recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+        recorder.onstop = async () => {
+            const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
+            const previewUrl = URL.createObjectURL(blob);
+            await handleSendVoice({ file, previewUrl }, '', null);
+            stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorderRef.current = recorder;
+        recorder.start();
+        setIsRecordingVoice(true);
+    } catch (e) { console.error(e); }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && isRecordingVoice) {
+        mediaRecorderRef.current.stop();
+        setIsRecordingVoice(false);
+    }
+  };
+
+  const startCircleRecording = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        const recorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+        recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+        recorder.onstop = async () => {
+            const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
+            const file = new File([blob], 'circle.webm', { type: 'video/webm' });
+            const previewUrl = URL.createObjectURL(blob);
+            await handleSendCircle({ file, previewUrl }, '', null);
+            stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorderRef.current = recorder;
+        recorder.start();
+        setIsRecordingCircle(true);
+    } catch (e) { console.error(e); }
+  };
+
+  const stopCircleRecording = () => {
+    if (mediaRecorderRef.current && isRecordingCircle) {
+        mediaRecorderRef.current.stop();
+        setIsRecordingCircle(false);
+    }
+  };
+
   const handleInitiateCall = async (video: boolean) => {
     if (item.type !== 'dm' || item.id === currentUser.uid) return;
     try {
@@ -1024,7 +1196,8 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           uid: currentUser.uid,
           name: currentUser.name || currentUser.username,
           avatar: currentUser.avatar || '',
-          joinedAt: Timestamp.now()
+          joinedAt: Timestamp.now(),
+          isSpeaking: false
         }]
       });
       setShowGroupCallDialog(true);
@@ -1083,9 +1256,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
                                 {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">
+                            <div className="text-sm text-muted-foreground truncate h-5">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
-                            </p>
+                            </div>
                         </div>
                     </button>
                 ) : ( 
@@ -1311,9 +1484,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 <div className="relative w-fit">
                     {fileToSend.type === 'image' ? (
                         <img src={fileToSend.previewUrl} alt="Preview" className="max-h-24 rounded-lg" />
-                    ) : fileToSend.type === 'video' ? (
+                    ) : fileToSend.type === 'video' || fileToSend.type === 'circle' ? (
                         <video src={fileToSend.previewUrl} controls className="max-h-24 rounded-lg" />
-                    ) : fileToSend.type === 'music' ? (
+                    ) : fileToSend.type === 'music' || fileToSend.type === 'voice' ? (
                         <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                             <MusicIcon className="h-8 w-8 text-primary" />
                             <p className="text-sm text-muted-foreground truncate max-w-xs">{fileToSend.file.name}</p>
@@ -1341,67 +1514,97 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           )}
 
 
-          <form onSubmit={handleSubmit} className="relative">
-            <Textarea
-              placeholder={t('message_placeholder')}
-              className="pr-24 py-3 resize-none min-h-[44px]"
-              rows={1}
-              value={messageContent}
-              onChange={(e) => setMessageContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) {
-                  handleSubmit(e);
-                } else if (e.key === 'Escape') {
-                  if (editingMessage) handleCancelEdit();
-                  else if (replyToMessage) setReplyToMessage(null);
-                  else if (fileToSend) setFileToSend(null);
-                }
-              }}
-              disabled={isSending}
-            />
-             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Popover>
-                    <PopoverTrigger asChild>
-                         <Button variant="ghost" size="icon" type="button">
-                            <Paperclip className="h-5 w-5" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" align="end" className="w-48 p-1">
-                        <div className="flex flex-col">
-                            <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-b mb-1">
-                                {t('max_file_size_label', { size: maxFileSizeText })}
+          <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
+            <div className="relative flex-1">
+                <Textarea
+                placeholder={t('message_placeholder')}
+                className="pr-12 py-3 resize-none min-h-[44px]"
+                rows={1}
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                onKeyDown={(e) => {
+                    if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) {
+                    handleSubmit(e);
+                    } else if (e.key === 'Escape') {
+                    if (editingMessage) handleCancelEdit();
+                    else if (replyToMessage) setReplyToMessage(null);
+                    else if (fileToSend) setFileToSend(null);
+                    }
+                }}
+                disabled={isSending}
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" type="button" className="h-8 w-8">
+                                <Paperclip className="h-5 w-5" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" align="end" className="w-48 p-1">
+                            <div className="flex flex-col">
+                                <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-b mb-1">
+                                    {t('max_file_size_label', { size: maxFileSizeText })}
+                                </div>
+                                <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('image')}>
+                                    <ImageIcon className="mr-2 h-4 w-4" />
+                                    <span>{t('photo')}</span>
+                                </Button>
+                                <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('video')}>
+                                    <VideoIcon className="mr-2 h-4 w-4" />
+                                    <span>{t('video')}</span>
+                                </Button>
+                                <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('music')}>
+                                    <MusicIcon className="mr-2 h-4 w-4" />
+                                    <span>{t('music')}</span>
+                                </Button>
+                                <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('file')}>
+                                    <FileIcon className="mr-2 h-4 w-4" />
+                                    <span>{t('file')}</span>
+                                </Button>
                             </div>
-                            <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('image')}>
-                                <ImageIcon className="mr-2 h-4 w-4" />
-                                <span>{t('photo')}</span>
-                            </Button>
-                            <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('video')}>
-                                <VideoIcon className="mr-2 h-4 w-4" />
-                                <span>{t('video')}</span>
-                            </Button>
-                             <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('music')}>
-                                <MusicIcon className="mr-2 h-4 w-4" />
-                                <span>{t('music')}</span>
-                            </Button>
-                            <Button variant="ghost" className="justify-start h-9 rounded-md" onClick={() => handleAttachmentClick('file')}>
-                                <FileIcon className="mr-2 h-4 w-4" />
-                                <span>{t('file')}</span>
-                            </Button>
-                        </div>
-                    </PopoverContent>
-                </Popover>
-
-              <Button size="icon" type="submit" disabled={isSending || (!messageContent.trim() && !fileToSend)}>
-                {isSending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : editingMessage ? (
-                  <Check className="h-5 w-5" />
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-              </Button>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </div>
+
+            <div className="flex items-center gap-1">
+                {!messageContent.trim() && !fileToSend ? (
+                    <>
+                        <Button 
+                            type="button" 
+                            variant={isRecordingCircle ? "destructive" : "ghost"} 
+                            size="icon" 
+                            className={cn("h-10 w-10 rounded-full", isRecordingCircle && "animate-pulse")}
+                            onClick={isRecordingCircle ? stopCircleRecording : startCircleRecording}
+                        >
+                            <Camera className="h-5 w-5" />
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant={isRecordingVoice ? "destructive" : "ghost"} 
+                            size="icon" 
+                            className={cn("h-10 w-10 rounded-full", isRecordingVoice && "animate-pulse")}
+                            onMouseDown={startVoiceRecording}
+                            onMouseUp={stopVoiceRecording}
+                            onTouchStart={(e) => { e.preventDefault(); startVoiceRecording(); }}
+                            onTouchEnd={(e) => { e.preventDefault(); stopVoiceRecording(); }}
+                        >
+                            <Mic className="h-5 w-5" />
+                        </Button>
+                    </>
+                ) : (
+                    <Button size="icon" type="submit" disabled={isSending} className="h-10 w-10 rounded-full">
+                        {isSending ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : editingMessage ? (
+                        <Check className="h-5 w-5" />
+                        ) : (
+                        <Send className="h-5 w-5" />
+                        )}
+                    </Button>
+                )}
+            </div>
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
           </form>
         </footer>
       )}
@@ -1525,6 +1728,9 @@ function ChatMessage({
     const hasMusic = !!message.musicMimeType;
     const musicStatus = message.musicStatus;
 
+    const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+    const [circleUrl, setCircleUrl] = useState<string | null>(null);
+
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [isLoadingFile, setIsLoadingFile] = useState(false);
     const hasGenericFile = !!message.fileName && !hasVideo && !hasMusic && !message.imageUrl;
@@ -1537,13 +1743,15 @@ function ChatMessage({
                 if (hasVideo) setVideoUrl(cached);
                 else if (hasMusic) setMusicUrl(cached);
                 else if (hasGenericFile) setFileUrl(cached);
+                else if (message.voiceStatus === 'complete') setVoiceUrl(cached);
+                else if (message.circleStatus === 'complete') setCircleUrl(cached);
             } else if (localMediaUrl) {
                 if (hasVideo) setVideoUrl(localMediaUrl);
                 else if (hasMusic) setMusicUrl(localMediaUrl);
             }
         };
         checkCache();
-    }, [message.id, hasVideo, hasMusic, hasGenericFile, localMediaUrl]);
+    }, [message.id, hasVideo, hasMusic, hasGenericFile, localMediaUrl, message.voiceStatus, message.circleStatus]);
 
     const fetchAndCacheVideo = async () => {
         if (!db || !message.videoChunkIds || videoUrl || isLoadingVideo) return;
@@ -1587,6 +1795,28 @@ function ChatMessage({
         }
     };
 
+    const fetchAndCacheVoice = async () => {
+        if (!db || !message.voiceChunkIds || voiceUrl) return;
+        try {
+            const chunkSnaps = await Promise.all(message.voiceChunkIds.map(id => getDoc(doc(db, 'voiceChunks', id))));
+            const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
+            const dataUrl = `data:${message.voiceMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            await cacheFile(message.id, dataUrl);
+            setVoiceUrl(await getCachedFile(message.id));
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchAndCacheCircle = async () => {
+        if (!db || !message.circleChunkIds || circleUrl) return;
+        try {
+            const chunkSnaps = await Promise.all(message.circleChunkIds.map(id => getDoc(doc(db, 'circleChunks', id))));
+            const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
+            const dataUrl = `data:${message.circleMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            await cacheFile(message.id, dataUrl);
+            setCircleUrl(await getCachedFile(message.id));
+        } catch (e) { console.error(e); }
+    };
+
     const fetchAndCacheFile = async () => {
         if (!db || !message.fileChunkIds || fileUrl || isLoadingFile) return;
         setIsLoadingFile(true);
@@ -1608,14 +1838,16 @@ function ChatMessage({
     };
 
     const handleSaveToDevice = async () => {
-        let currentUrl = videoUrl || musicUrl || fileUrl;
-        let currentName = message.fileName || (hasVideo ? 'video.mp4' : hasMusic ? 'music.mp3' : 'file');
+        let currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl;
+        let currentName = message.fileName || (hasVideo ? 'video.mp4' : hasMusic ? 'music.mp3' : message.voiceStatus ? 'voice.webm' : message.circleStatus ? 'circle.webm' : 'file');
 
         if (!currentUrl) {
             if (hasVideo) await fetchAndCacheVideo();
             else if (hasMusic) await fetchAndCacheMusic();
             else if (hasGenericFile) await fetchAndCacheFile();
-            currentUrl = videoUrl || musicUrl || fileUrl;
+            else if (message.voiceStatus === 'complete') await fetchAndCacheVoice();
+            else if (message.circleStatus === 'complete') await fetchAndCacheCircle();
+            currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl;
         }
 
         if (currentUrl) {
@@ -1775,7 +2007,27 @@ function ChatMessage({
                     </button>
                 )}
                 <div className="overflow-hidden">
-                    {hasVideo ? (
+                    {message.voiceStatus === 'complete' ? (
+                        <div className="relative my-1">
+                            {!voiceUrl ? (
+                                <Button variant="secondary" onClick={fetchAndCacheVoice} className="w-full gap-2 rounded-full">
+                                    <Mic className="h-4 w-4" /> {t('music')}
+                                </Button>
+                            ) : (
+                                <audio src={voiceUrl} controls className="w-full h-10" />
+                            )}
+                        </div>
+                    ) : message.circleStatus === 'complete' ? (
+                        <div className="relative my-1 flex justify-center">
+                            {!circleUrl ? (
+                                <Button variant="secondary" onClick={fetchAndCacheCircle} className="aspect-square w-32 h-32 rounded-full">
+                                    <VideoIcon className="h-10 w-10" />
+                                </Button>
+                            ) : (
+                                <video src={circleUrl} controls className="aspect-square w-48 h-48 rounded-full object-cover border-4 border-primary/20" />
+                            )}
+                        </div>
+                    ) : hasVideo ? (
                         <div className="relative my-1">
                             {!videoUrl ? (
                                 <div className="w-full max-w-xs aspect-video flex flex-col items-center justify-center bg-secondary/80 backdrop-blur-sm rounded-lg gap-2 cursor-pointer group/vid border border-white/10" onClick={fetchAndCacheVideo}>
@@ -1898,7 +2150,7 @@ function ChatMessage({
                             </DropdownMenuSubContent>
                         </DropdownMenuSub>
                         {chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}
-                        {(hasVideo || hasMusic || hasGenericFile || message.imageUrl) && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
+                        {(hasVideo || hasMusic || hasGenericFile || message.imageUrl || message.voiceStatus === 'complete' || message.circleStatus === 'complete') && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
                         {message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
                         {(isCurrentUser && !fromBot) || canDeleteMessage ? <DropdownMenuSeparator /> : null}
                         {isCurrentUser && !fromBot && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}

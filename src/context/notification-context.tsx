@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
@@ -41,12 +40,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  // Request permission on app load
   useEffect(() => {
     requestPermission();
   }, []);
 
-  // Proactively request permission when a user is authenticated (login/signup)
   useEffect(() => {
     if (user) {
       requestPermission();
@@ -65,23 +62,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const lastMessage = chat.lastMessage;
 
         if (lastMessage && lastMessage.id) {
-          // 1. Don't notify if it's our own message
           if (lastMessage.senderId === user.uid) return;
-
-          // 2. Don't notify if this is the chat currently open
           if (chat.id === activeChatId) return;
-
-          // 3. Don't notify if we've already seen this message ID
           if (notifiedMessageIds.current.has(lastMessage.id)) return;
-
-          // 4. Only notify for messages sent around or after app load
           const messageTime = lastMessage.timestamp?.toMillis() || 0;
           if (messageTime < (appLoadedAt.current - 30000)) return;
 
-          // Record this message as notified
           notifiedMessageIds.current.add(lastMessage.id);
-
-          // Trigger notification
           showNotification(chat, lastMessage);
         }
       });
