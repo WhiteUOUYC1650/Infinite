@@ -129,7 +129,10 @@ export function GroupCallDialog({ open, onOpenChange, chat, currentUser, isOwner
     return () => {
       unsubscribe();
       if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
+        localStream.getTracks().forEach(t => {
+            t.stop();
+            t.enabled = false;
+        });
       }
       updateDoc(callRef, {
         participants: arrayRemove(participant)

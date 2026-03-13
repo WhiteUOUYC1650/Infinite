@@ -583,7 +583,7 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
     try {
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
-        batch.update(chatRef, { lastMessage: { id: messageRef.id, content: t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp } });
+        batch.update(chatRef, { lastMessage: { id: messageRef.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name, timestamp } });
         await batch.commit();
         
         const base64 = await new Promise<string>((resolve) => {
@@ -1265,7 +1265,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                   <Mic className="h-8 w-8 text-white" />
               </div>
               <div className="text-center text-white">
-                  <p className="text-2xl font-bold font-headline">{t('music')}</p>
+                  <p className="text-2xl font-bold font-headline">{t('voice_message')}</p>
                   <p className="text-sm opacity-70">{t('release_to_send')}</p>
               </div>
           </div>
@@ -1283,7 +1283,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             {item.type === "dm" ? (
                 otherUser ? ( 
                     <button
-                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0 flex-1 overflow-hidden"
+                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden"
                         onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
                     >
@@ -1309,7 +1309,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 )
             ) : ( 
                  <button 
-                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md -mx-3 -my-1 transition-colors min-w-0 flex-1 overflow-hidden"
+                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden"
                     onClick={() => setShowChatProfile(true)}
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
@@ -1617,6 +1617,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             onMouseLeave={stopCircleRecording}
                             onTouchStart={(e) => { e.preventDefault(); startCircleRecording(); }}
                             onTouchEnd={(e) => { e.preventDefault(); stopCircleRecording(); }}
+                            onTouchCancel={(e) => { e.preventDefault(); stopCircleRecording(); }}
                         >
                             <Camera className="h-5 w-5" />
                         </Button>
@@ -1630,6 +1631,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             onMouseLeave={stopVoiceRecording}
                             onTouchStart={(e) => { e.preventDefault(); startVoiceRecording(); }}
                             onTouchEnd={(e) => { e.preventDefault(); stopVoiceRecording(); }}
+                            onTouchCancel={(e) => { e.preventDefault(); stopVoiceRecording(); }}
                         >
                             <Mic className="h-5 w-5" />
                         </Button>
@@ -2023,6 +2025,8 @@ function ChatMessage({
         return <span>{voters.length}</span>;
     };
 
+    const isCircle = message.circleStatus === 'complete';
+
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
             {showAvatar ? (
@@ -2035,15 +2039,19 @@ function ChatMessage({
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col relative", alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none", ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64")}>
-                {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && (
+            <div className={cn(
+                "min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col relative transition-all duration-300", 
+                isCircle ? "bg-transparent p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none"), 
+                ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64"
+            )}>
+                {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && !isCircle && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
                         {isVerified && <VerifiedBadge className='shrink-0' />}
                         {isFromChannel ? <Badge variant="secondary" className='shrink-0'>{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary" className='shrink-0'>BOT</Badge>)}
                     </div>
                 )}
-                {message.replyTo && (
+                {message.replyTo && !isCircle && (
                     <button onClick={handleScrollToReply} className={cn("mb-2 p-2 rounded-md w-full text-left transition-colors overflow-hidden", alignRight ? "bg-black/10 hover:bg-black/20" : "bg-muted hover:bg-muted/80")}>
                         <div className="flex items-center gap-2"><CornerDownLeft className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className={cn("font-semibold text-sm truncate", alignRight ? "text-primary-foreground/90" : "text-primary")}>{message.replyTo.senderName}</div><div className={cn("text-sm truncate", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.replyTo.content}</div></div></div>
                     </button>
@@ -2052,21 +2060,24 @@ function ChatMessage({
                     {message.voiceStatus === 'complete' ? (
                         <div className="relative my-1">
                             {!voiceUrl ? (
-                                <Button variant="secondary" onClick={fetchAndCacheVoice} className="w-full gap-2 rounded-full">
-                                    <Mic className="h-4 w-4" /> {t('music')}
+                                <Button variant="secondary" onClick={fetchAndCacheVoice} className="w-full gap-2 rounded-full h-12 shadow-sm border border-border/50">
+                                    <Mic className="h-4 w-4 text-primary" /> 
+                                    <span className="text-xs font-bold text-muted-foreground">{t('voice_message')}</span>
+                                    <Loader2 className="h-3 w-3 animate-spin ml-auto opacity-50" />
                                 </Button>
                             ) : (
                                 <audio src={voiceUrl} controls className="w-full h-10" />
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (
-                        <div className="relative my-1 flex justify-center">
+                        <div className="relative my-1 flex justify-center animate-in zoom-in duration-500">
                             {!circleUrl ? (
-                                <Button variant="secondary" onClick={fetchAndCacheCircle} className="aspect-square w-32 h-32 rounded-full">
-                                    <VideoIcon className="h-10 w-10" />
-                                </Button>
+                                <div className="aspect-square w-48 h-48 rounded-full flex flex-col items-center justify-center bg-muted/30 border-2 border-dashed border-primary/20 gap-2 cursor-pointer" onClick={fetchAndCacheCircle}>
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t('video_call')}</span>
+                                </div>
                             ) : (
-                                <video src={circleUrl} controls className="aspect-square w-48 h-48 rounded-full object-cover border-4 border-primary/20" />
+                                <video src={circleUrl} controls className="aspect-square w-48 h-48 rounded-full object-cover border-4 border-primary/20 shadow-2xl" />
                             )}
                         </div>
                     ) : hasVideo ? (
@@ -2130,7 +2141,7 @@ function ChatMessage({
                             </div>
                         </div>
                     ) : null}
-                    {message.content && (
+                    {message.content && !isCircle && (
                         <div className={cn("text-sm break-words prose prose-sm max-w-none", alignRight ? "prose-invert text-white" : "dark:prose-invert")}>
                             <ReactMarkdown 
                                 remarkPlugins={[remarkGfm]} 
@@ -2145,7 +2156,7 @@ function ChatMessage({
                     )}
                 </div>
                 
-                {reactionEntries.length > 0 && (
+                {reactionEntries.length > 0 && !isCircle && (
                     <div className="flex flex-wrap gap-1 mt-2">
                         {reactionEntries.map(([emoji, voters]) => (
                             <button
@@ -2165,7 +2176,18 @@ function ChatMessage({
                     </div>
                 )}
 
-                <div className={cn("flex items-center gap-1.5 self-end mt-1 text-xs", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>{message.editedAt && <span className="italic">{t('edited')}</span>}<span>{timestamp}</span>{isCurrentUser && chat.type !== 'channel' && !fromBot && ((message.videoStatus === 'uploading' || message.musicStatus === 'uploading' || message.fileStatus === 'uploading') ? <Clock className="h-4 w-4" /> : (isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-4 w-4" />))}</div>
+                <div className={cn(
+                    "flex items-center gap-1.5 mt-1 text-[10px] leading-none", 
+                    isCircle ? "absolute -bottom-5 right-0 text-muted-foreground" : (alignRight ? "self-end text-primary-foreground/70" : "self-end text-muted-foreground")
+                )}>
+                    {message.editedAt && <span className="italic">{t('edited')}</span>}
+                    <span>{timestamp}</span>
+                    {isCurrentUser && chat.type !== 'channel' && !fromBot && (
+                        (message.videoStatus === 'uploading' || message.musicStatus === 'uploading' || message.fileStatus === 'uploading' || message.voiceStatus === 'uploading' || message.circleStatus === 'uploading') 
+                        ? <Clock className="h-3 w-3" /> 
+                        : (isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)
+                    )}
+                </div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>

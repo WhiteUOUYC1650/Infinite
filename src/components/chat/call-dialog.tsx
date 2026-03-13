@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -142,10 +143,18 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const endCallLocally = (notifyFirestore = true) => {
     if (callStatus === 'ended' && !peerConnection.current) return;
     setCallStatus('ended');
-    localStreamRef.current?.getTracks().forEach(track => track.stop());
+    
+    // Crucial for releasing hardware and resetting OS volume mode
+    localStreamRef.current?.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+    });
+    
     peerConnection.current?.close();
-    localStreamRef.current = null;
     peerConnection.current = null;
+    localStreamRef.current = null;
+    remoteStreamRef.current = null;
+
     if(notifyFirestore && db) {
         const callDocRef = doc(db, 'calls', chat.id);
         updateDoc(callDocRef, { status: 'ended' }).catch(() => {});

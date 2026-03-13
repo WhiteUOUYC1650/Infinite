@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -253,6 +254,8 @@ export const translations = {
       'video': 'Video',
       'music': 'Music',
       'file': 'File',
+      'voice_message': 'Voice Message',
+      'voice_message_short': '[Voice]',
       'max_file_size_label': 'Max size: {size}',
       'invalid_file_type': 'Invalid file type',
       'select_an_image': 'Please select an image.',
@@ -369,6 +372,7 @@ export const translations = {
       'video_chat_title': 'Video Chat',
       'broadcast_title': 'Broadcast',
       'participants': 'Participants',
+      'release_to_send': 'Release to send',
     },
     ru: {
       'settings': 'Настройки',
@@ -622,6 +626,8 @@ export const translations = {
       'video': 'Видео',
       'music': 'Музыка',
       'file': 'Файл',
+      'voice_message': 'Голосовое сообщение',
+      'voice_message_short': '[Голос]',
       'max_file_size_label': 'Макс. размер: {size}',
       'invalid_file_type': 'Неверный тип файла',
       'select_an_image': 'Пожалуйста, выберите изображение.',
@@ -788,7 +794,7 @@ export const translations = {
       'forgot_password_desc': 'Введите адрес вашей эл. почты. Мы найдем ваш аккаунт и отправим код в чат с официальным ботом /B/Infinite.',
       'recovery_code_sent_title': 'Код отправлен',
       'recovery_code_sent_desc': 'Временный код подтверждения был отправлен в ваш чат с /B/Infinite.',
-      'recovery_code_sent_desc_email': 'Ссылка для сброса пароля была отправлена на вашу почту.',
+      'recovery_code_sent_desc_email': 'А password reset link has been sent to your email address.',
       'login_with_recovery_code': 'Войти по коду',
       'enter_email_for_recovery': 'Введите адрес электронной почты для восстановления',
       'reactions': 'Реакции',
@@ -802,6 +808,7 @@ export const translations = {
       'video_chat_title': 'Видеочат',
       'broadcast_title': 'Трансляция',
       'participants': 'Участники',
+      'release_to_send': 'Отпустите, чтобы отправить',
     }
   };
 
