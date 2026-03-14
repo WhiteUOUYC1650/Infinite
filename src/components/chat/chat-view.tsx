@@ -5,11 +5,11 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -162,7 +162,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
 
-  // Recording states
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -197,7 +196,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const isOwner = item.ownerId === currentUser.uid;
 
-  // Typing Status Logic
   useEffect(() => {
     if (!db || !isMember || item.type !== 'dm' || !messageContent.trim()) return;
     
@@ -1241,7 +1239,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
-      {/* Recording Overlays */}
       {isRecordingCircle && (
           <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
               <div className="relative">
@@ -1253,7 +1250,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                   </div>
               </div>
               <div className="mt-12 text-center text-white">
-                  <p className="text-2xl font-bold font-headline">{t('video_call')}</p>
+                  <p className="text-2xl font-bold font-headline">{t('video_message')}</p>
                   <p className="text-sm opacity-70 mt-2">{t('release_to_send')}</p>
               </div>
           </div>
@@ -1279,27 +1276,27 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             <X className="h-5 w-5" />
         </Button>
         
-        <div className="flex-1 flex items-center min-w-0 overflow-hidden">
+        <div className="flex-1 flex items-center min-w-0 overflow-hidden h-full">
             {item.type === "dm" ? (
                 otherUser ? ( 
                     <button
-                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden"
+                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full"
                         onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
-                        <div className="ml-3 min-w-0 overflow-hidden">
+                        <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center">
                             <div className="flex items-center gap-2 min-w-0">
-                                <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                                <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
-                            <div className="text-sm text-muted-foreground truncate h-5">
+                            <div className="text-sm text-muted-foreground truncate h-5 mt-0.5 leading-none">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
                             </div>
                         </div>
                     </button>
                 ) : ( 
-                    <div className="flex items-center min-w-0">
+                    <div className="flex items-center min-w-0 h-full">
                         <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
                         <div className="ml-3 space-y-2">
                             <div className='h-4 w-32 bg-muted rounded animate-pulse' />
@@ -1309,7 +1306,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 )
             ) : ( 
                  <button 
-                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden"
+                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full"
                     onClick={() => setShowChatProfile(true)}
                     disabled={item.id === 'GENERAL_CHAT'}
                 >
@@ -1322,12 +1319,12 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             </AvatarFallback>
                         )}
                     </Avatar>
-                    <div className="min-w-0 overflow-hidden py-1">
+                    <div className="min-w-0 overflow-hidden flex flex-col justify-center h-full">
                         <div className="flex items-center gap-2 min-w-0">
-                            <h2 className="text-lg font-semibold font-headline truncate">{getChatName()}</h2>
+                            <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                              {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-sm text-muted-foreground truncate mt-0.5 leading-none">
                             {item.id === 'GENERAL_CHAT'
                                 ? t('public_chat_description')
                                 : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })}
@@ -1612,9 +1609,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             variant={isRecordingCircle ? "destructive" : "ghost"} 
                             size="icon" 
                             className={cn("h-10 w-10 rounded-full", isRecordingCircle && "animate-pulse")}
-                            onMouseDown={startCircleRecording}
-                            onMouseUp={stopCircleRecording}
-                            onMouseLeave={stopCircleRecording}
+                            onMouseDown={(e) => { e.preventDefault(); startCircleRecording(); }}
+                            onMouseUp={(e) => { e.preventDefault(); stopCircleRecording(); }}
+                            onMouseLeave={(e) => { e.preventDefault(); stopCircleRecording(); }}
                             onTouchStart={(e) => { e.preventDefault(); startCircleRecording(); }}
                             onTouchEnd={(e) => { e.preventDefault(); stopCircleRecording(); }}
                             onTouchCancel={(e) => { e.preventDefault(); stopCircleRecording(); }}
@@ -1626,9 +1623,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             variant={isRecordingVoice ? "destructive" : "ghost"} 
                             size="icon" 
                             className={cn("h-10 w-10 rounded-full", isRecordingVoice && "animate-pulse")}
-                            onMouseDown={startVoiceRecording}
-                            onMouseUp={stopVoiceRecording}
-                            onMouseLeave={stopVoiceRecording}
+                            onMouseDown={(e) => { e.preventDefault(); startVoiceRecording(); }}
+                            onMouseUp={(e) => { e.preventDefault(); stopVoiceRecording(); }}
+                            onMouseLeave={(e) => { e.preventDefault(); stopVoiceRecording(); }}
                             onTouchStart={(e) => { e.preventDefault(); startVoiceRecording(); }}
                             onTouchEnd={(e) => { e.preventDefault(); stopVoiceRecording(); }}
                             onTouchCancel={(e) => { e.preventDefault(); stopVoiceRecording(); }}
@@ -1726,6 +1723,58 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     </Dialog>
     </div>
   );
+}
+
+function CustomAudioPlayer({ src, duration }: { src: string, duration?: string }) {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [maxTime, setMaxTime] = useState(0);
+
+    const togglePlay = () => {
+        if (audioRef.current) {
+            if (isPlaying) audioRef.current.pause();
+            else audioRef.current.play();
+            setIsPlaying(!isPlaying);
+        }
+    };
+
+    const onTimeUpdate = () => {
+        if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+            setMaxTime(audioRef.current.duration || 0);
+        }
+    };
+
+    const formatTime = (time: number) => {
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <div className="flex items-center gap-3 w-full max-w-[240px] px-1 py-1">
+            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} />
+            <button 
+                onClick={togglePlay} 
+                className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95"
+            >
+                {isPlaying ? <Pause className="h-5 w-5 text-primary fill-primary" /> : <Play className="h-5 w-5 text-primary fill-primary ml-0.5" />}
+            </button>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <div className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden mb-1.5">
+                    <div 
+                        className="absolute h-full bg-white rounded-full transition-all duration-100" 
+                        style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
+                    />
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-bold text-white/80 uppercase tracking-tighter">
+                    <span>{formatTime(currentTime)}</span>
+                    <span className="opacity-50">••••••</span>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function ChatMessage({ 
@@ -2040,8 +2089,8 @@ function ChatMessage({
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn(
-                "min-w-0 max-w-[min(480px,calc(100%-4rem))] p-3 rounded-lg flex flex-col relative transition-all duration-300", 
-                isCircle ? "bg-transparent p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none"), 
+                "min-w-0 flex flex-col relative", 
+                isCircle ? "p-0 bg-transparent rounded-full shadow-none border-none" : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-3 rounded-br-none max-w-[min(480px,calc(100%-4rem))]" : "bg-card text-card-foreground rounded-lg p-3 rounded-bl-none max-w-[min(480px,calc(100%-4rem))]"), 
                 ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64"
             )}>
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && !isCircle && (
@@ -2066,18 +2115,23 @@ function ChatMessage({
                                     <Loader2 className="h-3 w-3 animate-spin ml-auto opacity-50" />
                                 </Button>
                             ) : (
-                                <audio src={voiceUrl} controls className="w-full h-10" />
+                                <CustomAudioPlayer src={voiceUrl} />
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (
-                        <div className="relative my-1 flex justify-center animate-in zoom-in duration-500">
+                        <div className="relative flex justify-center animate-in zoom-in duration-500 rounded-full">
                             {!circleUrl ? (
                                 <div className="aspect-square w-48 h-48 rounded-full flex flex-col items-center justify-center bg-muted/30 border-2 border-dashed border-primary/20 gap-2 cursor-pointer" onClick={fetchAndCacheCircle}>
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t('video_call')}</span>
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t('video_message')}</span>
                                 </div>
                             ) : (
-                                <video src={circleUrl} controls className="aspect-square w-48 h-48 rounded-full object-cover border-4 border-primary/20 shadow-2xl" />
+                                <div className="relative group/circle rounded-full overflow-hidden w-48 h-48 border-4 border-white/10 shadow-xl">
+                                    <video src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover/circle:bg-black/20 transition-colors flex items-center justify-center">
+                                        <Play className="text-white opacity-0 group-hover/circle:opacity-100 transition-opacity drop-shadow-md" />
+                                    </div>
+                                </div>
                             )}
                         </div>
                     ) : hasVideo ? (
