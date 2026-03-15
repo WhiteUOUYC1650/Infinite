@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -134,10 +135,10 @@ body {
   animation: experimental-glow 3s infinite ease-in-out;
 }
 
-/* Universal Glass Effect Styles */
-[data-glass-effect="true"] .bg-primary,
-[data-glass-effect="true"] .outgoing-msg > div,
-[data-glass-effect="true"] .incoming-msg > div,
+/* Universal Glass Effect Styles - Disabling for circle messages */
+[data-glass-effect="true"] .bg-primary:not(.rounded-full),
+[data-glass-effect="true"] .outgoing-msg > div:not(.rounded-full),
+[data-glass-effect="true"] .incoming-msg > div:not(.rounded-full),
 [data-glass-effect="true"] button[role="switch"] {
   position: relative;
   overflow: hidden;
@@ -147,9 +148,9 @@ body {
   border: 1px solid rgba(255, 255, 255, calc(0.2 * var(--glass-intensity)));
 }
 
-[data-glass-effect="true"] .bg-primary::before,
-[data-glass-effect="true"] .outgoing-msg > div::before,
-[data-glass-effect="true"] .incoming-msg > div::before,
+[data-glass-effect="true"] .bg-primary:not(.rounded-full)::before,
+[data-glass-effect="true"] .outgoing-msg > div:not(.rounded-full)::before,
+[data-glass-effect="true"] .incoming-msg > div:not(.rounded-full)::before,
 [data-glass-effect="true"] button[role="switch"]::before {
   content: '';
   position: absolute;
@@ -263,12 +264,12 @@ body {
     border: 0.5px solid rgba(0,0,0,0.1);
   }
 
-  .theme-shining-gold .bg-primary {
+  .theme-shining-gold .bg-primary:not(.rounded-full) {
     position: relative;
     overflow: hidden;
   }
 
-  .theme-shining-gold .bg-primary::after {
+  .theme-shining-gold .bg-primary:not(.rounded-full)::after {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -281,7 +282,7 @@ body {
     pointer-events: none;
   }
 
-  .theme-frutiger .bg-primary {
+  .theme-frutiger .bg-primary:not(.rounded-full) {
     position: relative;
     overflow: hidden;
     background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--primary) / 0.85)) !important;
@@ -289,7 +290,7 @@ body {
     box-shadow: 0 4px 12px hsl(var(--primary) / 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
-  .theme-frutiger .bg-primary::before {
+  .theme-frutiger .bg-primary:not(.rounded-full)::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; height: 45%;

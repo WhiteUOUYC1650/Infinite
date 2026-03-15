@@ -373,12 +373,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [messages, item, chatLoading, messagesLoading, membersLoading]);
 
   const handleMediaLoad = useCallback(() => {
-    const timeSinceOpen = Date.now() - chatOpenedAt.current;
-    if (timeSinceOpen > 3000) return;
-
-    setTimeout(() => {
+    // Only scroll to end if the user is already near the bottom
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    if (isAtBottom) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    }
   }, []);
 
     const handleScroll = useCallback(() => {
@@ -1418,7 +1420,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-0 overflow-y-auto pl-[env(safe-area-inset-left))] pr-[env(safe-area-inset-right))]">
                   {isLoading ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -1725,13 +1727,14 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   );
 }
 
-function CustomAudioPlayer({ src, duration }: { src: string, duration?: string }) {
+function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, duration?: string, isMusic?: boolean }) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [maxTime, setMaxTime] = useState(0);
 
-    const togglePlay = () => {
+    const togglePlay = (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (audioRef.current) {
             if (isPlaying) audioRef.current.pause();
             else audioRef.current.play();
@@ -1747,22 +1750,40 @@ function CustomAudioPlayer({ src, duration }: { src: string, duration?: string }
     };
 
     const formatTime = (time: number) => {
+        if (!time || isNaN(time)) return "0:00";
         const mins = Math.floor(time / 60);
         const secs = Math.floor(time % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        if (audioRef.current && maxTime) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
+            audioRef.current.currentTime = percentage * maxTime;
+        }
+    };
+
     return (
-        <div className="flex items-center gap-3 w-full max-w-[240px] px-1 py-1">
+        <div className={cn("flex items-center gap-3 w-full px-1 py-1 transition-all", isMusic ? "max-w-full md:max-w-[400px]" : "max-w-[280px] md:max-w-[320px]")}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} />
             <button 
                 onClick={togglePlay} 
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95"
+                className={cn("rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", isMusic ? "w-12 h-12 bg-white/10 hover:bg-white/20" : "w-10 h-10 bg-white")}
             >
-                {isPlaying ? <Pause className="h-5 w-5 text-primary fill-primary" /> : <Play className="h-5 w-5 text-primary fill-primary ml-0.5" />}
+                {isPlaying ? (
+                    <Pause className={cn("h-5 w-5", isMusic ? "text-white fill-white" : "text-primary fill-primary")} />
+                ) : (
+                    <Play className={cn("h-5 w-5", isMusic ? "text-white fill-white ml-0.5" : "text-primary fill-primary ml-0.5")} />
+                )}
             </button>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
-                <div className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden mb-1.5">
+                <div 
+                    className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden mb-1.5 cursor-pointer" 
+                    onClick={handleProgressClick}
+                >
                     <div 
                         className="absolute h-full bg-white rounded-full transition-all duration-100" 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
@@ -1770,7 +1791,8 @@ function CustomAudioPlayer({ src, duration }: { src: string, duration?: string }
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-bold text-white/80 uppercase tracking-tighter">
                     <span>{formatTime(currentTime)}</span>
-                    <span className="opacity-50">••••••</span>
+                    <span className="opacity-50">{isMusic ? "Infinite Music" : "••••••"}</span>
+                    <span>{formatTime(maxTime)}</span>
                 </div>
             </div>
         </div>
@@ -1829,6 +1851,8 @@ function ChatMessage({
     const hasGenericFile = !!message.fileName && !hasVideo && !hasMusic && !message.imageUrl;
     const fileStatus = message.fileStatus;
 
+    const messageRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         const checkCache = async () => {
             const cached = await getCachedFile(message.id);
@@ -1846,6 +1870,26 @@ function ChatMessage({
         checkCache();
     }, [message.id, hasVideo, hasMusic, hasGenericFile, localMediaUrl, message.voiceStatus, message.circleStatus]);
 
+    // Auto-loading trigger
+    useEffect(() => {
+        if (!messageRef.current) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                if (hasVideo && !videoUrl && !isLoadingVideo && videoStatus === 'complete') fetchAndCacheVideo();
+                if (hasMusic && !musicUrl && !isLoadingMusic && musicStatus === 'complete') fetchAndCacheMusic();
+                if (hasGenericFile && !fileUrl && !isLoadingFile && fileStatus === 'complete') fetchAndCacheFile();
+                if (message.voiceStatus === 'complete' && !voiceUrl) fetchAndCacheVoice();
+                if (message.circleStatus === 'complete' && !circleUrl) fetchAndCacheCircle();
+                // We stop observing once the first load attempts are made
+                observer.disconnect();
+            }
+        }, { threshold: 0.1 });
+
+        observer.observe(messageRef.current);
+        return () => observer.disconnect();
+    }, [videoUrl, musicUrl, fileUrl, voiceUrl, circleUrl]);
+
     const fetchAndCacheVideo = async () => {
         if (!db || !message.videoChunkIds || videoUrl || isLoadingVideo) return;
         setIsLoadingVideo(true);
@@ -1861,7 +1905,6 @@ function ChatMessage({
             onMediaLoad();
         } catch (e) {
             console.error("Error assembling video:", e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to download video.' });
         } finally {
             setIsLoadingVideo(false);
         }
@@ -1882,7 +1925,6 @@ function ChatMessage({
             onMediaLoad();
         } catch (e) {
             console.error("Error assembling music:", e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to download music.' });
         } finally {
             setIsLoadingMusic(false);
         }
@@ -1896,6 +1938,7 @@ function ChatMessage({
             const dataUrl = `data:${message.voiceMimeType};base64,${chunksData.map(c => c.data).join('')}`;
             await cacheFile(message.id, dataUrl);
             setVoiceUrl(await getCachedFile(message.id));
+            onMediaLoad();
         } catch (e) { console.error(e); }
     };
 
@@ -1907,6 +1950,7 @@ function ChatMessage({
             const dataUrl = `data:${message.circleMimeType};base64,${chunksData.map(c => c.data).join('')}`;
             await cacheFile(message.id, dataUrl);
             setCircleUrl(await getCachedFile(message.id));
+            onMediaLoad();
         } catch (e) { console.error(e); }
     };
 
@@ -1922,9 +1966,9 @@ function ChatMessage({
             await cacheFile(message.id, dataUrl);
             const newLocalUrl = await getCachedFile(message.id);
             setFileUrl(newLocalUrl);
+            onMediaLoad();
         } catch (e) {
             console.error("Error downloading file:", e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to download file.' });
         } finally {
             setIsLoadingFile(false);
         }
@@ -2077,7 +2121,7 @@ function ChatMessage({
     const isCircle = message.circleStatus === 'complete';
 
     return (
-        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
+        <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
@@ -2090,9 +2134,13 @@ function ChatMessage({
 
             <div className={cn(
                 "min-w-0 flex flex-col relative", 
-                isCircle ? "p-0 bg-transparent rounded-full shadow-none border-none" : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-3 rounded-br-none max-w-[min(480px,calc(100%-4rem))]" : "bg-card text-card-foreground rounded-lg p-3 rounded-bl-none max-w-[min(480px,calc(100%-4rem))]"), 
+                isCircle 
+                    ? "p-0 bg-transparent rounded-full shadow-none border-none ring-0 overflow-visible" 
+                    : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-3 rounded-br-none max-w-[min(480px,calc(100%-4rem))]" : "bg-card text-card-foreground rounded-lg p-3 rounded-bl-none max-w-[min(480px,calc(100%-4rem))]"), 
                 ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64"
-            )}>
+            )}
+            style={isCircle ? { boxShadow: 'none', background: 'transparent', filter: 'none' } : undefined}
+            >
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && !isCircle && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
@@ -2109,11 +2157,10 @@ function ChatMessage({
                     {message.voiceStatus === 'complete' ? (
                         <div className="relative my-1">
                             {!voiceUrl ? (
-                                <Button variant="secondary" onClick={fetchAndCacheVoice} className="w-full gap-2 rounded-full h-12 shadow-sm border border-border/50">
-                                    <Mic className="h-4 w-4 text-primary" /> 
-                                    <span className="text-xs font-bold text-muted-foreground">{t('voice_message')}</span>
-                                    <Loader2 className="h-3 w-3 animate-spin ml-auto opacity-50" />
-                                </Button>
+                                <div className="w-full flex items-center gap-3 p-3 bg-primary/20 rounded-lg">
+                                    <Mic className="h-5 w-5 text-white" />
+                                    <Loader2 className="h-4 w-4 animate-spin text-white opacity-50" />
+                                </div>
                             ) : (
                                 <CustomAudioPlayer src={voiceUrl} />
                             )}
@@ -2121,12 +2168,11 @@ function ChatMessage({
                     ) : message.circleStatus === 'complete' ? (
                         <div className="relative flex justify-center animate-in zoom-in duration-500 rounded-full">
                             {!circleUrl ? (
-                                <div className="aspect-square w-48 h-48 rounded-full flex flex-col items-center justify-center bg-muted/30 border-2 border-dashed border-primary/20 gap-2 cursor-pointer" onClick={fetchAndCacheCircle}>
+                                <div className="aspect-square w-48 h-48 rounded-full flex flex-col items-center justify-center bg-zinc-900 border-2 border-dashed border-primary/20 gap-2">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t('video_message')}</span>
                                 </div>
                             ) : (
-                                <div className="relative group/circle rounded-full overflow-hidden w-48 h-48 border-4 border-white/10 shadow-xl">
+                                <div className="relative group/circle rounded-full overflow-hidden w-48 h-48 border-2 border-white/10">
                                     <video src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-black/0 group-hover/circle:bg-black/20 transition-colors flex items-center justify-center">
                                         <Play className="text-white opacity-0 group-hover/circle:opacity-100 transition-opacity drop-shadow-md" />
@@ -2165,7 +2211,7 @@ function ChatMessage({
                                     {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />}
                                 </div>
                             ) : (
-                                <audio src={musicUrl} controls className="w-full" onLoadedData={onMediaLoad} />
+                                <CustomAudioPlayer src={musicUrl} isMusic />
                             )}
                             {musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}
                         </div>
@@ -2232,7 +2278,7 @@ function ChatMessage({
 
                 <div className={cn(
                     "flex items-center gap-1.5 mt-1 text-[10px] leading-none", 
-                    isCircle ? "absolute -bottom-5 right-0 text-muted-foreground" : (alignRight ? "self-end text-primary-foreground/70" : "self-end text-muted-foreground")
+                    isCircle ? "absolute -bottom-5 right-0 text-muted-foreground bg-black/20 px-1.5 py-0.5 rounded-full backdrop-blur-md" : (alignRight ? "self-end text-primary-foreground/70" : "self-end text-muted-foreground")
                 )}>
                     {message.editedAt && <span className="italic">{t('edited')}</span>}
                     <span>{timestamp}</span>
