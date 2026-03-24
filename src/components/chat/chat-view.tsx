@@ -164,10 +164,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingVideoRef = useRef<HTMLVideoElement>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -1127,6 +1130,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         audioChunksRef.current = [];
         recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
         recorder.onstop = async () => {
+            const duration = Date.now() - recordingStartTimeRef.current;
+            if (duration < 500) {
+                stream.getTracks().forEach(t => t.stop());
+                return;
+            }
             const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
             const previewUrl = URL.createObjectURL(blob);
@@ -1134,21 +1142,27 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             stream.getTracks().forEach(t => t.stop());
         };
         mediaRecorderRef.current = recorder;
+        recordingStartTimeRef.current = Date.now();
         recorder.start();
         setIsRecordingVoice(true);
+        setRecordingDuration(0);
+        recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
     } catch (e) { console.error(e); }
   };
 
   const stopVoiceRecording = () => {
     if (mediaRecorderRef.current && isRecordingVoice) {
-        mediaRecorderRef.current.stop();
+        if (mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
         setIsRecordingVoice(false);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     }
   };
 
   const startCircleRecording = async () => {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: 480, height: 480 } });
         recordingStreamRef.current = stream;
         if (recordingVideoRef.current) recordingVideoRef.current.srcObject = stream;
         
@@ -1156,6 +1170,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         audioChunksRef.current = [];
         recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
         recorder.onstop = async () => {
+            const duration = Date.now() - recordingStartTimeRef.current;
+            if (duration < 500) {
+                stream.getTracks().forEach(t => t.stop());
+                return;
+            }
             const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
             const file = new File([blob], 'circle.webm', { type: 'video/webm' });
             const previewUrl = URL.createObjectURL(blob);
@@ -1164,15 +1183,21 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             recordingStreamRef.current = null;
         };
         mediaRecorderRef.current = recorder;
+        recordingStartTimeRef.current = Date.now();
         recorder.start();
         setIsRecordingCircle(true);
+        setRecordingDuration(0);
+        recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
     } catch (e) { console.error(e); }
   };
 
   const stopCircleRecording = () => {
     if (mediaRecorderRef.current && isRecordingCircle) {
-        mediaRecorderRef.current.stop();
+        if (mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
         setIsRecordingCircle(false);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     }
   };
 
@@ -1241,32 +1266,39 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+      
+      {/* Recording Circle Overlay */}
       {isRecordingCircle && (
-          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300 pointer-events-none">
               <div className="relative">
-                  <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-primary shadow-2xl relative bg-zinc-900">
+                  <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-primary shadow-[0_0_30px_rgba(255,140,0,0.5)] relative bg-zinc-900 scale-110">
                       <video ref={recordingVideoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
+                      <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-ping" />
                   </div>
-                  <div className="absolute -top-4 -right-4">
-                      <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">REC</div>
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2">
+                      <div className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full animate-pulse tracking-widest uppercase">REC {format(new Date(recordingDuration * 1000), 'mm:ss')}</div>
                   </div>
               </div>
-              <div className="mt-12 text-center text-white">
-                  <p className="text-2xl font-bold font-headline">{t('video_message')}</p>
-                  <p className="text-sm opacity-70 mt-2">{t('release_to_send')}</p>
+              <div className="mt-16 text-center text-white">
+                  <p className="text-3xl font-black font-headline tracking-tight uppercase">{t('video_message')}</p>
+                  <p className="text-sm opacity-60 mt-2 font-bold">{t('release_to_send')}</p>
               </div>
           </div>
       )}
 
+      {/* Recording Voice Overlay */}
       {isRecordingVoice && (
-          <div className="fixed inset-x-0 bottom-0 z-[100] bg-primary p-10 flex flex-col items-center justify-center gap-4 animate-in slide-in-from-bottom duration-300 rounded-t-[3rem] shadow-2xl">
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center animate-bounce">
-                  <Mic className="h-8 w-8 text-white" />
+          <div className="fixed inset-x-0 bottom-24 z-[100] px-4 flex flex-col items-center pointer-events-none animate-in slide-in-from-bottom-4 duration-300">
+              <div className="bg-primary px-8 py-4 rounded-full shadow-2xl flex items-center gap-4 border-2 border-white/20">
+                  <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                  <span className="text-white font-black font-mono text-xl">{format(new Date(recordingDuration * 1000), 'mm:ss')}</span>
+                  <div className="flex gap-1">
+                      {[1,2,3,4,5].map(i => (
+                          <div key={i} className="w-1 bg-white/50 rounded-full animate-bounce" style={{ height: `${Math.random()*20 + 5}px`, animationDelay: `${i*0.1}s` }} />
+                      ))}
+                  </div>
               </div>
-              <div className="text-center text-white">
-                  <p className="text-2xl font-bold font-headline">{t('voice_message')}</p>
-                  <p className="text-sm opacity-70">{t('release_to_send')}</p>
-              </div>
+              <p className="mt-4 text-primary font-bold text-sm bg-background/80 backdrop-blur-md px-4 py-1 rounded-full">{t('release_to_send')}</p>
           </div>
       )}
 
@@ -1610,7 +1642,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             type="button" 
                             variant={isRecordingCircle ? "destructive" : "ghost"} 
                             size="icon" 
-                            className={cn("h-10 w-10 rounded-full", isRecordingCircle && "animate-pulse")}
+                            className={cn("h-10 w-10 rounded-full transition-all duration-300", isRecordingCircle && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
                             onMouseDown={(e) => { e.preventDefault(); startCircleRecording(); }}
                             onMouseUp={(e) => { e.preventDefault(); stopCircleRecording(); }}
                             onMouseLeave={(e) => { e.preventDefault(); stopCircleRecording(); }}
@@ -1624,7 +1656,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             type="button" 
                             variant={isRecordingVoice ? "destructive" : "ghost"} 
                             size="icon" 
-                            className={cn("h-10 w-10 rounded-full", isRecordingVoice && "animate-pulse")}
+                            className={cn("h-10 w-10 rounded-full transition-all duration-300", isRecordingVoice && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
                             onMouseDown={(e) => { e.preventDefault(); startVoiceRecording(); }}
                             onMouseUp={(e) => { e.preventDefault(); stopVoiceRecording(); }}
                             onMouseLeave={(e) => { e.preventDefault(); stopVoiceRecording(); }}
