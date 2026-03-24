@@ -1128,7 +1128,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const recorder = new MediaRecorder(stream);
         audioChunksRef.current = [];
-        recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+        
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        
         recorder.onstop = async () => {
             const duration = Date.now() - recordingStartTimeRef.current;
             if (duration < 500) {
@@ -1141,13 +1145,18 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             await handleSendVoice({ file, previewUrl }, '', null);
             stream.getTracks().forEach(t => t.stop());
         };
+
         mediaRecorderRef.current = recorder;
         recordingStartTimeRef.current = Date.now();
         recorder.start();
         setIsRecordingVoice(true);
         setRecordingDuration(0);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
         recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') });
+    }
   };
 
   const stopVoiceRecording = () => {
@@ -1156,7 +1165,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             mediaRecorderRef.current.stop();
         }
         setIsRecordingVoice(false);
-        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
     }
   };
 
@@ -1168,7 +1180,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         
         const recorder = new MediaRecorder(stream);
         audioChunksRef.current = [];
-        recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+        
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        
         recorder.onstop = async () => {
             const duration = Date.now() - recordingStartTimeRef.current;
             if (duration < 500) {
@@ -1182,13 +1198,18 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             stream.getTracks().forEach(t => t.stop());
             recordingStreamRef.current = null;
         };
+
         mediaRecorderRef.current = recorder;
         recordingStartTimeRef.current = Date.now();
         recorder.start();
         setIsRecordingCircle(true);
         setRecordingDuration(0);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
         recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not access camera/microphone.' });
+    }
   };
 
   const stopCircleRecording = () => {
@@ -1197,7 +1218,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             mediaRecorderRef.current.stop();
         }
         setIsRecordingCircle(false);
-        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+        }
     }
   };
 
@@ -1269,36 +1293,38 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       
       {/* Recording Circle Overlay */}
       {isRecordingCircle && (
-          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300 pointer-events-none">
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300 pointer-events-none select-none">
               <div className="relative">
                   <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-primary shadow-[0_0_30px_rgba(255,140,0,0.5)] relative bg-zinc-900 scale-110">
                       <video ref={recordingVideoRef} autoPlay muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
-                      <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-ping" />
+                      <div className="absolute inset-0 border-4 border-primary/40 rounded-full animate-ping" />
                   </div>
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2">
-                      <div className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full animate-pulse tracking-widest uppercase">REC {format(new Date(recordingDuration * 1000), 'mm:ss')}</div>
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2">
+                      <div className="bg-red-500 text-white text-[12px] font-black px-4 py-1.5 rounded-full animate-pulse tracking-widest uppercase shadow-lg shadow-red-500/40">
+                        REC {format(new Date(recordingDuration * 1000), 'mm:ss')}
+                      </div>
                   </div>
               </div>
-              <div className="mt-16 text-center text-white">
+              <div className="mt-20 text-center text-white">
                   <p className="text-3xl font-black font-headline tracking-tight uppercase">{t('video_message')}</p>
-                  <p className="text-sm opacity-60 mt-2 font-bold">{t('release_to_send')}</p>
+                  <p className="text-sm opacity-60 mt-3 font-bold">{t('release_to_send')}</p>
               </div>
           </div>
       )}
 
       {/* Recording Voice Overlay */}
       {isRecordingVoice && (
-          <div className="fixed inset-x-0 bottom-24 z-[100] px-4 flex flex-col items-center pointer-events-none animate-in slide-in-from-bottom-4 duration-300">
-              <div className="bg-primary px-8 py-4 rounded-full shadow-2xl flex items-center gap-4 border-2 border-white/20">
-                  <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
-                  <span className="text-white font-black font-mono text-xl">{format(new Date(recordingDuration * 1000), 'mm:ss')}</span>
-                  <div className="flex gap-1">
-                      {[1,2,3,4,5].map(i => (
-                          <div key={i} className="w-1 bg-white/50 rounded-full animate-bounce" style={{ height: `${Math.random()*20 + 5}px`, animationDelay: `${i*0.1}s` }} />
+          <div className="fixed inset-x-0 bottom-24 z-[100] px-4 flex flex-col items-center pointer-events-none select-none animate-in slide-in-from-bottom-4 duration-300">
+              <div className="bg-primary px-8 py-4 rounded-full shadow-2xl flex items-center gap-5 border-2 border-white/20">
+                  <div className="w-3.5 h-3.5 rounded-full bg-white animate-pulse shadow-[0_0_10px_white]" />
+                  <span className="text-white font-black font-mono text-2xl tracking-tighter">{format(new Date(recordingDuration * 1000), 'mm:ss')}</span>
+                  <div className="flex gap-1.5 h-6 items-center">
+                      {[1,2,3,4,5,6].map(i => (
+                          <div key={i} className="w-1.5 bg-white/60 rounded-full animate-bounce" style={{ height: `${Math.random()*24 + 6}px`, animationDelay: `${i*0.1}s` }} />
                       ))}
                   </div>
               </div>
-              <p className="mt-4 text-primary font-bold text-sm bg-background/80 backdrop-blur-md px-4 py-1 rounded-full">{t('release_to_send')}</p>
+              <p className="mt-5 text-primary font-black text-sm bg-background/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-primary/20">{t('release_to_send')}</p>
           </div>
       )}
 
@@ -1310,7 +1336,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             <X className="h-5 w-5" />
         </Button>
         
-        <div className="flex-1 flex items-center min-w-0 overflow-hidden h-full">
+        <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
             {item.type === "dm" ? (
                 otherUser ? ( 
                     <button
@@ -1324,7 +1350,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
-                            <div className="text-sm text-muted-foreground truncate h-5 mt-0.5 leading-none">
+                            <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
                                 {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
                             </div>
                         </div>
@@ -1358,7 +1384,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                              {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
-                        <p className="text-sm text-muted-foreground truncate mt-0.5 leading-none">
+                        <p className="text-sm text-muted-foreground truncate mt-1 leading-none">
                             {item.id === 'GENERAL_CHAT'
                                 ? t('public_chat_description')
                                 : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })}
@@ -1642,7 +1668,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             type="button" 
                             variant={isRecordingCircle ? "destructive" : "ghost"} 
                             size="icon" 
-                            className={cn("h-10 w-10 rounded-full transition-all duration-300", isRecordingCircle && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
+                            className={cn("h-10 w-10 rounded-full transition-all duration-300 relative overflow-visible", isRecordingCircle && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
                             onMouseDown={(e) => { e.preventDefault(); startCircleRecording(); }}
                             onMouseUp={(e) => { e.preventDefault(); stopCircleRecording(); }}
                             onMouseLeave={(e) => { e.preventDefault(); stopCircleRecording(); }}
@@ -1656,7 +1682,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             type="button" 
                             variant={isRecordingVoice ? "destructive" : "ghost"} 
                             size="icon" 
-                            className={cn("h-10 w-10 rounded-full transition-all duration-300", isRecordingVoice && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
+                            className={cn("h-10 w-10 rounded-full transition-all duration-300 relative overflow-visible", isRecordingVoice && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
                             onMouseDown={(e) => { e.preventDefault(); startVoiceRecording(); }}
                             onMouseUp={(e) => { e.preventDefault(); stopVoiceRecording(); }}
                             onMouseLeave={(e) => { e.preventDefault(); stopVoiceRecording(); }}
@@ -1913,7 +1939,6 @@ function ChatMessage({
                 if (hasGenericFile && !fileUrl && !isLoadingFile && fileStatus === 'complete') fetchAndCacheFile();
                 if (message.voiceStatus === 'complete' && !voiceUrl) fetchAndCacheVoice();
                 if (message.circleStatus === 'complete' && !circleUrl) fetchAndCacheCircle();
-                // We stop observing once the first load attempts are made
                 observer.disconnect();
             }
         }, { threshold: 0.1 });
