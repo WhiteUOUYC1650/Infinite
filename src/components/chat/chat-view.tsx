@@ -171,6 +171,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
+  const isRecordingRequestedRef = useRef<boolean>(false);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -376,7 +377,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [messages, item, chatLoading, messagesLoading, membersLoading]);
 
   const handleMediaLoad = useCallback(() => {
-    // Only scroll to end if the user is already near the bottom
     const container = scrollContainerRef.current;
     if (!container) return;
     
@@ -1124,8 +1124,15 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const startVoiceRecording = async () => {
+    isRecordingRequestedRef.current = true;
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!isRecordingRequestedRef.current) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+        }
+        
+        recordingStreamRef.current = stream;
         const recorder = new MediaRecorder(stream);
         audioChunksRef.current = [];
         
@@ -1136,14 +1143,21 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         recorder.onstop = async () => {
             const duration = Date.now() - recordingStartTimeRef.current;
             if (duration < 500) {
-                stream.getTracks().forEach(t => t.stop());
+                if (recordingStreamRef.current) {
+                    recordingStreamRef.current.getTracks().forEach(t => t.stop());
+                    recordingStreamRef.current = null;
+                }
                 return;
             }
             const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
             const previewUrl = URL.createObjectURL(blob);
             await handleSendVoice({ file, previewUrl }, '', null);
-            stream.getTracks().forEach(t => t.stop());
+            
+            if (recordingStreamRef.current) {
+                recordingStreamRef.current.getTracks().forEach(t => t.stop());
+                recordingStreamRef.current = null;
+            }
         };
 
         mediaRecorderRef.current = recorder;
@@ -1155,11 +1169,13 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
     } catch (e) { 
         console.error(e); 
+        isRecordingRequestedRef.current = false;
         toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') });
     }
   };
 
   const stopVoiceRecording = () => {
+    isRecordingRequestedRef.current = false;
     if (mediaRecorderRef.current && isRecordingVoice) {
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
@@ -1173,8 +1189,14 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const startCircleRecording = async () => {
+    isRecordingRequestedRef.current = true;
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: 480, height: 480 } });
+        if (!isRecordingRequestedRef.current) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+        }
+
         recordingStreamRef.current = stream;
         if (recordingVideoRef.current) recordingVideoRef.current.srcObject = stream;
         
@@ -1188,15 +1210,21 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         recorder.onstop = async () => {
             const duration = Date.now() - recordingStartTimeRef.current;
             if (duration < 500) {
-                stream.getTracks().forEach(t => t.stop());
+                if (recordingStreamRef.current) {
+                    recordingStreamRef.current.getTracks().forEach(t => t.stop());
+                    recordingStreamRef.current = null;
+                }
                 return;
             }
             const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
             const file = new File([blob], 'circle.webm', { type: 'video/webm' });
             const previewUrl = URL.createObjectURL(blob);
             await handleSendCircle({ file, previewUrl }, '', null);
-            stream.getTracks().forEach(t => t.stop());
-            recordingStreamRef.current = null;
+            
+            if (recordingStreamRef.current) {
+                recordingStreamRef.current.getTracks().forEach(t => t.stop());
+                recordingStreamRef.current = null;
+            }
         };
 
         mediaRecorderRef.current = recorder;
@@ -1208,11 +1236,13 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
     } catch (e) { 
         console.error(e); 
+        isRecordingRequestedRef.current = false;
         toast({ variant: 'destructive', title: 'Error', description: 'Could not access camera/microphone.' });
     }
   };
 
   const stopCircleRecording = () => {
+    isRecordingRequestedRef.current = false;
     if (mediaRecorderRef.current && isRecordingCircle) {
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
@@ -1306,7 +1336,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                   </div>
               </div>
               <div className="mt-20 text-center text-white">
-                  <p className="text-3xl font-black font-headline tracking-tight uppercase">{t('video_message')}</p>
+                  <p className="text-3xl font-black font-headline tracking-tight uppercase">{t('voice_message')}</p>
                   <p className="text-sm opacity-60 mt-3 font-bold">{t('release_to_send')}</p>
               </div>
           </div>
@@ -1825,7 +1855,7 @@ function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, du
     };
 
     return (
-        <div className={cn("flex items-center gap-3 w-full px-1 py-1 transition-all", isMusic ? "max-w-full md:max-w-[400px]" : "max-w-[280px] md:max-w-[320px]")}>
+        <div className={cn("flex items-center gap-3 w-full px-1 py-1 transition-all", isMusic ? "w-full max-w-[400px]" : "w-full max-w-[320px]")}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} />
             <button 
                 onClick={togglePlay} 
@@ -1928,7 +1958,6 @@ function ChatMessage({
         checkCache();
     }, [message.id, hasVideo, hasMusic, hasGenericFile, localMediaUrl, message.voiceStatus, message.circleStatus]);
 
-    // Auto-loading trigger
     useEffect(() => {
         if (!messageRef.current) return;
 
