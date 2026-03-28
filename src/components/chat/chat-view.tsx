@@ -372,19 +372,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return true;
   }, [isMember, item, currentUser.uid, otherUser]);
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, item, chatLoading, messagesLoading, membersLoading]);
+    scrollToBottom();
+  }, [messages, item, chatLoading, messagesLoading, membersLoading, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    // If user is already near bottom, follow the scroll down
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 250;
     if (isAtBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        scrollToBottom('smooth');
     }
-  }, []);
+  }, [scrollToBottom]);
 
     const handleScroll = useCallback(() => {
         const container = scrollContainerRef.current;
@@ -1817,7 +1824,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   );
 }
 
-function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, duration?: string, isMusic?: boolean }) {
+function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: string, isMusic?: boolean, isIncoming?: boolean }) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -1871,25 +1878,28 @@ function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, du
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
                 onClick={togglePlay} 
-                className={cn("rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", isMusic ? "w-12 h-12 bg-white/10 hover:bg-white/20" : "w-10 h-10 bg-white")}
+                className={cn(
+                    "rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", 
+                    isMusic ? "w-12 h-12 bg-white/10 hover:bg-white/20" : (isIncoming ? "w-10 h-10 bg-primary/20 hover:bg-primary/30" : "w-10 h-10 bg-white")
+                )}
             >
                 {isPlaying ? (
-                    <Pause className={cn("h-5 w-5", isMusic ? "text-white fill-white" : "text-primary fill-primary")} />
+                    <Pause className={cn("h-5 w-5", isMusic ? "text-white fill-white" : (isIncoming ? "text-primary fill-primary" : "text-primary fill-primary"))} />
                 ) : (
-                    <Play className={cn("h-5 w-5", isMusic ? "text-white fill-white ml-0.5" : "text-primary fill-primary ml-0.5")} />
+                    <Play className={cn("h-5 w-5", isMusic ? "text-white fill-white ml-0.5" : (isIncoming ? "text-primary fill-primary ml-0.5" : "text-primary fill-primary ml-0.5"))} />
                 )}
             </button>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div 
-                    className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden mb-1.5 cursor-pointer" 
+                    className={cn("relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", isIncoming ? "bg-primary/10" : "bg-white/20")} 
                     onClick={handleProgressClick}
                 >
                     <div 
-                        className="absolute h-full bg-white rounded-full transition-all duration-100" 
+                        className={cn("absolute h-full rounded-full transition-all duration-100", isIncoming ? "bg-primary" : "bg-white")} 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                <div className="flex justify-between items-center text-[10px] font-bold text-white/80 uppercase tracking-tighter">
+                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-muted-foreground" : "text-white/80")}>
                     <span>{formatTime(currentTime)}</span>
                     <span className="opacity-50">{isMusic ? "Infinite Music" : "••••••"}</span>
                     <span>{formatTime(maxTime)}</span>
@@ -1987,7 +1997,7 @@ function ChatMessage({
 
         observer.observe(messageRef.current);
         return () => observer.disconnect();
-    }, [videoUrl, musicUrl, fileUrl, voiceUrl, circleUrl]);
+    }, [videoUrl, musicUrl, fileUrl, voiceUrl, circleUrl, videoStatus, musicStatus, fileStatus, message.voiceStatus, message.circleStatus]);
 
     const fetchAndCacheVideo = async () => {
         if (!db || !message.videoChunkIds || videoUrl || isLoadingVideo) return;
@@ -2261,7 +2271,7 @@ function ChatMessage({
                                     <Loader2 className="h-4 w-4 animate-spin text-white opacity-50" />
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={voiceUrl} />
+                                <CustomAudioPlayer src={voiceUrl} isIncoming={!isCurrentUser} />
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (
@@ -2293,6 +2303,7 @@ function ChatMessage({
                                         onEnded={(e) => {
                                             e.currentTarget.muted = true;
                                         }}
+                                        onLoadedData={onMediaLoad}
                                     />
                                 </div>
                             )}
@@ -2328,7 +2339,7 @@ function ChatMessage({
                                     {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />}
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={musicUrl} isMusic />
+                                <CustomAudioPlayer src={musicUrl} isMusic isIncoming={!isCurrentUser} />
                             )}
                             {musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}
                         </div>
