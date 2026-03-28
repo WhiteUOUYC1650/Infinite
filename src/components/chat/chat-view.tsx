@@ -1362,7 +1362,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
       )}>
-        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0">
+        <Button variant="ghost" size="icon" onClose={onClose} className="mr-2 shrink-0">
             <X className="h-5 w-5" />
         </Button>
         
@@ -1375,7 +1375,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                         disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
                     >
                         <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
-                        <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center">
+                        <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
@@ -1823,6 +1823,13 @@ function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, du
     const [currentTime, setCurrentTime] = useState(0);
     const [maxTime, setMaxTime] = useState(0);
 
+    // Automatically load metadata to get duration
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.load();
+        }
+    }, [src]);
+
     const togglePlay = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (audioRef.current) {
@@ -1835,14 +1842,15 @@ function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, du
     const onTimeUpdate = () => {
         if (audioRef.current) {
             setCurrentTime(audioRef.current.currentTime);
-            if (audioRef.current.duration && audioRef.current.duration !== Infinity) {
-                setMaxTime(audioRef.current.duration);
+            const d = audioRef.current.duration;
+            if (d && isFinite(d)) {
+                setMaxTime(d);
             }
         }
     };
 
     const formatTime = (time: number) => {
-        if (!time || isNaN(time) || time === Infinity) return "0:00";
+        if (typeof time !== 'number' || isNaN(time) || !isFinite(time)) return "0:00";
         const mins = Math.floor(time / 60);
         const secs = Math.floor(time % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -1860,7 +1868,7 @@ function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, du
 
     return (
         <div className={cn("flex items-center gap-3 w-full px-1 py-1 transition-all", isMusic ? "w-full max-w-[400px]" : "w-full max-w-[320px]")}>
-            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} />
+            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
                 onClick={togglePlay} 
                 className={cn("rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", isMusic ? "w-12 h-12 bg-white/10 hover:bg-white/20" : "w-10 h-10 bg-white")}
@@ -1944,6 +1952,7 @@ function ChatMessage({
     const fileStatus = message.fileStatus;
 
     const messageRef = useRef<HTMLDivElement>(null);
+    const circleVideoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
         const checkCache = async () => {
@@ -2256,14 +2265,35 @@ function ChatMessage({
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (
-                        <div className="relative flex justify-center animate-in zoom-in duration-500 rounded-full">
+                        <div 
+                            className="relative flex justify-center animate-in zoom-in duration-500 rounded-full cursor-pointer"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (circleVideoRef.current) {
+                                    circleVideoRef.current.currentTime = 0;
+                                    circleVideoRef.current.muted = false;
+                                    circleVideoRef.current.play();
+                                }
+                            }}
+                        >
                             {!circleUrl ? (
                                 <div className="aspect-square w-48 h-48 rounded-full flex flex-col items-center justify-center bg-zinc-900 border-2 border-dashed border-primary/20 gap-2">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
                                 <div className="relative group/circle rounded-full overflow-hidden w-48 h-48 border-2 border-white/10">
-                                    <video src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                                    <video 
+                                        ref={circleVideoRef}
+                                        src={circleUrl} 
+                                        autoPlay 
+                                        muted 
+                                        loop 
+                                        playsInline 
+                                        className="w-full h-full object-cover" 
+                                        onEnded={(e) => {
+                                            e.currentTarget.muted = true;
+                                        }}
+                                    />
                                     <div className="absolute inset-0 bg-black/0 group-hover/circle:bg-black/20 transition-colors flex items-center justify-center">
                                         <Play className="text-white opacity-0 group-hover/circle:opacity-100 transition-opacity drop-shadow-md" />
                                     </div>
