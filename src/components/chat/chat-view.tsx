@@ -1380,9 +1380,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
                             </div>
-                            <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
-                                {otherUser.id !== currentUser.uid ? getStatusText(otherUser) : ''}
-                            </div>
+                            {otherUser.id !== currentUser.uid && (
+                                <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
+                                    {getStatusText(otherUser)}
+                                </div>
+                            )}
                         </div>
                     </button>
                 ) : ( 
@@ -1833,12 +1835,14 @@ function CustomAudioPlayer({ src, duration, isMusic = false }: { src: string, du
     const onTimeUpdate = () => {
         if (audioRef.current) {
             setCurrentTime(audioRef.current.currentTime);
-            setMaxTime(audioRef.current.duration || 0);
+            if (audioRef.current.duration && audioRef.current.duration !== Infinity) {
+                setMaxTime(audioRef.current.duration);
+            }
         }
     };
 
     const formatTime = (time: number) => {
-        if (!time || isNaN(time)) return "0:00";
+        if (!time || isNaN(time) || time === Infinity) return "0:00";
         const mins = Math.floor(time / 60);
         const secs = Math.floor(time % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
