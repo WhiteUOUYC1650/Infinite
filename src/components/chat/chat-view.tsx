@@ -386,8 +386,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container) return;
     
-    // If user is already near bottom, follow the scroll down
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 250;
+    // Improved logic: If user is within 300px of bottom, force scroll
+    const threshold = 300;
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     if (isAtBottom) {
         scrollToBottom('smooth');
     }
@@ -1880,7 +1881,11 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                 onClick={togglePlay} 
                 className={cn(
                     "rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", 
-                    isMusic ? "w-12 h-12 bg-white/10 hover:bg-white/20" : (isIncoming ? "w-10 h-10 bg-primary/20 hover:bg-primary/30" : "w-10 h-10 bg-white")
+                    isMusic 
+                        ? "w-12 h-12 bg-white/10 hover:bg-white/20" 
+                        : (isIncoming 
+                            ? "w-10 h-10 bg-white dark:bg-black hover:bg-muted transition-colors" 
+                            : "w-10 h-10 bg-white")
                 )}
             >
                 {isPlaying ? (
@@ -1891,7 +1896,10 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
             </button>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div 
-                    className={cn("relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", isIncoming ? "bg-primary/10" : "bg-white/20")} 
+                    className={cn(
+                        "relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", 
+                        isIncoming ? "bg-black/10 dark:bg-white/10" : "bg-white/20"
+                    )} 
                     onClick={handleProgressClick}
                 >
                     <div 
