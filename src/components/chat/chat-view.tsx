@@ -386,7 +386,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container) return;
     
-    // Improved logic: If user is within 300px of bottom, force scroll
     const threshold = 300;
     const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     if (isAtBottom) {
@@ -1831,7 +1830,6 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
     const [currentTime, setCurrentTime] = useState(0);
     const [maxTime, setMaxTime] = useState(0);
 
-    // Automatically load metadata to get duration
     useEffect(() => {
         if (audioRef.current) {
             audioRef.current.load();
@@ -1898,7 +1896,7 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                 <div 
                     className={cn(
                         "relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", 
-                        isIncoming ? "bg-black/10 dark:bg-white/10" : "bg-white/20"
+                        isIncoming ? "bg-black/20 dark:bg-white/20" : "bg-white/20"
                     )} 
                     onClick={handleProgressClick}
                 >
@@ -1907,7 +1905,7 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-muted-foreground" : "text-white/80")}>
+                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-foreground/70" : "text-white/80")}>
                     <span>{formatTime(currentTime)}</span>
                     <span className="opacity-50">{isMusic ? "Infinite Music" : "••••••"}</span>
                     <span>{formatTime(maxTime)}</span>
@@ -2290,6 +2288,7 @@ function ChatMessage({
                                 if (circleVideoRef.current) {
                                     circleVideoRef.current.currentTime = 0;
                                     circleVideoRef.current.muted = false;
+                                    circleVideoRef.current.loop = false;
                                     circleVideoRef.current.play();
                                 }
                             }}
@@ -2310,6 +2309,8 @@ function ChatMessage({
                                         className="w-full h-full object-cover" 
                                         onEnded={(e) => {
                                             e.currentTarget.muted = true;
+                                            e.currentTarget.loop = true;
+                                            e.currentTarget.play();
                                         }}
                                         onLoadedData={onMediaLoad}
                                     />
