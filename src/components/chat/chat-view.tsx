@@ -1362,7 +1362,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
       )}>
-        <Button variant="ghost" size="icon" onClose={onClose} className="mr-2 shrink-0">
+        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0">
             <X className="h-5 w-5" />
         </Button>
         
@@ -2294,9 +2294,6 @@ function ChatMessage({
                                             e.currentTarget.muted = true;
                                         }}
                                     />
-                                    <div className="absolute inset-0 bg-black/0 group-hover/circle:bg-black/20 transition-colors flex items-center justify-center">
-                                        <Play className="text-white opacity-0 group-hover/circle:opacity-100 transition-opacity drop-shadow-md" />
-                                    </div>
                                 </div>
                             )}
                         </div>
