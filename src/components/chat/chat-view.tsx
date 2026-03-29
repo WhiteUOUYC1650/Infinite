@@ -373,8 +373,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [isMember, item, currentUser.uid, otherUser]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior });
+    if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior
+        });
     }
   }, []);
 
@@ -386,7 +389,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container) return;
     
-    const threshold = 300;
+    const threshold = 150;
     const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     if (isAtBottom) {
         scrollToBottom('smooth');
@@ -1553,7 +1556,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                   </React.Fragment>
                               );
                           })}
-                          <div ref={messagesEndRef} />
+                          <div ref={messagesEndRef} className="h-px w-full" />
                       </div>
                   ) : (
                       <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">
@@ -1873,7 +1876,11 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
     };
 
     return (
-        <div className={cn("flex items-center gap-3 w-full px-1 py-1 transition-all", isMusic ? "w-full max-w-[400px]" : "w-full max-w-[320px]")}>
+        <div className={cn(
+            "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all", 
+            isMusic ? "w-full max-w-[400px]" : "w-full max-w-[320px]",
+            isIncoming ? "bg-white dark:bg-black shadow-sm" : ""
+        )}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
                 onClick={togglePlay} 
@@ -1882,7 +1889,7 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                     isMusic 
                         ? "w-12 h-12 bg-white/10 hover:bg-white/20" 
                         : (isIncoming 
-                            ? "w-10 h-10 bg-white dark:bg-black hover:bg-muted transition-colors" 
+                            ? "w-10 h-10 bg-primary/10 hover:bg-primary/20 transition-colors" 
                             : "w-10 h-10 bg-white")
                 )}
             >
@@ -1896,7 +1903,7 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                 <div 
                     className={cn(
                         "relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", 
-                        isIncoming ? "bg-black/20 dark:bg-white/20" : "bg-white/20"
+                        isIncoming ? "bg-black/10 dark:bg-white/10" : "bg-white/20"
                     )} 
                     onClick={handleProgressClick}
                 >
@@ -1905,7 +1912,7 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-foreground/70" : "text-white/80")}>
+                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-black dark:text-white" : "text-white/80")}>
                     <span>{formatTime(currentTime)}</span>
                     <span className="opacity-50">{isMusic ? "Infinite Music" : "••••••"}</span>
                     <span>{formatTime(maxTime)}</span>
@@ -2298,7 +2305,7 @@ function ChatMessage({
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
-                                <div className="relative group/circle rounded-full overflow-hidden w-48 h-48 border-2 border-white/10">
+                                <div className="relative group/circle rounded-full overflow-hidden w-48 h-48 border-none ring-0 shadow-none">
                                     <video 
                                         ref={circleVideoRef}
                                         src={circleUrl} 
@@ -2306,7 +2313,7 @@ function ChatMessage({
                                         muted 
                                         loop 
                                         playsInline 
-                                        className="w-full h-full object-cover" 
+                                        className="w-full h-full object-cover rounded-full" 
                                         onEnded={(e) => {
                                             e.currentTarget.muted = true;
                                             e.currentTarget.loop = true;
