@@ -374,7 +374,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollToBottom = useCallback((behaviorOverride?: ScrollBehavior) => {
     if (scrollContainerRef.current) {
         const behavior = behaviorOverride || (smoothScroll ? 'smooth' : 'auto');
-        // Use requestAnimationFrame to ensure the DOM is updated before scrolling
         requestAnimationFrame(() => {
             if (scrollContainerRef.current) {
                 scrollContainerRef.current.scrollTo({
@@ -386,9 +385,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [smoothScroll]);
 
+  const prevMessagesCountRef = useRef(0);
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, item, chatLoading, messagesLoading, membersLoading, scrollToBottom]);
+    const currentCount = messages?.length || 0;
+    // Only scroll if new messages were added, not on interaction with existing messages
+    if (currentCount > prevMessagesCountRef.current) {
+        scrollToBottom();
+    }
+    prevMessagesCountRef.current = currentCount;
+  }, [messages, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -552,9 +557,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (originalFile?.type === 'video') {
             await handleSendVideo(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'voice') {
-            await handleSendVoice(originalFile, originalContent, originalReplyTo);
+            await handleSendVoice(originalFile, originalContent, originalReplyTo, 0); // Logic for auto duration below
         } else if (originalFile?.type === 'circle') {
-            await handleSendCircle(originalFile, originalContent, originalReplyTo);
+            await handleSendCircle(originalFile, originalContent, originalReplyTo, 0);
         } else if (originalFile?.type === 'music') {
             await handleSendMusic(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'file') {
@@ -577,7 +582,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
 };
 
-const handleSendVoice = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
+const handleSendVoice = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null, duration: number) => {
     if (!db) throw new Error("Database not initialized");
     const { file } = payload;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
@@ -589,6 +594,7 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
         timestamp,
         voiceMimeType: file.type,
         voiceStatus: 'uploading',
+        voiceDuration: duration,
         readBy: [],
         ...(replyTo && {
             replyTo: {
@@ -621,7 +627,7 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
     } catch (e) { console.error(e); }
 };
 
-const handleSendCircle = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null) => {
+const handleSendCircle = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null, duration: number) => {
     if (!db) throw new Error("Database not initialized");
     const { file } = payload;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
@@ -633,6 +639,7 @@ const handleSendCircle = async (payload: {file: File, previewUrl: string}, conte
         timestamp,
         circleMimeType: file.type,
         circleStatus: 'uploading',
+        circleDuration: duration,
         readBy: [],
         ...(replyTo && {
             replyTo: {
@@ -1156,8 +1163,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         };
         
         recorder.onstop = async () => {
-            const duration = Date.now() - recordingStartTimeRef.current;
-            if (duration < 500) {
+            const durationMs = Date.now() - recordingStartTimeRef.current;
+            const durationSeconds = Math.floor(durationMs / 1000);
+            if (durationMs < 500) {
                 if (recordingStreamRef.current) {
                     recordingStreamRef.current.getTracks().forEach(t => t.stop());
                     recordingStreamRef.current = null;
@@ -1167,7 +1175,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
             const previewUrl = URL.createObjectURL(blob);
-            await handleSendVoice({ file, previewUrl }, '', null);
+            await handleSendVoice({ file, previewUrl }, '', null, durationSeconds);
             
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach(t => t.stop());
@@ -1223,8 +1231,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         };
         
         recorder.onstop = async () => {
-            const duration = Date.now() - recordingStartTimeRef.current;
-            if (duration < 500) {
+            const durationMs = Date.now() - recordingStartTimeRef.current;
+            const durationSeconds = Math.floor(durationMs / 1000);
+            if (durationMs < 500) {
                 if (recordingStreamRef.current) {
                     recordingStreamRef.current.getTracks().forEach(t => t.stop());
                     recordingStreamRef.current = null;
@@ -1234,7 +1243,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
             const file = new File([blob], 'circle.webm', { type: 'video/webm' });
             const previewUrl = URL.createObjectURL(blob);
-            await handleSendCircle({ file, previewUrl }, '', null);
+            await handleSendCircle({ file, previewUrl }, '', null, durationSeconds);
             
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach(t => t.stop());
@@ -1823,7 +1832,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                     <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
                 )}
                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 bg-black/50 text-white rounded-full hover:bg-black/70" onClick={() => setPreviewImage(null)}>
-                    <X className="h-6 w-6" />
+                    <X className="h-6 we-6" />
                 </Button>
             </div>
         </DialogContent>
@@ -1832,11 +1841,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   );
 }
 
-function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: string, isMusic?: boolean, isIncoming?: boolean }) {
+function CustomAudioPlayer({ src, isMusic = false, isIncoming = false, duration }: { src: string, isMusic?: boolean, isIncoming?: boolean, duration?: number }) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
-    const [maxTime, setMaxTime] = useState(0);
+    const [maxTime, setMaxTime] = useState(duration || 0);
 
     useEffect(() => {
         if (audioRef.current) {
@@ -2289,7 +2298,7 @@ function ChatMessage({
                                     <Loader2 className="h-4 w-4 animate-spin text-white opacity-50" />
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={voiceUrl} isIncoming={!isCurrentUser} />
+                                <CustomAudioPlayer src={voiceUrl} isIncoming={!isCurrentUser} duration={message.voiceDuration} />
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (

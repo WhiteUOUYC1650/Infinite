@@ -46,9 +46,11 @@ export type Message = {
   voiceMimeType?: string;
   voiceStatus?: 'uploading' | 'complete' | 'failed';
   voiceChunkIds?: string[];
+  voiceDuration?: number;
   circleMimeType?: string;
   circleStatus?: 'uploading' | 'complete' | 'failed';
   circleChunkIds?: string[];
+  circleDuration?: number;
   fileName?: string;
   fileMimeType?: string;
   fileSize?: number;
