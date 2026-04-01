@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -134,7 +133,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const db = useFirestore();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { theme: colorTheme, sendOnEnter } = useTheme();
+  const { theme: colorTheme, sendOnEnter, smoothScroll } = useTheme();
   const { promptUpdate } = useUpdatePrompt();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -372,14 +371,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return true;
   }, [isMember, item, currentUser.uid, otherUser]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBottom = useCallback((behaviorOverride?: ScrollBehavior) => {
     if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({
-            top: scrollContainerRef.current.scrollHeight,
-            behavior
+        const behavior = behaviorOverride || (smoothScroll ? 'smooth' : 'auto');
+        // Use requestAnimationFrame to ensure the DOM is updated before scrolling
+        requestAnimationFrame(() => {
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTo({
+                    top: scrollContainerRef.current.scrollHeight,
+                    behavior
+                });
+            }
         });
     }
-  }, []);
+  }, [smoothScroll]);
 
   useEffect(() => {
     scrollToBottom();
@@ -392,7 +397,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const threshold = 150;
     const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     if (isAtBottom) {
-        scrollToBottom('smooth');
+        scrollToBottom();
     }
   }, [scrollToBottom]);
 
@@ -1879,7 +1884,7 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
         <div className={cn(
             "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all", 
             isMusic ? "w-full max-w-[400px]" : "w-full max-w-[320px]",
-            isIncoming ? "bg-white dark:bg-black shadow-sm" : ""
+            isIncoming ? "bg-black shadow-sm" : ""
         )}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
@@ -1889,30 +1894,30 @@ function CustomAudioPlayer({ src, isMusic = false, isIncoming = false }: { src: 
                     isMusic 
                         ? "w-12 h-12 bg-white/10 hover:bg-white/20" 
                         : (isIncoming 
-                            ? "w-10 h-10 bg-primary/10 hover:bg-primary/20 transition-colors" 
+                            ? "w-10 h-10 bg-white/10 hover:bg-white/20 transition-colors" 
                             : "w-10 h-10 bg-white")
                 )}
             >
                 {isPlaying ? (
-                    <Pause className={cn("h-5 w-5", isMusic ? "text-white fill-white" : (isIncoming ? "text-primary fill-primary" : "text-primary fill-primary"))} />
+                    <Pause className={cn("h-5 w-5", isMusic ? "text-white fill-white" : (isIncoming ? "text-white fill-white" : "text-primary fill-primary"))} />
                 ) : (
-                    <Play className={cn("h-5 w-5", isMusic ? "text-white fill-white ml-0.5" : (isIncoming ? "text-primary fill-primary ml-0.5" : "text-primary fill-primary ml-0.5"))} />
+                    <Play className={cn("h-5 w-5", isMusic ? "text-white fill-white ml-0.5" : (isIncoming ? "text-white fill-white ml-0.5" : "text-primary fill-primary ml-0.5"))} />
                 )}
             </button>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div 
                     className={cn(
                         "relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", 
-                        isIncoming ? "bg-black/10 dark:bg-white/10" : "bg-white/20"
+                        isIncoming ? "bg-white/20" : "bg-white/20"
                     )} 
                     onClick={handleProgressClick}
                 >
                     <div 
-                        className={cn("absolute h-full rounded-full transition-all duration-100", isIncoming ? "bg-primary" : "bg-white")} 
+                        className={cn("absolute h-full rounded-full transition-all duration-100", isIncoming ? "bg-white" : "bg-white")} 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-black dark:text-white" : "text-white/80")}>
+                <div className={cn("flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter", isIncoming ? "text-white/80" : "text-white/80")}>
                     <span>{formatTime(currentTime)}</span>
                     <span className="opacity-50">{isMusic ? "Infinite Music" : "••••••"}</span>
                     <span>{formatTime(maxTime)}</span>

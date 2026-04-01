@@ -326,6 +326,8 @@ interface ThemeContextType {
   toggleSnowflakes: () => void;
   sendOnEnter: boolean;
   toggleSendOnEnter: () => void;
+  smoothScroll: boolean;
+  toggleSmoothScroll: () => void;
   minimizeCallOnClose: boolean;
   toggleMinimizeCallOnClose: () => void;
   experimentalDesign: boolean;
@@ -342,6 +344,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSnowflakes, setShowSnowflakes] = useState(false);
   const [sendOnEnter, setSendOnEnter] = useState(false);
+  const [smoothScroll, setSmoothScroll] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
   const [glassEffect, setGlassEffect] = useState(false);
@@ -352,6 +355,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedDarkMode = localStorage.getItem('app-theme-mode');
     const storedSnowflakes = localStorage.getItem('app-snowflakes-mode');
     const storedSendOnEnter = localStorage.getItem('app-send-on-enter');
+    const storedSmoothScroll = localStorage.getItem('app-smooth-scroll');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
     const storedExperimental = localStorage.getItem('app-experimental-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
@@ -372,6 +376,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (storedSendOnEnter) {
       setSendOnEnter(storedSendOnEnter === 'true');
+    }
+
+    if (storedSmoothScroll) {
+      setSmoothScroll(storedSmoothScroll === 'true');
     }
 
     if (storedMinimizeCall) {
@@ -488,6 +496,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const handleToggleSmoothScroll = () => {
+    setSmoothScroll(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-smooth-scroll', String(newState));
+      return newState;
+    });
+  };
+
   const handleToggleMinimizeCallOnClose = () => {
     setMinimizeCallOnClose(prev => {
       const newState = !prev;
@@ -521,6 +537,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleSnowflakes: handleToggleSnowflakes,
     sendOnEnter,
     toggleSendOnEnter: handleToggleSendOnEnter,
+    smoothScroll,
+    toggleSmoothScroll: handleToggleSmoothScroll,
     minimizeCallOnClose,
     toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
     experimentalDesign,

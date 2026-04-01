@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -199,7 +198,6 @@ export const translations = {
       'faq_desc': 'Find answers to common questions about Infinite.',
       'faq_markdown_q': 'How do I format messages with Markdown?',
       'faq_markdown_a': 'Infinite supports basic Markdown for text formatting. Here are some examples:\n\n- `*italic*` or `_italic_` for *italic text*\n- `**bold**` or `__bold__` for **bold text**\n- `~~strikethrough~~` for ~~strikethrough~~\n- `[link text](https://example.com)` for hyperlinks\n- For bulleted lists, start a line with `-` or `*`\n- For numbered lists, start a line with `1.`\n\nFor a full guide, visit the [Markdown Guide](https://www.markdown-guide.org/basic-syntax/).',
-      'faq_create_chat_q': "How do I create a new group or channel?",
       'faq_create_chat_a': "You can create a new group or channel by clicking the 'New Conversation' button (the plus icon) in the top right of the sidebar. This will open a dialog where you can choose what type of chat you want to create and fill in its details.",
       'faq_invite_q': "How do I invite people to a group?",
       'faq_invite_a': "To invite someone to a group you own, simply share the group's unique link (e.g., `/G/your-group-name`) with them. When they open the link in the app's search, they will see an option to join your group.",
@@ -271,6 +269,8 @@ export const translations = {
       'experimental_settings_menu_label': 'Experimental Settings Menu',
       'chat_settings': 'Chat Settings',
       'send_on_enter_label': 'Send on Enter',
+      'smooth_scroll_label': 'Smooth Scroll',
+      'smooth_scroll_desc': 'Enable animation when scrolling to new messages.',
       'you_message_preview': 'You',
       'incoming_call': 'Incoming Call',
       'is_calling_you': '{name} is calling you',
@@ -571,7 +571,6 @@ export const translations = {
       'faq_desc': 'Найдите ответы на распространенные вопросы об Infinite.',
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
       'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_курсив_` для *курсивного текста*\n- `**жирный**` или `__bold__` for **болд текста**\n- `~~зачеркнутый~~` for ~~зачеркнутого текста~~\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
-      'faq_create_chat_q': "Как создать новую группу или канал?",
       'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Открыется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
       'faq_invite_q': "Как пригласить людей в группу?",
       'faq_invite_a': "Чтобы пригласить кого-то в группу, владельцем которой вы являетесь, просто поделитесь с ним уникальной ссылкой на группу (например, `/G/your-group-name`). Когда он откроет ссылку в поиске приложения, он увидит возможность присоединиться к вашей группе.",
@@ -643,6 +642,8 @@ export const translations = {
       'experimental_settings_menu_label': 'Экспериментальное меню настроек',
       'chat_settings': 'Настройки чата',
       'send_on_enter_label': 'Отправка по Enter',
+      'smooth_scroll_label': 'Плавный скролл',
+      'smooth_scroll_desc': 'Включить анимацию при прокрутке к новым сообщениям.',
       'you_message_preview': 'Вы',
       'incoming_call': 'Входящий звонок',
       'is_calling_you': '{name} звонит вам',
