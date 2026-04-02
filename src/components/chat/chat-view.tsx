@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -150,7 +150,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
-  const chatOpenedAt = useRef<number>(Date.now());
 
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [isCaller, setIsCaller] = useState(false);
@@ -161,9 +160,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
 
+  // Recording State
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isRecordingLocked, setIsRecordingLocked] = useState(false);
+  const [recordingOffset, setRecordingOffset] = useState({ x: 0, y: 0 });
+  const [isRecordingCancelled, setIsRecordingCancelled] = useState(false);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingVideoRef = useRef<HTMLVideoElement>(null);
@@ -171,6 +175,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
   const isRecordingRequestedRef = useRef<boolean>(false);
+  const touchStartPos = useRef<{ x: number, y: number } | null>(null);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -388,7 +393,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const prevMessagesCountRef = useRef(0);
   useEffect(() => {
     const currentCount = messages?.length || 0;
-    // Only scroll if new messages were added, not on interaction with existing messages
     if (currentCount > prevMessagesCountRef.current) {
         scrollToBottom();
     }
@@ -396,15 +400,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [messages, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    
-    const threshold = 150;
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
-    if (isAtBottom) {
-        scrollToBottom();
-    }
-  }, [scrollToBottom]);
+    // Logic removed to prevent scrolling when message items are updated (reactions etc)
+  }, []);
 
     const handleScroll = useCallback(() => {
         const container = scrollContainerRef.current;
@@ -557,9 +554,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (originalFile?.type === 'video') {
             await handleSendVideo(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'voice') {
-            await handleSendVoice(originalFile, originalContent, originalReplyTo, 0); // Logic for auto duration below
+            await handleSendVoice(originalFile, originalContent, originalReplyTo, recordingDuration);
         } else if (originalFile?.type === 'circle') {
-            await handleSendCircle(originalFile, originalContent, originalReplyTo, 0);
+            await handleSendCircle(originalFile, originalContent, originalReplyTo, recordingDuration);
         } else if (originalFile?.type === 'music') {
             await handleSendMusic(originalFile, originalContent, originalReplyTo);
         } else if (originalFile?.type === 'file') {
@@ -1147,6 +1144,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   const startVoiceRecording = async () => {
     isRecordingRequestedRef.current = true;
+    setIsRecordingCancelled(false);
+    setIsRecordingLocked(false);
+    setRecordingOffset({ x: 0, y: 0 });
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (!isRecordingRequestedRef.current) {
@@ -1163,15 +1163,17 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         };
         
         recorder.onstop = async () => {
-            const durationMs = Date.now() - recordingStartTimeRef.current;
-            const durationSeconds = Math.floor(durationMs / 1000);
-            if (durationMs < 500) {
+            const durationMs = performance.now() - recordingStartTimeRef.current;
+            const durationSeconds = Math.round(durationMs / 1000);
+            
+            if (isRecordingCancelled || durationMs < 500) {
                 if (recordingStreamRef.current) {
                     recordingStreamRef.current.getTracks().forEach(t => t.stop());
                     recordingStreamRef.current = null;
                 }
                 return;
             }
+            
             const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
             const previewUrl = URL.createObjectURL(blob);
@@ -1184,7 +1186,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         };
 
         mediaRecorderRef.current = recorder;
-        recordingStartTimeRef.current = Date.now();
+        recordingStartTimeRef.current = performance.now();
         recorder.start();
         setIsRecordingVoice(true);
         setRecordingDuration(0);
@@ -1197,13 +1199,16 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     }
   };
 
-  const stopVoiceRecording = () => {
+  const stopVoiceRecording = (cancel = false) => {
     isRecordingRequestedRef.current = false;
     if (mediaRecorderRef.current && isRecordingVoice) {
+        if (cancel) setIsRecordingCancelled(true);
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
         setIsRecordingVoice(false);
+        setIsRecordingLocked(false);
+        setRecordingOffset({ x: 0, y: 0 });
         if (recordingTimerRef.current) {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
@@ -1213,6 +1218,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   const startCircleRecording = async () => {
     isRecordingRequestedRef.current = true;
+    setIsRecordingCancelled(false);
+    setIsRecordingLocked(false);
+    setRecordingOffset({ x: 0, y: 0 });
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: 480, height: 480 } });
         if (!isRecordingRequestedRef.current) {
@@ -1231,15 +1239,17 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         };
         
         recorder.onstop = async () => {
-            const durationMs = Date.now() - recordingStartTimeRef.current;
-            const durationSeconds = Math.floor(durationMs / 1000);
-            if (durationMs < 500) {
+            const durationMs = performance.now() - recordingStartTimeRef.current;
+            const durationSeconds = Math.round(durationMs / 1000);
+            
+            if (isRecordingCancelled || durationMs < 500) {
                 if (recordingStreamRef.current) {
                     recordingStreamRef.current.getTracks().forEach(t => t.stop());
                     recordingStreamRef.current = null;
                 }
                 return;
             }
+            
             const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
             const file = new File([blob], 'circle.webm', { type: 'video/webm' });
             const previewUrl = URL.createObjectURL(blob);
@@ -1252,7 +1262,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         };
 
         mediaRecorderRef.current = recorder;
-        recordingStartTimeRef.current = Date.now();
+        recordingStartTimeRef.current = performance.now();
         recorder.start();
         setIsRecordingCircle(true);
         setRecordingDuration(0);
@@ -1265,17 +1275,58 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     }
   };
 
-  const stopCircleRecording = () => {
+  const stopCircleRecording = (cancel = false) => {
     isRecordingRequestedRef.current = false;
     if (mediaRecorderRef.current && isRecordingCircle) {
+        if (cancel) setIsRecordingCancelled(true);
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
         setIsRecordingCircle(false);
+        setIsRecordingLocked(false);
+        setRecordingOffset({ x: 0, y: 0 });
         if (recordingTimerRef.current) {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
         }
+    }
+  };
+
+  // Pointer Handlers for Gestures
+  const handlePointerDown = (e: React.PointerEvent, type: 'voice' | 'circle') => {
+    e.preventDefault();
+    touchStartPos.current = { x: e.clientX, y: e.clientY };
+    if (type === 'voice') startVoiceRecording();
+    else startCircleRecording();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!touchStartPos.current || isRecordingLocked || isRecordingCancelled) return;
+    
+    const deltaX = e.clientX - touchStartPos.current.x;
+    const deltaY = e.clientY - touchStartPos.current.y;
+    
+    // Limits
+    const limitedX = Math.min(0, Math.max(deltaX, -150));
+    const limitedY = Math.min(0, Math.max(deltaY, -150));
+    
+    setRecordingOffset({ x: limitedX, y: limitedY });
+
+    if (deltaX < -100) {
+        setIsRecordingCancelled(true);
+        if (isRecordingVoice) stopVoiceRecording(true);
+        else stopCircleRecording(true);
+    } else if (deltaY < -100) {
+        setIsRecordingLocked(true);
+        setRecordingOffset({ x: 0, y: 0 });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    touchStartPos.current = null;
+    if (!isRecordingLocked) {
+        if (isRecordingVoice) stopVoiceRecording();
+        else stopCircleRecording();
     }
   };
 
@@ -1358,10 +1409,22 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                         REC {format(new Date(recordingDuration * 1000), 'mm:ss')}
                       </div>
                   </div>
+                  {isRecordingLocked && (
+                      <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 bg-primary rounded-full p-2 animate-bounce">
+                          <Lock className="h-5 w-5 text-white" />
+                      </div>
+                  )}
               </div>
               <div className="mt-20 text-center text-white">
-                  <p className="text-3xl font-black font-headline tracking-tight uppercase">{t('voice_message')}</p>
-                  <p className="text-sm opacity-60 mt-3 font-bold">{t('release_to_send')}</p>
+                  <p className="text-3xl font-black font-headline tracking-tight uppercase">
+                      {isRecordingLocked ? t('video_chat_title') : t('voice_message')}
+                  </p>
+                  {!isRecordingLocked && (
+                      <div className="space-y-2 mt-3">
+                          <p className="text-sm opacity-60 font-bold">{t('swipe_to_cancel')}</p>
+                          <p className="text-sm opacity-60 font-bold">{t('release_to_lock')}</p>
+                      </div>
+                  )}
               </div>
           </div>
       )}
@@ -1377,8 +1440,14 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                           <div key={i} className="w-1.5 bg-white/60 rounded-full animate-bounce" style={{ height: `${Math.random()*24 + 6}px`, animationDelay: `${i*0.1}s` }} />
                       ))}
                   </div>
+                  {isRecordingLocked && <Lock className="h-5 w-5 text-white ml-2" />}
               </div>
-              <p className="mt-5 text-primary font-black text-sm bg-background/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-primary/20">{t('release_to_send')}</p>
+              {!isRecordingLocked && (
+                  <div className="mt-5 flex flex-col items-center gap-1">
+                      <p className="text-primary font-black text-sm bg-background/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-primary/20">{t('swipe_to_cancel')}</p>
+                      <p className="text-primary font-black text-[10px] uppercase tracking-widest">{t('release_to_lock')}</p>
+                  </div>
+              )}
           </div>
       )}
 
@@ -1719,36 +1788,68 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
             <div className="flex items-center gap-1">
                 {!messageContent.trim() && !fileToSend ? (
-                    <>
-                        <Button 
-                            type="button" 
-                            variant={isRecordingCircle ? "destructive" : "ghost"} 
-                            size="icon" 
-                            className={cn("h-10 w-10 rounded-full transition-all duration-300 relative overflow-visible", isRecordingCircle && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
-                            onMouseDown={(e) => { e.preventDefault(); startCircleRecording(); }}
-                            onMouseUp={(e) => { e.preventDefault(); stopCircleRecording(); }}
-                            onMouseLeave={(e) => { e.preventDefault(); stopCircleRecording(); }}
-                            onTouchStart={(e) => { e.preventDefault(); startCircleRecording(); }}
-                            onTouchEnd={(e) => { e.preventDefault(); stopCircleRecording(); }}
-                            onTouchCancel={(e) => { e.preventDefault(); stopCircleRecording(); }}
-                        >
-                            <Camera className="h-5 w-5" />
-                        </Button>
-                        <Button 
-                            type="button" 
-                            variant={isRecordingVoice ? "destructive" : "ghost"} 
-                            size="icon" 
-                            className={cn("h-10 w-10 rounded-full transition-all duration-300 relative overflow-visible", isRecordingVoice && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white")}
-                            onMouseDown={(e) => { e.preventDefault(); startVoiceRecording(); }}
-                            onMouseUp={(e) => { e.preventDefault(); stopVoiceRecording(); }}
-                            onMouseLeave={(e) => { e.preventDefault(); stopVoiceRecording(); }}
-                            onTouchStart={(e) => { e.preventDefault(); startVoiceRecording(); }}
-                            onTouchEnd={(e) => { e.preventDefault(); stopVoiceRecording(); }}
-                            onTouchCancel={(e) => { e.preventDefault(); stopVoiceRecording(); }}
-                        >
-                            <Mic className="h-5 w-5" />
-                        </Button>
-                    </>
+                    <div className="flex items-center gap-1">
+                        {isRecordingLocked ? (
+                            <div className="flex items-center gap-2 animate-in zoom-in duration-300">
+                                <Button 
+                                    type="button" 
+                                    variant="destructive" 
+                                    size="icon" 
+                                    className="h-10 w-10 rounded-full"
+                                    onClick={() => {
+                                        if (isRecordingVoice) stopVoiceRecording(true);
+                                        else stopCircleRecording(true);
+                                    }}
+                                >
+                                    <Trash className="h-5 w-5" />
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    size="icon" 
+                                    className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-600"
+                                    onClick={() => {
+                                        if (isRecordingVoice) stopVoiceRecording();
+                                        else stopCircleRecording();
+                                    }}
+                                >
+                                    <Send className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <Button 
+                                    type="button" 
+                                    variant={isRecordingCircle ? "destructive" : "ghost"} 
+                                    size="icon" 
+                                    className={cn(
+                                        "h-10 w-10 rounded-full transition-all duration-300 relative overflow-visible touch-none", 
+                                        isRecordingCircle && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white"
+                                    )}
+                                    style={{ transform: `translate(${recordingOffset.x}px, ${recordingOffset.y}px)` }}
+                                    onPointerDown={(e) => handlePointerDown(e, 'circle')}
+                                    onPointerMove={handlePointerMove}
+                                    onPointerUp={handlePointerUp}
+                                >
+                                    <Camera className="h-5 w-5" />
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant={isRecordingVoice ? "destructive" : "ghost"} 
+                                    size="icon" 
+                                    className={cn(
+                                        "h-10 w-10 rounded-full transition-all duration-300 relative overflow-visible touch-none", 
+                                        isRecordingVoice && "scale-125 z-[110] bg-red-500 hover:bg-red-600 text-white"
+                                    )}
+                                    style={{ transform: `translate(${recordingOffset.x}px, ${recordingOffset.y}px)` }}
+                                    onPointerDown={(e) => handlePointerDown(e, 'voice')}
+                                    onPointerMove={handlePointerMove}
+                                    onPointerUp={handlePointerUp}
+                                >
+                                    <Mic className="h-5 w-5" />
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 ) : (
                     <Button size="icon" type="submit" disabled={isSending} className="h-10 w-10 rounded-full">
                         {isSending ? (
@@ -2335,6 +2436,11 @@ function ChatMessage({
                                         }}
                                         onLoadedData={onMediaLoad}
                                     />
+                                    <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1 opacity-0 group-hover/circle:opacity-100 transition-opacity">
+                                        <div className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] text-white font-bold">
+                                            {message.circleDuration ? `${Math.floor(message.circleDuration/60)}:${(message.circleDuration%60).toString().padStart(2, '0')}` : ''}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>

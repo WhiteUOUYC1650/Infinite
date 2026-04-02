@@ -373,6 +373,8 @@ export const translations = {
       'broadcast_title': 'Broadcast',
       'participants': 'Participants',
       'release_to_send': 'Release to send',
+      'swipe_to_cancel': 'Swipe left to cancel',
+      'release_to_lock': 'Swipe up to lock',
     },
     ru: {
       'settings': 'Настройки',
@@ -438,7 +440,7 @@ export const translations = {
       'members_count': '{count, plural, one {# участник} few {# участника} other {# участников}}',
       'subscribers_count': '{count, plural, one {# подписчик} few {# подписчика} other {# подписчиков}}',
       'loading_chat': 'Загрузка чата...',
-      'chat_not_selected': 'Чат не выбран',
+      'chat_not_selected': 'Chat not selected',
       'no_messages_yet': 'Здесь пока ничего нет.',
       'message_placeholder': 'Напишите сообщение...',
       'search_button': 'Поиск',
@@ -810,6 +812,8 @@ export const translations = {
       'broadcast_title': 'Трансляция',
       'participants': 'Участники',
       'release_to_send': 'Отпустите, чтобы отправить',
+      'swipe_to_cancel': 'Смахните влево для отмены',
+      'release_to_lock': 'Смахните вверх для блокировки',
     }
   };
 
