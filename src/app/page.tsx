@@ -47,7 +47,7 @@ export default function Home() {
             setIsVerifying(false);
             
             // Set user to online
-            setDoc(userRef, { status: 'online' }, { merge: true });
+            setDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }, { merge: true });
 
             // --- Bot Login Message Logic ---
             const justLoggedIn = localStorage.getItem('justLoggedIn');
@@ -105,17 +105,16 @@ export default function Home() {
 
     checkSecurity();
 
-    const handleVisibilityChange = () => {
-      if (!auth.currentUser) return;
-      const newStatus = document.visibilityState === 'hidden' ? 'away' : 'online';
-      const userRef = doc(db, 'users', user.uid);
-      setDoc(userRef, { status: newStatus }, { merge: true });
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Heartbeat to keep online status while window is active
+    const interval = setInterval(() => {
+      if (auth.currentUser) {
+        const userRef = doc(db, 'users', user.uid);
+        setDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }, { merge: true });
+      }
+    }, 60000);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
     };
   }, [user, authLoading, router, db, auth]);
 
@@ -129,3 +128,6 @@ export default function Home() {
 
   return <AppShell user={user} />;
 }
+
+// Helper since serverTimestamp isn't imported from firestore in the snippet above
+import { serverTimestamp } from 'firebase/firestore';

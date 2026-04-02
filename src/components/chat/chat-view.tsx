@@ -410,9 +410,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [item.id]);
 
   const handleMediaLoad = useCallback(() => {
-    // Media load should NOT trigger scroll unless it's a new message, 
-    // handled by currentCount > prevMessagesCountRef.current above.
-  }, []);
+    // If the user is already near bottom, scroll again to compensate for height change
+    if (scrollContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+        if (isNearBottom) {
+            scrollToBottom();
+        }
+    }
+  }, [scrollToBottom]);
 
     const handleScroll = useCallback(() => {
         const container = scrollContainerRef.current;
@@ -841,6 +847,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         senderId: currentUser.uid,
         content: content,
         timestamp,
+        fileName: musicFile.name,
         musicMimeType: musicFile.type,
         musicStatus: 'uploading',
         readBy: [],
@@ -1405,7 +1412,58 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       
-      {/* Recording overlays hidden for brevity, same as previous version */}
+      {/* Recording Overlay */}
+      {(isRecordingVoice || isRecordingCircle) && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300 pointer-events-none">
+            <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full pointer-events-auto">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+                    <div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">
+                        {isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}
+                    </div>
+                </div>
+                
+                <div className="text-center space-y-2">
+                    <div className="text-4xl font-black font-mono tracking-tighter text-primary">
+                        {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                    </div>
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                        {isRecordingCircle ? t('video') : t('voice_message')}
+                    </p>
+                </div>
+
+                {isRecordingCircle && (
+                    <div className="w-full aspect-square max-w-[200px] rounded-full overflow-hidden border-4 border-primary/20 bg-black relative">
+                        <video ref={recordingVideoRef} autoPlay muted playsInline className="w-full h-full object-cover -scale-x-100" />
+                    </div>
+                )}
+
+                <div className="w-full space-y-3 pt-4">
+                    {isRecordingLocked ? (
+                        <div className="flex gap-2 w-full">
+                            <Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => isRecordingCircle ? stopCircleRecording(true) : stopVoiceRecording(true)}>
+                                <Trash className="mr-2 h-4 w-4" /> {t('cancel')}
+                            </Button>
+                            <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => isRecordingCircle ? stopCircleRecording() : stopVoiceRecording()}>
+                                <Send className="mr-2 h-4 w-4" /> {t('start_chat')}
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 text-center">
+                            <div className="flex items-center justify-center gap-4 text-muted-foreground animate-pulse">
+                                <span className="text-xs font-bold uppercase tracking-tighter">{t('swipe_to_cancel')}</span>
+                                <X className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col items-center gap-2 text-primary">
+                                <Lock className="h-4 w-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t('release_to_lock')}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+      )}
 
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
@@ -1476,7 +1534,36 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         </div>
 
         <div className="flex items-center gap-1 ml-2 shrink-0">
-            {/* Action buttons same as before */}
+            {item.type === 'dm' && item.id !== currentUser.uid && (
+                <>
+                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)}>
+                        <Phone className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(true)}>
+                        <Video className="h-5 w-5" />
+                    </Button>
+                </>
+            )}
+            {item.type !== 'dm' && isOwner && !activeGroupCall && (
+              <Button variant="ghost" size="icon" onClick={handleStartGroupCall}>
+                <Radio className="h-5 w-5" />
+              </Button>
+            )}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
+                        <HelpCircle className="mr-2 h-4 w-4" />
+                        <span>{t('help')}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                        <Info className="mr-2 h-4 w-4" />
+                        <span>{t('info')}</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </header>
 
@@ -1484,7 +1571,13 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           <div className="absolute inset-0 flex flex-col">
               {activeGroupCall && (
                 <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300">
-                  {/* Active call bar */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-widest">{activeGroupCall.callType === 'broadcast' ? t('broadcast_live') : t('video_chat_live')}</span>
+                  </div>
+                  <Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>
+                    {t('join_call')}
+                  </Button>
                 </div>
               )}
               {stickyDate && (
@@ -1555,16 +1648,206 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             "flex-shrink-0 p-4 border-t pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
-          {/* Form and attachments same as before */}
+          <div className="max-w-4xl mx-auto flex flex-col gap-2">
+            {replyToMessage && (
+                <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Reply className="h-4 w-4 text-primary shrink-0" />
+                        <div className="min-w-0">
+                            <div className="text-xs font-bold text-primary truncate">{replyToMessage.sender?.name || replyToMessage.senderName}</div>
+                            <div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+            {editingMessage && (
+                <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Edit className="h-4 w-4 text-primary shrink-0" />
+                        <div className="min-w-0">
+                            <div className="text-xs font-bold text-primary">{t('editing_message')}</div>
+                            <div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCancelEdit}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+            {fileToSend && (
+                <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center gap-2 min-w-0">
+                        {fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary shrink-0" /> : <FileIcon className="h-4 w-4 text-primary shrink-0" />}
+                        <div className="min-w-0">
+                            <div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div>
+                            <div className="text-[10px] text-muted-foreground">{(fileToSend.file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="flex items-end gap-2 relative">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" className="shrink-0 h-10 w-10">
+                            <Paperclip className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="top">
+                        <DropdownMenuItem onSelect={() => handleAttachmentClick('image')}>
+                            <ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleAttachmentClick('video')}>
+                            <VideoIcon className="mr-2 h-4 w-4" /> {t('video')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleAttachmentClick('music')}>
+                            <MusicIcon className="mr-2 h-4 w-4" /> {t('music')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleAttachmentClick('file')}>
+                            <FileIcon className="mr-2 h-4 w-4" /> {t('file')}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+
+                <div className="relative flex-1">
+                    <Textarea
+                        placeholder={t('message_placeholder')}
+                        value={messageContent}
+                        onChange={(e) => setMessageContent(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSubmit(e);
+                            }
+                        }}
+                        className="min-h-[40px] h-10 max-h-32 py-2.5 resize-none pr-10"
+                    />
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                    {(messageContent.trim() || fileToSend) ? (
+                        <Button type="submit" size="icon" disabled={isSending} className="h-10 w-10 rounded-full shadow-lg">
+                            {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                        </Button>
+                    ) : (
+                        <div className="flex items-center gap-1">
+                            <Button 
+                                type="button" 
+                                size="icon" 
+                                variant="ghost"
+                                className={cn("h-10 w-10 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
+                                onPointerDown={(e) => handlePointerDown(e, 'circle')}
+                                onPointerMove={handlePointerMove}
+                                onPointerUp={handlePointerUp}
+                            >
+                                <Camera className="h-5 w-5" />
+                            </Button>
+                            <Button 
+                                type="button" 
+                                size="icon" 
+                                variant="ghost"
+                                className={cn("h-10 w-10 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
+                                onPointerDown={(e) => handlePointerDown(e, 'voice')}
+                                onPointerMove={handlePointerMove}
+                                onPointerUp={handlePointerUp}
+                            >
+                                <Mic className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </form>
+          </div>
         </footer>
       )}
 
-      {/* Dialogs same as before */}
+      {/* Dialogs */}
+      {profileDialogUser && (
+        <UserProfileDialog
+          user={profileDialogUser}
+          open={!!profileDialogUser}
+          onOpenChange={(open) => !open && setProfileDialogUser(null)}
+          onSendMessage={handleSendMessageToUser}
+        />
+      )}
+
+      {showChatProfile && (
+        <ChatProfileDialog
+          chat={item}
+          members={Object.values(memberDetails).filter(u => item.members.includes(u.id))}
+          currentUser={currentUser}
+          open={showChatProfile}
+          onOpenChange={setShowChatProfile}
+          onCloseChat={onClose}
+          onJoinDiscussion={handleJoinDiscussion}
+        />
+      )}
+
+      <CallDialog 
+        open={showCallDialog}
+        onOpenChange={setShowCallDialog}
+        chat={item}
+        otherUser={otherUser}
+        currentUser={currentUser}
+        isCaller={isCaller}
+        isVideo={callIsVideo}
+      />
+
+      <GroupCallDialog
+        open={showGroupCallDialog}
+        onOpenChange={setShowGroupCallDialog}
+        chat={item}
+        currentUser={currentUser}
+        isOwner={isOwner}
+      />
+
+      {incomingCall && (
+        <div className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500">
+            <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-w-sm border border-white/10 backdrop-blur-md">
+                <UserAvatarWithStatus user={otherUser!} className="w-12 h-12" />
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold truncate">{otherUser?.name}</p>
+                    <p className="text-xs text-white/60">{incomingCall.isVideo ? t('video_call') : t('audio_call')}</p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="destructive" size="icon" className="rounded-full h-10 w-10" onClick={handleDeclineCall}>
+                        <PhoneOff className="h-5 w-5" />
+                    </Button>
+                    <Button className="bg-green-500 hover:bg-green-600 text-white rounded-full h-10 w-10" size="icon" onClick={handleAcceptCall}>
+                        {incomingCall.isVideo ? <Video className="h-5 w-5" /> : <Phone className="h-5 w-5" />}
+                    </Button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {previewImage && (
+          <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+              <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90">
+                  <div className="relative w-full h-full flex items-center justify-center">
+                      <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" />
+                      <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20" onClick={() => setPreviewImage(null)}>
+                          <X className="h-6 w-6" />
+                      </Button>
+                  </div>
+              </DialogContent>
+          </Dialog>
+      )}
+
+      <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
     </div>
   );
 }
 
-function CustomAudioPlayer({ src, isMusic = false, duration }: { src: string, isMusic?: boolean, duration?: number }) {
+function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: string, isMusic?: boolean, duration?: number, fileName?: string }) {
     const { isDarkMode } = useTheme();
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -1639,6 +1922,11 @@ function CustomAudioPlayer({ src, isMusic = false, duration }: { src: string, is
                 )}
             </button>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
+                {isMusic && fileName && (
+                    <div className="text-[10px] font-black uppercase tracking-tighter truncate mb-1 opacity-90">
+                        {fileName}
+                    </div>
+                )}
                 <div 
                     className={cn(
                         "relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", 
@@ -1653,7 +1941,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration }: { src: string, is
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80">
                     <span>{formatTime(currentTime)}</span>
-                    <span className="opacity-50">{isMusic ? "Infinite Music" : "••••••"}</span>
+                    {!isMusic && <span className="opacity-50">••••••</span>}
                     <span>{formatTime(maxTime)}</span>
                 </div>
             </div>
@@ -2099,7 +2387,7 @@ function ChatMessage({
                                     {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />}
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={musicUrl} isMusic />
+                                <CustomAudioPlayer src={musicUrl} isMusic fileName={message.fileName} />
                             )}
                             {musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}
                         </div>

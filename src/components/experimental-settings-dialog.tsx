@@ -71,9 +71,9 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
         )}>
             <Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} />
         </div>
-        <div className="flex-1 flex flex-col justify-center min-w-0 overflow-hidden mr-2">
-            <span className="font-medium truncate">{label}</span>
-            {description && <span className="text-xs text-muted-foreground truncate">{description}</span>}
+        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2">
+            <span className="font-medium whitespace-normal leading-tight">{label}</span>
+            {description && <span className="text-xs text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}
         </div>
         <div className="flex items-center gap-2 text-muted-foreground shrink-0">
             {value && <span className='capitalize text-sm max-w-[80px] truncate'>{value}</span>}
@@ -86,7 +86,7 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean }) => (
     <div className="flex items-start justify-between w-full p-4">
         <div className="flex flex-col flex-1 mr-4 min-w-0">
-            <Label htmlFor={id} className={cn("font-medium cursor-pointer truncate mb-0.5", disabled && "opacity-50")}>{label}</Label>
+            <Label htmlFor={id} className={cn("font-medium cursor-pointer whitespace-normal leading-tight mb-1", disabled && "opacity-50")}>{label}</Label>
             {description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}
         </div>
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" disabled={disabled} />
@@ -719,7 +719,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       <Accordion type="single" collapsible className="w-full px-4">
         {faqs.map((faq, index) => (
           <AccordionItem value={`item-${index}`} key={index}>
-            <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
+            <AccordionTrigger className="text-left whitespace-normal">{faq.question}</AccordionTrigger>
             <AccordionContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-0">
                     <ReactMarkdown
