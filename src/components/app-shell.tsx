@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -91,7 +90,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     <>
       {!isMobile && (
         <Sidebar>
-          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedId === 'string' ? selectedId : selectedItem?.id} currentUser={populatedUser} />}
+          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />}
         </Sidebar>
       )}
       <SidebarInset>
