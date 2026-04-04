@@ -393,6 +393,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         requestAnimationFrame(performScroll);
         setTimeout(performScroll, 50);
         setTimeout(performScroll, 150);
+        setTimeout(performScroll, 300);
     }
   }, [smoothScroll]);
 
@@ -425,7 +426,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useEffect(() => {
     initialLoadRef.current = false;
     prevMessagesCountRef.current = 0;
-  }, [item.id]);
+    // Force immediate scroll attempt when switching chats
+    setTimeout(() => scrollToBottom('auto'), 50);
+  }, [item.id, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -1021,7 +1024,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             chunkIds.push(chunkDocRef.id);
             await new Promise(res => setTimeout(res, 0));
         }
-        await updateDoc(messageRef, { fileStatus: 'complete', fileChunkIds: chunkIds });
+        await updateDoc(messageRef, { fileStatus: 'complete', fileStatus: 'complete' });
         const chatDoc = await getDoc(chatRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, { 'lastMessage.fileStatus': 'complete' });
