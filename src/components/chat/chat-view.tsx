@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, HelpCircle } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -378,15 +378,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollToBottom = useCallback((behaviorOverride?: ScrollBehavior) => {
     if (scrollContainerRef.current) {
         const behavior = behaviorOverride || (smoothScroll ? 'smooth' : 'auto');
-        // Use a small delay to ensure DOM has rendered
-        setTimeout(() => {
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({
-                    top: scrollContainerRef.current.scrollHeight,
+        const container = scrollContainerRef.current;
+        
+        const performScroll = () => {
+            if (container) {
+                container.scrollTo({
+                    top: container.scrollHeight,
                     behavior
                 });
             }
-        }, 100);
+        };
+
+        // Multiple attempts to ensure we catch layout shifts from rendering
+        requestAnimationFrame(performScroll);
+        setTimeout(performScroll, 50);
+        setTimeout(performScroll, 150);
     }
   }, [smoothScroll]);
 
@@ -394,14 +400,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const prevMessagesCountRef = useRef(0);
 
   useEffect(() => {
-    const currentCount = messages?.length || 0;
-    if (!initialLoadRef.current && !messagesLoading && messages) {
-        initialLoadRef.current = true;
-        scrollToBottom('auto');
-    } else if (currentCount > prevMessagesCountRef.current) {
-        scrollToBottom();
+    if (messagesLoading) return;
+
+    if (messages) {
+        const currentCount = messages.length;
+        if (!initialLoadRef.current) {
+            initialLoadRef.current = true;
+            prevMessagesCountRef.current = currentCount;
+            if (currentCount > 0) {
+                scrollToBottom('auto'); // Jump to bottom immediately on first load
+            }
+        } else if (currentCount > prevMessagesCountRef.current) {
+            // New messages added
+            scrollToBottom();
+            prevMessagesCountRef.current = currentCount;
+        } else if (currentCount < prevMessagesCountRef.current) {
+            // Messages deleted, just update count without forcing scroll
+            prevMessagesCountRef.current = currentCount;
+        }
     }
-    prevMessagesCountRef.current = currentCount;
   }, [messages, messagesLoading, scrollToBottom]);
 
   // Reset initial load ref when chat ID changes
@@ -411,10 +428,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [item.id]);
 
   const handleMediaLoad = useCallback(() => {
-    // If the user is already near bottom, scroll again to compensate for height change
     if (scrollContainerRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+        // If we are close to the bottom (within 250px), stick to the bottom as media loads
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 250;
         if (isNearBottom) {
             scrollToBottom();
         }
@@ -1556,7 +1573,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
-                        <HelpCircle className="mr-2 h-4 w-4" />
+                        <CircleHelp className="mr-2 h-4 w-4" />
                         <span>{t('help')}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
