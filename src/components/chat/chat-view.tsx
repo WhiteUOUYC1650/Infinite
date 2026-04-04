@@ -394,11 +394,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setTimeout(performScroll, 50);
         setTimeout(performScroll, 150);
         setTimeout(performScroll, 300);
+        setTimeout(performScroll, 500); // Added for extra safety
+        setTimeout(performScroll, 1000); // Added for extra safety
     }
   }, [smoothScroll]);
 
   const initialLoadRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
+
+  // Force reset initial load state when chat ID changes to ensure we scroll every time
+  useEffect(() => {
+    initialLoadRef.current = false;
+    prevMessagesCountRef.current = 0;
+    
+    // Jump to bottom immediately on chat switch
+    const timer = setTimeout(() => scrollToBottom('auto'), 100);
+    return () => clearTimeout(timer);
+  }, [item.id, scrollToBottom]);
 
   useEffect(() => {
     if (messagesLoading) return;
@@ -406,10 +418,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (messages) {
         const currentCount = messages.length;
         if (!initialLoadRef.current) {
-            initialLoadRef.current = true;
-            prevMessagesCountRef.current = currentCount;
+            // First data arrival for this chat ID
             if (currentCount > 0) {
-                scrollToBottom('auto'); // Jump to bottom immediately on first load
+                initialLoadRef.current = true;
+                prevMessagesCountRef.current = currentCount;
+                scrollToBottom('auto'); 
             }
         } else if (currentCount > prevMessagesCountRef.current) {
             // New messages added
@@ -421,14 +434,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
     }
   }, [messages, messagesLoading, scrollToBottom]);
-
-  // Reset initial load ref when chat ID changes
-  useEffect(() => {
-    initialLoadRef.current = false;
-    prevMessagesCountRef.current = 0;
-    // Force immediate scroll attempt when switching chats
-    setTimeout(() => scrollToBottom('auto'), 50);
-  }, [item.id, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     if (scrollContainerRef.current) {
