@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -298,6 +297,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         });
         toast({ title: t('dm_success'), description: t('leave_chat_success')});
         onOpenChange(false);
+        onCloseChat();
     } catch (error) {
         console.error("Error leaving chat:", error);
         toast({ variant: 'destructive', title: 'Error', description: t('leave_chat_error')});
