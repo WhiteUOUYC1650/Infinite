@@ -375,6 +375,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return true;
   }, [isMember, item, currentUser.uid, otherUser]);
 
+  const initialLoadRef = useRef<Record<string, boolean>>({});
+  const prevMessagesCountRef = useRef<Record<string, number>>({});
+
   const scrollToBottom = useCallback((behaviorOverride?: ScrollBehavior) => {
     if (scrollContainerRef.current) {
         const behavior = behaviorOverride || (smoothScroll ? 'smooth' : 'auto');
@@ -397,9 +400,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setTimeout(performScroll, 1000);
     }
   }, [smoothScroll]);
-
-  const initialLoadRef = useRef<Record<string, boolean>>({});
-  const prevMessagesCountRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (messagesLoading || !messages) return;
@@ -1543,7 +1543,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         </div>
 
         <div className="flex items-center gap-1 ml-2 shrink-0">
-            {item.type === 'dm' && item.id !== currentUser.uid && (
+            {item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && (
                 <>
                     <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)}>
                         <Phone className="h-5 w-5" />
@@ -1563,10 +1563,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                     <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setShowFaqDialog(true)}>
-                        <CircleHelp className="mr-2 h-4 w-4" />
-                        <span>{t('help')}</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
                         <Info className="mr-2 h-4 w-4" />
                         <span>{t('info')}</span>
