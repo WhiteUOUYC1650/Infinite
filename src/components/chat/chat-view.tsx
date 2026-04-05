@@ -389,56 +389,39 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             }
         };
 
-        // Multiple attempts to ensure we catch layout shifts from rendering
         requestAnimationFrame(performScroll);
         setTimeout(performScroll, 50);
         setTimeout(performScroll, 150);
         setTimeout(performScroll, 300);
-        setTimeout(performScroll, 500); // Added for extra safety
-        setTimeout(performScroll, 1000); // Added for extra safety
+        setTimeout(performScroll, 500);
+        setTimeout(performScroll, 1000);
     }
   }, [smoothScroll]);
 
-  const initialLoadRef = useRef(false);
-  const prevMessagesCountRef = useRef(0);
-
-  // Force reset initial load state when chat ID changes to ensure we scroll every time
-  useEffect(() => {
-    initialLoadRef.current = false;
-    prevMessagesCountRef.current = 0;
-    
-    // Jump to bottom immediately on chat switch
-    const timer = setTimeout(() => scrollToBottom('auto'), 100);
-    return () => clearTimeout(timer);
-  }, [item.id, scrollToBottom]);
+  const initialLoadRef = useRef<Record<string, boolean>>({});
+  const prevMessagesCountRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    if (messagesLoading) return;
+    if (messagesLoading || !messages) return;
 
-    if (messages) {
-        const currentCount = messages.length;
-        if (!initialLoadRef.current) {
-            // First data arrival for this chat ID
-            if (currentCount > 0) {
-                initialLoadRef.current = true;
-                prevMessagesCountRef.current = currentCount;
-                scrollToBottom('auto'); 
-            }
-        } else if (currentCount > prevMessagesCountRef.current) {
-            // New messages added
-            scrollToBottom();
-            prevMessagesCountRef.current = currentCount;
-        } else if (currentCount < prevMessagesCountRef.current) {
-            // Messages deleted, just update count without forcing scroll
-            prevMessagesCountRef.current = currentCount;
-        }
+    const currentChatId = item.id;
+    const currentCount = messages.length;
+
+    if (!initialLoadRef.current[currentChatId]) {
+        initialLoadRef.current[currentChatId] = true;
+        prevMessagesCountRef.current[currentChatId] = currentCount;
+        scrollToBottom('auto');
+    } else if (currentCount > (prevMessagesCountRef.current[currentChatId] || 0)) {
+        scrollToBottom();
+        prevMessagesCountRef.current[currentChatId] = currentCount;
+    } else if (currentCount < (prevMessagesCountRef.current[currentChatId] || 0)) {
+        prevMessagesCountRef.current[currentChatId] = currentCount;
     }
-  }, [messages, messagesLoading, scrollToBottom]);
+  }, [messages, messagesLoading, item.id, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     if (scrollContainerRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        // If we are close to the bottom (within 250px), stick to the bottom as media loads
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 250;
         if (isNearBottom) {
             scrollToBottom();
@@ -1719,30 +1702,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             )}
             
             <form onSubmit={handleSubmit} className="flex items-end gap-2 relative">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="shrink-0 h-10 w-10">
-                            <Paperclip className="h-5 w-5" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" side="top">
-                        <DropdownMenuItem onSelect={() => handleAttachmentClick('image')}>
-                            <ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleAttachmentClick('video')}>
-                            <VideoIcon className="mr-2 h-4 w-4" /> {t('video')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleAttachmentClick('music')}>
-                            <MusicIcon className="mr-2 h-4 w-4" /> {t('music')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleAttachmentClick('file')}>
-                            <FileIcon className="mr-2 h-4 w-4" /> {t('file')}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-
                 <div className="relative flex-1">
                     <Textarea
                         placeholder={t('message_placeholder')}
@@ -1759,6 +1718,33 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon" className="shrink-0 h-10 w-10">
+                                <Paperclip className="h-5 w-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" side="top">
+                            <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b mb-1">
+                                {t('max_file_size_label', { size: maxFileSizeText })}
+                            </div>
+                            <DropdownMenuItem onSelect={() => handleAttachmentClick('image')}>
+                                <ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAttachmentClick('video')}>
+                                <VideoIcon className="mr-2 h-4 w-4" /> {t('video')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAttachmentClick('music')}>
+                                <MusicIcon className="mr-2 h-4 w-4" /> {t('music')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAttachmentClick('file')}>
+                                <FileIcon className="mr-2 h-4 w-4" /> {t('file')}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+
                     {(messageContent.trim() || fileToSend) ? (
                         <Button type="submit" size="icon" disabled={isSending} className="h-10 w-10 rounded-full shadow-lg">
                             {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
@@ -1923,6 +1909,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
         }
     };
 
+    // Correct theme inversion for player UI
     const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
     const accentClass = isDarkMode ? "bg-black" : "bg-white";
 

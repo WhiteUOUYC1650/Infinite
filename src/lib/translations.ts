@@ -179,7 +179,6 @@ export const translations = {
       'admin_toast_user_banned_title': 'User Banned',
       'admin_toast_user_banned_desc': 'The profile for {name} ({username}) has been anonymized.',
       'admin_toast_user_banned_desc_plain': 'The profile has been anonymized.',
-      'admin_toast_user_banned_desc_plain': 'The profile has been anonymized.',
       'admin_toast_ban_user_error_desc': 'Could not ban the user.',
       'color_theme': 'Color Theme',
       'orange': 'Orange',
