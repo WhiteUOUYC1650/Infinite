@@ -1640,10 +1640,12 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 <span>{t('info')}</span>
                             </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onSelect={() => setShowClearConfirm(true)}>
-                            <Trash className="mr-2 h-4 w-4" />
-                            <span>{t('clear_history')}</span>
-                        </DropdownMenuItem>
+                        {(item.id === currentUser.uid || isOwner || item.type === 'dm') && (
+                            <DropdownMenuItem onSelect={() => setShowClearConfirm(true)}>
+                                <Trash className="mr-2 h-4 w-4" />
+                                <span>{t('clear_history')}</span>
+                            </DropdownMenuItem>
+                        )}
                         {item.id !== currentUser.uid && (
                             <>
                                 <DropdownMenuSeparator />
