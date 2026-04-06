@@ -4,11 +4,11 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField, getDocs } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -158,6 +158,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
+
+  // Management State
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   // Recording State
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -1416,6 +1422,69 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     setIncomingCall(null);
   };
 
+  const handleClearHistory = async () => {
+    if (!db || isProcessingAction) return;
+    setIsProcessingAction(true);
+    try {
+        const messagesRef = collection(db, 'chats', item.id, 'messages');
+        const snapshot = await getDocs(messagesRef);
+        const batch = writeBatch(db);
+        snapshot.forEach(d => batch.delete(d.ref));
+        
+        const chatRef = doc(db, 'chats', item.id);
+        batch.update(chatRef, { lastMessage: deleteField() });
+        
+        await batch.commit();
+        toast({ title: t('dm_success'), description: t('profile_update_success') });
+        setShowClearConfirm(false);
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
+    } finally {
+        setIsProcessingAction(false);
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!db || !isOwner || item.id === 'GENERAL_CHAT' || isProcessingAction) return;
+    setIsProcessingAction(true);
+    try {
+        const chatRef = doc(db, 'chats', item.id);
+        await deleteDoc(chatRef);
+        
+        if (item.link) {
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(item.link));
+            await deleteDoc(linkRef);
+        }
+        
+        toast({ title: t('dm_success'), description: t('delete_chat_success') });
+        setShowDeleteConfirm(false);
+        onClose();
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('delete_chat_error') });
+    } finally {
+        setIsProcessingAction(false);
+    }
+  };
+
+  const handleLeaveChat = async () => {
+    if (!db || item.id === 'GENERAL_CHAT' || isProcessingAction) return;
+    setIsProcessingAction(true);
+    try {
+        const chatRef = doc(db, 'chats', item.id);
+        await updateDoc(chatRef, { members: arrayRemove(currentUser.uid) });
+        toast({ title: t('dm_success'), description: t('leave_chat_success') });
+        setShowLeaveConfirm(false);
+        onClose();
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: t('leave_chat_error') });
+    } finally {
+        setIsProcessingAction(false);
+    }
+  };
+
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   return (
@@ -1558,17 +1627,42 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 <Radio className="h-5 w-5" />
               </Button>
             )}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
-                        <Info className="mr-2 h-4 w-4" />
-                        <span>{t('info')}</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            
+            {item.id !== 'GENERAL_CHAT' && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {item.id !== currentUser.uid && (
+                            <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                                <Info className="mr-2 h-4 w-4" />
+                                <span>{t('info')}</span>
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onSelect={() => setShowClearConfirm(true)}>
+                            <Trash className="mr-2 h-4 w-4" />
+                            <span>{t('clear_history')}</span>
+                        </DropdownMenuItem>
+                        {item.id !== currentUser.uid && (
+                            <>
+                                <DropdownMenuSeparator />
+                                {isOwner || item.type === 'dm' ? (
+                                    <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>{t('delete_chat')}</span>
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>{t('leave')}</span>
+                                    </DropdownMenuItem>
+                                )}
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
         </div>
       </header>
 
@@ -1776,6 +1870,52 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
           </div>
         </footer>
       )}
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('clear_history')}? {t('delete_chat_confirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClearHistory} disabled={isProcessingAction} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : t('delete')}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteChat} disabled={isProcessingAction} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : t('delete')}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                <AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleLeaveChat} disabled={isProcessingAction} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : t('leave')}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialogs */}
       {profileDialogUser && (
