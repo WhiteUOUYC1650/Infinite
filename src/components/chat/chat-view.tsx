@@ -425,6 +425,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [messages, messagesLoading, item.id, scrollToBottom]);
 
+  // Reset initial load ref when chat changes to always scroll down
+  useEffect(() => {
+    if (item.id) {
+        initialLoadRef.current[item.id] = false;
+    }
+  }, [item.id]);
+
   const handleMediaLoad = useCallback(() => {
     if (scrollContainerRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
@@ -1640,7 +1647,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 <span>{t('info')}</span>
                             </DropdownMenuItem>
                         )}
-                        {(item.id === currentUser.uid || isOwner || item.type === 'dm') && (
+                        {(item.id === currentUser.uid || isOwner || (item.type === 'dm' && item.id !== currentUser.uid)) && (
                             <DropdownMenuItem onSelect={() => setShowClearConfirm(true)}>
                                 <Trash className="mr-2 h-4 w-4" />
                                 <span>{t('clear_history')}</span>
@@ -1749,7 +1756,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             "flex-shrink-0 p-4 border-t pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
-          <div className="max-w-4xl mx-auto flex flex-col gap-2">
+          <div className="max-w-3xl mx-auto flex flex-col gap-2">
             {replyToMessage && (
                 <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
                     <div className="flex items-center gap-2 min-w-0">
@@ -1796,7 +1803,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             <form onSubmit={handleSubmit} className="flex items-end gap-2 relative">
                 <div className="relative flex-1">
                     <Textarea
-                        placeholder={t('message_placeholder')}
+                        placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')}
                         value={messageContent}
                         onChange={(e) => setMessageContent(e.target.value)}
                         onKeyDown={(e) => {
@@ -1805,7 +1812,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 handleSubmit(e);
                             }
                         }}
-                        className="min-h-[40px] h-10 max-h-32 py-2.5 resize-none pr-10"
+                        className="min-h-[40px] h-10 max-h-32 py-2.5 resize-none"
                     />
                 </div>
 
