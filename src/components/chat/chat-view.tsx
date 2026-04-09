@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -1812,14 +1813,14 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 handleSubmit(e);
                             }
                         }}
-                        className="min-h-[40px] h-10 max-h-32 py-2.5 resize-none"
+                        className="min-h-[38px] h-[38px] max-h-32 py-2 px-4 resize-none placeholder:truncate"
                     />
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 h-[38px]">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="shrink-0 h-10 w-10">
+                            <Button type="button" variant="ghost" size="icon" className="shrink-0 h-9 w-9">
                                 <Paperclip className="h-5 w-5" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -1845,7 +1846,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                     <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
 
                     {(messageContent.trim() || fileToSend) ? (
-                        <Button type="submit" size="icon" disabled={isSending} className="h-10 w-10 rounded-full shadow-lg">
+                        <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full shadow-lg">
                             {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                         </Button>
                     ) : (
@@ -1854,7 +1855,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 type="button" 
                                 size="icon" 
                                 variant="ghost"
-                                className={cn("h-10 w-10 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
+                                className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
                                 onPointerDown={(e) => handlePointerDown(e, 'circle')}
                                 onPointerMove={handlePointerMove}
                                 onPointerUp={handlePointerUp}
@@ -1865,7 +1866,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                                 type="button" 
                                 size="icon" 
                                 variant="ghost"
-                                className={cn("h-10 w-10 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
+                                className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
                                 onPointerDown={(e) => handlePointerDown(e, 'voice')}
                                 onPointerMove={handlePointerMove}
                                 onPointerUp={handlePointerUp}
