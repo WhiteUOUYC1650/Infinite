@@ -1718,9 +1718,13 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                       <div className="space-y-4 p-4">
                           {messages.map((message, index) => {
                               const sender = memberDetails[message.senderId];
-                              const messageDate = new Date(message.timestamp.seconds * 1000);
+                              const timestamp = message.timestamp;
+                              // Fallback for temporary local messages before server sync
+                              const messageDate = timestamp ? new Date(timestamp.seconds * 1000) : new Date();
+                              
                               const prevMessage = messages[index - 1];
-                              const prevMessageDate = prevMessage ? new Date(prevMessage.timestamp.seconds * 1000) : null;
+                              const prevTimestamp = prevMessage?.timestamp;
+                              const prevMessageDate = prevTimestamp ? new Date(prevTimestamp.seconds * 1000) : null;
                               const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
 
                               return (
@@ -2404,7 +2408,9 @@ function ChatMessage({
         }
     };
 
-    const timestamp = message.timestamp ? format(new Date(message.timestamp.seconds * 1000), 'HH:mm') : '';
+    const timestampVal = message.timestamp;
+    const timestamp = timestampVal ? format(new Date(timestampVal.seconds * 1000), 'HH:mm') : format(new Date(), 'HH:mm');
+    
     const fromBot = message.type === 'announcement';
     const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';

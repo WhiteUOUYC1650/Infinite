@@ -775,7 +775,7 @@ export const translations = {
       'whats_new_media_desc': 'Теперь можно отправлять любые файлы. Мы внедрили локальное кэширование для мгновенного доступа к медиа.',
       'whats_new_calls_title': 'Экспериментальные звонки',
       'whats_new_calls_desc': 'Аудиозвонки теперь доступны в личных чатах. Окно звонка можно сворачивать, не прерывая общение.',
-      'whats_new_themes_title': 'Дизайн и Безопасность',
+      'whats_new_themes_title': 'Design & Security',
       'whats_new_themes_desc': 'Новая защита Облачным паролем, Экспериментальный дизайн и глянцевый эффект стекла в стиле Aero.',
       'inftube': 'InfVid',
       'infvid_title': 'InfVid',
