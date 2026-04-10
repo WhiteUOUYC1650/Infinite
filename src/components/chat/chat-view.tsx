@@ -172,8 +172,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isRecordingLocked, setIsRecordingLocked] = useState(false);
   const [recordingOffset, setRecordingOffset] = useState({ x: 0, y: 0 });
-  const [isRecordingCancelled, setIsRecordingCancelled] = useState(false);
-
+  
+  const isRecordingCancelledRef = useRef<boolean>(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingVideoRef = useRef<HTMLVideoElement>(null);
@@ -426,7 +426,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [messages, messagesLoading, item.id, scrollToBottom]);
 
-  // Reset initial load ref when chat changes to always scroll down
   useEffect(() => {
     if (item.id) {
         initialLoadRef.current[item.id] = false;
@@ -1026,7 +1025,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             chunkIds.push(chunkDocRef.id);
             await new Promise(res => setTimeout(res, 0));
         }
-        await updateDoc(messageRef, { fileStatus: 'complete', fileStatus: 'complete' });
+        await updateDoc(messageRef, { fileStatus: 'complete' });
         const chatDoc = await getDoc(chatRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, { 'lastMessage.fileStatus': 'complete' });
@@ -1184,8 +1183,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const startVoiceRecording = async () => {
+    if (isRecordingRequestedRef.current || isRecordingVoice || isRecordingCircle) return;
     isRecordingRequestedRef.current = true;
-    setIsRecordingCancelled(false);
+    isRecordingCancelledRef.current = false;
     setIsRecordingLocked(false);
     setRecordingOffset({ x: 0, y: 0 });
     try {
@@ -1207,7 +1207,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const durationMs = performance.now() - recordingStartTimeRef.current;
             const durationSeconds = Math.round(durationMs / 1000);
             
-            if (isRecordingCancelled || durationMs < 500) {
+            if (isRecordingCancelledRef.current || durationMs < 500) {
                 if (recordingStreamRef.current) {
                     recordingStreamRef.current.getTracks().forEach(t => t.stop());
                     recordingStreamRef.current = null;
@@ -1243,7 +1243,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   const stopVoiceRecording = (cancel = false) => {
     isRecordingRequestedRef.current = false;
     if (mediaRecorderRef.current && isRecordingVoice) {
-        if (cancel) setIsRecordingCancelled(true);
+        if (cancel) isRecordingCancelledRef.current = true;
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
@@ -1258,8 +1258,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const startCircleRecording = async () => {
+    if (isRecordingRequestedRef.current || isRecordingVoice || isRecordingCircle) return;
     isRecordingRequestedRef.current = true;
-    setIsRecordingCancelled(false);
+    isRecordingCancelledRef.current = false;
     setIsRecordingLocked(false);
     setRecordingOffset({ x: 0, y: 0 });
     try {
@@ -1283,7 +1284,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const durationMs = performance.now() - recordingStartTimeRef.current;
             const durationSeconds = Math.round(durationMs / 1000);
             
-            if (isRecordingCancelled || durationMs < 500) {
+            if (isRecordingCancelledRef.current || durationMs < 500) {
                 if (recordingStreamRef.current) {
                     recordingStreamRef.current.getTracks().forEach(t => t.stop());
                     recordingStreamRef.current = null;
@@ -1319,11 +1320,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   const stopCircleRecording = (cancel = false) => {
     isRecordingRequestedRef.current = false;
     if (mediaRecorderRef.current && isRecordingCircle) {
-        if (cancel) setIsRecordingCancelled(true);
+        if (cancel) isRecordingCancelledRef.current = true;
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
         } else {
-            // Force stop if stuck
             recordingStreamRef.current?.getTracks().forEach(t => t.stop());
         }
         setIsRecordingCircle(false);
@@ -1337,6 +1337,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const handlePointerDown = (e: React.PointerEvent, type: 'voice' | 'circle') => {
+    if (isRecordingVoice || isRecordingCircle) return;
     e.preventDefault();
     touchStartPos.current = { x: e.clientX, y: e.clientY };
     if (type === 'voice') startVoiceRecording();
@@ -1344,7 +1345,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!touchStartPos.current || isRecordingLocked || isRecordingCancelled) return;
+    if (!touchStartPos.current || isRecordingLocked || isRecordingCancelledRef.current) return;
     
     const deltaX = e.clientX - touchStartPos.current.x;
     const deltaY = e.clientY - touchStartPos.current.y;
@@ -1355,7 +1356,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     setRecordingOffset({ x: limitedX, y: limitedY });
 
     if (deltaX < -100) {
-        setIsRecordingCancelled(true);
         if (isRecordingVoice) stopVoiceRecording(true);
         else stopCircleRecording(true);
     } else if (deltaY < -100) {
@@ -1503,7 +1503,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       
       {/* Recording Overlay */}
       {(isRecordingVoice || isRecordingCircle) && (
-        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300 pointer-events-none">
+        <div className={cn(
+            "absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300",
+            isRecordingLocked ? "pointer-events-auto" : "pointer-events-none"
+        )}>
             <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full pointer-events-auto">
                 <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
@@ -2539,7 +2542,7 @@ function ChatMessage({
                                     {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />}
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={musicUrl} isMusic fileName={message.fileName} />
+                                CustomAudioPlayer({ src: musicUrl, isMusic: true, fileName: message.fileName })
                             )}
                             {musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}
                         </div>
