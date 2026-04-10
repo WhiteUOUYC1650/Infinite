@@ -31,7 +31,6 @@ jobs:
     - name: Sync Capacitor project
       run: npm run sync:android
       env:
-        # These are dummy variables for the build process, they don't need to be real
         NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
         NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
         NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy"
