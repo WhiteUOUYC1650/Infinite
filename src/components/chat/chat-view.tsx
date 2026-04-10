@@ -1322,6 +1322,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         if (cancel) setIsRecordingCancelled(true);
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
+        } else {
+            // Force stop if stuck
+            recordingStreamRef.current?.getTracks().forEach(t => t.stop());
         }
         setIsRecordingCircle(false);
         setIsRecordingLocked(false);
@@ -1536,13 +1539,8 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                         </div>
                     ) : (
                         <div className="space-y-4 text-center">
-                            <div className="flex items-center justify-center gap-4 text-muted-foreground animate-pulse">
-                                <span className="text-xs font-bold uppercase tracking-tighter">{t('swipe_to_cancel')}</span>
-                                <X className="h-4 w-4" />
-                            </div>
-                            <div className="flex flex-col items-center gap-2 text-primary">
+                            <div className="flex flex-col items-center gap-2 text-primary animate-bounce">
                                 <Lock className="h-4 w-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{t('release_to_lock')}</span>
                             </div>
                         </div>
                     )}
@@ -2087,8 +2085,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
                 <div 
                     className={cn(
                         "relative h-1.5 w-full rounded-full overflow-hidden cursor-pointer", 
-                        !isMusic && "mb-0",
-                        isMusic && "mb-1.5",
+                        isMusic ? "mb-1.5" : "mb-0",
                         isDarkMode ? "bg-black/20" : "bg-white/20"
                     )} 
                     onClick={handleProgressClick}
