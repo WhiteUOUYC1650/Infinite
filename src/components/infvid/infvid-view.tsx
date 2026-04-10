@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -241,8 +242,8 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
 
 function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: User, onClick: () => void }) {
     const { t, language } = useLanguage();
-    const timeAgo = video.timestamp 
-        ? formatDistanceToNow(video.timestamp.toDate(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })
+    const timeAgo = video.timestamp?.seconds 
+        ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS })
         : '';
 
     return (
@@ -415,8 +416,8 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         toast({ title: t('video_link_copied') });
     };
 
-    const timeAgo = video.timestamp 
-        ? formatDistanceToNow(video.timestamp.toDate(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })
+    const timeAgo = video.timestamp?.seconds 
+        ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS })
         : '';
 
     return (
@@ -543,6 +544,7 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                     <div className="flex justify-end gap-2 pt-1">
                         <Button variant="ghost" size="sm" onClick={() => setAddCommentText('')} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button>
                         <Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onAddComment} disabled={!commentText.trim()}>
+                            <span className="sr-only">Send</span>
                             <Send className="h-3 w-3" />
                             {t('ok')}
                         </Button>
@@ -561,7 +563,7 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-sm leading-none">@{comment.userName}</span>
                                 <span className="text-[10px] text-muted-foreground font-medium">
-                                    {comment.timestamp ? formatDistanceToNow(comment.timestamp.toDate(), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
+                                    {comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
                                 </span>
                             </div>
                             <p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p>

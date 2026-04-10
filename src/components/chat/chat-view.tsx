@@ -65,6 +65,14 @@ export const COMMON_EMOJIS = [
     '👀', '✅', '❌', '✨', '⚡️', '🚀', '🤝', '🤡', '💘', '🌚'
 ];
 
+// Helper to safely handle Firestore Timestamps and avoid client-side crashes
+const getSafeDate = (ts: any): Date => {
+  if (ts && typeof ts.seconds === 'number') {
+    return new Date(ts.seconds * 1000);
+  }
+  return new Date(); // Fallback to now if timestamp is missing or pending
+};
+
 function DateSeparator({ date }: { date: string }) {
   return (
     <div className="relative my-4" data-date-separator={date}>
@@ -135,7 +143,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { t } = useLanguage();
   const { toast } = useToast();
   const { theme: colorTheme, sendOnEnter, smoothScroll } = useTheme();
-  const { promptUpdate } = useUpdatePrompt();
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -204,7 +211,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [initialItem, liveChatData, currentUser.uid]);
 
   const isMember = useMemo(() => {
-    if (!item?.members) return false;
+    if (!item?.members || !Array.isArray(item.members)) return false;
     return item.members.includes(currentUser.uid);
   }, [item?.members, currentUser.uid]);
 
@@ -272,7 +279,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     messages?.forEach(m => {
         ids.add(m.senderId);
         if (m.reactions) {
-            Object.values(m.reactions).flat().forEach(uid => ids.add(uid));
+            Object.values(m.reactions).flat().forEach(uid => {
+              if (typeof uid === 'string') ids.add(uid);
+            });
         }
     });
     return Array.from(ids);
@@ -325,7 +334,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [db, currentUser?.uid, item.id, item.unreadCounts, isMember]);
 
   const otherUserId = useMemo(() => {
-    if (item.type !== 'dm') return null;
+    if (item.type !== 'dm' || !Array.isArray(item.members)) return null;
     return item.members.find((id) => id !== currentUser.uid) || currentUser.uid;
   }, [item, currentUser.uid]);
 
@@ -362,7 +371,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     
     if (user.status === 'offline' && user.lastSeen) {
-      const lastSeenDate = new Date(user.lastSeen.seconds * 1000);
+      const lastSeenDate = getSafeDate(user.lastSeen);
       return `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
     }
     
@@ -451,15 +460,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         
         let currentStickyDate: string | null = null;
         
-        if (dateSeparators.length > 0 && scrollTop < dateSeparators[0].offsetTop) {
-            currentStickyDate = null
-        } else {
-            for (let i = 0; i < dateSeparators.length; i++) {
-                const separator = dateSeparators[i];
-                if (separator.offsetTop <= scrollTop + 5) {
-                    currentStickyDate = separator.dataset.dateSeparator || null;
-                } else {
-                    break;
+        if (dateSeparators.length > 0) {
+            const firstSeparator = dateSeparators[0];
+            if (firstSeparator && scrollTop < firstSeparator.offsetTop) {
+                currentStickyDate = null;
+            } else {
+                for (let i = 0; i < dateSeparators.length; i++) {
+                    const separator = dateSeparators[i];
+                    if (separator && separator.offsetTop <= scrollTop + 5) {
+                        currentStickyDate = separator.dataset.dateSeparator || null;
+                    } else {
+                        break;
+                    }
                 }
             }
         }
@@ -1498,20 +1510,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
-  const faqs = [
-    { question: t('faq_markdown_q'), answer: t('faq_markdown_a') },
-    { question: t('faq_create_chat_q'), answer: t('faq_create_chat_a') },
-    { question: t('faq_invite_q'), answer: t('faq_invite_a') },
-    { question: t('faq_edit_profile_q'), answer: t('faq_edit_profile_a') },
-    { question: t('faq_calls_q'), answer: t('faq_calls_a') },
-    { question: t('faq_media_q'), answer: t('faq_media_a') },
-    { question: t('faq_infgold_q'), answer: t('faq_infgold_a') },
-    { question: t('faq_prem_q'), answer: t('faq_prem_a') },
-    { question: t('faq_bot_q'), answer: t('faq_bot_a') },
-    { question: t('faq_security_q'), answer: t('faq_security_a') },
-    { question: t('faq_beta_badge_q'), answer: t('faq_beta_badge_a') },
-  ];
-
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       
@@ -1718,13 +1716,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                       <div className="space-y-4 p-4">
                           {messages.map((message, index) => {
                               const sender = memberDetails[message.senderId];
-                              const timestamp = message.timestamp;
-                              // Fallback for temporary local messages before server sync
-                              const messageDate = timestamp ? new Date(timestamp.seconds * 1000) : new Date();
+                              const messageDate = getSafeDate(message.timestamp);
                               
-                              const prevMessage = messages[index - 1];
-                              const prevTimestamp = prevMessage?.timestamp;
-                              const prevMessageDate = prevTimestamp ? new Date(prevTimestamp.seconds * 1000) : null;
+                              const prevMessage = index > 0 ? messages[index - 1] : null;
+                              const prevMessageDate = prevMessage ? getSafeDate(prevMessage.timestamp) : null;
                               const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
 
                               return (
@@ -2337,7 +2332,7 @@ function ChatMessage({
     };
 
     const otherUserId = useMemo(() => {
-        if (chat.type !== 'dm') return null;
+        if (chat.type !== 'dm' || !Array.isArray(chat.members)) return null;
         return chat.members.find((id) => id !== currentUser.uid);
     }, [chat, currentUser.uid]);
 
@@ -2374,7 +2369,7 @@ function ChatMessage({
         
         let alreadyMatchedEmoji: string | null = null;
         Object.entries(currentReactions).forEach(([key, voters]) => {
-            if (voters.includes(currentUser.uid)) {
+            if (Array.isArray(voters) && voters.includes(currentUser.uid)) {
                 alreadyMatchedEmoji = key;
             }
         });
@@ -2408,8 +2403,8 @@ function ChatMessage({
         }
     };
 
-    const timestampVal = message.timestamp;
-    const timestamp = timestampVal ? format(new Date(timestampVal.seconds * 1000), 'HH:mm') : format(new Date(), 'HH:mm');
+    const messageDate = getSafeDate(message.timestamp);
+    const timestamp = format(messageDate, 'HH:mm');
     
     const fromBot = message.type === 'announcement';
     const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
@@ -2428,7 +2423,7 @@ function ChatMessage({
     };
 
     const canDeleteMessage = (isCurrentUser && !fromBot) || (currentUser.isAdmin && chat.id === 'GENERAL_CHAT') || (chat.type === 'group' && chat.ownerId === currentUser.uid);
-    const reactionEntries = message.reactions ? Object.entries(message.reactions).filter(([_, voters]) => voters.length > 0) : [];
+    const reactionEntries = message.reactions ? Object.entries(message.reactions).filter(([_, voters]) => Array.isArray(voters) && voters.length > 0) : [];
     
     const allowedReactions = chat.allowedReactions || COMMON_EMOJIS;
 
@@ -2621,13 +2616,13 @@ function ChatMessage({
                                 onClick={() => handleToggleReaction(emoji)}
                                 className={cn(
                                     "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all shadow-sm",
-                                    voters.includes(currentUser.uid) 
+                                    Array.isArray(voters) && voters.includes(currentUser.uid) 
                                         ? (alignRight ? "bg-white/20 border-white/40 text-white" : "bg-primary/10 border-primary/20 text-primary")
                                         : (alignRight ? "bg-black/10 border-white/10 text-white/80" : "bg-muted border-border text-muted-foreground")
                                 )}
                             >
                                 <span>{emoji}</span>
-                                {renderReactionContent(voters)}
+                                {Array.isArray(voters) ? renderReactionContent(voters) : null}
                             </button>
                         ))}
                     </div>
