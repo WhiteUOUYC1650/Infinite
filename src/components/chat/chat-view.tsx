@@ -2010,8 +2010,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
-    // Applying the -3s correction for display if it's a voice message and playback hasn't started
-    const [maxTime, setMaxTime] = useState(!isMusic && duration ? Math.max(0, duration - 3) : duration || 0);
+    const [maxTime, setMaxTime] = useState(duration || 0);
 
     useEffect(() => {
         if (audioRef.current) {
@@ -2055,7 +2054,6 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
         }
     };
 
-    // Correct theme inversion for player UI
     const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
     const accentClass = isDarkMode ? "bg-black" : "bg-white";
 
@@ -2088,7 +2086,9 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
                 )}
                 <div 
                     className={cn(
-                        "relative h-1.5 w-full rounded-full overflow-hidden mb-1.5 cursor-pointer", 
+                        "relative h-1.5 w-full rounded-full overflow-hidden cursor-pointer", 
+                        !isMusic && "mb-0",
+                        isMusic && "mb-1.5",
                         isDarkMode ? "bg-black/20" : "bg-white/20"
                     )} 
                     onClick={handleProgressClick}
@@ -2098,11 +2098,12 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80">
-                    <span>{formatTime(currentTime)}</span>
-                    {!isMusic && <span className="opacity-50">••••••</span>}
-                    <span>{formatTime(maxTime)}</span>
-                </div>
+                {isMusic && (
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80 mt-1.5">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(maxTime)}</span>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -2470,7 +2471,7 @@ function ChatMessage({
                                     <Loader2 className="h-4 w-4 animate-spin text-white opacity-50" />
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={voiceUrl} duration={message.voiceDuration} />
+                                <CustomAudioPlayer src={voiceUrl} />
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (
@@ -2507,11 +2508,6 @@ function ChatMessage({
                                         }}
                                         onLoadedData={onMediaLoad}
                                     />
-                                    <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1 opacity-0 group-hover/circle:opacity-100 transition-opacity">
-                                        <div className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] text-white font-bold">
-                                            {message.circleDuration ? `${Math.floor(message.circleDuration/60)}:${(message.circleDuration%60).toString().padStart(2, '0')}` : ''}
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </div>
