@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -67,6 +68,10 @@ export function FaqDialog({ open, onOpenChange }: FaqDialogProps) {
     {
       question: t('faq_security_q'),
       answer: t('faq_security_a'),
+    },
+    {
+      question: t('faq_beta_badge_q'),
+      answer: t('faq_beta_badge_a'),
     },
   ];
 

@@ -1473,7 +1473,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         onClose();
     } catch (e) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: t('delete_chat_error') });
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
     } finally {
         setIsProcessingAction(false);
     }
@@ -1497,6 +1497,20 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
   };
 
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
+
+  const faqs = [
+    { question: t('faq_markdown_q'), answer: t('faq_markdown_a') },
+    { question: t('faq_create_chat_q'), answer: t('faq_create_chat_a') },
+    { question: t('faq_invite_q'), answer: t('faq_invite_a') },
+    { question: t('faq_edit_profile_q'), answer: t('faq_edit_profile_a') },
+    { question: t('faq_calls_q'), answer: t('faq_calls_a') },
+    { question: t('faq_media_q'), answer: t('faq_media_a') },
+    { question: t('faq_infgold_q'), answer: t('faq_infgold_a') },
+    { question: t('faq_prem_q'), answer: t('faq_prem_a') },
+    { question: t('faq_bot_q'), answer: t('faq_bot_a') },
+    { question: t('faq_security_q'), answer: t('faq_security_a') },
+    { question: t('faq_beta_badge_q'), answer: t('faq_beta_badge_a') },
+  ];
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -1852,28 +1866,34 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                         </Button>
                     ) : (
                         <div className="flex items-center gap-1">
-                            <Button 
-                                type="button" 
-                                size="icon" 
-                                variant="ghost"
-                                className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
-                                onPointerDown={(e) => handlePointerDown(e, 'circle')}
-                                onPointerMove={handlePointerMove}
-                                onPointerUp={handlePointerUp}
-                            >
-                                <Camera className="h-5 w-5" />
-                            </Button>
-                            <Button 
-                                type="button" 
-                                size="icon" 
-                                variant="ghost"
-                                className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
-                                onPointerDown={(e) => handlePointerDown(e, 'voice')}
-                                onPointerMove={handlePointerMove}
-                                onPointerUp={handlePointerUp}
-                            >
-                                <Mic className="h-5 w-5" />
-                            </Button>
+                            <div className="relative">
+                                <Button 
+                                    type="button" 
+                                    size="icon" 
+                                    variant="ghost"
+                                    className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
+                                    onPointerDown={(e) => handlePointerDown(e, 'circle')}
+                                    onPointerMove={handlePointerMove}
+                                    onPointerUp={handlePointerUp}
+                                >
+                                    <Camera className="h-5 w-5" />
+                                </Button>
+                                <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
+                            </div>
+                            <div className="relative">
+                                <Button 
+                                    type="button" 
+                                    size="icon" 
+                                    variant="ghost"
+                                    className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
+                                    onPointerDown={(e) => handlePointerDown(e, 'voice')}
+                                    onPointerMove={handlePointerMove}
+                                    onPointerUp={handlePointerUp}
+                                >
+                                    <Mic className="h-5 w-5" />
+                                </Button>
+                                <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
+                            </div>
                         </div>
                     )}
                 </div>
