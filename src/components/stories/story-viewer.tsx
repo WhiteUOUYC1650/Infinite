@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Story, User, AuthenticatedUser } from '@/types';
-import { X, Trash2, Copy, Download, MoreVertical } from 'lucide-react';
+import { X, Trash2, Copy, Download, MoreVertical, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/context/language-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,13 @@ interface StoryViewerProps {
   currentUser: AuthenticatedUser;
   user: User | null;
 }
+
+const getSafeDate = (ts: any): Date => {
+  if (ts && typeof ts.seconds === 'number') {
+    return new Date(ts.seconds * 1000);
+  }
+  return new Date();
+};
 
 export function StoryViewer({ userId, stories, onClose, currentUser, user }: StoryViewerProps) {
   const db = useFirestore();
@@ -137,6 +145,9 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
 
   if (!mounted || !currentStory) return null;
 
+  const storyDate = getSafeDate(currentStory.timestamp);
+  const formattedDate = format(storyDate, 'dd.MM.yyyy, HH:mm');
+
   const content = (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300 w-screen h-svh overflow-hidden">
       {/* Media Content */}
@@ -195,7 +206,10 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
               </Avatar>
               <div className="text-white drop-shadow-lg">
                 <p className="font-bold text-base leading-none">{user?.name}</p>
-                <p className="text-[11px] opacity-80 mt-1.5 font-bold uppercase tracking-wider">{t('online')}</p>
+                <div className="flex items-center gap-1.5 text-[10px] opacity-80 mt-1.5 font-bold uppercase tracking-wider">
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>{formattedDate}</span>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">

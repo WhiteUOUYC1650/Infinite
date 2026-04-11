@@ -81,14 +81,16 @@ export function StoriesBar({ currentUser }: { currentUser: AuthenticatedUser }) 
               <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
             </Avatar>
           </button>
-          {!currentUserHasStories && (
-            <button 
-              onClick={() => setIsUploadOpen(true)}
-              className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1 border-2 border-background shadow-sm hover:scale-110 transition-transform"
-            >
-              <Plus className="w-3 h-3" strokeWidth={3} />
-            </button>
-          )}
+          {/* Always show Add button for current user */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsUploadOpen(true);
+            }}
+            className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1 border-2 border-background shadow-sm hover:scale-110 transition-transform z-10"
+          >
+            <Plus className="w-3 h-3" strokeWidth={3} />
+          </button>
         </div>
         <span className="text-[10px] font-bold text-muted-foreground truncate w-14 text-center">
           {t('my_story')}
