@@ -2563,7 +2563,7 @@ function ChatMessage({
                                     {isLoadingMusic ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Download className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />}
                                 </div>
                             ) : (
-                                CustomAudioPlayer({ src: musicUrl, isMusic: true, fileName: message.fileName })
+                                <CustomAudioPlayer src={musicUrl} isMusic={true} fileName={message.fileName} />
                             )}
                             {musicStatus === 'failed' && <div className="w-full flex items-center justify-center bg-destructive/20 text-destructive rounded-lg p-2"><p className='text-xs font-semibold text-center'>{t('music_upload_failed')}</p></div>}
                         </div>
