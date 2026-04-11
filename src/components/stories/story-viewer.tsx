@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -105,57 +104,9 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
 
   return (
     <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300">
-      {/* Progress Bars */}
-      <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] left-4 right-4 z-[210] flex gap-1">
-        {stories.map((_, i) => (
-          <div key={i} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-white transition-all duration-[50ms] ease-linear"
-              style={{ 
-                width: i < currentIndex ? '100%' : i === currentIndex ? `${progress}%` : '0%' 
-              }}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Header */}
-      <div className="absolute top-[calc(2rem+env(safe-area-inset-top))] left-4 right-4 z-[210] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10 border border-white/20">
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="text-white drop-shadow-md">
-            <p className="font-bold text-sm leading-none">{user?.name}</p>
-            <p className="text-[10px] opacity-70 mt-1">{t('online')}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isOwner && (
-            <DropdownMenu onOpenChange={setIsPaused}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
-                  <MoreVertical className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  {t('delete')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
-            <X className="w-6 h-6" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Media Content */}
+      {/* Media Content - Truly Fullscreen */}
       <div 
-        className="relative w-full h-full max-w-lg aspect-[9/16] bg-zinc-900 overflow-hidden"
+        className="relative w-full h-full bg-zinc-900 overflow-hidden"
         onMouseDown={() => setIsPaused(true)}
         onMouseUp={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
@@ -165,27 +116,78 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
           <img 
             src={currentStory.mediaUrl} 
             alt="Story" 
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary to-[#FF4500] flex items-center justify-center p-12 text-center">
-            <p className="text-white text-3xl font-black font-headline leading-tight drop-shadow-xl animate-in zoom-in duration-500">
+            <p className="text-white text-4xl font-black font-headline leading-tight drop-shadow-2xl animate-in zoom-in duration-500">
               {currentStory.caption}
             </p>
           </div>
         )}
         
         {currentStory.caption && currentStory.mediaUrl && (
-          <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-center">
+          <div className="absolute bottom-0 left-0 right-0 p-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-black/80 via-black/40 to-transparent text-center">
             <p className="text-white text-lg font-medium drop-shadow-lg">{currentStory.caption}</p>
           </div>
         )}
 
-        {/* Navigation Overlays */}
-        <div className="absolute inset-0 flex">
-          <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
-          <div className="w-1/3 h-full" onClick={() => setIsPaused(!isPaused)} />
-          <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handleNext(); }} />
+        {/* Top Overlay - Progress and Header */}
+        <div className="absolute top-0 left-0 right-0 p-4 pt-[calc(1rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/60 to-transparent z-[210]">
+          {/* Progress Bars */}
+          <div className="flex gap-1 mb-4">
+            {stories.map((_, i) => (
+              <div key={i} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-white transition-all duration-[50ms] ease-linear"
+                  style={{ 
+                    width: i < currentIndex ? '100%' : i === currentIndex ? `${progress}%` : '0%' 
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* User Info & Actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-10 h-10 border border-white/20">
+                <AvatarImage src={user?.avatar} />
+                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="text-white drop-shadow-md">
+                <p className="font-bold text-sm leading-none">{user?.name}</p>
+                <p className="text-[10px] opacity-70 mt-1">{t('online')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <DropdownMenu onOpenChange={setIsPaused}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {t('delete')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full">
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Touch Zones */}
+        <div className="absolute inset-0 flex z-[205]">
+          <div className="w-1/4 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
+          <div className="w-1/2 h-full" onClick={() => setIsPaused(!isPaused)} />
+          <div className="w-1/4 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handleNext(); }} />
         </div>
       </div>
     </div>
