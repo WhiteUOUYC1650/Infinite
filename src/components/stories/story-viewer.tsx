@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Story, User, AuthenticatedUser } from '@/types';
 import { X, ChevronLeft, ChevronRight, Trash2, Loader2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -33,13 +33,20 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
+  // State to track if we are on the client to avoid SSR issues with Portals
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   const currentStory = stories[currentIndex];
   const isOwner = userId === currentUser.uid;
 
   useEffect(() => {
     if (!currentStory || !db) return;
     
-    // Mark as viewed
     if (!currentStory.viewedBy?.includes(currentUser.uid)) {
       updateDoc(doc(db, 'stories', currentStory.id), {
         viewedBy: arrayUnion(currentUser.uid)
@@ -54,8 +61,8 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     }
 
     setProgress(0);
-    const interval = 50; // Update every 50ms
-    const totalTime = 5000; // 5 seconds per story
+    const interval = 50; 
+    const totalTime = 5000; 
     const step = (interval / totalTime) * 100;
 
     timerRef.current = setInterval(() => {
@@ -100,46 +107,49 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     setIsPaused(false);
   };
 
-  if (!currentStory) return null;
+  if (!mounted || !currentStory) return null;
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300">
+  const content = (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300 w-screen h-svh overflow-hidden">
       {/* Media Content - Truly Fullscreen */}
       <div 
-        className="relative w-full h-full bg-zinc-900 overflow-hidden"
+        className="relative w-full h-full bg-zinc-950 overflow-hidden flex items-center justify-center"
         onMouseDown={() => setIsPaused(true)}
         onMouseUp={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
       >
         {currentStory.mediaUrl ? (
-          <img 
-            src={currentStory.mediaUrl} 
-            alt="Story" 
-            className="w-full h-full object-cover"
-          />
+          <>
+            <img 
+              src={currentStory.mediaUrl} 
+              alt="Story" 
+              className="w-full h-full object-cover"
+            />
+            {currentStory.caption && (
+              <div className="absolute bottom-0 left-0 right-0 p-8 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-black/90 via-black/40 to-transparent text-center z-[215]">
+                <p className="text-white text-xl font-medium drop-shadow-lg max-w-lg mx-auto">
+                  {currentStory.caption}
+                </p>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary to-[#FF4500] flex items-center justify-center p-12 text-center">
-            <p className="text-white text-4xl font-black font-headline leading-tight drop-shadow-2xl animate-in zoom-in duration-500">
+          <div className="w-full h-full bg-gradient-to-br from-[#FF8C00] to-[#FF4500] flex items-center justify-center p-10 text-center">
+            <p className="text-white text-3xl md:text-5xl font-black font-headline leading-tight drop-shadow-2xl animate-in zoom-in duration-500 max-w-2xl">
               {currentStory.caption}
             </p>
           </div>
         )}
-        
-        {currentStory.caption && currentStory.mediaUrl && (
-          <div className="absolute bottom-0 left-0 right-0 p-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-black/80 via-black/40 to-transparent text-center">
-            <p className="text-white text-lg font-medium drop-shadow-lg">{currentStory.caption}</p>
-          </div>
-        )}
 
         {/* Top Overlay - Progress and Header */}
-        <div className="absolute top-0 left-0 right-0 p-4 pt-[calc(1rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/60 to-transparent z-[210]">
+        <div className="absolute top-0 left-0 right-0 p-4 pt-[calc(1.5rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/80 via-black/40 to-transparent z-[220]">
           {/* Progress Bars */}
-          <div className="flex gap-1 mb-4">
+          <div className="flex gap-1.5 mb-6 max-w-4xl mx-auto">
             {stories.map((_, i) => (
-              <div key={i} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+              <div key={i} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-white transition-all duration-[50ms] ease-linear"
+                  className="h-full bg-white transition-all duration-[50ms] ease-linear shadow-[0_0_8px_rgba(255,255,255,0.5)]"
                   style={{ 
                     width: i < currentIndex ? '100%' : i === currentIndex ? `${progress}%` : '0%' 
                   }}
@@ -149,47 +159,49 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
           </div>
 
           {/* User Info & Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between max-w-4xl mx-auto px-2">
             <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10 border border-white/20">
+              <Avatar className="w-11 h-11 border-2 border-white/20 shadow-lg">
                 <AvatarImage src={user?.avatar} />
-                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+                <AvatarFallback className="bg-zinc-800 text-white">{user?.name?.charAt(0)}</AvatarFallback>
               </Avatar>
-              <div className="text-white drop-shadow-md">
-                <p className="font-bold text-sm leading-none">{user?.name}</p>
-                <p className="text-[10px] opacity-70 mt-1">{t('online')}</p>
+              <div className="text-white drop-shadow-lg">
+                <p className="font-bold text-base leading-none">{user?.name}</p>
+                <p className="text-[11px] opacity-80 mt-1.5 font-bold uppercase tracking-wider">{t('online')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {isOwner && (
                 <DropdownMenu onOpenChange={setIsPaused}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
-                      <MoreVertical className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full h-10 w-10">
+                      <MoreVertical className="w-6 h-6" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <DropdownMenuContent align="end" className="rounded-xl">
+                    <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10 font-bold">
                       <Trash2 className="w-4 h-4 mr-2" />
                       {t('delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full">
-                <X className="w-6 h-6" />
+              <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full h-10 w-10">
+                <X className="w-7 h-7" />
               </Button>
             </div>
           </div>
         </div>
 
         {/* Navigation Touch Zones */}
-        <div className="absolute inset-0 flex z-[205]">
-          <div className="w-1/4 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
-          <div className="w-1/2 h-full" onClick={() => setIsPaused(!isPaused)} />
-          <div className="w-1/4 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handleNext(); }} />
+        <div className="absolute inset-0 flex z-[210]">
+          <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
+          <div className="w-1/3 h-full" onClick={() => setIsPaused(!isPaused)} />
+          <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handleNext(); }} />
         </div>
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
