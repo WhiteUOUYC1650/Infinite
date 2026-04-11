@@ -79,7 +79,7 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         <div className="p-6 space-y-6">
           <div 
             className={cn(
-              "aspect-[9/16] max-h-[400px] border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden bg-muted relative",
+              "w-full h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden bg-muted relative",
               preview ? "border-solid border-primary" : "hover:border-primary/50"
             )}
             onClick={() => !isUploading && fileInputRef.current?.click()}
@@ -88,12 +88,12 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
             {preview ? (
               <img src={preview} alt="Preview" className="w-full h-full object-cover" />
             ) : (
-              <div className="text-center space-y-2 p-4">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <ImageIcon className="w-8 h-8 text-primary" />
+              <div className="text-center space-y-1 p-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
+                  <ImageIcon className="w-5 h-5 text-primary" />
                 </div>
-                <p className="font-bold text-muted-foreground">{t('photo')}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{t('select_an_image')}</p>
+                <p className="font-bold text-muted-foreground text-sm">{t('photo')}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-widest">{t('select_an_image')}</p>
               </div>
             )}
           </div>
