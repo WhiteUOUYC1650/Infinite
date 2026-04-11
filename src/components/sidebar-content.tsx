@@ -40,6 +40,7 @@ import { VerifiedBadge } from './ui/verified-badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
+import { StoriesBar } from './stories/stories-bar';
 
 const iconMap = {
     Users,
@@ -142,7 +143,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     const botUserRef = doc(db, 'users', botId);
                     const botUserSnap = await getDoc(botUserRef);
                     if (botUserSnap.exists()) {
-                        botsFound.push({ id: botUserSnap.id, ...botUserSnap.data() } as User);
+                        botsFound.push({ id: botId, ...botUserSnap.data() } as User);
                     }
                 }
             }
@@ -307,6 +308,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </div>
         </div>
       </SidebarHeader>
+
+      <StoriesBar currentUser={currentUser} />
 
       <ScrollArea className="flex-1">
         <SidebarBody className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">

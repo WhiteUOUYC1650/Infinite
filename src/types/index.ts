@@ -156,12 +156,15 @@ export type SharedVideo = {
   likedBy?: string[]; // Array of user IDs who liked the video
 };
 
-export type Channel = Chat & {
-    type: "channel";
-    description: string;
+export type Story = {
+  id: string;
+  userId: string;
+  mediaUrl: string;
+  caption?: string;
+  timestamp: Timestamp;
+  expiresAt: Timestamp;
+  viewedBy?: string[];
 };
-
-export type ChatItem = Chat | Channel;
 
 export type PopulatedChat = Chat & {
     iconComponent?: LucideIcon;
