@@ -11,14 +11,21 @@ import { SidebarContent } from '@/components/sidebar-content';
 import { ChatView } from '@/components/chat/chat-view';
 import { InfVidView } from '@/components/infvid/infvid-view';
 import type { PopulatedChat } from '@/types';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import type { User, AuthenticatedUser } from '@/types';
+import { doc, getDoc } from 'firebase/firestore';
+import type { User, AuthenticatedUser, Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
 
+const iconMap = {
+    Users,
+    Megaphone,
+    Bookmark,
+    Globe,
+    Bot,
+};
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | null>(null);
@@ -35,6 +42,32 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
       setActiveChatId(null);
     }
   }, [selectedItem, setActiveChatId]);
+
+  // Handle global "open-chat" events (e.g. from notifications)
+  useEffect(() => {
+    const handleOpenChat = async (event: any) => {
+      const chatId = event.detail.chatId;
+      if (!chatId || !db) return;
+
+      try {
+        const chatDoc = await getDoc(doc(db, 'chats', chatId));
+        if (chatDoc.exists()) {
+          const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
+          const iconName = chatData.icon as keyof typeof iconMap | undefined;
+          const populatedChat: PopulatedChat = {
+            ...chatData,
+            iconComponent: iconName ? iconMap[iconName] : undefined,
+          };
+          setSelectedItem(populatedChat);
+        }
+      } catch (e) {
+        console.error("Failed to handle notification click navigation:", e);
+      }
+    };
+
+    window.addEventListener('open-chat', handleOpenChat);
+    return () => window.removeEventListener('open-chat', handleOpenChat);
+  }, [db]);
 
   const userDocRef = useMemoFirebase(() => {
     if (!db) return null;

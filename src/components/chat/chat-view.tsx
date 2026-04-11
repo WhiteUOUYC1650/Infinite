@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -582,7 +581,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 iconComponent: iconName ? iconMap[iconName] : undefined,
             };
             onSelectChat(populatedChat);
-            if(isMobile) onClose();
         } else {
             toast({ variant: 'destructive', title: t('no_results_found'), description: t('internal_link_not_found', { link: href }) });
         }
@@ -1072,7 +1070,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             const iconName = targetChat.icon as keyof typeof iconMap | undefined;
             const populatedChat: PopulatedChat = { ...targetChat, iconComponent: iconName ? iconMap[iconName] : undefined };
             onSelectChat(populatedChat);
-            if(isMobile) onClose();
         } else {
             toast({ variant: 'destructive', title: 'Error', description: t('discussion_chat_not_found') });
         }
@@ -2653,7 +2650,7 @@ function ChatMessage({
                                 <SmilePlus className="mr-2 h-4 w-4" />
                                 <span>{t('reactions')}</span>
                             </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="flex flex-wrap max-w-[160px] p-1 gap-1">
+                            <DropdownMenuSubTriggerContent className="flex flex-wrap max-w-[160px] p-1 gap-1">
                                 {allowedReactions.map(emoji => (
                                     <button 
                                         key={emoji} 
@@ -2663,7 +2660,7 @@ function ChatMessage({
                                         {emoji}
                                     </button>
                                 ))}
-                            </DropdownMenuSubContent>
+                            </DropdownMenuSubTriggerContent>
                         </DropdownMenuSub>
                         {chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}
                         {(hasVideo || hasMusic || hasGenericFile || message.imageUrl || message.voiceStatus === 'complete' || message.circleStatus === 'complete') && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
@@ -2677,3 +2674,16 @@ function ChatMessage({
         </div>
     );
 }
+
+// Fixed DropdownMenuSubTriggerContent name conflict and missing export
+const DropdownMenuSubTriggerContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuSubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuSubContent>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuSubContent
+    ref={ref}
+    className={cn(className)}
+    {...props}
+  />
+))
+DropdownMenuSubTriggerContent.displayName = "DropdownMenuSubTriggerContent"

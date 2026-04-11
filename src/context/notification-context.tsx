@@ -42,6 +42,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     requestPermission();
+
+    // Listen for notification actions (clicks) on Native
+    if (Capacitor.isNativePlatform()) {
+      const listener = LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+        const chatId = action.notification.extra?.chatId;
+        if (chatId) {
+          window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId } }));
+        }
+      });
+      return () => {
+        listener.then(l => l.remove());
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -109,10 +122,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     } else if ('Notification' in window && Notification.permission === 'granted') {
       try {
-        new Notification(title, {
+        const n = new Notification(title, {
           body,
           icon: '/favicon.ico',
         });
+        n.onclick = () => {
+          window.focus();
+          window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: chat.id } }));
+        };
       } catch (e) {
         console.error("Browser notification failed", e);
       }
