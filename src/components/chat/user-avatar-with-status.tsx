@@ -21,7 +21,7 @@ const statusColors = {
 export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelected }: UserAvatarWithStatusProps) {
   if (user?.isDeleted) {
     return (
-      <Avatar className={cn("h-10 w-10", className)}>
+      <Avatar className={cn("h-10 w-10 shrink-0", className)}>
         <div className={cn(
             "flex h-full w-full items-center justify-center rounded-full bg-muted",
              isSelected && "bg-sidebar-primary text-sidebar-primary-foreground"
@@ -34,7 +34,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
 
   if (isSavedMessages) {
     return (
-      <Avatar className={cn("h-10 w-10", className)}>
+      <Avatar className={cn("h-10 w-10 shrink-0", className)}>
         <div className={cn(
             "flex h-full w-full items-center justify-center bg-secondary",
              isSelected && "bg-sidebar-primary text-sidebar-primary-foreground"
@@ -46,7 +46,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
   }
   
   return (
-    <div className={cn("relative h-10 w-10", className)}>
+    <div className={cn("relative h-10 w-10 shrink-0", className)}>
       <Avatar className="h-full w-full text-inherit">
         {user.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
         <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>

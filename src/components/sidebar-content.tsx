@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -61,12 +60,11 @@ const InfVidIcon = ({ className }: { className?: string }) => (
   </div>
 );
 
-// --- Holiday Banner Component ---
 function HolidayBanner() {
   const { t } = useLanguage();
   const today = new Date();
   const day = today.getDate();
-  const month = today.getMonth() + 1; // 1-indexed
+  const month = today.getMonth() + 1;
 
   const holidays = [
     { day: 1, month: 1, name: 'holiday_new_year', icon: PartyPopper, color: 'from-blue-500 to-cyan-400' },
@@ -94,7 +92,7 @@ function HolidayBanner() {
       currentHoliday.color
     )}>
       <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-        <Icon className="w-6 h-6 animate-bounce" />
+        <Icon className="w-6 h-6" />
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{t('today_is')}</p>
@@ -721,7 +719,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
       className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
     >
       <div className="flex items-center gap-3 w-full px-4 md:px-0">
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-10 w-10 shrink-0">
             {item.avatar ? (
                 <AvatarImage src={item.avatar} alt={item.name} />
             ) : (

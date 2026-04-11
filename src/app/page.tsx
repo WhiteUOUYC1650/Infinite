@@ -3,10 +3,11 @@
 import { AppShell } from '@/components/app-shell';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { doc, setDoc, getDoc, collection, addDoc, Timestamp, updateDoc, increment } from 'firebase/firestore';
+import { useEffect, useState, useRef } from 'react';
+import { doc, setDoc, getDoc, collection, addDoc, Timestamp, updateDoc, increment, runTransaction, serverTimestamp } from 'firebase/firestore';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 export default function Home() {
   const { user, loading: authLoading } = useUser();
@@ -15,6 +16,7 @@ export default function Home() {
   const auth = useAuth();
   
   const [isVerifying, setIsVerifying] = useState(true);
+  const sessionRegistered = useRef(false);
 
   useEffect(() => {
     // If an account is being deleted, don't do anything.
@@ -30,8 +32,48 @@ export default function Home() {
     
     if (!db || !auth) return;
 
+    const userRef = doc(db, 'users', user.uid);
+
+    const incrementSession = async () => {
+      if (sessionRegistered.current) return;
+      sessionRegistered.current = true;
+      try {
+        await updateDoc(userRef, { 
+          'current-sessions': increment(1),
+          status: 'online',
+          lastSeen: serverTimestamp()
+        });
+      } catch (e) {
+        console.error("Failed to increment session:", e);
+      }
+    };
+
+    const decrementSession = async () => {
+      if (!sessionRegistered.current) return;
+      sessionRegistered.current = false;
+      
+      try {
+        await runTransaction(db, async (transaction) => {
+          const snap = await transaction.get(userRef);
+          if (!snap.exists()) return;
+          
+          const current = snap.data()?.['current-sessions'] || 0;
+          const newVal = Math.max(0, current - 1);
+          
+          const updateData: any = { 'current-sessions': newVal };
+          if (newVal === 0) {
+            updateData.status = 'offline';
+            updateData.lastSeen = serverTimestamp();
+          }
+          
+          transaction.update(userRef, updateData);
+        });
+      } catch (e) {
+        console.error("Failed to decrement session:", e);
+      }
+    };
+
     const checkSecurity = async () => {
-        const userRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userRef);
         
         if (userDoc.exists()) {
@@ -46,8 +88,8 @@ export default function Home() {
             // User is valid and verified
             setIsVerifying(false);
             
-            // Set user to online
-            setDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }, { merge: true });
+            // Register session
+            incrementSession();
 
             // --- Bot Login Message Logic ---
             const justLoggedIn = localStorage.getItem('justLoggedIn');
@@ -105,16 +147,35 @@ export default function Home() {
 
     checkSecurity();
 
+    // App state management (Capacitor)
+    let appListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        appListener = App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) incrementSession();
+          else decrementSession();
+        });
+      });
+    }
+
+    // Web fallback
+    const handleBeforeUnload = () => {
+      decrementSession();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // Heartbeat to keep online status while window is active
     const interval = setInterval(() => {
       if (auth.currentUser) {
-        const userRef = doc(db, 'users', user.uid);
         setDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }, { merge: true });
       }
     }, 60000);
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (appListener) appListener.remove();
+      decrementSession();
     };
   }, [user, authLoading, router, db, auth]);
 
@@ -128,6 +189,3 @@ export default function Home() {
 
   return <AppShell user={user} />;
 }
-
-// Helper since serverTimestamp isn't imported from firestore in the snippet above
-import { serverTimestamp } from 'firebase/firestore';
