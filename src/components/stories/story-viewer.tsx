@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -160,13 +161,21 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
       >
-        <img 
-          src={currentStory.mediaUrl} 
-          alt="Story" 
-          className="w-full h-full object-contain"
-        />
+        {currentStory.mediaUrl ? (
+          <img 
+            src={currentStory.mediaUrl} 
+            alt="Story" 
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary to-[#FF4500] flex items-center justify-center p-12 text-center">
+            <p className="text-white text-3xl font-black font-headline leading-tight drop-shadow-xl animate-in zoom-in duration-500">
+              {currentStory.caption}
+            </p>
+          </div>
+        )}
         
-        {currentStory.caption && (
+        {currentStory.caption && currentStory.mediaUrl && (
           <div className="absolute bottom-20 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-center">
             <p className="text-white text-lg font-medium drop-shadow-lg">{currentStory.caption}</p>
           </div>

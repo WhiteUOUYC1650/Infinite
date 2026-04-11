@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -159,7 +160,7 @@ export type SharedVideo = {
 export type Story = {
   id: string;
   userId: string;
-  mediaUrl: string;
+  mediaUrl?: string;
   caption?: string;
   timestamp: Timestamp;
   expiresAt: Timestamp;

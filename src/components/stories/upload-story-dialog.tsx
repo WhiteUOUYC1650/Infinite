@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -35,14 +36,17 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
   };
 
   const handleUpload = async () => {
-    if (!db || !file) return;
+    if (!db || (!file && !caption.trim())) return;
     setIsUploading(true);
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve) => {
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-      });
+      let base64 = '';
+      if (file) {
+        const reader = new FileReader();
+        base64 = await new Promise<string>((resolve) => {
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+        });
+      }
 
       const now = Timestamp.now();
       const expiresAt = new Timestamp(now.seconds + 24 * 60 * 60, 0);
@@ -109,7 +113,7 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
 
         <DialogFooter className="p-6 pt-0 gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUploading} className="rounded-xl flex-1">{t('cancel')}</Button>
-          <Button onClick={handleUpload} disabled={!file || isUploading} className="rounded-xl flex-[2] font-bold">
+          <Button onClick={handleUpload} disabled={(!file && !caption.trim()) || isUploading} className="rounded-xl flex-[2] font-bold">
             {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             {t('save')}
           </Button>
