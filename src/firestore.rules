@@ -15,7 +15,7 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
     }
 
-    // Публичная информация о версии
+    // Информация о версии
     match /info/ver {
       allow get: if true;
       allow write: if false;
@@ -26,7 +26,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Сообщения (для поиска админом)
+    // Чтение сообщений админом (для модерации)
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
@@ -59,7 +59,7 @@ service cloud.firestore {
         allow delete: if resource.data.uid == request.auth.uid || isAdmin();
     }
 
-    // Чаты (DMs, Группы, Каналы)
+    // Чаты (ЛС, Группы, Каналы)
     match /chats/{chatId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
@@ -71,13 +71,13 @@ service cloud.firestore {
         allow create: if isSignedIn() || (request.resource.data.senderId != null); 
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'editedAt', 'content'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content'])
         );
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
       }
     }
     
-    // Истории
+    // Истории (Stories)
     match /stories/{storyId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -103,6 +103,8 @@ service cloud.firestore {
     match /videoChunks/{chunkId} { allow create, read: if true; }
     match /musicChunks/{chunkId} { allow create, read: if true; }
     match /fileChunks/{chunkId} { allow create, read: if true; }
+    match /voiceChunks/{chunkId} { allow create, read: if true; }
+    match /circleChunks/{chunkId} { allow create, read: if true; }
     
     // Ссылки
     match /chatLinks/{linkId} {
