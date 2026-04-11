@@ -31,9 +31,9 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // State to track if we are on the client to avoid SSR issues with Portals
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -44,6 +44,7 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
   const currentStory = stories[currentIndex];
   const isOwner = userId === currentUser.uid;
 
+  // Mark story as viewed
   useEffect(() => {
     if (!currentStory || !db) return;
     
@@ -54,31 +55,39 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     }
   }, [currentIndex, currentStory, db, currentUser.uid]);
 
+  // Combined pause state
+  const effectivePaused = isPaused || isMenuOpen;
+
+  // Handle the timer interval
   useEffect(() => {
-    if (isPaused) {
+    if (effectivePaused) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
 
-    setProgress(0);
     const interval = 50; 
     const totalTime = 5000; 
     const step = (interval / totalTime) * 100;
 
     timerRef.current = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) {
-          handleNext();
-          return 0;
-        }
-        return prev + step;
+        const next = prev + step;
+        return next > 100 ? 100 : next;
       });
     }, interval);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentIndex, isPaused]);
+  }, [currentIndex, effectivePaused]);
+
+  // Watch for progress completion to move to next story
+  // This avoids "update while rendering" by triggering in an effect
+  useEffect(() => {
+    if (progress >= 100) {
+      handleNext();
+    }
+  }, [progress]);
 
   const handleNext = () => {
     if (currentIndex < stories.length - 1) {
@@ -98,20 +107,28 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
 
   const handleDelete = async () => {
     if (!db || !currentStory || !isOwner) return;
-    setIsPaused(true);
-    if (confirm(t('story_delete_confirm'))) {
+    
+    const confirmDelete = window.confirm(t('story_delete_confirm'));
+    if (!confirmDelete) return;
+
+    try {
       await deleteDoc(doc(db, 'stories', currentStory.id));
-      if (stories.length === 1) onClose();
-      else handleNext();
+      if (stories.length === 1) {
+        onClose();
+      } else {
+        // If it's not the last story in the stack, move to next
+        handleNext();
+      }
+    } catch (e) {
+      console.error("Failed to delete story", e);
     }
-    setIsPaused(false);
   };
 
   if (!mounted || !currentStory) return null;
 
   const content = (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300 w-screen h-svh overflow-hidden">
-      {/* Media Content - Truly Fullscreen */}
+      {/* Media Content */}
       <div 
         className="relative w-full h-full bg-zinc-950 overflow-hidden flex items-center justify-center"
         onMouseDown={() => setIsPaused(true)}
@@ -172,7 +189,7 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             </div>
             <div className="flex items-center gap-2">
               {isOwner && (
-                <DropdownMenu onOpenChange={setIsPaused}>
+                <DropdownMenu onOpenChange={setIsMenuOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full h-10 w-10">
                       <MoreVertical className="w-6 h-6" />
