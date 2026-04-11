@@ -3,11 +3,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, Timestamp, onSnapshot } from 'firebase/firestore';
-import { Story, User, AuthenticatedUser } from '@/types';
+import { Story, User, AuthenticatedUser, Chat } from '@/types';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { UploadStoryDialog } from './upload-story-dialog';
@@ -20,6 +19,7 @@ export function StoriesBar({ currentUser }: { currentUser: AuthenticatedUser }) 
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedUserForViewer, setSelectedUserForViewer] = useState<string | null>(null);
 
+  // Fetch all active stories
   useEffect(() => {
     if (!db) return;
     const now = Timestamp.now();
@@ -36,15 +36,31 @@ export function StoriesBar({ currentUser }: { currentUser: AuthenticatedUser }) 
     return () => unsubscribe();
   }, [db]);
 
+  // Fetch user's chats to filter stories
+  const chatsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
+  }, [db, currentUser.uid]);
+  const { data: chats } = useCollection<Chat>(chatsQuery);
+
+  const knownUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    chats?.forEach(chat => {
+      chat.members.forEach(m => ids.add(m));
+    });
+    return ids;
+  }, [chats]);
+
   const uniqueUserIds = useMemo(() => Array.from(new Set(stories.map(s => s.userId))), [stories]);
   const { users: storySenders } = useBatchUsers(uniqueUserIds);
 
   const usersWithStories = useMemo(() => {
     return uniqueUserIds
+      .filter(uid => knownUserIds.has(uid) || uid === currentUser.uid) // Only show stories from people we know or self
       .map(uid => storySenders[uid])
       .filter(Boolean)
       .sort((a, b) => (a.id === currentUser.uid ? -1 : 1));
-  }, [uniqueUserIds, storySenders, currentUser.uid]);
+  }, [uniqueUserIds, storySenders, currentUser.uid, knownUserIds]);
 
   const currentUserHasStories = stories.some(s => s.userId === currentUser.uid);
 

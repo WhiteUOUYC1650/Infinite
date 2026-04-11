@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -7,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, query, where, orderBy, getDocs, deleteDoc } from 'firebase/firestore';
 import { AuthenticatedUser } from '@/types';
-import { Loader2, Upload, X, ImageIcon } from 'lucide-react';
+import { Loader2, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +38,20 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
     if (!db || (!file && !caption.trim())) return;
     setIsUploading(true);
     try {
+      // 1. Manage 100-story limit (FIFO)
+      const existingStoriesQuery = query(
+        collection(db, 'stories'),
+        where('userId', '==', currentUser.uid),
+        orderBy('timestamp', 'asc')
+      );
+      const existingStoriesSnap = await getDocs(existingStoriesQuery);
+      
+      if (existingStoriesSnap.size >= 100) {
+        const oldestStory = existingStoriesSnap.docs[0];
+        await deleteDoc(oldestStory.ref);
+      }
+
+      // 2. Prepare Base64 media
       let base64 = '';
       if (file) {
         const reader = new FileReader();
@@ -48,13 +61,14 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         });
       }
 
+      // 3. Upload new story
       const now = Timestamp.now();
       const expiresAt = new Timestamp(now.seconds + 24 * 60 * 60, 0);
 
       await addDoc(collection(db, 'stories'), {
         userId: currentUser.uid,
-        mediaUrl: base64,
-        caption: caption.trim(),
+        mediaUrl: base64 || null,
+        caption: caption.trim() || null,
         timestamp: now,
         expiresAt: expiresAt,
         viewedBy: []

@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Story, User, AuthenticatedUser } from '@/types';
-import { X, ChevronLeft, ChevronRight, Trash2, Loader2, MoreVertical } from 'lucide-react';
+import { X, Trash2, Copy, Download, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/context/language-context';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ interface StoryViewerProps {
 export function StoryViewer({ userId, stories, onClose, currentUser, user }: StoryViewerProps) {
   const db = useFirestore();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -55,10 +57,8 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     }
   }, [currentIndex, currentStory, db, currentUser.uid]);
 
-  // Combined pause state: if user is holding or if the menu is open
   const effectivePaused = isPaused || isMenuOpen;
 
-  // Handle the timer interval
   useEffect(() => {
     if (effectivePaused) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -81,7 +81,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     };
   }, [currentIndex, effectivePaused]);
 
-  // Watch for progress completion to move to next story
   useEffect(() => {
     if (progress >= 100) {
       handleNext();
@@ -106,19 +105,33 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
 
   const handleDelete = async () => {
     if (!db || !currentStory || !isOwner) return;
-    
     const confirmDelete = window.confirm(t('story_delete_confirm'));
     if (!confirmDelete) return;
-
     try {
       await deleteDoc(doc(db, 'stories', currentStory.id));
-      if (stories.length === 1) {
-        onClose();
-      } else {
-        handleNext();
-      }
+      if (stories.length === 1) onClose();
+      else handleNext();
     } catch (e) {
       console.error("Failed to delete story", e);
+    }
+  };
+
+  const handleCopyText = () => {
+    if (currentStory.caption) {
+      navigator.clipboard.writeText(currentStory.caption);
+      toast({ title: t('copy_success_toast') });
+    }
+  };
+
+  const handleSaveToGallery = () => {
+    if (currentStory.mediaUrl) {
+      const link = document.createElement('a');
+      link.href = currentStory.mediaUrl;
+      link.download = `infinite-story-${currentStory.id}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: t('dm_success') });
     }
   };
 
@@ -186,21 +199,34 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isOwner && (
-                <DropdownMenu onOpenChange={setIsMenuOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full h-10 w-10">
-                      <MoreVertical className="w-6 h-6" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl z-[10000]">
+              <DropdownMenu onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full h-10 w-10">
+                    <MoreVertical className="w-6 h-6" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-xl z-[10000] w-48">
+                  {currentStory.caption && (
+                    <DropdownMenuItem onClick={handleCopyText} className="font-bold">
+                      <Copy className="w-4 h-4 mr-2" />
+                      {t('copy_text')}
+                    </DropdownMenuItem>
+                  )}
+                  {currentStory.mediaUrl && (
+                    <DropdownMenuItem onClick={handleSaveToGallery} className="font-bold">
+                      <Download className="w-4 h-4 mr-2" />
+                      {t('save_to_device')}
+                    </DropdownMenuItem>
+                  )}
+                  {isOwner && (
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10 font-bold">
                       <Trash2 className="w-4 h-4 mr-2" />
                       {t('delete')}
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
               <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full h-10 w-10">
                 <X className="w-7 h-7" />
               </Button>

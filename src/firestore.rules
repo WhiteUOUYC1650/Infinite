@@ -77,6 +77,14 @@ service cloud.firestore {
       }
     }
     
+    // Истории
+    match /stories/{storyId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy']);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    
     // InfVid
     match /videos/{videoId} {
       allow read: if isSignedIn();
