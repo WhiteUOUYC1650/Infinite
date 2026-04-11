@@ -7,7 +7,7 @@ import { X, ChevronLeft, ChevronRight, Trash2, Loader2, MoreVertical } from 'luc
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import {
@@ -55,7 +55,7 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     }
   }, [currentIndex, currentStory, db, currentUser.uid]);
 
-  // Combined pause state
+  // Combined pause state: if user is holding or if the menu is open
   const effectivePaused = isPaused || isMenuOpen;
 
   // Handle the timer interval
@@ -82,7 +82,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
   }, [currentIndex, effectivePaused]);
 
   // Watch for progress completion to move to next story
-  // This avoids "update while rendering" by triggering in an effect
   useEffect(() => {
     if (progress >= 100) {
       handleNext();
@@ -116,7 +115,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
       if (stories.length === 1) {
         onClose();
       } else {
-        // If it's not the last story in the stack, move to next
         handleNext();
       }
     } catch (e) {
@@ -195,7 +193,7 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
                       <MoreVertical className="w-6 h-6" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl">
+                  <DropdownMenuContent align="end" className="rounded-xl z-[10000]">
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10 font-bold">
                       <Trash2 className="w-4 h-4 mr-2" />
                       {t('delete')}
