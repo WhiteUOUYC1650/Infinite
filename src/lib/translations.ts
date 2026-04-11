@@ -1,4 +1,5 @@
 
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -358,6 +359,18 @@ export const translations = {
       'experimental_design_desc': 'Try the new mobile-style settings layout with quick actions.',
       'glass_effect_label': 'Glass Effect (Beta)',
       'glass_effect_desc': 'Adds a glossy, voluminous Aero-style look to buttons and messages.',
+      'today_is': 'Today is',
+      'holiday_new_year': 'New Year',
+      'holiday_christmas': 'Orthodox Christmas',
+      'holiday_valentines': 'Valentine\'s Day',
+      'holiday_defenders': 'Defender of the Fatherland Day',
+      'holiday_womens_day': 'International Women\'s Day',
+      'holiday_cosmonautics': 'Cosmonautics Day',
+      'holiday_labor_day': 'Spring and Labor Day',
+      'holiday_victory_day': 'Victory Day',
+      'holiday_russia_day': 'Russia Day',
+      'holiday_unity_day': 'Unity Day',
+      'holiday_new_year_eve': 'New Year\'s Eve',
       'mute': 'Mute',
       'data_storage': 'Data & Storage',
       'clear_cache': 'Clear Cache',
@@ -760,6 +773,18 @@ export const translations = {
       'experimental_design_desc': 'Попробуйте новый макет настроек в мобильном стиле с быстрыми действиями.',
       'glass_effect_label': 'Эффект стекла (Бета)',
       'glass_effect_desc': 'Добавляет глянцевый, объемный вид кнопкам и сообщениям в стиле Aero.',
+      'today_is': 'Сегодня',
+      'holiday_new_year': 'Новый год',
+      'holiday_christmas': 'Рождество Христово',
+      'holiday_valentines': 'День святого Валентина',
+      'holiday_defenders': 'День защитника Отечества',
+      'holiday_womens_day': 'Международный женский день',
+      'holiday_cosmonautics': 'День космонавтики',
+      'holiday_labor_day': 'Праздник Весны и Труда',
+      'holiday_victory_day': 'День Победы',
+      'holiday_russia_day': 'День России',
+      'holiday_unity_day': 'День народного единства',
+      'holiday_new_year_eve': 'Канун Нового года',
       'mute': 'Без звука',
       'data_storage': 'Данные и память',
       'clear_cache': 'Очистить кэш',
