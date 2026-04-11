@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -199,7 +200,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [db]);
 
 
-  const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group') || [], [chats]);
+  const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group' && chat.id !== 'GENERAL_CHAT') || [], [chats]);
   const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel') || [], [chats]);
 
   const handleSelect = (item: Chat) => {

@@ -320,7 +320,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [db, isMember, messages, currentUser.uid, item.id]);
 
   useEffect(() => {
-    if (db && currentUser?.uid && item.id && item.id !== 'GENERAL_CHAT' && isMember) {
+    if (db && currentUser?.uid && item.id && isMember) {
       const unreadCountForCurrentUser = item.unreadCounts?.[currentUser.uid] || 0;
       if (unreadCountForCurrentUser > 0) {
         const chatRef = doc(db, 'chats', item.id);
@@ -753,7 +753,7 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.type !== 'channel') {
+        if (item.type !== 'channel' && item.id !== 'GENERAL_CHAT') {
             item.members.forEach((memberId) => {
                 if (memberId !== currentUser.uid) {
                     updateData[`unreadCounts.${memberId}`] = increment(1);
@@ -817,7 +817,7 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
             videoStatus: 'uploading',
         };
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.type !== 'channel') {
+        if (item.type !== 'channel' && item.id !== 'GENERAL_CHAT') {
             item.members.forEach((memberId) => {
                 if (memberId !== currentUser.uid) {
                     updateData[`unreadCounts.${memberId}`] = increment(1);
@@ -906,7 +906,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             musicStatus: 'uploading',
         };
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.type !== 'channel') {
+        if (item.type !== 'channel' && item.id !== 'GENERAL_CHAT') {
             item.members.forEach((memberId) => {
                 if (memberId !== currentUser.uid) {
                     updateData[`unreadCounts.${memberId}`] = increment(1);
@@ -996,7 +996,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             fileStatus: 'uploading',
         };
         const updateData: { [key: string]: any } = { lastMessage: lastMessageData };
-        if (item.type !== 'channel') {
+        if (item.type !== 'channel' && item.id !== 'GENERAL_CHAT') {
             item.members.forEach((memberId) => {
                 if (memberId !== currentUser.uid) {
                     updateData[`unreadCounts.${memberId}`] = increment(1);
