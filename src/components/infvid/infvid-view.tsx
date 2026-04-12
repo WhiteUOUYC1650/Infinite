@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
-import type { AuthenticatedUser, SharedVideo, User } from '@/types';
+import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
 import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -334,7 +335,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [commentText, setAddCommentText] = useState('');
-    const [comments, setComments] = useState<any[]>([]);
+    const [comments, setComments] = useState<VideoComment[]>([]);
     
     const [likedBy, setLikedBy] = useState<string[]>(video.likedBy || []);
     const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []);
@@ -390,7 +391,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
             limit(50)
         );
         return onSnapshot(commentsQuery, (snapshot) => {
-            setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+            setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as VideoComment)));
         });
     }, [db, video.id]);
 
@@ -404,7 +405,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         });
     }, [db, currentUser.uid]);
 
-    const handleAddComment = async () => {
+    const handleAddComment = async (replyTo?: VideoComment) => {
         if (!db || !commentText.trim()) return;
         try {
             await addDoc(collection(db, 'videos', video.id, 'comments'), {
@@ -413,6 +414,13 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                 userAvatar: currentUser.avatar || null,
                 text: commentText.trim(),
                 timestamp: Timestamp.now(),
+                likedBy: [],
+                ...(replyTo && {
+                    replyTo: {
+                        userId: replyTo.userId,
+                        userName: replyTo.userName,
+                    }
+                })
             });
             setAddCommentText('');
         } catch (e) {
@@ -563,8 +571,30 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     );
 }
 
-function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText }: { video: SharedVideo, comments: any[], currentUser: AuthenticatedUser, onAddComment: () => void, commentText: string, setAddCommentText: (v: string) => void }) {
+function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText }: { video: SharedVideo, comments: VideoComment[], currentUser: AuthenticatedUser, onAddComment: (replyTo?: VideoComment) => void, commentText: string, setAddCommentText: (v: string) => void }) {
     const { t, language } = useLanguage();
+    const db = useFirestore();
+    const [replyingTo, setReplyingTo] = useState<VideoComment | null>(null);
+
+    const handleToggleCommentLike = async (comment: VideoComment) => {
+        if (!db) return;
+        const commentRef = doc(db, 'videos', video.id, 'comments', comment.id);
+        const isLiked = comment.likedBy?.includes(currentUser.uid);
+        try {
+            if (isLiked) {
+                await updateDoc(commentRef, { likedBy: arrayRemove(currentUser.uid) });
+            } else {
+                await updateDoc(commentRef, { likedBy: arrayUnion(currentUser.uid) });
+            }
+        } catch (e) {
+            console.error("Comment like failed", e);
+        }
+    };
+
+    const onSubmit = () => {
+        onAddComment(replyingTo || undefined);
+        setReplyingTo(null);
+    };
     
     return (
         <div className="space-y-6">
@@ -573,55 +603,85 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                 <Badge variant="secondary" className="font-mono px-2">{comments.length}</Badge>
             </h3>
             
-            <div className="flex gap-3">
-                <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarImage src={currentUser.avatar} />
-                    <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-2">
-                    <Textarea 
-                        placeholder={t('add_comment_placeholder')} 
-                        className="min-h-[44px] h-11 py-3 resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 rounded-xl"
-                        value={commentText}
-                        onChange={(e) => setAddCommentText(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onAddComment())}
-                    />
-                    <div className="flex justify-end gap-2 pt-1">
-                        <Button variant="ghost" size="sm" onClick={() => setAddCommentText('')} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button>
-                        <Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onAddComment} disabled={!commentText.trim()}>
-                            <span className="sr-only">Send</span>
-                            <Send className="h-3 w-3" />
-                            {t('ok')}
+            <div className="space-y-2">
+                {replyingTo && (
+                    <div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg text-xs animate-in slide-in-from-bottom-1">
+                        <span className="font-medium text-primary">Ответ пользователю @{replyingTo.userName}</span>
+                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setReplyingTo(null)}>
+                            <X className="h-3 w-3" />
                         </Button>
+                    </div>
+                )}
+                <div className="flex gap-3">
+                    <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarImage src={currentUser.avatar} />
+                        <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                        <Textarea 
+                            placeholder={t('add_comment_placeholder')} 
+                            className="min-h-[44px] h-11 py-3 resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 rounded-xl"
+                            value={commentText}
+                            onChange={(e) => setAddCommentText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSubmit())}
+                        />
+                        <div className="flex justify-end gap-2 pt-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setAddCommentText(''); setReplyingTo(null); }} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button>
+                            <Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onSubmit} disabled={!commentText.trim()}>
+                                <span className="sr-only">Send</span>
+                                <Send className="h-3 w-3" />
+                                {t('ok')}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div className="space-y-6 pt-2">
-                {comments.length > 0 ? comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3 group">
-                        <Avatar className="h-9 w-9 shrink-0">
-                            <AvatarImage src={comment.userAvatar} />
-                            <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-1">
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm leading-none">@{comment.userName}</span>
-                                <span className="text-[10px] text-muted-foreground font-medium">
-                                    {comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
-                                </span>
-                            </div>
-                            <p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p>
-                            <div className="flex items-center gap-4 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                                    <ThumbsUp className="h-3 w-3" />
-                                    <span className="text-[10px] font-bold">0</span>
-                                </button>
-                                <button className="text-[10px] font-bold text-muted-foreground hover:underline">{t('reply')}</button>
+                {comments.length > 0 ? comments.map((comment) => {
+                    const isLikedByMe = comment.likedBy?.includes(currentUser.uid);
+                    return (
+                        <div key={comment.id} className="flex gap-3 group">
+                            <Avatar className="h-9 w-9 shrink-0">
+                                <AvatarImage src={comment.userAvatar || undefined} />
+                                <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-sm leading-none">@{comment.userName}</span>
+                                    <span className="text-[10px] text-muted-foreground font-medium">
+                                        {comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
+                                    </span>
+                                </div>
+                                {comment.replyTo && (
+                                    <span className="text-[10px] text-primary font-bold block">@{comment.replyTo.userName}</span>
+                                )}
+                                <p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p>
+                                <div className="flex items-center gap-4 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                        onClick={() => handleToggleCommentLike(comment)}
+                                        className={cn(
+                                            "flex items-center gap-1.5 transition-colors",
+                                            isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary"
+                                        )}
+                                    >
+                                        <ThumbsUp className={cn("h-3 w-3", isLikedByMe && "fill-current")} />
+                                        <span className="text-[10px] font-bold">{comment.likedBy?.length || 0}</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            setReplyingTo(comment);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="text-[10px] font-bold text-muted-foreground hover:underline"
+                                    >
+                                        {t('reply')}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )) : (
+                    );
+                }) : (
                     <div className="py-12 text-center text-muted-foreground italic text-sm bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">
                         {t('no_comments_yet')}
                     </div>

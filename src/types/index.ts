@@ -159,6 +159,20 @@ export type SharedVideo = {
   likedBy?: string[]; // Array of user IDs who liked the video
 };
 
+export type VideoComment = {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  text: string;
+  timestamp: Timestamp;
+  likedBy?: string[];
+  replyTo?: {
+    userId: string;
+    userName: string;
+  };
+};
+
 export type Story = {
   id: string;
   userId: string;
