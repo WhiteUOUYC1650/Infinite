@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -318,7 +318,7 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
                     <h4 className="font-bold line-clamp-2 leading-snug text-sm group-hover:text-primary transition-colors">{video.title}</h4>
                     <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sender?.name || '...'}</p>
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
-                        <span>{t('infvid_views', { count: video.views || 0 })}</span>
+                        <span className="font-bold text-primary">{t('infvid_views', { count: video.views || 0 })}</span>
                         <span className='w-1 h-1 rounded-full bg-muted-foreground/30' />
                         <span>{timeAgo}</span>
                     </div>
@@ -388,7 +388,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         const commentsQuery = query(
             collection(db, 'videos', video.id, 'comments'),
             orderBy('timestamp', 'desc'),
-            limit(50)
+            limit(100)
         );
         return onSnapshot(commentsQuery, (snapshot) => {
             setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as VideoComment)));
@@ -408,20 +408,25 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     const handleAddComment = async (replyTo?: VideoComment) => {
         if (!db || !commentText.trim()) return;
         try {
-            await addDoc(collection(db, 'videos', video.id, 'comments'), {
+            const commentData: any = {
                 userId: currentUser.uid,
                 userName: currentUser.name || currentUser.username,
                 userAvatar: currentUser.avatar || null,
                 text: commentText.trim(),
                 timestamp: Timestamp.now(),
                 likedBy: [],
-                ...(replyTo && {
-                    replyTo: {
-                        userId: replyTo.userId,
-                        userName: replyTo.userName,
-                    }
-                })
-            });
+            };
+
+            if (replyTo) {
+                // If the target is already a reply, use its parentId to keep flat nesting or use its id
+                commentData.parentId = replyTo.parentId || replyTo.id;
+                commentData.replyTo = {
+                    userId: replyTo.userId,
+                    userName: replyTo.userName,
+                };
+            }
+
+            await addDoc(collection(db, 'videos', video.id, 'comments'), commentData);
             setAddCommentText('');
         } catch (e) {
             console.error(e);
@@ -547,13 +552,13 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                                 </div>
                             </div>
 
-                            <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50">
+                            <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner">
                                 <div className="flex items-center gap-2 font-bold mb-2">
-                                    <span>{t('infvid_views', { count: video.views || 0 })}</span>
+                                    <span className="text-primary text-base">{t('infvid_views', { count: video.views || 0 })}</span>
                                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                    <span>{timeAgo}</span>
+                                    <span className="text-muted-foreground">{timeAgo}</span>
                                 </div>
-                                <p className="text-muted-foreground whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p>
+                                <p className="text-foreground/80 whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p>
                             </div>
                         </div>
 
@@ -573,23 +578,23 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
 
 function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText }: { video: SharedVideo, comments: VideoComment[], currentUser: AuthenticatedUser, onAddComment: (replyTo?: VideoComment) => void, commentText: string, setAddCommentText: (v: string) => void }) {
     const { t, language } = useLanguage();
-    const db = useFirestore();
     const [replyingTo, setReplyingTo] = useState<VideoComment | null>(null);
 
-    const handleToggleCommentLike = async (comment: VideoComment) => {
-        if (!db) return;
-        const commentRef = doc(db, 'videos', video.id, 'comments', comment.id);
-        const isLiked = comment.likedBy?.includes(currentUser.uid);
-        try {
-            if (isLiked) {
-                await updateDoc(commentRef, { likedBy: arrayRemove(currentUser.uid) });
-            } else {
-                await updateDoc(commentRef, { likedBy: arrayUnion(currentUser.uid) });
+    const rootComments = useMemo(() => comments.filter(c => !c.parentId), [comments]);
+    const repliesMap = useMemo(() => {
+        const map: Record<string, VideoComment[]> = {};
+        comments.forEach(c => {
+            if (c.parentId) {
+                if (!map[c.parentId]) map[c.parentId] = [];
+                map[c.parentId].push(c);
             }
-        } catch (e) {
-            console.error("Comment like failed", e);
-        }
-    };
+        });
+        // Sort replies by timestamp asc
+        Object.keys(map).forEach(key => {
+            map[key].sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+        });
+        return map;
+    }, [comments]);
 
     const onSubmit = () => {
         onAddComment(replyingTo || undefined);
@@ -628,7 +633,6 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                         <div className="flex justify-end gap-2 pt-1">
                             <Button variant="ghost" size="sm" onClick={() => { setAddCommentText(''); setReplyingTo(null); }} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button>
                             <Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onSubmit} disabled={!commentText.trim()}>
-                                <span className="sr-only">Send</span>
                                 <Send className="h-3 w-3" />
                                 {t('ok')}
                             </Button>
@@ -638,55 +642,139 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
             </div>
 
             <div className="space-y-6 pt-2">
-                {comments.length > 0 ? comments.map((comment) => {
-                    const isLikedByMe = comment.likedBy?.includes(currentUser.uid);
-                    return (
-                        <div key={comment.id} className="flex gap-3 group">
-                            <Avatar className="h-9 w-9 shrink-0">
-                                <AvatarImage src={comment.userAvatar || undefined} />
-                                <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-sm leading-none">@{comment.userName}</span>
-                                    <span className="text-[10px] text-muted-foreground font-medium">
-                                        {comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
-                                    </span>
-                                </div>
-                                {comment.replyTo && (
-                                    <span className="text-[10px] text-primary font-bold block">@{comment.replyTo.userName}</span>
-                                )}
-                                <p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p>
-                                <div className="flex items-center gap-4 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button 
-                                        onClick={() => handleToggleCommentLike(comment)}
-                                        className={cn(
-                                            "flex items-center gap-1.5 transition-colors",
-                                            isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary"
-                                        )}
-                                    >
-                                        <ThumbsUp className={cn("h-3 w-3", isLikedByMe && "fill-current")} />
-                                        <span className="text-[10px] font-bold">{comment.likedBy?.length || 0}</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => {
-                                            setReplyingTo(comment);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        }}
-                                        className="text-[10px] font-bold text-muted-foreground hover:underline"
-                                    >
-                                        {t('reply')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }) : (
+                {rootComments.length > 0 ? rootComments.map((comment) => (
+                    <CommentItem 
+                        key={comment.id} 
+                        comment={comment} 
+                        replies={repliesMap[comment.id] || []}
+                        currentUser={currentUser} 
+                        onReply={setReplyingTo}
+                        videoId={video.id}
+                    />
+                )) : (
                     <div className="py-12 text-center text-muted-foreground italic text-sm bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">
                         {t('no_comments_yet')}
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+function CommentItem({ comment, replies, currentUser, onReply, videoId }: { comment: VideoComment, replies: VideoComment[], currentUser: AuthenticatedUser, onReply: (c: VideoComment) => void, videoId: string }) {
+    const { t, language } = useLanguage();
+    const db = useFirestore();
+    const [showReplies, setShowReplies] = useState(false);
+    const isLikedByMe = comment.likedBy?.includes(currentUser.uid);
+
+    const handleToggleCommentLike = async (c: VideoComment) => {
+        if (!db) return;
+        const commentRef = doc(db, 'videos', videoId, 'comments', c.id);
+        const isLiked = c.likedBy?.includes(currentUser.uid);
+        try {
+            if (isLiked) {
+                await updateDoc(commentRef, { likedBy: arrayRemove(currentUser.uid) });
+            } else {
+                await updateDoc(commentRef, { likedBy: arrayUnion(currentUser.uid) });
+            }
+        } catch (e) {
+            console.error("Comment like failed", e);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            <div className="flex gap-3">
+                <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarImage src={comment.userAvatar || undefined} />
+                    <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm leading-none">@{comment.userName}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                            {comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
+                        </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p>
+                    <div className="flex items-center gap-4 mt-1">
+                        <button 
+                            onClick={() => handleToggleCommentLike(comment)}
+                            className={cn(
+                                "flex items-center gap-1.5 transition-colors",
+                                isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary"
+                            )}
+                        >
+                            <ThumbsUp className={cn("h-3.5 w-3.5", isLikedByMe && "fill-current")} />
+                            <span className="text-[10px] font-bold">{comment.likedBy?.length || 0}</span>
+                        </button>
+                        <button 
+                            onClick={() => onReply(comment)}
+                            className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors"
+                        >
+                            {t('reply')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {replies.length > 0 && (
+                <div className="ml-12 space-y-3">
+                    <button 
+                        onClick={() => setShowReplies(!showReplies)}
+                        className="flex items-center gap-2 text-[11px] font-bold text-primary hover:underline"
+                    >
+                        {showReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        {t('answers_button')} ({replies.length})
+                    </button>
+                    
+                    {showReplies && (
+                        <div className="space-y-4 pt-1 animate-in slide-in-from-top-1">
+                            {replies.map((reply) => {
+                                const isReplyLikedByMe = reply.likedBy?.includes(currentUser.uid);
+                                return (
+                                    <div key={reply.id} className="flex gap-3">
+                                        <Avatar className="h-7 w-7 shrink-0">
+                                            <AvatarImage src={reply.userAvatar || undefined} />
+                                            <AvatarFallback className="text-[10px]">{reply.userName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-xs leading-none">@{reply.userName}</span>
+                                                <span className="text-[9px] text-muted-foreground">
+                                                    {reply.timestamp?.seconds ? formatDistanceToNow(new Date(reply.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-foreground/90">
+                                                <span className="text-primary font-bold mr-1">@{reply.replyTo?.userName}</span>
+                                                {reply.text}
+                                            </p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <button 
+                                                    onClick={() => handleToggleCommentLike(reply)}
+                                                    className={cn(
+                                                        "flex items-center gap-1 transition-colors",
+                                                        isReplyLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary"
+                                                    )}
+                                                >
+                                                    <ThumbsUp className={cn("h-3 w-3", isReplyLikedByMe && "fill-current")} />
+                                                    <span className="text-[9px] font-bold">{reply.likedBy?.length || 0}</span>
+                                                </button>
+                                                <button 
+                                                    onClick={() => onReply(reply)}
+                                                    className="text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    {t('reply')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

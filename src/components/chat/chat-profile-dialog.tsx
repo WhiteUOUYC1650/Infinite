@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -644,6 +645,16 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                 </div>
             
                 <div className={cn('shrink-0 flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "bg-background")}>
+                    {!experimentalDesign && chat.type === 'channel' && chat.discussionChatId && (
+                        <Button 
+                            variant="outline" 
+                            className="w-full rounded-xl h-12 mb-2 font-bold bg-blue-500/5 text-blue-600 border-blue-200 hover:bg-blue-500/10" 
+                            onClick={() => onJoinDiscussion?.(chat.discussionChatId!)}
+                        >
+                            <MessageSquare className="mr-2 h-5 w-5" />
+                            {t('join_discussion_button')}
+                        </Button>
+                    )}
                     <div className="flex gap-2 w-full">
                         {isOwner && chat.id !== 'GENERAL_CHAT' && chat.type !== 'dm' && (
                             <Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl">

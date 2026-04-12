@@ -167,6 +167,7 @@ export type VideoComment = {
   text: string;
   timestamp: Timestamp;
   likedBy?: string[];
+  parentId?: string; // ID of the comment this is a reply to
   replyTo?: {
     userId: string;
     userName: string;

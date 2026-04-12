@@ -425,6 +425,7 @@ export const translations = {
       'story_expiration_24h': '24 hours',
       'story_expiration_48h': '48 hours',
       'story_expiration_72h': '72 hours',
+      'answers_button': 'Answers',
     },
     ru: {
       'settings': 'Настройки',
@@ -849,6 +850,7 @@ export const translations = {
       'story_expiration_24h': '24 часа',
       'story_expiration_48h': '48 часов',
       'story_expiration_72h': '72 часа',
+      'answers_button': 'Ответы',
     }
   };
 
