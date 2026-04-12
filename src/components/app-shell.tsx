@@ -11,6 +11,7 @@ import {
 import { SidebarContent } from '@/components/sidebar-content';
 import { ChatView } from '@/components/chat/chat-view';
 import { InfVidView } from '@/components/infvid/infvid-view';
+import { InfGamesView } from '@/components/infgames/infgames-view';
 import type { PopulatedChat } from '@/types';
 import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -34,7 +35,7 @@ const iconMap = {
 };
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
-  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | null>(null);
   const [infVidInitialVideoId, setInfVidInitialVideoId] = useState<string | null>(null);
   const { isMobile } = useSidebar();
   const db = useFirestore();
@@ -101,7 +102,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     }
   }, [selectedItem, setActiveChatId]);
 
-  const handleSelect = useCallback((item: PopulatedChat | 'infvid') => {
+  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames') => {
     setSelectedItem(item);
     if (item !== 'infvid') {
         setInfVidInitialVideoId(null);
@@ -257,14 +258,23 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
         return (
             <InfVidView 
                 currentUser={populatedUser} 
-                onClose={() => handleSelect(null)} 
+                onClose={() => handleSelect(null as any)} 
                 initialVideoId={infVidInitialVideoId || undefined} 
             />
         );
     }
 
+    if (selectedItem === 'infgames') {
+        return (
+            <InfGamesView 
+                currentUser={populatedUser} 
+                onClose={() => handleSelect(null as any)} 
+            />
+        );
+    }
+
     if (selectedItem && typeof selectedItem !== 'string') {
-        return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
+        return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null as any)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     }
 
     if (isMobile) {

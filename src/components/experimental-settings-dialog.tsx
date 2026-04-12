@@ -22,7 +22,7 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
+  AlertDialogFooter as AlertDialogFooterComponent,
   AlertDialogHeader,
   AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
@@ -37,7 +37,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2 } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -875,6 +875,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-lg bg-card border">
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_infgames_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_infgames_desc')}</p>
+        </div>
+        <div className="p-4 rounded-lg bg-card border">
           <h3 className="font-semibold text-base mb-1">{t('whats_new_stories_title')}</h3>
           <p className="text-muted-foreground">{t('whats_new_stories_desc')}</p>
         </div>
@@ -885,10 +889,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <div className="p-4 rounded-lg bg-card border">
           <h3 className="font-semibold text-base mb-1">{t('whats_new_call_notifs_title')}</h3>
           <p className="text-muted-foreground">{t('whats_new_call_notifs_desc')}</p>
-        </div>
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_bugfixes_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_bugfixes_desc')}</p>
         </div>
       </div>
     </div>
@@ -955,7 +955,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 {t('delete_account_confirm_desc')}
             </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
+            <AlertDialogFooter className="flex-col gap-2">
             <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction 
                 onClick={handleDeleteAccount} 

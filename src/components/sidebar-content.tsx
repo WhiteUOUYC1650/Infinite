@@ -21,7 +21,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -105,7 +105,7 @@ function HolidayBanner() {
 }
 
 interface SidebarContentProps {
-  onSelect: (item: PopulatedChat | 'infvid') => void;
+  onSelect: (item: PopulatedChat | 'infvid' | 'infgames') => void;
   selectedId?: string;
   currentUser: AuthenticatedUser;
 }
@@ -202,7 +202,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
 
   const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group' && chat.id !== 'GENERAL_CHAT') || [], [chats]);
-  const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel') || [], [chats]);
+  const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel' || (chat as any).type === 'broadcast') || [], [chats]);
 
   const handleSelect = (item: Chat) => {
     const iconName = item.icon as keyof typeof iconMap | undefined;
@@ -390,6 +390,19 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         <InfVidIcon className="h-5 w-5" />
                         <div className="flex items-center gap-2">
                            <p className="font-semibold">{t('infvid_title')}</p>
+                           <Badge variant="secondary" className="h-4 px-1 text-[10px] leading-none">BETA</Badge>
+                        </div>
+                    </div>
+                </Button>
+                <Button
+                    variant="ghost"
+                    onClick={() => { onSelect('infgames'); setOpenMobile(false); }}
+                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'infgames' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                >
+                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                        <Gamepad2 className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex items-center gap-2">
+                           <p className="font-semibold">{t('infgames_title')}</p>
                            <Badge variant="secondary" className="h-4 px-1 text-[10px] leading-none">BETA</Badge>
                         </div>
                     </div>
