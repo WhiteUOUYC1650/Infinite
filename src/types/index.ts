@@ -21,6 +21,7 @@ export type User = {
   subscriptionTier?: 'none' | 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
   lastDailyBonusClaimed?: Timestamp;
   loginProtectionEnabled?: boolean;
+  storyExpirationDuration?: number; // in hours, 0 for never
   subscriptions?: string[]; // Array of user IDs the user is subscribed to
   subscriberCount?: number;
   isBetaTester?: boolean;

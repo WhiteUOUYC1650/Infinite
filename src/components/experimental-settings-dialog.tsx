@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -34,8 +35,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer } from 'lucide-react';
 import type { AuthenticatedUser } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore } from '@/firebase';
@@ -270,6 +272,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to update privacy settings.' });
+    } finally {
+        setIsUpdatingPrivacy(false);
+    }
+  };
+
+  const handleUpdateStoryExpiration = async (duration: string) => {
+    if (!db || !currentUser.uid) return;
+    setIsUpdatingPrivacy(true);
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, { storyExpirationDuration: parseInt(duration) });
+        toast({ title: t('dm_success'), description: t('profile_update_success') });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update story settings.' });
     } finally {
         setIsUpdatingPrivacy(false);
     }
@@ -675,6 +692,32 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
             </div>
         )}
+
+        <div className="p-4 space-y-4">
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                    <Timer className="h-4 w-4 text-primary" />
+                    <Label className="font-semibold">{t('story_expiration_label')}</Label>
+                </div>
+                <Select 
+                    onValueChange={handleUpdateStoryExpiration} 
+                    defaultValue={(currentUser.storyExpirationDuration ?? 24).toString()}
+                    disabled={isUpdatingPrivacy}
+                >
+                    <SelectTrigger className="w-full h-12 rounded-xl bg-background border-primary/20">
+                        <SelectValue placeholder={t('story_expiration_label')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="0">{t('story_expiration_never')}</SelectItem>
+                        <SelectItem value="12">{t('story_expiration_12h')}</SelectItem>
+                        <SelectItem value="24">{t('story_expiration_24h')}</SelectItem>
+                        <SelectItem value="48">{t('story_expiration_48h')}</SelectItem>
+                        <SelectItem value="72">{t('story_expiration_72h')}</SelectItem>
+                    </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground leading-relaxed italic">{t('story_expiration_desc')}</p>
+            </div>
+        </div>
     </div>
   );
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -61,9 +62,17 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         });
       }
 
-      // 3. Upload new story
+      // 3. Upload new story with custom expiration
       const now = Timestamp.now();
-      const expiresAt = new Timestamp(now.seconds + 24 * 60 * 60, 0);
+      const expirationHours = currentUser.storyExpirationDuration ?? 24;
+      
+      let expiresAt: Timestamp;
+      if (expirationHours === 0) {
+        // "Never" - set to far future (100 years)
+        expiresAt = new Timestamp(now.seconds + 100 * 365 * 24 * 60 * 60, 0);
+      } else {
+        expiresAt = new Timestamp(now.seconds + expirationHours * 60 * 60, 0);
+      }
 
       await addDoc(collection(db, 'stories'), {
         userId: currentUser.uid,

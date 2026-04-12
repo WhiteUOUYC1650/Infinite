@@ -418,6 +418,13 @@ export const translations = {
       'group_not_found': 'Group not found',
       'channel_not_found': 'Channel not found',
       'admin_toggle_beta': 'Toggle Beta Status',
+      'story_expiration_label': 'Story Auto-Deletion',
+      'story_expiration_desc': 'Choose how long your stories are visible.',
+      'story_expiration_never': 'Never',
+      'story_expiration_12h': '12 hours',
+      'story_expiration_24h': '24 hours',
+      'story_expiration_48h': '48 hours',
+      'story_expiration_72h': '72 hours',
     },
     ru: {
       'settings': 'Настройки',
@@ -835,6 +842,13 @@ export const translations = {
       'group_not_found': 'Группа не найдена',
       'channel_not_found': 'Канал не найден',
       'admin_toggle_beta': 'Изменить статус тестера',
+      'story_expiration_label': 'Автоудаление историй',
+      'story_expiration_desc': 'Выберите, через какое время ваши истории будут удалены.',
+      'story_expiration_never': 'Не удалять',
+      'story_expiration_12h': '12 часов',
+      'story_expiration_24h': '24 часа',
+      'story_expiration_48h': '48 часов',
+      'story_expiration_72h': '72 часа',
     }
   };
 
