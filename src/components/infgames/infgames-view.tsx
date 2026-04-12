@@ -98,45 +98,59 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const db = useFirestore();
     const { toast } = useToast();
     
+    const GAME_DURATION = 15; // seconds
     const [score, setScore] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(15);
+    const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
     const [gameState, setGameState] = useState<'idle' | 'playing' | 'result'>('idle');
     const [isSaving, setIsSaving] = useState(false);
     const [isCheating, setIsCheating] = useState(false);
     
-    // Anti-cheat refs
+    const startTimeRef = useRef<number>(0);
     const lastClickTimeRef = useRef<number>(0);
     const lastClickPosRef = useRef<{x: number, y: number}>({x: 0, y: 0});
     const identicalPosCountRef = useRef<number>(0);
     const clickIntervalsRef = useRef<number[]>([]);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const frameRef = useRef<number>(0);
 
-    // Fixed timer logic using stable setInterval
-    useEffect(() => {
-        if (gameState === 'playing') {
-            timerRef.current = setInterval(() => {
-                setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        if (timerRef.current) clearInterval(timerRef.current);
-                        setGameState('result');
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
+    const endGame = useCallback(() => {
+        setGameState('result');
+        setTimeLeft(0);
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    }, []);
+
+    const updateTimer = useCallback(() => {
+        if (gameState !== 'playing') return;
+        
+        const now = performance.now();
+        const elapsed = (now - startTimeRef.current) / 1000;
+        const remaining = Math.max(0, GAME_DURATION - elapsed);
+        
+        setTimeLeft(Math.ceil(remaining));
+
+        if (remaining <= 0) {
+            endGame();
+        } else {
+            frameRef.current = requestAnimationFrame(updateTimer);
         }
-        return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [gameState]);
+    }, [gameState, endGame]);
 
     const startGame = () => {
         setScore(0);
-        setTimeLeft(15);
+        setTimeLeft(GAME_DURATION);
         setGameState('playing');
         setIsCheating(false);
+        startTimeRef.current = performance.now();
         lastClickTimeRef.current = 0;
         identicalPosCountRef.current = 0;
         clickIntervalsRef.current = [];
+        frameRef.current = requestAnimationFrame(updateTimer);
     };
+
+    useEffect(() => {
+        return () => {
+            if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        };
+    }, []);
 
     const handleClick = useCallback((e: React.MouseEvent) => {
         if (gameState !== 'playing') return;
@@ -153,13 +167,12 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
         if (lastClickTimeRef.current > 0) {
             const interval = now - lastClickTimeRef.current;
             
-            // Limit to ~25 CPS (Human limit is much lower)
+            // Limit to ~25 CPS
             if (interval < 40) { 
-                // Too fast, possible bot
+                // Possible bot, but we use multiple markers
             }
 
             // 3. Coordinate Variance Check
-            // Humans almost never click the exact same pixel multiple times
             if (clientX === lastClickPosRef.current.x && clientY === lastClickPosRef.current.y) {
                 identicalPosCountRef.current += 1;
                 if (identicalPosCountRef.current > 5) {
@@ -169,16 +182,13 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                 identicalPosCountRef.current = 0;
             }
 
-            // 4. Interval Consistency Check (Advanced)
-            // Bots often have perfectly consistent intervals
+            // 4. Interval Consistency Check
             clickIntervalsRef.current.push(interval);
             if (clickIntervalsRef.current.length > 10) {
                 const recentIntervals = clickIntervalsRef.current.slice(-10);
                 const avg = recentIntervals.reduce((a, b) => a + b, 0) / 10;
                 const variance = recentIntervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / 10;
-                
-                // If variance is extremely low, it's a bot
-                if (variance < 2) { 
+                if (variance < 1.5) { 
                     setIsCheating(true);
                 }
             }
