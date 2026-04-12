@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -28,7 +29,7 @@ export const translations = {
       'username_placeholder': 'yourname',
       'username_placeholder_short': '@username',
       'user_not_found': 'User not found.',
-      'searching': 'Searching...',
+      'searching': 'Typing...',
       'start_chat': 'Start Chat',
       'chat_exists': 'Chat already exists',
       'chat_exists_desc': 'This direct message chat is already in your list.',
@@ -417,6 +418,7 @@ export const translations = {
       'video_not_found': 'Video not found',
       'group_not_found': 'Group not found',
       'channel_not_found': 'Channel not found',
+      'admin_toggle_beta': 'Toggle Beta Status',
     },
     ru: {
       'settings': 'Настройки',
@@ -445,7 +447,7 @@ export const translations = {
       'username_placeholder': 'вашеимя',
       'username_placeholder_short': '@имяпользователя',
       'user_not_found': 'Пользователь не найден.',
-      'searching': 'Проверка...',
+      'searching': 'Печатает...',
       'start_chat': 'Начать чат',
       'chat_exists': 'Чат уже существует',
       'chat_exists_desc': 'Этот чат уже есть в вашем списке.',
@@ -834,6 +836,7 @@ export const translations = {
       'video_not_found': 'Видео не найдено',
       'group_not_found': 'Группа не найдена',
       'channel_not_found': 'Канал не найден',
+      'admin_toggle_beta': 'Изменить статус тестера',
     }
   };
 

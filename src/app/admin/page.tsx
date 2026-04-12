@@ -8,7 +8,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +43,7 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { BetaBadge } from '@/components/ui/beta-badge';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 
 
@@ -134,6 +135,27 @@ function AdminPage() {
     }
   };
 
+  const handleToggleBetaStatus = async (userId: string, currentStatus: boolean) => {
+    if (!db) return;
+    const userRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userRef, {
+        isBetaTester: !currentStatus
+      });
+      toast({
+        title: t('dm_success'),
+        description: t('profile_update_success'),
+      });
+    } catch (error: any) {
+      console.error('Error toggling beta status:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
+    }
+  };
+
   const handleBanUser = async (userToBan: User) => {
     if (!db || !userToBan.id || !userToBan.username) {
         toast({
@@ -219,6 +241,7 @@ function AdminPage() {
                   user={user} 
                   onBan={handleBanUser} 
                   onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }}
+                  onToggleBeta={handleToggleBetaStatus}
                 />
               )}
             />
@@ -299,7 +322,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user, onBan, onGrantGold }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; }) {
+function UserItem({ user, onBan, onGrantGold, onToggleBeta }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -311,7 +334,9 @@ function UserItem({ user, onBan, onGrantGold }: { user: User; onBan: (user: User
       <UserAvatarWithStatus user={user} />
       <div className="flex-1 truncate">
         <div className="font-semibold flex items-center gap-2">
-            {displayName} {isProtectedUser && !user.isDeleted && <VerifiedBadge />}
+            {displayName} 
+            {isProtectedUser && !user.isDeleted && <VerifiedBadge />}
+            {user.isBetaTester && !isProtectedUser && !user.isDeleted && <BetaBadge />}
         </div>
         <p className="text-sm text-muted-foreground">{displayUsername}</p>
       </div>
@@ -344,6 +369,10 @@ function UserItem({ user, onBan, onGrantGold }: { user: User; onBan: (user: User
               <DropdownMenuItem onSelect={() => onGrantGold(user)}>
                 <Coins className="mr-2 h-4 w-4" />
                 <span>Grant InfGold</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}>
+                <Star className="mr-2 h-4 w-4" />
+                <span>{t('admin_toggle_beta')}</span>
               </DropdownMenuItem>
               {!isProtectedUser && (
                 <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">

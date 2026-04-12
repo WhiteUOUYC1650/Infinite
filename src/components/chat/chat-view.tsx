@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -54,6 +55,7 @@ import { FaqDialog } from '../faq-dialog';
 import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
+import { BetaBadge } from '../ui/beta-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile } from '@/lib/cache-utils';
 
@@ -342,7 +344,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const getStatusText = (user: User | null | undefined) => {
     if (!user || user.isDeleted) return null;
-    if (isOtherUserTyping) return <span className="text-primary font-bold animate-pulse">{t('searching')}...</span>;
+    if (isOtherUserTyping) return <span className="text-primary font-bold animate-pulse">{t('searching')}</span>;
 
     if (user.isBot) {
       return t('bot_status');
@@ -1037,7 +1039,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             await new Promise(res => setTimeout(res, 0));
         }
         await updateDoc(messageRef, { fileStatus: 'complete' });
-        const chatDoc = await getDoc(chatRef);
+        const chatDoc = await getDoc(chatDocRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, { 'lastMessage.fileStatus': 'complete' });
         }
@@ -1550,7 +1552,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                         <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
-                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
+                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
                             </div>
                             {otherUser.id !== currentUser.uid && (
                                 <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
@@ -2350,6 +2352,7 @@ function ChatMessage({
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
     const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
+    const isBetaTester = displaySender && !displaySender.isDeleted && displaySender.isBetaTester;
 
     const renderLink = ({ href, children, ...props }: any) => {
         if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/') || href.startsWith('/IV/V/'))) {
@@ -2411,6 +2414,7 @@ function ChatMessage({
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
                         {isVerified && <VerifiedBadge className='shrink-0' />}
+                        {isBetaTester && !isVerified && <BetaBadge className='shrink-0' />}
                         {isFromChannel ? <Badge variant="secondary" className='shrink-0'>{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary" className='shrink-0'>BOT</Badge>)}
                     </div>
                 )}

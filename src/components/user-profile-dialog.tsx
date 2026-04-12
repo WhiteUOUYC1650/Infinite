@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from './ui/verified-badge';
+import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
 import { MessageSquare, Phone, Bell, BellOff, X } from 'lucide-react';
@@ -110,7 +111,8 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{displayName}</h2>
                             {!user.isDeleted && (user.username === '@Infinite' || user.username === '@InfiniteBot' || user.username === '@VeoBot' || user.username === '@GeminiBot') && <VerifiedBadge />}
-                            {!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}
+                            {!user.isDeleted && user.isBetaTester && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <BetaBadge />}
+                            {!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && !isVerified && <Badge variant="secondary">BOT</Badge>}
                         </div>
                         <p className="text-muted-foreground font-medium">{displayUsername}</p>
                         <p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
