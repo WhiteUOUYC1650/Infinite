@@ -18,7 +18,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
-import { CallDialog } from './call-dialog';
 import { GroupCallDialog } from './group-call-dialog';
 import {
   DropdownMenu,
@@ -157,10 +156,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
-  const [showCallDialog, setShowCallDialog] = useState(false);
-  const [isCaller, setIsCaller] = useState(false);
-  const [callIsVideo, setCallIsVideo] = useState(false);
-  const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
 
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
@@ -249,22 +244,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     });
     return () => unsubscribe();
   }, [db, item.id, item.type, isMember]);
-
-  useEffect(() => {
-    if (!db || item.type !== 'dm' || !isMember || !item.id.includes('_')) return; 
-    const callDocRef = doc(db, 'calls', item.id);
-    const unsubscribe = onSnapshot(callDocRef, (snapshot) => {
-        const data = snapshot.data() as Call;
-        if (data && data.status === 'calling' && data.calleeId === currentUser.uid) {
-            setIncomingCall({id: snapshot.id, ...data});
-        }
-        if (data && data.status === 'ended') {
-            setIncomingCall(null);
-        }
-    });
-
-    return () => unsubscribe();
-  }, [db, item.id, item.type, currentUser.uid, isMember]);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !isMember) return null;
@@ -1405,16 +1384,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
 
   const handleInitiateCall = async (video: boolean) => {
     if (item.type !== 'dm' || item.id === currentUser.uid) return;
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-        stream.getTracks().forEach(track => track.stop());
-        setIsCaller(true);
-        setCallIsVideo(video);
-        setShowCallDialog(true);
-    } catch(e) {
-        console.error("Call permission error", e);
-        toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc')})
-    }
+    window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: video } }));
   };
 
   const handleStartGroupCall = async () => {
@@ -1439,29 +1409,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       console.error("Failed to start group call", e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to start call.' });
     }
-  };
-
-  const handleAcceptCall = async () => {
-    if (!db || !incomingCall) return;
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !!incomingCall.isVideo });
-        stream.getTracks().forEach(track => track.stop());
-        setIsCaller(false);
-        setCallIsVideo(!!incomingCall.isVideo);
-        setShowCallDialog(true);
-        setIncomingCall(null);
-    } catch(e) {
-        console.error("Call permission error", e);
-        toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc')})
-        handleDeclineCall();
-    }
-  };
-
-  const handleDeclineCall = () => {
-    if (!db || !incomingCall) return;
-    const callDocRef = doc(db, 'calls', incomingCall.id);
-    updateDoc(callDocRef, { status: 'ended' });
-    setIncomingCall(null);
   };
 
   const handleClearHistory = async () => {
@@ -1988,16 +1935,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         />
       )}
 
-      <CallDialog 
-        open={showCallDialog}
-        onOpenChange={setShowCallDialog}
-        chat={item}
-        otherUser={otherUser}
-        currentUser={currentUser}
-        isCaller={isCaller}
-        isVideo={callIsVideo}
-      />
-
       <GroupCallDialog
         open={showGroupCallDialog}
         onOpenChange={setShowGroupCallDialog}
@@ -2005,26 +1942,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         currentUser={currentUser}
         isOwner={isOwner}
       />
-
-      {incomingCall && (
-        <div className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500">
-            <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-w-sm border border-white/10 backdrop-blur-md">
-                <UserAvatarWithStatus user={otherUser!} className="w-12 h-12" />
-                <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">{otherUser?.name}</p>
-                    <p className="text-xs text-white/60">{incomingCall.isVideo ? t('video_call') : t('audio_call')}</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="destructive" size="icon" className="rounded-full h-10 w-10" onClick={handleDeclineCall}>
-                        <PhoneOff className="h-5 w-5" />
-                    </Button>
-                    <Button className="bg-green-500 hover:bg-green-600 text-white rounded-full h-10 w-10" size="icon" onClick={handleAcceptCall}>
-                        {incomingCall.isVideo ? <Video className="h-5 w-5" /> : <Phone className="h-5 w-5" />}
-                    </Button>
-                </div>
-            </div>
-        </div>
-      )}
 
       {previewImage && (
           <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>

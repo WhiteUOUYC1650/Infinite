@@ -10,6 +10,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 
 interface NotificationContextType {
   setActiveChatId: (id: string | null) => void;
+  showCallNotification: (callerName: string, chatId: string, isVideo: boolean) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -22,6 +23,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const notifiedMessageIds = useRef<Set<string>>(new Set());
   const appLoadedAt = useRef<number>(Date.now());
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Preload ringtone for web
+    ringtoneRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1351/1351-preview.mp3');
+    ringtoneRef.current.loop = true;
+  }, []);
 
   const requestPermission = async () => {
     try {
@@ -43,12 +51,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     requestPermission();
 
-    // Listen for notification actions (clicks) on Native
     if (Capacitor.isNativePlatform()) {
       const listener = LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
         const chatId = action.notification.extra?.chatId;
+        const isCall = action.notification.extra?.isCall;
         if (chatId) {
-          window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId } }));
+          if (isCall) {
+            window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId } }));
+          } else {
+            window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId } }));
+          }
         }
       });
       return () => {
@@ -111,8 +123,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
               sound: undefined,
-              attachments: [],
-              actionTypeId: "",
               extra: { chatId: chat.id }
             }
           ]
@@ -136,8 +146,62 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  const showCallNotification = async (callerName: string, chatId: string, isVideo: boolean) => {
+    const title = isVideo ? t('video_call') : t('audio_call');
+    const body = t('is_calling_you', { name: callerName });
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title,
+              body,
+              id: 999, // Unique ID for calls
+              schedule: { at: new Date(Date.now() + 100) },
+              sound: 'ringtone.mp3', // Note: Android requires this to be in resources/raw
+              extra: { chatId, isCall: true },
+              ongoing: true,
+            }
+          ]
+        });
+      } catch (e) {
+        console.error("Call notification failed", e);
+      }
+    } else {
+      if (ringtoneRef.current) {
+        ringtoneRef.current.play().catch(() => {});
+      }
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const n = new Notification(title, { body, icon: '/favicon.ico', tag: 'incoming-call' });
+        n.onclick = () => {
+          window.focus();
+          window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId } }));
+          if (ringtoneRef.current) ringtoneRef.current.pause();
+        };
+      }
+    }
+  };
+
+  const stopRingtone = () => {
+    if (ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current.currentTime = 0;
+    }
+    if (Capacitor.isNativePlatform()) {
+      LocalNotifications.cancel({ notifications: [{ id: 999 }] });
+    }
+  };
+
+  // Listen for call end to stop ringtone
+  useEffect(() => {
+    const handleStopRingtone = () => stopRingtone();
+    window.addEventListener('stop-ringtone', handleStopRingtone);
+    return () => window.removeEventListener('stop-ringtone', handleStopRingtone);
+  }, []);
+
   return (
-    <NotificationContext.Provider value={{ setActiveChatId }}>
+    <NotificationContext.Provider value={{ setActiveChatId, showCallNotification }}>
       {children}
     </NotificationContext.Provider>
   );
