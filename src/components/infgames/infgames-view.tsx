@@ -7,7 +7,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import type { AuthenticatedUser } from '@/types';
-import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
@@ -37,7 +37,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
             {/* Placeholder for future games */}
             <div className="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-muted-foreground/40 gap-4">
                 <Gamepad2 className="h-12 w-12" />
-                <p className="font-bold uppercase tracking-widest text-xs">{t('placeholder_title')}</p>
+                <p className="font-bold uppercase tracking-widest text-xs text-center">{t('placeholder_title')}</p>
             </div>
           </div>
         );
@@ -45,7 +45,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
   };
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-full bg-background overflow-hidden relative">
       <header className="flex h-16 items-center justify-between border-b px-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={selectedGame === 'none' ? onClose : () => setSelectedGame('none')}>
@@ -63,7 +63,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
         <div className="flex items-center gap-2">
             <div className="bg-primary/10 px-3 py-1.5 rounded-full flex items-center gap-2 border border-primary/20">
                 <InfGoldIcon className="w-4 h-4" />
-                <span className="font-bold text-sm">{currentUser.infGoldBalance || 0}</span>
+                <span className="font-bold text-sm">{Math.round(currentUser.infGoldBalance || 0)}</span>
             </div>
         </div>
       </header>
@@ -71,6 +71,19 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
       <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/5">
         {renderContent()}
       </main>
+
+      {/* Floating balance footer for rounded display */}
+      {selectedGame === 'none' && (
+        <div className="absolute bottom-6 right-6 z-20 pointer-events-none">
+            <div className="bg-card/80 backdrop-blur-xl border-2 border-primary/20 p-4 rounded-3xl shadow-2xl flex flex-col items-end gap-1 animate-in slide-in-from-bottom-4 duration-500">
+                <p className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t('inf_gold_balance')}</p>
+                <div className="flex items-center gap-2 text-2xl font-black text-primary">
+                    <InfGoldIcon className="w-6 h-6 experimental-glow" />
+                    <span>{Math.round(currentUser.infGoldBalance || 0)}</span>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -84,10 +97,10 @@ function GameCard({ title, description, icon: Icon, color, onClick }: { title: s
                 <Icon className="h-8 w-8" />
             </div>
             <div className="space-y-1">
-                <h3 className="text-xl font-bold font-headline">{title}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
+                <h3 className="text-xl font-bold font-headline whitespace-normal leading-tight">{title}</h3>
+                <p className="text-sm text-muted-foreground whitespace-normal leading-relaxed">{description}</p>
             </div>
-            <Button className="w-full mt-2 rounded-2xl font-bold bg-primary group-hover:scale-105 transition-transform">
+            <Button className="w-full mt-auto rounded-2xl font-bold bg-primary group-hover:scale-105 transition-transform">
                 {t('play')}
             </Button>
         </div>
@@ -100,6 +113,8 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const { toast } = useToast();
     
     const [score, setScore] = useState(0);
+    const [clickPower, setClickPower] = useState(1);
+    const [upgradeCost, setUpgradeCost] = useState(100);
     const [gameState, setGameState] = useState<'idle' | 'playing'>('idle');
     const [isSaving, setIsSaving] = useState(false);
     const [isCheating, setIsCheating] = useState(false);
@@ -111,6 +126,8 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
 
     const startGame = () => {
         setScore(0);
+        setClickPower(1);
+        setUpgradeCost(100);
         setGameState('playing');
         setIsCheating(false);
         lastClickTimeRef.current = 0;
@@ -131,9 +148,11 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
         if (lastClickTimeRef.current > 0) {
             const interval = now - lastClickTimeRef.current;
             
+            // Adaptive CPS threshold: Base 25ms (~40 CPS), scales with click power
+            // If user is clicking physically too fast consistently
             if (clientX === lastClickPosRef.current.x && clientY === lastClickPosRef.current.y) {
                 identicalPosCountRef.current += 1;
-                if (identicalPosCountRef.current > 10) {
+                if (identicalPosCountRef.current > 15) {
                     setIsCheating(true);
                 }
             } else {
@@ -141,11 +160,15 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
             }
 
             clickIntervalsRef.current.push(interval);
-            if (clickIntervalsRef.current.length > 15) {
-                const recentIntervals = clickIntervalsRef.current.slice(-15);
-                const avg = recentIntervals.reduce((a, b) => a + b, 0) / 15;
-                const variance = recentIntervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / 15;
-                if (variance < 1.2) { 
+            if (clickIntervalsRef.current.length > 20) {
+                const recentIntervals = clickIntervalsRef.current.slice(-20);
+                const avg = recentIntervals.reduce((a, b) => a + b, 0) / 20;
+                const variance = recentIntervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / 20;
+                
+                // Human variance is usually > 2.0. Bots are very precise.
+                // We increase tolerance slightly as click power increases
+                const varianceThreshold = 1.2 / clickPower; 
+                if (variance < varianceThreshold) { 
                     setIsCheating(true);
                 }
             }
@@ -153,8 +176,17 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
 
         lastClickTimeRef.current = now;
         lastClickPosRef.current = { x: clientX, y: clientY };
-        setScore(prev => prev + 1);
-    }, [gameState]);
+        setScore(prev => prev + clickPower);
+    }, [gameState, clickPower]);
+
+    const handleUpgrade = () => {
+        if (score >= upgradeCost) {
+            setScore(prev => prev - upgradeCost);
+            setClickPower(prev => prev * 2);
+            setUpgradeCost(prev => prev * 2);
+            toast({ title: t('dm_success'), description: t('game_click_power', { power: clickPower * 2 }) });
+        }
+    };
 
     const handleClaim = async () => {
         if (!db || isSaving || isCheating) {
@@ -188,15 +220,15 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const earnedGold = Math.floor(score / 1000);
 
     return (
-        <div className="max-w-md mx-auto flex flex-col items-center gap-8 py-8 animate-in fade-in zoom-in duration-300">
+        <div className="max-w-md mx-auto flex flex-col items-center gap-6 py-4 animate-in fade-in zoom-in duration-300">
             {gameState === 'idle' && (
-                <div className="text-center space-y-6">
+                <div className="text-center space-y-6 pt-12">
                     <div className="w-32 h-32 bg-amber-500 rounded-full flex items-center justify-center mx-auto shadow-2xl experimental-glow">
                         <InfGoldIcon className="w-16 h-16 text-white" />
                     </div>
                     <div className="space-y-2">
                         <h2 className="text-3xl font-black font-headline text-amber-600">{t('game_gold_clicker')}</h2>
-                        <p className="text-muted-foreground">{t('game_gold_clicker_desc')}</p>
+                        <p className="text-muted-foreground px-4">{t('game_gold_clicker_desc')}</p>
                     </div>
                     <Button onClick={startGame} size="lg" className="rounded-full px-12 h-14 font-black text-lg bg-amber-500 hover:bg-amber-600 shadow-xl">
                         {t('play')}
@@ -205,7 +237,8 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
             )}
 
             {gameState === 'playing' && (
-                <div className="w-full flex flex-col items-center gap-8">
+                <div className="w-full flex flex-col items-center gap-6">
+                    {/* Stats Header */}
                     <div className="w-full bg-card border p-6 rounded-3xl shadow-lg space-y-4">
                         <div className="flex justify-between items-end">
                             <div className="space-y-1">
@@ -216,7 +249,7 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">КЛИКИ</p>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">ОЧКИ</p>
                                 <p className="text-xl font-bold font-mono">{score}</p>
                             </div>
                         </div>
@@ -228,33 +261,55 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                             </div>
                             <Progress value={nextGoldProgress} className="h-2" />
                         </div>
+
+                        <div className="pt-2 border-t flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                <span className="text-xs font-bold uppercase tracking-tight">{t('game_click_power', { power: clickPower })}</span>
+                            </div>
+                            <Button 
+                                size="sm" 
+                                variant={score >= upgradeCost ? "default" : "outline"}
+                                className={cn("h-8 text-[10px] font-black rounded-full px-4 transition-all", score >= upgradeCost && "bg-amber-500 text-white animate-pulse")}
+                                onClick={handleUpgrade}
+                                disabled={score < upgradeCost}
+                            >
+                                {t('game_upgrade_click_power')} ({upgradeCost})
+                            </Button>
+                        </div>
                     </div>
 
-                    <button 
-                        onMouseDown={handleClick}
-                        className={cn(
-                            "w-64 h-64 bg-amber-500 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all select-none relative group",
-                            isCheating && "bg-red-500 shadow-red-500/50"
+                    {/* The Button */}
+                    <div className="relative mt-4">
+                        <button 
+                            onMouseDown={handleClick}
+                            className={cn(
+                                "w-64 h-64 bg-amber-500 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all select-none relative group",
+                                isCheating && "bg-red-500 shadow-red-500/50"
+                            )}
+                        >
+                            <div className="absolute inset-0 bg-amber-400 rounded-full animate-ping opacity-20 pointer-events-none" />
+                            {isCheating ? (
+                                <Ban className="w-24 h-24 text-white drop-shadow-lg" />
+                            ) : (
+                                <MousePointer2 className="w-24 h-24 text-white drop-shadow-lg" />
+                            )}
+                        </button>
+                        
+                        {isCheating && (
+                            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-red-500 font-bold bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20 whitespace-nowrap animate-bounce">
+                                <ShieldAlert className="h-4 w-4" />
+                                <span>FAIR PLAY REQUIRED</span>
+                            </div>
                         )}
-                    >
-                        <div className="absolute inset-0 bg-amber-400 rounded-full animate-ping opacity-20 pointer-events-none" />
-                        {isCheating ? (
-                            <Ban className="w-24 h-24 text-white drop-shadow-lg" />
-                        ) : (
-                            <MousePointer2 className="w-24 h-24 text-white drop-shadow-lg" />
-                        )}
-                    </button>
-                    
-                    {isCheating ? (
-                        <div className="flex items-center gap-2 text-red-500 font-bold animate-bounce bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
-                            <ShieldAlert className="h-4 w-4" />
-                            <span>FAIR PLAY REQUIRED</span>
-                        </div>
-                    ) : (
+                    </div>
+
+                    {!isCheating && (
                         <p className="font-bold text-muted-foreground uppercase tracking-widest text-[10px] animate-pulse">Кликай, чтобы заработать!</p>
                     )}
 
-                    <div className="w-full space-y-3 pt-4">
+                    {/* Actions */}
+                    <div className="w-full space-y-3 pt-8">
                         <Button 
                             onClick={handleClaim} 
                             disabled={isSaving} 
