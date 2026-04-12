@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Accordion,
@@ -832,20 +832,20 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_infgold_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_infgold_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_stories_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_stories_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_media_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_media_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_holidays_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_holidays_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_calls_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_calls_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_call_notifs_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_call_notifs_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_themes_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_themes_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_bugfixes_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_bugfixes_desc')}</p>
         </div>
       </div>
     </div>
