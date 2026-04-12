@@ -22,9 +22,9 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter as AlertDialogFooterComponent,
+  AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as AlertDialogTitleComponent,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -950,7 +950,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader>
-            <AlertDialogTitleComponent>{t('delete_account_confirm_title')}</AlertDialogTitleComponent>
+            <AlertDialogTitle>{t('delete_account_confirm_title')}</AlertDialogTitle>
             <AlertDialogDescription>
                 {t('delete_account_confirm_desc')}
             </AlertDialogDescription>
