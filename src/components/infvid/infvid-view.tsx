@@ -21,7 +21,6 @@ import { enUS, ru } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 
-// Helper to compress thumbnail image
 const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -59,7 +58,6 @@ const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<
   });
 };
 
-// --- InfVid Icon ---
 const InfVidIcon = ({ className }: { className?: string }) => (
   <div className={cn("relative flex items-center justify-center", className)}>
     <svg viewBox="0 0 24 24" fill="#FF8C00" className="absolute w-full h-full">
@@ -81,7 +79,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
 
-  // --- Fetch Videos ---
   const videosQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'videos'), orderBy('timestamp', 'desc'), limit(50));
@@ -204,7 +201,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      {/* Header */}
       <header className="flex h-16 items-center justify-between border-b px-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onClose}>
@@ -235,7 +231,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         </Button>
       </header>
 
-      {/* Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/10">
         {videosLoading ? (
             <div className="flex h-full items-center justify-center">
@@ -260,7 +255,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         )}
       </main>
 
-      {/* Video Player Modal */}
       {selectedVideo && (
           <VideoDetailOverlay 
             key={selectedVideo.id}
@@ -269,7 +263,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             onClose={() => {
                 setSelectedVideoId(null);
                 if (initialVideoId === selectedVideo.id) {
-                    onClose(); // Close InfVid if it was opened via direct link
+                    onClose();
                 }
             }}
             currentUser={currentUser}
@@ -294,7 +288,6 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
 
     return (
         <div className="flex flex-col gap-3 group cursor-pointer" onClick={onClick}>
-            {/* Thumbnail */}
             <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-sm transition-transform hover:scale-[1.02] duration-200">
                 {video.thumbnailUrl ? (
                     <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
@@ -308,7 +301,6 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
                 </div>
             </div>
 
-            {/* Info */}
             <div className="flex gap-3">
                 <Avatar className="h-9 w-9 shrink-0 border border-border/50">
                     <AvatarImage src={sender?.avatar} />
@@ -318,7 +310,7 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
                     <h4 className="font-bold line-clamp-2 leading-snug text-sm group-hover:text-primary transition-colors">{video.title}</h4>
                     <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sender?.name || '...'}</p>
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
-                        <span className="font-bold text-primary">{t('infvid_views', { count: video.views || 0 })}</span>
+                        <span className="font-black text-primary">{t('infvid_views', { count: video.views || 0 })}</span>
                         <span className='w-1 h-1 rounded-full bg-muted-foreground/30' />
                         <span>{timeAgo}</span>
                     </div>
@@ -418,7 +410,6 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
             };
 
             if (replyTo) {
-                // If the target is already a reply, use its parentId to keep flat nesting or use its id
                 commentData.parentId = replyTo.parentId || replyTo.id;
                 commentData.replyTo = {
                     userId: replyTo.userId,
@@ -496,7 +487,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                         {isLoading ? (
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-                                <p className="text-white/60 text-sm font-medium animate-pulse">{t('infvid_uploading')}</p>
+                                <p className="text-white/60 text-sm font-medium animate-pulse">Загрузка...</p>
                             </div>
                         ) : videoUrl ? (
                             <video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />
@@ -554,7 +545,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
 
                             <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner">
                                 <div className="flex items-center gap-2 font-bold mb-2">
-                                    <span className="text-primary text-base">{t('infvid_views', { count: video.views || 0 })}</span>
+                                    <span className="text-primary text-base font-black">{t('infvid_views', { count: video.views || 0 })}</span>
                                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                     <span className="text-muted-foreground">{timeAgo}</span>
                                 </div>
@@ -589,7 +580,6 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                 map[c.parentId].push(c);
             }
         });
-        // Sort replies by timestamp asc
         Object.keys(map).forEach(key => {
             map[key].sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
         });

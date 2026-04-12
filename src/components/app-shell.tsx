@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -11,16 +12,18 @@ import { SidebarContent } from '@/components/sidebar-content';
 import { ChatView } from '@/components/chat/chat-view';
 import { InfVidView } from '@/components/infvid/infvid-view';
 import type { PopulatedChat } from '@/types';
-import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X } from 'lucide-react';
+import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, onSnapshot, query, collection, where, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion } from 'firebase/firestore';
 import type { User, AuthenticatedUser, Chat, Call } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
 import { CallDialog } from './chat/call-dialog';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const iconMap = {
     Users,
@@ -36,12 +39,58 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const { isMobile } = useSidebar();
   const db = useFirestore();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const { setActiveChatId, showCallNotification } = useNotifications();
 
   // Call Management State
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [activeCall, setActiveCall] = useState<{ chat: PopulatedChat, otherUser: User | null, isVideo: boolean, isCaller: boolean } | null>(null);
   const [showCallDialog, setShowCallDialog] = useState(false);
+
+  // Subscription Prompt State
+  const [showSubPrompt, setShowSubPrompt] = useState(false);
+  const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
+
+  // Visit tracking for subscription prompt
+  useEffect(() => {
+    if (!currentUser || !db) return;
+
+    const count = parseInt(localStorage.getItem('app_visit_count') || '0') + 1;
+    localStorage.setItem('app_visit_count', count.toString());
+
+    if (count % 50 === 0) {
+      const checkMembership = async () => {
+        const linkRef = doc(db, 'chatLinks', encodeURIComponent('/C/Infinite'));
+        const linkSnap = await getDoc(linkRef);
+        if (linkSnap.exists()) {
+          const cid = linkSnap.data().chatId;
+          const chatSnap = await getDoc(doc(db, 'chats', cid));
+          if (chatSnap.exists()) {
+            const members = (chatSnap.data() as Chat).members || [];
+            if (!members.includes(currentUser.uid)) {
+              setTargetChannelId(cid);
+              setShowSubPrompt(true);
+            }
+          }
+        }
+      };
+      checkMembership();
+    }
+  }, [currentUser, db]);
+
+  const handleSubscribeToChannel = async () => {
+    if (!db || !targetChannelId || !currentUser) return;
+    try {
+      const chatRef = doc(db, 'chats', targetChannelId);
+      await updateDoc(chatRef, {
+        members: arrayUnion(currentUser.uid)
+      });
+      toast({ title: t('dm_success'), description: t('join_success_channel') });
+      setShowSubPrompt(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Inform NotificationProvider about the currently open chat
   useEffect(() => {
@@ -77,7 +126,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
         if (!incomingCall || incomingCall.id !== callData.id) {
           setIncomingCall(callData);
           
-          // Fetch caller name for notification
           const callerDoc = await getDoc(doc(db, 'users', callData.callerId));
           const callerName = callerDoc.exists() ? (callerDoc.data() as User).name : 'Someone';
           showCallNotification(callerName, callData.id, !!callData.isVideo);
@@ -93,7 +141,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     return () => unsubscribe();
   }, [db, currentUser, incomingCall, showCallNotification]);
 
-  // Handle global "open-chat" events (e.g. from notifications)
+  // Handle global events
   useEffect(() => {
     const handleOpenChat = async (event: any) => {
       const chatId = event.detail.chatId;
@@ -119,15 +167,12 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
       const chatId = event.detail.chatId;
       if (!chatId || !db) return;
       
-      // Stop ringtone globally
       window.dispatchEvent(new CustomEvent('stop-ringtone'));
 
-      // Find the call data
       const callDoc = await getDoc(doc(db, 'calls', chatId));
       if (callDoc.exists()) {
         const callData = { id: callDoc.id, ...callDoc.data() } as Call;
         
-        // Fetch chat and user to open dialog
         const chatDoc = await getDoc(doc(db, 'chats', chatId));
         if (chatDoc.exists()) {
           const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
@@ -223,7 +268,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     }
 
     if (isMobile) {
-        // On mobile, the sidebar content takes the full screen.
         return (
             <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground">
                 <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />
@@ -253,16 +297,14 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
       <SidebarInset>
         {renderMainView()}
         
-        {/* Global Incoming Call Banner */}
         {incomingCall && (
           <div 
             className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500 cursor-pointer"
             onClick={handleAcceptIncoming}
           >
               <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-w-sm border border-white/10 backdrop-blur-md">
-                  <div className="w-12 h-12 flex-shrink-0 bg-muted rounded-full overflow-hidden">
-                    {/* Simplified avatar for quick loading */}
-                    <div className="w-full h-full flex items-center justify-center bg-primary text-white font-bold">?</div>
+                  <div className="w-12 h-12 flex-shrink-0 bg-primary rounded-full flex items-center justify-center text-white font-bold">
+                    <Phone className="h-6 w-6" />
                   </div>
                   <div className="flex-1 min-w-0">
                       <p className="font-bold truncate">{t('incoming_call')}</p>
@@ -280,7 +322,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
           </div>
         )}
 
-        {/* Global Call Dialog */}
         {activeCall && (
           <CallDialog 
             open={showCallDialog}
@@ -295,6 +336,30 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             isVideo={activeCall.isVideo}
           />
         )}
+
+        <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
+          <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
+            <DialogHeader className="items-center text-center space-y-4">
+              <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                <Bell className="h-10 w-10 text-primary animate-bounce" />
+              </div>
+              <div className="space-y-2">
+                <DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle>
+                <DialogDescription className="text-muted-foreground leading-relaxed">
+                  {t('subscribe_prompt_desc')}
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 pt-4">
+              <Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">
+                {t('subscribe')}
+              </Button>
+              <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">
+                {t('cancel')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SidebarInset>
     </>
   );
