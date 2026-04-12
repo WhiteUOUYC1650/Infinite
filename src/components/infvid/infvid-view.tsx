@@ -70,7 +70,7 @@ const InfVidIcon = ({ className }: { className?: string }) => (
 );
 
 export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUser: AuthenticatedUser, onClose: () => void, initialVideoId?: string }) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -78,6 +78,10 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
+
+  const isPrem = currentUser.subscriptionTier === 'prem';
+  const maxSizeText = isPrem ? '4GB' : '1GB';
+  const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
 
   const videosQuery = useMemo(() => {
     if (!db) return null;
@@ -275,6 +279,8 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         onOpenChange={setIsUploadOpen}
         onUpload={handleUploadVideo}
         isUploading={isUploading}
+        maxSizeText={maxSizeText}
+        maxSizeInBytes={maxSizeInBytes}
       />
     </div>
   );
@@ -336,6 +342,10 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
 
     const isLiked = likedBy.includes(currentUser.uid);
     const isSubscribed = userSubscriptions.includes(video.senderId);
+
+    // Fetch authors for comments to ensure up-to-date names/avatars
+    const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]);
+    const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
     useEffect(() => {
         if (!db || video.videoStatus !== 'complete' || !video.videoChunkIds) return;
@@ -554,12 +564,12 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                         </div>
 
                         <div className="block lg:hidden pt-6">
-                            <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} />
+                            <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} />
                         </div>
                     </div>
 
                     <aside className="hidden lg:block w-96 shrink-0 border-l pl-6">
-                        <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} />
+                        <CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} />
                     </aside>
                 </div>
             </div>
@@ -567,8 +577,8 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     );
 }
 
-function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText }: { video: SharedVideo, comments: VideoComment[], currentUser: AuthenticatedUser, onAddComment: (replyTo?: VideoComment) => void, commentText: string, setAddCommentText: (v: string) => void }) {
-    const { t, language } = useLanguage();
+function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText, commentAuthors }: { video: SharedVideo, comments: VideoComment[], currentUser: AuthenticatedUser, onAddComment: (replyTo?: VideoComment) => void, commentText: string, setAddCommentText: (v: string) => void, commentAuthors: Record<string, User> }) {
+    const { t } = useLanguage();
     const [replyingTo, setReplyingTo] = useState<VideoComment | null>(null);
 
     const rootComments = useMemo(() => comments.filter(c => !c.parentId), [comments]);
@@ -601,7 +611,7 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
             <div className="space-y-2">
                 {replyingTo && (
                     <div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg text-xs animate-in slide-in-from-bottom-1">
-                        <span className="font-medium text-primary">Ответ пользователю @{replyingTo.userName}</span>
+                        <span className="font-medium text-primary">Ответ пользователю {replyingTo.userName}</span>
                         <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setReplyingTo(null)}>
                             <X className="h-3 w-3" />
                         </Button>
@@ -640,6 +650,7 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                         currentUser={currentUser} 
                         onReply={setReplyingTo}
                         videoId={video.id}
+                        commentAuthors={commentAuthors}
                     />
                 )) : (
                     <div className="py-12 text-center text-muted-foreground italic text-sm bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">
@@ -651,11 +662,16 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
     );
 }
 
-function CommentItem({ comment, replies, currentUser, onReply, videoId }: { comment: VideoComment, replies: VideoComment[], currentUser: AuthenticatedUser, onReply: (c: VideoComment) => void, videoId: string }) {
+function CommentItem({ comment, replies, currentUser, onReply, videoId, commentAuthors }: { comment: VideoComment, replies: VideoComment[], currentUser: AuthenticatedUser, onReply: (c: VideoComment) => void, videoId: string, commentAuthors: Record<string, User> }) {
     const { t, language } = useLanguage();
     const db = useFirestore();
     const [showReplies, setShowReplies] = useState(false);
     const isLikedByMe = comment.likedBy?.includes(currentUser.uid);
+
+    // Use fetched author data if available, fallback to static comment data
+    const author = commentAuthors[comment.userId];
+    const displayName = author?.name || comment.userName;
+    const displayAvatar = author?.avatar || comment.userAvatar;
 
     const handleToggleCommentLike = async (c: VideoComment) => {
         if (!db) return;
@@ -676,12 +692,12 @@ function CommentItem({ comment, replies, currentUser, onReply, videoId }: { comm
         <div className="space-y-3">
             <div className="flex gap-3">
                 <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarImage src={comment.userAvatar || undefined} />
-                    <AvatarFallback>{comment.userName?.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={displayAvatar || undefined} />
+                    <AvatarFallback>{displayName?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm leading-none">@{comment.userName}</span>
+                        <span className="font-bold text-sm leading-none">{displayName}</span>
                         <span className="text-[10px] text-muted-foreground font-medium">
                             {comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
                         </span>
@@ -722,21 +738,25 @@ function CommentItem({ comment, replies, currentUser, onReply, videoId }: { comm
                         <div className="space-y-4 pt-1 animate-in slide-in-from-top-1">
                             {replies.map((reply) => {
                                 const isReplyLikedByMe = reply.likedBy?.includes(currentUser.uid);
+                                const replyAuthor = commentAuthors[reply.userId];
+                                const replyDisplayName = replyAuthor?.name || reply.userName;
+                                const replyDisplayAvatar = replyAuthor?.avatar || reply.userAvatar;
+
                                 return (
                                     <div key={reply.id} className="flex gap-3">
                                         <Avatar className="h-7 w-7 shrink-0">
-                                            <AvatarImage src={reply.userAvatar || undefined} />
-                                            <AvatarFallback className="text-[10px]">{reply.userName?.charAt(0)}</AvatarFallback>
+                                            <AvatarImage src={replyDisplayAvatar || undefined} />
+                                            <AvatarFallback className="text-[10px]">{replyDisplayName?.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 space-y-1">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-xs leading-none">@{reply.userName}</span>
+                                                <span className="font-bold text-xs leading-none">{replyDisplayName}</span>
                                                 <span className="text-[9px] text-muted-foreground">
                                                     {reply.timestamp?.seconds ? formatDistanceToNow(new Date(reply.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-foreground/90">
-                                                <span className="text-primary font-bold mr-1">@{reply.replyTo?.userName}</span>
+                                                <span className="text-primary font-bold mr-1">{reply.replyTo?.userName}</span>
                                                 {reply.text}
                                             </p>
                                             <div className="flex items-center gap-3 mt-1">
@@ -769,8 +789,9 @@ function CommentItem({ comment, replies, currentUser, onReply, videoId }: { comm
     );
 }
 
-function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, thumbnailFile: File | null, title: string, description: string) => Promise<void>, isUploading: boolean }) {
+function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, maxSizeInBytes }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, thumbnailFile: File | null, title: string, description: string) => Promise<void>, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number }) {
     const { t } = useLanguage();
+    const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -782,6 +803,10 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boo
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
             const selectedFile = e.target.files[0];
+            if (selectedFile.size > maxSizeInBytes) {
+                toast({ variant: 'destructive', title: t('video_too_large', { size: maxSizeText }) });
+                return;
+            }
             setFile(selectedFile);
             if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
         }
@@ -831,7 +856,7 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading }: { open: boo
                             <div className="text-center">
                                 <Upload className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
                                 <p className="font-bold text-muted-foreground">{t('video')}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{t('infvid_video_limits')}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t('infvid_video_limits', { size: maxSizeText })}</p>
                             </div>
                         )}
                     </div>

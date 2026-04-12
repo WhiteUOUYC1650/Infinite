@@ -336,7 +336,7 @@ export const translations = {
       'infvid_upload_title': 'Upload Video',
       'infvid_video_title_placeholder': 'Enter video title',
       'infvid_video_desc_placeholder': 'Tell viewers about your video',
-      'infvid_video_limits': 'MP4, WebM up to 10MB',
+      'infvid_video_limits': 'MP4, WebM up to {size}',
       'infvid_no_description': 'No description provided.',
       'infvid_assembly_failed': 'Assembly Failed',
       'save_to_device': 'Save to device',
@@ -769,7 +769,7 @@ export const translations = {
       'infvid_upload_title': 'Загрузить видео',
       'infvid_video_title_placeholder': 'Введите название видео',
       'infvid_video_desc_placeholder': 'Расскажите зрителям о своем видео',
-      'infvid_video_limits': 'MP4, WebM до 10 МБ',
+      'infvid_video_limits': 'MP4, WebM до {size}',
       'infvid_no_description': 'Описание отсутствует.',
       'infvid_assembly_failed': 'Ошибка сборки видео',
       'save_to_device': 'Сохранить на устройство',
@@ -875,14 +875,12 @@ export type TranslationKey = keyof typeof translations.en;
 export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
   if (!str) return '';
   
-  // Robust ICU Pluralization Parser
   const result = str.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
     const count = Number(values[key]);
     if (isNaN(count)) return match;
 
     const options: Record<string, string> = {};
     
-    // Regex to capture options like 'one {# text}'
     const optionRegex = /(\w+)\s*\{([^}]+)\}/g;
     let optionMatch;
     while ((optionMatch = optionRegex.exec(optionsStr)) !== null) {
