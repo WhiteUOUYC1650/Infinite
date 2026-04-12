@@ -4,11 +4,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +27,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/context/language-context';
@@ -45,6 +55,11 @@ function AdminPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Grant Gold State
+  const [goldDialogOpen, setGoldDialogOpen] = useState(false);
+  const [selectedUserForGold, setSelectedUserForGold] = useState<User | null>(null);
+  const [goldAmount, setGoldAmount] = useState('100');
 
   // --- Auth and Admin Check ---
   useEffect(() => {
@@ -94,6 +109,27 @@ function AdminPage() {
         variant: 'destructive',
         title: t('admin_toast_error_title'),
         description: error.message || t('admin_toast_delete_chat_error_desc'),
+      });
+    }
+  };
+
+  const handleGrantGold = async (userId: string, amount: number) => {
+    if (!db) return;
+    const userRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userRef, {
+        infGoldBalance: increment(amount)
+      });
+      toast({
+        title: t('dm_success'),
+        description: `Successfully granted ${amount} InfGold.`,
+      });
+    } catch (error: any) {
+      console.error('Error granting gold:', error);
+      toast({
+        variant: 'destructive',
+        title: t('admin_toast_error_title'),
+        description: error.message || "Could not grant InfGold.",
       });
     }
   };
@@ -177,7 +213,14 @@ function AdminPage() {
             <ItemList
               items={users}
               loading={usersLoading}
-              renderItem={(user: User) => <UserItem key={user.id} user={user} onBan={handleBanUser} />}
+              renderItem={(user: User) => (
+                <UserItem 
+                  key={user.id} 
+                  user={user} 
+                  onBan={handleBanUser} 
+                  onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }}
+                />
+              )}
             />
           </TabsContent>
           <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
@@ -196,6 +239,40 @@ function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog open={goldDialogOpen} onOpenChange={setGoldDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Grant InfGold</DialogTitle>
+            <DialogDescription>
+              Enter the amount of InfGold to grant to {selectedUserForGold?.name}. This will be added to their current balance.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="gold-amount" className="text-right">
+                Amount
+              </Label>
+              <Input
+                id="gold-amount"
+                type="number"
+                value={goldAmount}
+                onChange={(e) => setGoldAmount(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGoldDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (selectedUserForGold) {
+                handleGrantGold(selectedUserForGold.id, parseInt(goldAmount) || 0);
+                setGoldDialogOpen(false);
+              }
+            }}>Grant Gold</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -222,7 +299,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user, onBan }: { user: User; onBan: (user: User) => void; }) {
+function UserItem({ user, onBan, onGrantGold }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -239,16 +316,22 @@ function UserItem({ user, onBan }: { user: User; onBan: (user: User) => void; })
         <p className="text-sm text-muted-foreground">{displayUsername}</p>
       </div>
       {!user.isDeleted && (
-        <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
-            user.status === 'online' && 'bg-green-500',
-            user.status === 'away' && 'bg-yellow-500',
-        )}>
-            {user.status}
-        </Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
+              user.status === 'online' && 'bg-green-500',
+              user.status === 'away' && 'bg-yellow-500',
+          )}>
+              {user.status}
+          </Badge>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold">
+            <Coins className="h-3 w-3" />
+            <span>{user.infGoldBalance || 0}</span>
+          </div>
+        </div>
       )}
        
       <div className="flex items-center gap-2">
-        {!isProtectedUser && !user.isDeleted && (
+        {!user.isDeleted && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -258,10 +341,16 @@ function UserItem({ user, onBan }: { user: User; onBan: (user: User) => void; })
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                <Ban className="mr-2 h-4 w-4" />
-                <span>{t('admin_ban_user_button')}</span>
+              <DropdownMenuItem onSelect={() => onGrantGold(user)}>
+                <Coins className="mr-2 h-4 w-4" />
+                <span>Grant InfGold</span>
               </DropdownMenuItem>
+              {!isProtectedUser && (
+                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <Ban className="mr-2 h-4 w-4" />
+                  <span>{t('admin_ban_user_button')}</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
