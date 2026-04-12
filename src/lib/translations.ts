@@ -448,6 +448,14 @@ export const translations = {
       'game_upgrade_click_power': 'Upgrade Click',
       'game_upgrade_cost': 'Cost: {cost} clicks',
       'game_click_power': 'Click Power: {power}',
+      'send_gold': 'Send InfGold',
+      'send_gold_desc': 'Enter the amount of InfGold you want to send to {name}.',
+      'amount_label': 'Amount',
+      'send_button': 'Send',
+      'not_enough_gold_transfer': 'You do not have enough InfGold.',
+      'transfer_success': 'Successfully sent {amount} InfGold to {name}!',
+      'transfer_error': 'Failed to send InfGold.',
+      'invalid_amount': 'Invalid amount.',
     },
     ru: {
       'settings': 'Настройки',
@@ -649,7 +657,7 @@ export const translations = {
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
       'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_italic_` для *курсивного текста*\n- `**жирный**` или `__bold__` для жирного текста\n- `~~зачеркнутый~~` для зачеркнутого текста\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
       'faq_create_chat_q': 'Как создать группу или канал?',
-      'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Открыется диалоговое окно, в котором вы сможете выбрать тип чата и заполнить его данные.",
+      'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Открыется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
       'faq_invite_q': "Как пригласить людей в группу?",
       'faq_invite_a': "Чтобы пригласить кого-то в группу, владельцем которой вы являетесь, просто поделитесь с ним уникальной ссылкой на группу (например, `/G/your-group-name`). Когда он откроет ссылку в поиске приложения, он увидит возможность присоединиться к вашей группе.",
       'faq_security_q': "Защищены ли мои данные?",
@@ -895,6 +903,14 @@ export const translations = {
       'game_upgrade_click_power': 'Прокачать клик',
       'game_upgrade_cost': 'Цена: {cost} кликов',
       'game_click_power': 'Сила клика: {power}',
+      'send_gold': 'Отправить Gold',
+      'send_gold_desc': 'Введите количество InfGold, которое хотите отправить пользователю {name}.',
+      'amount_label': 'Сумма',
+      'send_button': 'Отправить',
+      'not_enough_gold_transfer': 'У вас недостаточно InfGold для перевода.',
+      'transfer_success': 'Успешно отправлено {amount} InfGold пользователю {name}!',
+      'transfer_error': 'Не удалось отправить InfGold.',
+      'invalid_amount': 'Неверная сумма.',
     }
   };
 

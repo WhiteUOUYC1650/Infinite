@@ -41,6 +41,7 @@ service cloud.firestore {
       allow read: if true; 
       allow list: if true; 
       allow create: if isOwner(userId);
+      // Разрешаем обновление баланса другим пользователям (для трансферов) и системных полей
       allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen']));
       allow delete: if isOwner(userId) || isAdmin();
 
@@ -96,7 +97,7 @@ service cloud.firestore {
         allow get, list: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
-        allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+        allow delete: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
       }
     }
     
