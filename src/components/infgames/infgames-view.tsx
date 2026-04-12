@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import type { AuthenticatedUser } from '@/types';
-import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
@@ -97,39 +97,110 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const { t } = useLanguage();
     const db = useFirestore();
     const { toast } = useToast();
+    
     const [score, setScore] = useState(0);
-    const [timeLeft, setTimeLimit] = useState(15);
+    const [timeLeft, setTimeLeft] = useState(15);
     const [gameState, setGameState] = useState<'idle' | 'playing' | 'result'>('idle');
     const [isSaving, setIsSaving] = useState(false);
+    const [isCheating, setIsCheating] = useState(false);
+    
+    // Anti-cheat refs
+    const lastClickTimeRef = useRef<number>(0);
+    const lastClickPosRef = useRef<{x: number, y: number}>({x: 0, y: 0});
+    const identicalPosCountRef = useRef<number>(0);
+    const clickIntervalsRef = useRef<number[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Fixed timer logic using stable setInterval
     useEffect(() => {
-        if (gameState === 'playing' && timeLeft > 0) {
+        if (gameState === 'playing') {
             timerRef.current = setInterval(() => {
-                setTimeLimit(prev => prev - 1);
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        if (timerRef.current) clearInterval(timerRef.current);
+                        setGameState('result');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
-        } else if (timeLeft === 0) {
-            setGameState('result');
-            if (timerRef.current) clearInterval(timerRef.current);
         }
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [gameState, timeLeft]);
+    }, [gameState]);
 
     const startGame = () => {
         setScore(0);
-        setTimeLimit(15);
+        setTimeLeft(15);
         setGameState('playing');
+        setIsCheating(false);
+        lastClickTimeRef.current = 0;
+        identicalPosCountRef.current = 0;
+        clickIntervalsRef.current = [];
     };
 
-    const handleClick = () => {
-        if (gameState === 'playing') setScore(prev => prev + 1);
-    };
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        if (gameState !== 'playing') return;
+
+        const now = performance.now();
+        const { clientX, clientY } = e;
+
+        // 1. Check isTrusted (Browser protection)
+        if (!e.isTrusted) {
+            setIsCheating(true);
+        }
+
+        // 2. Click Frequency Check (CPS)
+        if (lastClickTimeRef.current > 0) {
+            const interval = now - lastClickTimeRef.current;
+            
+            // Limit to ~25 CPS (Human limit is much lower)
+            if (interval < 40) { 
+                // Too fast, possible bot
+            }
+
+            // 3. Coordinate Variance Check
+            // Humans almost never click the exact same pixel multiple times
+            if (clientX === lastClickPosRef.current.x && clientY === lastClickPosRef.current.y) {
+                identicalPosCountRef.current += 1;
+                if (identicalPosCountRef.current > 5) {
+                    setIsCheating(true);
+                }
+            } else {
+                identicalPosCountRef.current = 0;
+            }
+
+            // 4. Interval Consistency Check (Advanced)
+            // Bots often have perfectly consistent intervals
+            clickIntervalsRef.current.push(interval);
+            if (clickIntervalsRef.current.length > 10) {
+                const recentIntervals = clickIntervalsRef.current.slice(-10);
+                const avg = recentIntervals.reduce((a, b) => a + b, 0) / 10;
+                const variance = recentIntervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / 10;
+                
+                // If variance is extremely low, it's a bot
+                if (variance < 2) { 
+                    setIsCheating(true);
+                }
+            }
+        }
+
+        lastClickTimeRef.current = now;
+        lastClickPosRef.current = { x: clientX, y: clientY };
+        setScore(prev => prev + 1);
+    }, [gameState]);
 
     const handleClaim = async () => {
-        if (!db || isSaving || score < 5) return;
+        if (!db || isSaving || score < 5 || isCheating) {
+            if (isCheating) {
+                toast({ variant: 'destructive', title: 'Anti-Cheat', description: 'Auto-clicker detected. Reward cancelled.' });
+                onBack();
+            }
+            return;
+        }
+        
         setIsSaving(true);
-        // Reward: 1 gold for every 20 clicks
         const reward = Math.floor(score / 20);
+        
         try {
             if (reward > 0) {
                 await updateDoc(doc(db, 'users', currentUser.uid), {
@@ -176,36 +247,65 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                     </div>
 
                     <button 
-                        onClick={handleClick}
-                        className="w-64 h-64 bg-amber-500 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-transform select-none relative group"
+                        onMouseDown={handleClick}
+                        className={cn(
+                            "w-64 h-64 bg-amber-500 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-transform select-none relative group",
+                            isCheating && "bg-red-500 shadow-red-500/50"
+                        )}
                     >
                         <div className="absolute inset-0 bg-amber-400 rounded-full animate-ping opacity-20" />
-                        <MousePointer2 className="w-24 h-24 text-white drop-shadow-lg" />
+                        {isCheating ? (
+                            <Ban className="w-24 h-24 text-white drop-shadow-lg" />
+                        ) : (
+                            <MousePointer2 className="w-24 h-24 text-white drop-shadow-lg" />
+                        )}
                     </button>
                     
-                    <p className="font-bold text-muted-foreground uppercase tracking-widest text-xs animate-bounce">{t('message_placeholder')}!</p>
+                    {isCheating ? (
+                        <div className="flex items-center gap-2 text-red-500 font-bold animate-bounce bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
+                            <ShieldAlert className="h-4 w-4" />
+                            <span>FAIR PLAY REQUIRED</span>
+                        </div>
+                    ) : (
+                        <p className="font-bold text-muted-foreground uppercase tracking-widest text-xs animate-bounce">{t('message_placeholder')}!</p>
+                    )}
                 </div>
             )}
 
             {gameState === 'result' && (
-                <div className="text-center space-y-8 bg-card border p-10 rounded-[3rem] shadow-2xl w-full">
+                <div className="text-center space-y-8 bg-card border p-10 rounded-[3rem] shadow-2xl w-full relative overflow-hidden">
+                    {isCheating && <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-500" />}
+                    
                     <div className="space-y-2">
                         <h2 className="text-4xl font-black font-headline">{t('game_over')}</h2>
                         <p className="text-muted-foreground">{t('your_score')}</p>
                     </div>
                     
-                    <div className="text-7xl font-black text-primary tracking-tighter">
+                    <div className={cn("text-7xl font-black tracking-tighter", isCheating ? "text-red-500" : "text-primary")}>
                         {score}
                     </div>
+
+                    {isCheating && (
+                        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-200 text-red-600 text-sm font-bold flex items-center gap-3">
+                            <ShieldAlert className="h-5 w-5 shrink-0" />
+                            <p className="text-left">Anti-cheat detected automated clicking. Rewards are disabled for this session.</p>
+                        </div>
+                    )}
 
                     <div className="space-y-4 pt-4">
                         <Button 
                             onClick={handleClaim} 
-                            disabled={isSaving} 
+                            disabled={isSaving || isCheating} 
                             size="lg" 
-                            className="w-full rounded-2xl h-14 font-bold bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20"
+                            className={cn(
+                                "w-full rounded-2xl h-14 font-bold shadow-lg transition-all",
+                                isCheating 
+                                    ? "bg-muted text-muted-foreground grayscale" 
+                                    : "bg-green-500 hover:bg-green-600 shadow-green-500/20"
+                            )}
                         >
                             {isSaving ? <Loader2 className="animate-spin" /> : (
+                                isCheating ? <><Ban className="mr-2 h-4 w-4" /> REWARD DISABLED</> :
                                 <><Sparkles className="mr-2 h-5 w-5" /> {t('claim_gold')} (+{Math.floor(score / 20)})</>
                             )}
                         </Button>
