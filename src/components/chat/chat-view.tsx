@@ -531,11 +531,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleInternalLinkClick = async (href: string) => {
     if (!db || !currentUser) return;
     try {
-        const processedHref = href.startsWith('/') ? href : href.toLowerCase();
+        const lowerHref = href.toLowerCase();
 
-        // InfVid handling
-        if (processedHref.startsWith('/iv/v/')) {
-            const videoId = processedHref.split('/iv/v/')[1];
+        // 1. InfVid handling (/IV/V/ or /iv/v/)
+        if (lowerHref.startsWith('/iv/v/')) {
+            const videoId = href.substring(6); // Extract ID regardless of prefix case
             if (videoId) {
                 window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId } }));
                 return;
@@ -544,8 +544,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         let targetChat: Chat | null = null;
 
-        if (processedHref.startsWith('@')) {
-            const usernameRef = doc(db, 'usernames', processedHref);
+        // 2. Username handling (@username)
+        if (href.startsWith('@')) {
+            const usernameRef = doc(db, 'usernames', href);
             const usernameSnap = await getDoc(usernameRef);
             if (usernameSnap.exists()) {
                 const targetUserId = usernameSnap.data().uid;
@@ -574,8 +575,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 toast({ variant: 'destructive', title: t('user_not_found') });
                 return;
             }
-        } else if (processedHref.startsWith('/g/') || processedHref.startsWith('/c/')) {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(href));
+        } 
+        // 3. Chat link handling (/G/ or /C/ case-insensitively)
+        else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) {
+            // Our app stores these as uppercase /G/... or /C/... in Firestore
+            const normalizedLink = (lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3);
+            
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(normalizedLink));
             const linkSnap = await getDoc(linkRef);
             if (linkSnap.exists()) {
                 const chatId = linkSnap.data().chatId;
@@ -585,7 +591,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
                 }
             } else {
-                toast({ variant: 'destructive', title: t(processedHref.startsWith('/g/') ? 'group_not_found' : 'channel_not_found') });
+                toast({ variant: 'destructive', title: t(lowerHref.startsWith('/g/') ? 'group_not_found' : 'channel_not_found') });
                 return;
             }
         }
@@ -2586,7 +2592,7 @@ function ChatMessage({
                                 <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background border shadow-sm", alignRight ? "text-primary" : "text-primary")}>
                                     {isLoadingFile ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileIcon className="h-5 w-5 !text-primary !opacity-100" style={{ strokeWidth: 2.5 }} />}
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-0">
                                     <p className="text-sm font-bold truncate">{message.fileName}</p>
                                     <p className="text-[10px] opacity-70">{(message.fileSize ? (message.fileSize / 1024 / 1024).toFixed(2) : 0)} MB</p>
                                 </div>
