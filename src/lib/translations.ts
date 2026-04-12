@@ -1,5 +1,3 @@
-
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -416,6 +414,9 @@ export const translations = {
       'story_caption_placeholder': 'Inscription...',
       'story_upload_success': 'Story uploaded successfully!',
       'story_delete_confirm': 'Are you sure you want to delete this story?',
+      'video_not_found': 'Video not found',
+      'group_not_found': 'Group not found',
+      'channel_not_found': 'Channel not found',
     },
     ru: {
       'settings': 'Настройки',
@@ -830,6 +831,9 @@ export const translations = {
       'story_caption_placeholder': 'Надпись...',
       'story_upload_success': 'История успешно опубликована!',
       'story_delete_confirm': 'Вы уверены, что хотите удалить эту историю?',
+      'video_not_found': 'Видео не найдено',
+      'group_not_found': 'Группа не найдена',
+      'channel_not_found': 'Канал не найден',
     }
   };
 

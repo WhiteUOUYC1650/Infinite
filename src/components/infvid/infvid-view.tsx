@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -71,7 +70,7 @@ const InfVidIcon = ({ className }: { className?: string }) => (
   </div>
 );
 
-export function InfVidView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
+export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUser: AuthenticatedUser, onClose: () => void, initialVideoId?: string }) {
   const { t, language } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -79,6 +78,7 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
 
   // --- Fetch Videos ---
   const videosQuery = useMemo(() => {
@@ -88,8 +88,45 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
 
   const { data: videos, loading: videosLoading } = useCollection<SharedVideo>(videosQuery);
 
-  const senderIds = useMemo(() => Array.from(new Set(videos?.map(v => v.senderId) || [])), [videos]);
+  const senderIds = useMemo(() => {
+    const ids = new Set(videos?.map(v => v.senderId) || []);
+    if (fetchedExternalVideo) ids.add(fetchedExternalVideo.senderId);
+    return Array.from(ids);
+  }, [videos, fetchedExternalVideo]);
+  
   const { users: senders } = useBatchUsers(senderIds);
+
+  useEffect(() => {
+    if (!initialVideoId || !db) return;
+
+    const checkAndLoadVideo = async () => {
+        const foundInList = videos?.find(v => v.id === initialVideoId);
+        if (foundInList) {
+            setSelectedVideoId(initialVideoId);
+            return;
+        }
+
+        try {
+            const videoSnap = await getDoc(doc(db, 'videos', initialVideoId));
+            if (videoSnap.exists()) {
+                const videoData = { id: videoSnap.id, ...videoSnap.data() } as SharedVideo;
+                setFetchedExternalVideo(videoData);
+                setSelectedVideoId(initialVideoId);
+            } else {
+                onClose();
+                toast({ variant: 'destructive', title: t('video_not_found') });
+            }
+        } catch (e) {
+            console.error("Error loading initial video:", e);
+            onClose();
+            toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
+        }
+    };
+
+    if (!videosLoading) {
+        checkAndLoadVideo();
+    }
+  }, [initialVideoId, db, videosLoading, videos, onClose, t, toast]);
 
   const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string) => {
     if (!db) return;
@@ -159,7 +196,10 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
     }
   };
 
-  const selectedVideo = videos?.find(v => v.id === selectedVideoId);
+  const selectedVideo = useMemo(() => {
+      if (!selectedVideoId) return null;
+      return videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null);
+  }, [selectedVideoId, videos, fetchedExternalVideo]);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
@@ -225,7 +265,12 @@ export function InfVidView({ currentUser, onClose }: { currentUser: Authenticate
             key={selectedVideo.id}
             video={selectedVideo} 
             sender={senders[selectedVideo.senderId]} 
-            onClose={() => setSelectedVideoId(null)}
+            onClose={() => {
+                setSelectedVideoId(null);
+                if (initialVideoId === selectedVideo.id) {
+                    onClose(); // Close InfVid if it was opened via direct link
+                }
+            }}
             currentUser={currentUser}
           />
       )}

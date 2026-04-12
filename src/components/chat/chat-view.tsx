@@ -531,8 +531,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleInternalLinkClick = async (href: string) => {
     if (!db || !currentUser) return;
     try {
-        let targetChat: Chat | null = null;
         const processedHref = href.startsWith('/') ? href : href.toLowerCase();
+
+        // InfVid handling
+        if (processedHref.startsWith('/iv/v/')) {
+            const videoId = processedHref.split('/iv/v/')[1];
+            if (videoId) {
+                window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId } }));
+                return;
+            }
+        }
+
+        let targetChat: Chat | null = null;
 
         if (processedHref.startsWith('@')) {
             const usernameRef = doc(db, 'usernames', processedHref);
@@ -560,9 +570,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         targetChat = { id: chatId, type: 'dm', members: members, unreadCounts: { [currentUser.uid]: 0, [targetUserId]: 0 } };
                     }
                 }
+            } else {
+                toast({ variant: 'destructive', title: t('user_not_found') });
+                return;
             }
-        } else if (processedHref.startsWith('/G/') || processedHref.startsWith('/C/')) {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(processedHref));
+        } else if (processedHref.startsWith('/g/') || processedHref.startsWith('/c/')) {
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(href));
             const linkSnap = await getDoc(linkRef);
             if (linkSnap.exists()) {
                 const chatId = linkSnap.data().chatId;
@@ -571,6 +584,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 if (chatSnap.exists()) {
                     targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
                 }
+            } else {
+                toast({ variant: 'destructive', title: t(processedHref.startsWith('/g/') ? 'group_not_found' : 'channel_not_found') });
+                return;
             }
         }
 
@@ -2413,7 +2429,7 @@ function ChatMessage({
     const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
 
     const renderLink = ({ href, children, ...props }: any) => {
-        if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/'))) {
+        if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/') || href.startsWith('/IV/V/'))) {
             return <a href={href} onClick={(e) => { e.preventDefault(); onInternalLinkClick(href); }} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>{children}</a>;
         }
         return <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>{children}</a>;

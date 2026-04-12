@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -29,6 +29,7 @@ const iconMap = {
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | null>(null);
+  const [infVidInitialVideoId, setInfVidInitialVideoId] = useState<string | null>(null);
   const { isMobile } = useSidebar();
   const db = useFirestore();
   const { t } = useLanguage();
@@ -42,6 +43,13 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
       setActiveChatId(null);
     }
   }, [selectedItem, setActiveChatId]);
+
+  const handleSelect = useCallback((item: PopulatedChat | 'infvid') => {
+    setSelectedItem(item);
+    if (item !== 'infvid') {
+        setInfVidInitialVideoId(null);
+    }
+  }, []);
 
   // Handle global "open-chat" events (e.g. from notifications)
   useEffect(() => {
@@ -58,16 +66,28 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             ...chatData,
             iconComponent: iconName ? iconMap[iconName] : undefined,
           };
-          setSelectedItem(populatedChat);
+          handleSelect(populatedChat);
         }
       } catch (e) {
         console.error("Failed to handle notification click navigation:", e);
       }
     };
 
+    const handleOpenInfVid = (event: any) => {
+        const videoId = event.detail.videoId;
+        if (videoId) {
+            setInfVidInitialVideoId(videoId);
+            setSelectedItem('infvid');
+        }
+    };
+
     window.addEventListener('open-chat', handleOpenChat);
-    return () => window.removeEventListener('open-chat', handleOpenChat);
-  }, [db]);
+    window.addEventListener('open-infvid', handleOpenInfVid);
+    return () => {
+        window.removeEventListener('open-chat', handleOpenChat);
+        window.removeEventListener('open-infvid', handleOpenInfVid);
+    };
+  }, [db, handleSelect]);
 
   const userDocRef = useMemoFirebase(() => {
     if (!db) return null;
@@ -83,19 +103,21 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   }, [currentUser, userData]);
 
 
-  const handleSelect = (item: PopulatedChat | 'infvid') => {
-    setSelectedItem(item);
-  };
-
   const renderMainView = () => {
     if (!populatedUser) return <div className="flex h-svh items-center justify-center">Loading...</div>;
 
     if (selectedItem === 'infvid') {
-        return <InfVidView currentUser={populatedUser} onClose={() => setSelectedItem(null)} />;
+        return (
+            <InfVidView 
+                currentUser={populatedUser} 
+                onClose={() => handleSelect(null)} 
+                initialVideoId={infVidInitialVideoId || undefined} 
+            />
+        );
     }
 
     if (selectedItem && typeof selectedItem !== 'string') {
-        return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => setSelectedItem(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
+        return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     }
 
     if (isMobile) {
