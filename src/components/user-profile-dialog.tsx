@@ -153,13 +153,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                 onScroll={handleScroll}
                 className="flex-1 overflow-y-auto"
             >
-                <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-background pt-6 pb-6 px-6")}>
+                <div className={cn(experimentalDesign ? "bg-gradient-to-b from-primary/10 to-background pt-6 pb-6 px-6" : "pt-8 pb-4 px-6")}>
                     <DialogHeader className="p-0 relative">
                         <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => onOpenChange(false)} 
-                            className={cn("absolute -top-2 -right-2 z-10 rounded-full", (showCompactHeader || !experimentalDesign) && "hidden")}
+                            className={cn("absolute -top-2 -right-2 z-10 rounded-full", (showCompactHeader) && "hidden")}
                         >
                             <X className="h-5 w-5" />
                         </Button>
@@ -177,6 +177,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         <p className="text-muted-foreground font-medium">{displayUsername}</p>
                         <p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
                     </div>
+
+                    {!user.isDeleted && !user.isBot && (
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <InfGoldIcon className="h-5 w-5" />
+                            <span className="font-bold text-lg">{user.infGoldBalance ?? 0}</span>
+                        </div>
+                    )}
 
                     {experimentalDesign && !user.isBot && !user.isDeleted && (
                         <div className="grid grid-cols-2 gap-3 w-full mt-4 px-2">
@@ -217,7 +224,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     )}
                 </div>
 
-                <div className={cn("px-6 pb-8", !experimentalDesign && "pt-6")}>
+                <div className={cn("px-6 pb-8", !experimentalDesign && "pt-2")}>
                     {user.statusMessage && !user.isDeleted && (
                         <div className="text-center p-4 bg-muted/50 rounded-2xl mb-6">
                             <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
@@ -239,7 +246,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
             {!experimentalDesign && (
                 <div className='shrink-0 p-6 border-t flex justify-center bg-background'>
-                    <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8">
+                    <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8 w-full h-12 font-bold">
                         {t('message')}
                     </Button>
                 </div>

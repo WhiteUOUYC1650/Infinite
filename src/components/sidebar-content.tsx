@@ -630,9 +630,9 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
-  const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot';
-  const isPrem = otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge;
-  const isBetaTester = otherUser.isBetaTester;
+  const isVerified = !isSavedMessages && (otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot');
+  const isPrem = !isSavedMessages && otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge;
+  const isBetaTester = !isSavedMessages && otherUser.isBetaTester;
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
   const lastMessage = item.lastMessage;

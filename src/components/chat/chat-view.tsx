@@ -1529,6 +1529,8 @@ const handleSendPoll = async (poll: Poll) => {
 
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
+  const isSavedMessagesChat = item.type === 'dm' && item.id === currentUser.uid;
+
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       
@@ -1599,11 +1601,15 @@ const handleSendPoll = async (poll: Poll) => {
                         onClick={() => setProfileDialogUser(otherUser)}
                         disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
                     >
-                        <UserAvatarWithStatus user={otherUser} isSavedMessages={otherUser.id === currentUser.uid} />
+                        <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessagesChat} />
                         <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
-                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : (otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge) ? <PremBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
+                                {!isSavedMessagesChat && (
+                                    <>
+                                        {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : (otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge) ? <PremBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
+                                    </>
+                                )}
                             </div>
                             {otherUser.id !== currentUser.uid && (
                                 <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
@@ -2001,7 +2007,7 @@ const handleSendPoll = async (poll: Poll) => {
 
       {previewImage && (
           <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
-              <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90">
+              <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90" hideCloseButton={false}>
                   <div className="relative w-full h-full flex items-center justify-center">
                       <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" />
                   </div>
@@ -2125,7 +2131,7 @@ function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpen
     );
 }
 
-function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: string, isMusic?: boolean, duration?: number, fileName?: string }) {
+function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
     const { isDarkMode } = useTheme();
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -2180,7 +2186,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
     return (
         <div className={cn(
             "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all shadow-sm", 
-            isMusic ? "w-full max-w-[400px]" : "w-full max-w-[320px]",
+            isMusic ? "w-full max-w-[400px]" : "w-full max-w-[380px] min-w-[240px]",
             uiClass
         )}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
@@ -2206,9 +2212,9 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
                 )}
                 <div 
                     className={cn(
-                        "relative h-1.5 w-full rounded-full overflow-hidden cursor-pointer", 
+                        "relative h-2 w-full rounded-full overflow-hidden cursor-pointer", 
                         isMusic ? "mb-1.5" : "mb-0",
-                        isDarkMode ? "bg-black/20" : "bg-white/20"
+                        isDarkMode ? "bg-black/30" : "bg-white/30"
                     )} 
                     onClick={handleProgressClick}
                 >
@@ -2217,7 +2223,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                {isMusic && (
+                {isMusic && !hideTime && (
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80 mt-1.5">
                         <span>{formatTime(currentTime)}</span>
                         <span>{formatTime(maxTime)}</span>
@@ -2634,7 +2640,7 @@ function ChatMessage({
                                     <Loader2 className="h-4 w-4 animate-spin text-white opacity-50" />
                                 </div>
                             ) : (
-                                <CustomAudioPlayer src={voiceUrl} />
+                                <CustomAudioPlayer src={voiceUrl} hideTime={true} />
                             )}
                         </div>
                     ) : message.circleStatus === 'complete' ? (
