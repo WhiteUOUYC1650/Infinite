@@ -56,6 +56,7 @@ import { FaqDialog } from '../faq-dialog';
 import { Badge } from '../ui/badge';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
+import { PremBadge } from '../ui/prem-badge';
 import { BetaBadge } from '../ui/beta-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile } from '@/lib/cache-utils';
@@ -1602,7 +1603,7 @@ const handleSendPoll = async (poll: Poll) => {
                         <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
-                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
+                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : otherUser.subscriptionTier === 'prem' ? <PremBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
                             </div>
                             {otherUser.id !== currentUser.uid && (
                                 <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
@@ -2003,9 +2004,6 @@ const handleSendPoll = async (poll: Poll) => {
               <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90">
                   <div className="relative w-full h-full flex items-center justify-center">
                       <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" />
-                      <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20" onClick={() => setPreviewImage(null)}>
-                          <X className="h-6 w-6" />
-                      </Button>
                   </div>
               </DialogContent>
           </Dialog>
@@ -2556,6 +2554,7 @@ function ChatMessage({
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
     const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
+    const isPrem = displaySender && !displaySender.isDeleted && displaySender.subscriptionTier === 'prem';
     const isBetaTester = displaySender && !displaySender.isDeleted && displaySender.isBetaTester;
 
     const renderLink = ({ href, children, ...props }: any) => {
@@ -2617,8 +2616,7 @@ function ChatMessage({
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && !isCircle && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
-                        {isVerified && <VerifiedBadge className='shrink-0' />}
-                        {isBetaTester && !isVerified && <BetaBadge className='shrink-0' />}
+                        {isVerified ? <VerifiedBadge className='shrink-0' /> : isPrem ? <PremBadge className='shrink-0' /> : isBetaTester ? <BetaBadge className='shrink-0' /> : null}
                         {isFromChannel ? <Badge variant="secondary" className='shrink-0'>{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary" className='shrink-0'>BOT</Badge>)}
                     </div>
                 )}

@@ -37,6 +37,7 @@ import { useTheme } from '@/context/theme-context';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { Skeleton } from './ui/skeleton';
 import { VerifiedBadge } from './ui/verified-badge';
+import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
@@ -545,7 +546,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                   experimentalDesign && "bg-background/50 backdrop-blur-md border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
-                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester }} />
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier }} />
                     )}
                     <div className="flex-1 truncate">
                     <p className="font-bold text-sm leading-tight">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
@@ -630,6 +631,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot';
+  const isPrem = otherUser.subscriptionTier === 'prem';
   const isBetaTester = otherUser.isBetaTester;
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
@@ -671,8 +673,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                     <div className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
                         {displayName}
                     </div>
-                    {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
-                    {isBetaTester && !isVerified && <BetaBadge className="w-4 h-4 shrink-0" />}
+                    {isVerified ? <VerifiedBadge className="w-4 h-4 shrink-0" /> : isPrem ? <PremBadge className="w-4 h-4 shrink-0" /> : isBetaTester ? <BetaBadge className="w-4 h-4 shrink-0" /> : null}
                 </div>
                 {lastMessageContent && 
                     <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>

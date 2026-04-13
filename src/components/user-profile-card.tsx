@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
 import { Button } from './ui/button';
 import { VerifiedBadge } from './ui/verified-badge';
+import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Badge } from './ui/badge';
@@ -56,8 +57,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
               {displayName}
-              {user.isAdmin && <VerifiedBadge />}
-              {user.isBetaTester && !user.isAdmin && <BetaBadge />}
+              {user.isAdmin ? <VerifiedBadge /> : user.subscriptionTier === 'prem' ? <PremBadge /> : user.isBetaTester ? <BetaBadge /> : null}
             </h2>
             <p className="text-muted-foreground text-sm font-medium">{displayUsername}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{getStatusText(user)}</p>
@@ -102,8 +102,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                 <h2 className="text-xl font-bold font-headline">
                     {displayName}
                 </h2>
-                {user.isAdmin && <VerifiedBadge />}
-                {user.isBetaTester && !user.isAdmin && <BetaBadge />}
+                {user.isAdmin ? <VerifiedBadge /> : user.subscriptionTier === 'prem' ? <PremBadge /> : user.isBetaTester ? <BetaBadge /> : null}
             </div>
 
             {user.isBot ? (
