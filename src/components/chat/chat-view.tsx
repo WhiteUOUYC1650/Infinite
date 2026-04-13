@@ -45,6 +45,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -224,12 +225,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: true });
 
     const timeout = setTimeout(() => {
-        updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: false });
+        updateDoc(typingStatusRef, { [`typingStatus.${currentUser.uid}`]: false });
     }, 3000);
+
+    const typingStatusRef = doc(db, 'chats', item.id);
 
     return () => {
         clearTimeout(timeout);
-        updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
+        updateDoc(typingStatusRef, { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
     };
   }, [messageContent, db, isMember, item.id, item.type, currentUser.uid]);
 
@@ -1847,7 +1850,7 @@ const handleSendPoll = async (poll: Poll) => {
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0 h-[38px]">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button type="button" variant="ghost" size="icon" className="shrink-0 h-9 w-9">
                                 <Paperclip className="h-5 w-5" />
