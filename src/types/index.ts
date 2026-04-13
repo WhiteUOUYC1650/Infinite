@@ -19,6 +19,7 @@ export type User = {
   isDeleted?: boolean;
   infGoldBalance?: number;
   subscriptionTier?: 'none' | 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
+  showPremBadge?: boolean;
   lastDailyBonusClaimed?: Timestamp;
   loginProtectionEnabled?: boolean;
   storyExpirationDuration?: number; // in hours, 0 for never

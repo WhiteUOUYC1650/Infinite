@@ -1603,7 +1603,7 @@ const handleSendPoll = async (poll: Poll) => {
                         <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 min-w-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
-                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : otherUser.subscriptionTier === 'prem' ? <PremBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
+                                {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : (otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge) ? <PremBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
                             </div>
                             {otherUser.id !== currentUser.uid && (
                                 <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
@@ -2554,7 +2554,7 @@ function ChatMessage({
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
     const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
-    const isPrem = displaySender && !displaySender.isDeleted && displaySender.subscriptionTier === 'prem';
+    const isPrem = displaySender && !displaySender.isDeleted && displaySender.subscriptionTier === 'prem' && displaySender.showPremBadge;
     const isBetaTester = displaySender && !displaySender.isDeleted && displaySender.isBetaTester;
 
     const renderLink = ({ href, children, ...props }: any) => {

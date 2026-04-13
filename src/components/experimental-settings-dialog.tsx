@@ -121,6 +121,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isPasswordSet, setIsPasswordSet] = useState(false);
   const [showCloudPasswordDialog, setShowCloudPasswordDialog] = useState(false);
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
+  const [isUpdatingPrem, setIsUpdatingPrem] = useState(false);
   
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
@@ -277,6 +278,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
+  const handleTogglePremBadge = async (enabled: boolean) => {
+    if (!db || !currentUser.uid) return;
+    setIsUpdatingPrem(true);
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, { showPremBadge: enabled });
+        toast({ title: t('dm_success'), description: t('profile_update_success') });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update badge settings.' });
+    } finally {
+        setIsUpdatingPrem(false);
+    }
+  }
+
   const handleUpdateStoryExpiration = async (duration: string) => {
     if (!db || !currentUser.uid) return;
     setIsUpdatingPrivacy(true);
@@ -427,6 +443,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     { question: t('faq_prem_q'), answer: t('faq_prem_a') },
     { question: t('faq_bot_q'), answer: t('faq_bot_a') },
     { question: t('faq_security_q'), answer: t('faq_security_a') },
+    { question: t('faq_poll_q'), answer: t('faq_poll_a') },
+    { question: t('faq_story_q'), answer: t('faq_story_a') },
+    { question: t('faq_transfer_q'), answer: t('faq_transfer_a') },
   ];
 
   const ExperimentalProfileHeader = () => (
@@ -806,6 +825,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <div className="border-t">
           <SettingsItem icon={Crown} label={t('infinite_prem')} onClick={() => navigateTo('prem')} />
           <SettingsItem icon={Gift} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} />
+          {hasPremAccess && (
+              <SettingsSwitchItem 
+                id="prem-badge-switch" 
+                label={t('show_prem_badge')} 
+                checked={currentUser.showPremBadge ?? false} 
+                onCheckedChange={handleTogglePremBadge}
+                disabled={isUpdatingPrem}
+              />
+          )}
         </div>
       </>
   );
@@ -879,16 +907,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <p className="text-muted-foreground">{t('whats_new_infgames_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_stories_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_stories_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_transfers_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_transfers_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_holidays_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_holidays_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_polls_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_polls_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_call_notifs_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_call_notifs_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_bugfixes_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_bugfixes_desc')}</p>
         </div>
       </div>
     </div>

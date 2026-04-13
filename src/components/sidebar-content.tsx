@@ -546,7 +546,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                   experimentalDesign && "bg-background/50 backdrop-blur-md border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
-                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier }} />
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} />
                     )}
                     <div className="flex-1 truncate">
                     <p className="font-bold text-sm leading-tight">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
@@ -631,7 +631,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const isVerified = otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot';
-  const isPrem = otherUser.subscriptionTier === 'prem';
+  const isPrem = otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge;
   const isBetaTester = otherUser.isBetaTester;
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   

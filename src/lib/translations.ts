@@ -1,5 +1,4 @@
 
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -474,6 +473,7 @@ export const translations = {
       'poll_total_votes': 'Total votes: {count}',
       'poll_view_results': 'View Results',
       'poll_retract_vote': 'Retract Vote',
+      'show_prem_badge': 'Show Premium Badge',
     },
     ru: {
       'settings': 'Настройки',
@@ -901,10 +901,10 @@ export const translations = {
       'story_expiration_label': 'Автоудаление историй',
       'story_expiration_desc': 'Выберите, через какое время ваши истории будут удалены.',
       'story_expiration_never': 'Не удалять',
-      'story_expiration_12 часов': '12 часов',
-      'story_expiration_24 часа': '24 часа',
-      'story_expiration_48 часов': '48 часов',
-      'story_expiration_72 часа': '72 часа',
+      'story_expiration_12h': '12 часов',
+      'story_expiration_24h': '24 часа',
+      'story_expiration_48h': '48 часов',
+      'story_expiration_72h': '72 часа',
       'answers_button': 'Ответы',
       'infvid_views': '{count, plural, one {# просмотр} few {# просмотра} other {# просмотров}}',
       'subscribe_prompt_title': 'Будьте в курсе!',
@@ -922,8 +922,6 @@ export const translations = {
       'claim_gold': 'Забрать золото',
       'game_gold_clicker': 'InfGold Кликер',
       'game_gold_clicker_desc': 'Кликайте, чтобы заработать золото! Каждые 100 000 кликов = 1 InfGold.',
-      'whats_new_infgames_title': 'Платформа InfGames',
-      'whats_new_infgames_desc': 'Развлекайтесь прямо в Infinite! Зарабатывайте реальное золото InfGold, просто играя в мини-игры.',
       'game_upgrade_click_power': 'Прокачать клик',
       'game_upgrade_cost': 'Цена: {cost} кликов',
       'game_click_power': 'Сила клика: {power}',
@@ -948,6 +946,7 @@ export const translations = {
       'poll_total_votes': 'Всего голосов: {count}',
       'poll_view_results': 'Посмотреть результаты',
       'poll_retract_vote': 'Отменить голос',
+      'show_prem_badge': 'Показывать значок Premium',
     }
   };
 
