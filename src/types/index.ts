@@ -35,6 +35,18 @@ export type ReplyInfo = {
     senderName: string;
 };
 
+export type PollOption = {
+  text: string;
+  votes: string[]; // user IDs
+};
+
+export type Poll = {
+  question: string;
+  options: PollOption[];
+  isAnonymous: boolean;
+  isMultipleChoice: boolean;
+};
+
 export type Message = {
   id:string;
   senderId: string;
@@ -68,6 +80,7 @@ export type Message = {
   replyTo?: ReplyInfo;
   editedAt?: Timestamp;
   reactions?: Record<string, string[]>; // emoji -> array of user IDs
+  poll?: Poll;
 };
 
 export type VideoChunk = {

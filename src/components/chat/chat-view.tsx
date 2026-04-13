@@ -4,12 +4,12 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut } from 'lucide-react';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, Poll } from '@/types';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2 } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField, getDocs, runTransaction } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -58,6 +58,9 @@ import { VerifiedBadge } from '../ui/verified-badge';
 import { BetaBadge } from '../ui/beta-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile } from '@/lib/cache-utils';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
 
 export const COMMON_EMOJIS = [
     '👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', 
@@ -148,6 +151,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
+  const [showNewPoll, setShowNewPoll] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
@@ -261,6 +265,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (m.reactions) {
             Object.values(m.reactions).flat().forEach(uid => {
               if (typeof uid === 'string') ids.add(uid);
+            });
+        }
+        if (m.poll?.options) {
+            m.poll.options.forEach(opt => {
+                opt.votes.forEach(uid => ids.add(uid));
             });
         }
     });
@@ -1049,6 +1058,40 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         throw new FirestorePermissionError({ path: 'fileChunks', operation: 'create', requestResourceData: { note: "File chunk upload failed.", originalError: (error as Error).message } });
     }
 };
+
+const handleSendPoll = async (poll: Poll) => {
+    if (!db) return;
+    try {
+        const timestamp = Timestamp.now();
+        const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
+        const chatRef = doc(db, 'chats', item.id);
+        
+        const messageData = {
+            senderId: currentUser.uid,
+            content: '',
+            timestamp,
+            readBy: [],
+            poll: poll,
+        };
+
+        const lastMessageData = {
+            id: messageRef.id,
+            content: `📊 ${poll.question}`,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
+            timestamp,
+        };
+
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+        batch.update(chatRef, { lastMessage: lastMessageData });
+        await batch.commit();
+        setShowNewPoll(false);
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create poll.' });
+    }
+};
   
   const handleReply = (message: Message) => {
     setReplyToMessage(message);
@@ -1184,7 +1227,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     }
   };
   
-  const handleAttachmentClick = (type: 'image' | 'video' | 'music' | 'file') => {
+  const handleAttachmentClick = (type: 'image' | 'video' | 'music' | 'file' | 'poll') => {
+    if (type === 'poll') {
+        setShowNewPoll(true);
+        return;
+    }
     if (fileInputRef.current) {
         if (type === 'image') fileInputRef.current.accept = 'image/*';
         else if (type === 'video') fileInputRef.current.accept = 'video/*';
@@ -1822,6 +1869,9 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                             <DropdownMenuItem onSelect={() => handleAttachmentClick('file')}>
                                 <FileIcon className="mr-2 h-4 w-4" /> {t('file')}
                             </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAttachmentClick('poll')}>
+                                <ListTodo className="mr-2 h-4 w-4" /> {t('poll')}
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     
@@ -1959,8 +2009,119 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
       )}
 
       <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
+
+      <NewPollDialog 
+        open={showNewPoll} 
+        onOpenChange={setShowNewPoll} 
+        onSubmit={handleSendPoll} 
+      />
     </div>
   );
+}
+
+function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpenChange: (v: boolean) => void, onSubmit: (poll: Poll) => void }) {
+    const { t } = useLanguage();
+    const [question, setQuestion] = useState('');
+    const [options, setOptions] = useState(['', '']);
+    const [isAnonymous, setIsAnonymous] = useState(true);
+    const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+
+    const handleAddOption = () => {
+        if (options.length < 10) setOptions([...options, '']);
+    };
+
+    const handleRemoveOption = (index: number) => {
+        if (options.length > 2) {
+            const newOptions = [...options];
+            newOptions.splice(index, 1);
+            setOptions(newOptions);
+        }
+    };
+
+    const handleOptionChange = (index: number, value: string) => {
+        const newOptions = [...options];
+        newOptions[index] = value;
+        setOptions(newOptions);
+    };
+
+    const handleCreate = () => {
+        const validOptions = options.filter(opt => opt.trim() !== '');
+        if (question.trim() && validOptions.length >= 2) {
+            onSubmit({
+                question: question.trim(),
+                options: validOptions.map(text => ({ text, votes: [] })),
+                isAnonymous,
+                isMultipleChoice,
+            });
+            // Reset state
+            setQuestion('');
+            setOptions(['', '']);
+            setIsAnonymous(true);
+            setIsMultipleChoice(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0 gap-0">
+                <div className="bg-primary/5 p-6 border-b">
+                    <DialogTitle className="text-xl font-bold font-headline">{t('create_poll')}</DialogTitle>
+                </div>
+                <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('poll_question_label')}</Label>
+                        <Input 
+                            value={question} 
+                            onChange={e => setQuestion(e.target.value)} 
+                            placeholder={t('poll_question_placeholder')} 
+                            className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">ВАРИАНТЫ ОТВЕТА</Label>
+                        {options.map((opt, i) => (
+                            <div key={i} className="flex gap-2">
+                                <Input 
+                                    value={opt} 
+                                    onChange={e => handleOptionChange(i, e.target.value)} 
+                                    placeholder={`${t('poll_option_placeholder')}...`} 
+                                    className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary"
+                                />
+                                {options.length > 2 && (
+                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(i)} className="shrink-0 rounded-xl">
+                                        <Minus className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                        {options.length < 10 && (
+                            <Button variant="outline" onClick={handleAddOption} className="w-full rounded-xl border-dashed border-primary/30 text-primary hover:bg-primary/5">
+                                <Plus className="mr-2 h-4 w-4" /> {t('poll_add_option')}
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="anon-poll" className="cursor-pointer">{t('poll_anonymous_label')}</Label>
+                            <Switch id="anon-poll" checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="multi-poll" className="cursor-pointer">{t('poll_multiple_choice_label')}</Label>
+                            <Switch id="multi-poll" checked={isMultipleChoice} onCheckedChange={setIsMultipleChoice} />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="p-6 pt-0 gap-2">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl flex-1">{t('cancel')}</Button>
+                    <Button onClick={handleCreate} disabled={!question.trim() || options.filter(o => o.trim() !== '').length < 2} className="rounded-xl flex-[2] font-bold">
+                        {t('create_channel')}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 function CustomAudioPlayer({ src, isMusic = false, duration, fileName }: { src: string, isMusic?: boolean, duration?: number, fileName?: string }) {
@@ -2341,6 +2502,46 @@ function ChatMessage({
         }
     };
 
+    const handleVote = async (optionIndex: number) => {
+        if (!db || !message.poll) return;
+        const msgRef = doc(db, 'chats', chat.id, 'messages', message.id);
+        
+        try {
+            await runTransaction(db, async (transaction) => {
+                const snap = await transaction.get(msgRef);
+                if (!snap.exists()) return;
+                
+                const currentPoll = snap.data().poll as Poll;
+                const newOptions = [...currentPoll.options];
+                const userId = currentUser.uid;
+
+                if (currentPoll.isMultipleChoice) {
+                    const isVoted = newOptions[optionIndex].votes.includes(userId);
+                    if (isVoted) {
+                        newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
+                    } else {
+                        newOptions[optionIndex].votes.push(userId);
+                    }
+                } else {
+                    // Check if already voted for this option
+                    const alreadyVotedIndex = newOptions.findIndex(o => o.votes.includes(userId));
+                    if (alreadyVotedIndex === optionIndex) {
+                        newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
+                    } else {
+                        // Remove from old and add to new
+                        if (alreadyVotedIndex !== -1) {
+                            newOptions[alreadyVotedIndex].votes = newOptions[alreadyVotedIndex].votes.filter(id => id !== userId);
+                        }
+                        newOptions[optionIndex].votes.push(userId);
+                    }
+                }
+                transaction.update(msgRef, { poll: { ...currentPoll, options: newOptions } });
+            });
+        } catch (e) {
+            console.error("Vote failed", e);
+        }
+    };
+
     const messageDate = getSafeDate(message.timestamp);
     const timestamp = format(messageDate, 'HH:mm');
     
@@ -2406,7 +2607,7 @@ function ChatMessage({
                 isCircle 
                     ? "p-0 bg-transparent rounded-full shadow-none border-none ring-0 overflow-visible" 
                     : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-3 rounded-br-none max-w-[min(480px,calc(100%-4rem))]" : "bg-card text-card-foreground rounded-lg p-3 rounded-bl-none max-w-[min(480px,calc(100%-4rem))]"), 
-                ((hasMusic || hasGenericFile) && !message.content.trim()) && "min-w-64"
+                ((hasMusic || hasGenericFile || message.poll) && !message.content.trim()) && "min-w-64"
             )}
             style={isCircle ? { boxShadow: 'none', background: 'transparent', filter: 'none' } : undefined}
             >
@@ -2532,6 +2733,8 @@ function ChatMessage({
                                 <Maximize2 className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" />
                             </div>
                         </div>
+                    ) : message.poll ? (
+                        <PollDisplay poll={message.poll} onVote={handleVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />
                     ) : null}
                     {message.content && !isCircle && (
                         <div className={cn("text-sm break-words prose prose-sm max-w-none", alignRight ? "prose-invert text-white" : "dark:prose-invert")}>
@@ -2614,6 +2817,73 @@ function ChatMessage({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+        </div>
+    );
+}
+
+function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }: { poll: Poll, onVote: (i: number) => void, currentUserId: string, alignRight: boolean, memberDetails: Record<string, User> }) {
+    const { t } = useLanguage();
+    const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
+    const hasVoted = poll.options.some(opt => opt.votes.includes(currentUserId));
+
+    return (
+        <div className="space-y-4 py-2 min-w-[240px]">
+            <h4 className="font-bold text-base leading-tight break-words">{poll.question}</h4>
+            <div className="space-y-2">
+                {poll.options.map((option, i) => {
+                    const isSelected = option.votes.includes(currentUserId);
+                    const percentage = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
+                    
+                    return (
+                        <button 
+                            key={i} 
+                            onClick={() => onVote(i)}
+                            className={cn(
+                                "w-full text-left relative overflow-hidden rounded-xl h-11 transition-all active:scale-[0.98]",
+                                alignRight ? "bg-white/10 hover:bg-white/20" : "bg-muted/50 hover:bg-muted"
+                            )}
+                        >
+                            {/* Fill background */}
+                            <div 
+                                className={cn(
+                                    "absolute inset-y-0 left-0 transition-all duration-1000",
+                                    alignRight ? "bg-white/20" : "bg-primary/20"
+                                )}
+                                style={{ width: hasVoted ? `${percentage}%` : '0%' }}
+                            />
+                            
+                            <div className="relative h-full flex items-center px-3 justify-between gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {hasVoted ? (
+                                        isSelected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <div className="w-4" />
+                                    ) : null}
+                                    <span className="text-sm font-medium truncate">{option.text}</span>
+                                </div>
+                                {hasVoted && (
+                                    <span className="text-xs font-bold opacity-70 shrink-0">{percentage}%</span>
+                                )}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+            
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest opacity-60">
+                <span>{t('poll_total_votes', { count: totalVotes })}</span>
+                {poll.isAnonymous ? <span>{t('poll_anonymous_label')}</span> : null}
+            </div>
+
+            {!poll.isAnonymous && hasVoted && (
+                <div className="flex -space-x-2 overflow-hidden py-1">
+                    {poll.options.flatMap(o => o.votes).slice(0, 8).map(uid => (
+                        <Avatar key={uid} className="w-5 h-5 border-2 border-background">
+                            <AvatarImage src={memberDetails[uid]?.avatar} />
+                            <AvatarFallback className="text-[6px]">{memberDetails[uid]?.name?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                    {totalVotes > 8 && <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[8px] border-2 border-background">+{totalVotes - 8}</div>}
+                </div>
+            )}
         </div>
     );
 }
