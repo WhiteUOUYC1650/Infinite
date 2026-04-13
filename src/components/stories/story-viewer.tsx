@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -163,7 +164,7 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             <img 
               src={currentStory.mediaUrl} 
               alt="Story" 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
             {currentStory.caption && (
               <div className="absolute bottom-0 left-0 right-0 p-8 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-black/90 via-black/40 to-transparent text-center z-[215]">

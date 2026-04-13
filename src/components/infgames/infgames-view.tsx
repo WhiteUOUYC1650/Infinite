@@ -61,10 +61,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
         </div>
         
         <div className="flex items-center gap-2">
-            <div className="bg-primary/10 px-3 py-1.5 rounded-full flex items-center gap-2 border border-primary/20">
-                <InfGoldIcon className="w-4 h-4" />
-                <span className="font-bold text-sm">{Math.round(currentUser.infGoldBalance || 0)}</span>
-            </div>
+            {/* Gold balance is now only in the footer as requested */}
         </div>
       </header>
 
@@ -97,8 +94,8 @@ function GameCard({ title, description, icon: Icon, color, onClick }: { title: s
                 <Icon className="h-8 w-8" />
             </div>
             <div className="space-y-1">
-                <h3 className="text-xl font-bold font-headline whitespace-normal leading-tight">{title}</h3>
-                <p className="text-sm text-muted-foreground whitespace-normal leading-relaxed">{description}</p>
+                <h3 className="text-xl font-bold font-headline whitespace-normal leading-tight break-words">{title}</h3>
+                <p className="text-sm text-muted-foreground whitespace-normal leading-relaxed break-words">{description}</p>
             </div>
             <Button className="w-full mt-auto rounded-2xl font-bold bg-primary group-hover:scale-105 transition-transform">
                 {t('play')}
@@ -112,6 +109,9 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const db = useFirestore();
     const { toast } = useToast();
     
+    // Config: 100,000 clicks = 1 InfGold
+    const CLICKS_PER_GOLD = 100000;
+
     const [score, setScore] = useState(0);
     const [clickPower, setClickPower] = useState(1);
     const [upgradeCost, setUpgradeCost] = useState(100);
@@ -148,8 +148,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
         if (lastClickTimeRef.current > 0) {
             const interval = now - lastClickTimeRef.current;
             
-            // Adaptive CPS threshold: Base 25ms (~40 CPS), scales with click power
-            // If user is clicking physically too fast consistently
             if (clientX === lastClickPosRef.current.x && clientY === lastClickPosRef.current.y) {
                 identicalPosCountRef.current += 1;
                 if (identicalPosCountRef.current > 15) {
@@ -166,8 +164,7 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                 const variance = recentIntervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / 20;
                 
                 // Human variance is usually > 2.0. Bots are very precise.
-                // We increase tolerance slightly as click power increases
-                const varianceThreshold = 1.2 / clickPower; 
+                const varianceThreshold = 1.2 / Math.log2(clickPower + 1); 
                 if (variance < varianceThreshold) { 
                     setIsCheating(true);
                 }
@@ -182,9 +179,10 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const handleUpgrade = () => {
         if (score >= upgradeCost) {
             setScore(prev => prev - upgradeCost);
-            setClickPower(prev => prev * 2);
-            setUpgradeCost(prev => prev * 2);
-            toast({ title: t('dm_success'), description: t('game_click_power', { power: clickPower * 2 }) });
+            // New logic: +1 to power, 1.25x to cost
+            setClickPower(prev => prev + 1);
+            setUpgradeCost(prev => Math.round(prev * 1.25));
+            toast({ title: t('dm_success'), description: t('game_click_power', { power: clickPower + 1 }) });
         }
     };
 
@@ -197,7 +195,7 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
             return;
         }
         
-        const reward = Math.floor(score / 1000);
+        const reward = Math.floor(score / CLICKS_PER_GOLD);
         
         setIsSaving(true);
         try {
@@ -216,8 +214,8 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
         }
     };
 
-    const nextGoldProgress = (score % 1000) / 10;
-    const earnedGold = Math.floor(score / 1000);
+    const nextGoldProgress = (score % CLICKS_PER_GOLD) / (CLICKS_PER_GOLD / 100);
+    const earnedGold = Math.floor(score / CLICKS_PER_GOLD);
 
     return (
         <div className="max-w-md mx-auto flex flex-col items-center gap-6 py-4 animate-in fade-in zoom-in duration-300">
@@ -243,21 +241,21 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                         <div className="flex justify-between items-end">
                             <div className="space-y-1">
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('inf_gold_balance')}</p>
-                                <div className="flex items-center gap-2 text-3xl font-black">
+                                <div className="flex items-center gap-2 text-3xl font-black text-primary">
                                     <InfGoldIcon className="w-6 h-6" />
                                     <span>{earnedGold}</span>
                                 </div>
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">ОЧКИ</p>
-                                <p className="text-xl font-bold font-mono">{score}</p>
+                                <p className="text-xl font-bold font-mono">{score.toLocaleString()}</p>
                             </div>
                         </div>
                         
                         <div className="space-y-2">
                             <div className="flex justify-between text-[10px] font-bold uppercase">
                                 <span>До следующего Gold</span>
-                                <span>{score % 1000} / 1000</span>
+                                <span>{(score % CLICKS_PER_GOLD).toLocaleString()} / {CLICKS_PER_GOLD.toLocaleString()}</span>
                             </div>
                             <Progress value={nextGoldProgress} className="h-2" />
                         </div>
@@ -274,7 +272,7 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                                 onClick={handleUpgrade}
                                 disabled={score < upgradeCost}
                             >
-                                {t('game_upgrade_click_power')} ({upgradeCost})
+                                {t('game_upgrade_click_power')} ({upgradeCost.toLocaleString()})
                             </Button>
                         </div>
                     </div>
