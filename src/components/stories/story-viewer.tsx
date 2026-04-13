@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Story, User, AuthenticatedUser } from '@/types';
-import { X, Trash2, Copy, Download, MoreVertical, Clock } from 'lucide-react';
+import { X, Trash2, Copy, Download, MoreVertical, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
@@ -247,6 +247,14 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Views Count */}
+        <div className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-8 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-[230]">
+          <Eye className="w-4 h-4 text-white" />
+          <span className="text-white text-xs font-bold">
+            {currentStory.viewedBy?.length || 0}
+          </span>
         </div>
 
         {/* Navigation Touch Zones */}

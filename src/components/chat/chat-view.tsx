@@ -1668,7 +1668,7 @@ const handleSendPoll = async (poll: Poll) => {
             )}
             
             {item.id !== 'GENERAL_CHAT' && (
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
                     </DropdownMenuTrigger>
@@ -2119,7 +2119,7 @@ function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpen
                 <DialogFooter className="p-6 pt-0 gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl flex-1">{t('cancel')}</Button>
                     <Button onClick={handleCreate} disabled={!question.trim() || options.filter(o => o.trim() !== '').length < 2} className="rounded-xl flex-[2] font-bold">
-                        {t('create_channel')}
+                        {t('create_poll')}
                     </Button>
                 </DialogFooter>
             </DialogContent>
