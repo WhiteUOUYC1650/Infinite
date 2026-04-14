@@ -784,7 +784,8 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: 'is_channel_message'
+                senderAvatar: item.avatar || 'is_channel_message',
+                fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
             batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
@@ -848,7 +849,8 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: 'is_channel_message'
+                senderAvatar: item.avatar || 'is_channel_message',
+                fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
             batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
@@ -937,7 +939,8 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: 'is_channel_message'
+                senderAvatar: item.avatar || 'is_channel_message',
+                fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
             batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
@@ -1027,7 +1030,8 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: 'is_channel_message'
+                senderAvatar: item.avatar || 'is_channel_message',
+                fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
             batch.update(discChatRef, { lastMessage: { ...forwardedMsg, id: discMsgRef.id } });
@@ -1766,6 +1770,7 @@ const handleSendPoll = async (poll: Poll) => {
                                           localMediaUrl={localMediaCache[message.id]}
                                           onPreviewImage={setPreviewImage}
                                           memberDetails={memberDetails}
+                                          onSelectChat={onSelectChat}
                                       />
                                   </React.Fragment>
                               );
@@ -2247,6 +2252,7 @@ function ChatMessage({
     localMediaUrl,
     onPreviewImage,
     memberDetails,
+    onSelectChat,
 }: { 
     message: Message, 
     sender?: User, 
@@ -2262,6 +2268,7 @@ function ChatMessage({
     localMediaUrl?: string;
     onPreviewImage: (url: string) => void;
     memberDetails: Record<string, User>;
+    onSelectChat: (chat: PopulatedChat) => void;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -2447,7 +2454,29 @@ function ChatMessage({
         return false;
     }, [message.readBy, chat.type, currentUser.uid, otherUserId, isCurrentUser]);
 
+    const handleOpenChannelById = async (id: string) => {
+        if (!db || !onSelectChat) return;
+        try {
+            const chatSnap = await getDoc(doc(db, 'chats', id));
+            if (chatSnap.exists()) {
+                const chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+                const iconName = chatData.icon as any;
+                const populatedChat: PopulatedChat = {
+                    ...chatData,
+                    iconComponent: iconName ? (iconMap as any)[iconName] : undefined,
+                };
+                onSelectChat(populatedChat);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const handleAvatarClick = () => {
+        if (isFromChannel && message.fromChannelId) {
+            handleOpenChannelById(message.fromChannelId);
+            return;
+        }
         if (fromBot || (sender && sender.isDeleted)) return;
         if (sender && !isCurrentUser) onAvatarClick(sender);
     };
@@ -2549,7 +2578,7 @@ function ChatMessage({
     const timestamp = format(messageDate, 'HH:mm');
     
     const fromBot = message.type === 'announcement';
-    const isFromChannel = fromBot && message.senderAvatar === 'is_channel_message';
+    const isFromChannel = fromBot && (message.senderAvatar === 'is_channel_message' || !!message.fromChannelId);
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
     const botUser: User | undefined = fromBot ? { id: 'INFINITE_BOT', name: message.senderName || 'Infinite', username: '@InfiniteBot', avatar: message.senderAvatar, status: 'online', isBot: true } : undefined;
@@ -2599,8 +2628,15 @@ function ChatMessage({
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
-                        <button onClick={handleAvatarClick} disabled={isCurrentUser || fromBot || !!displaySender.isDeleted}>
-                           {isFromChannel ? <Avatar className="h-10 w-10"><div className="flex h-full w-full items-center justify-center rounded-full bg-secondary"><Megaphone className="h-5 w-5 text-secondary-foreground" /></div></Avatar> : <UserAvatarWithStatus user={displaySender} />}
+                        <button onClick={handleAvatarClick} disabled={isCurrentUser || (fromBot && !message.fromChannelId) || (displaySender && !!displaySender.isDeleted)}>
+                           {isFromChannel ? (
+                                <Avatar className="h-10 w-10">
+                                    {message.senderAvatar && message.senderAvatar !== 'is_channel_message' && <AvatarImage src={message.senderAvatar} />}
+                                    <AvatarFallback className="bg-secondary">
+                                        <Megaphone className="h-5 w-5 text-secondary-foreground" />
+                                    </AvatarFallback>
+                                </Avatar>
+                           ) : <UserAvatarWithStatus user={displaySender} />}
                         </button>
                     ) : <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />}
                  </div>
@@ -2823,81 +2859,3 @@ function ChatMessage({
         </div>
     );
 }
-
-function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }: { poll: Poll, onVote: (i: number) => void, currentUserId: string, alignRight: boolean, memberDetails: Record<string, User> }) {
-    const { t } = useLanguage();
-    const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
-    const hasVoted = poll.options.some(opt => opt.votes.includes(currentUserId));
-
-    return (
-        <div className="space-y-4 py-2 min-w-[240px]">
-            <h4 className="font-bold text-base leading-tight break-words">{poll.question}</h4>
-            <div className="space-y-2">
-                {poll.options.map((option, i) => {
-                    const isSelected = option.votes.includes(currentUserId);
-                    const percentage = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
-                    
-                    return (
-                        <button 
-                            key={i} 
-                            onClick={() => onVote(i)}
-                            className={cn(
-                                "w-full text-left relative overflow-hidden rounded-xl h-11 transition-all active:scale-[0.98]",
-                                alignRight ? "bg-white/10 hover:bg-white/20" : "bg-muted/50 hover:bg-muted"
-                            )}
-                        >
-                            <div 
-                                className={cn(
-                                    "absolute inset-y-0 left-0 transition-all duration-1000",
-                                    alignRight ? "bg-white/20" : "bg-primary/20"
-                                )}
-                                style={{ width: hasVoted ? `${percentage}%` : '0%' }}
-                            />
-                            
-                            <div className="relative h-full flex items-center px-3 justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    {hasVoted ? (
-                                        isSelected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <div className="w-4" />
-                                    ) : null}
-                                    <span className="text-sm font-medium truncate">{option.text}</span>
-                                </div>
-                                {hasVoted && (
-                                    <span className="text-xs font-bold opacity-70 shrink-0">{percentage}%</span>
-                                )}
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
-            
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest opacity-60">
-                <span>{t('poll_total_votes', { count: totalVotes })}</span>
-                {poll.isAnonymous ? <span>{t('poll_anonymous_label')}</span> : null}
-            </div>
-
-            {!poll.isAnonymous && hasVoted && (
-                <div className="flex -space-x-2 overflow-hidden py-1">
-                    {poll.options.flatMap(o => o.votes).slice(0, 8).map(uid => (
-                        <Avatar key={uid} className="w-5 h-5 border-2 border-background">
-                            <AvatarImage src={memberDetails[uid]?.avatar} />
-                            <AvatarFallback className="text-[6px]">{memberDetails[uid]?.name?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    ))}
-                    {totalVotes > 8 && <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[8px] border-2 border-background">+{totalVotes - 8}</div>}
-                </div>
-            )}
-        </div>
-    );
-}
-
-const DropdownMenuSubTriggerContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuSubContent>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuSubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuSubContent
-    ref={ref}
-    className={cn(className)}
-    {...props}
-  />
-))
-DropdownMenuSubTriggerContent.displayName = "DropdownMenuSubTriggerContent"

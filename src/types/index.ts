@@ -82,6 +82,7 @@ export type Message = {
   editedAt?: Timestamp;
   reactions?: Record<string, string[]>; // emoji -> array of user IDs
   poll?: Poll;
+  fromChannelId?: string;
 };
 
 export type VideoChunk = {
