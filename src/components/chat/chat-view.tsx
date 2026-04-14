@@ -2581,7 +2581,16 @@ function ChatMessage({
     const isFromChannel = fromBot && (message.senderAvatar === 'is_channel_message' || !!message.fromChannelId);
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
-    const botUser: User | undefined = fromBot ? { id: 'INFINITE_BOT', name: message.senderName || 'Infinite', username: '@InfiniteBot', avatar: message.senderAvatar, status: 'online', isBot: true } : undefined;
+    
+    const botUser: User | undefined = fromBot ? { 
+        id: 'INFINITE_BOT', 
+        name: message.senderName || 'Infinite', 
+        username: (message.fromChannelId === 'GENERAL_CHAT' || message.senderName === 'Infinite' || message.senderName === 'Infinite Bot') ? '@InfiniteBot' : '@channel_bot', 
+        avatar: message.senderAvatar, 
+        status: 'online', 
+        isBot: true 
+    } : undefined;
+    
     const displaySender = fromBot ? botUser : sender;
     const displayName = displaySender?.isDeleted ? t('deleted_account') : displaySender?.name;
     const isVerified = displaySender && !displaySender.isDeleted && (displaySender.username === '@Infinite' || displaySender.username === '@InfiniteBot' || displaySender.username === '@VeoBot');
@@ -2835,7 +2844,7 @@ function ChatMessage({
                                 <SmilePlus className="mr-2 h-4 w-4" />
                                 <span>{t('reactions')}</span>
                             </DropdownMenuSubTrigger>
-                            <DropdownMenuSubTriggerContent className="flex flex-wrap max-w-[160px] p-1 gap-1">
+                            <DropdownMenuSubContent className="flex flex-wrap max-w-[160px] p-1 gap-1">
                                 {allowedReactions.map(emoji => (
                                     <button 
                                         key={emoji} 
@@ -2845,7 +2854,7 @@ function ChatMessage({
                                         {emoji}
                                     </button>
                                 ))}
-                            </DropdownMenuSubTriggerContent>
+                            </DropdownMenuSubContent>
                         </DropdownMenuSub>
                         {chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}
                         {(hasVideo || hasMusic || hasGenericFile || message.imageUrl || message.voiceStatus === 'complete' || message.circleStatus === 'complete') && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
@@ -2855,6 +2864,77 @@ function ChatMessage({
                         {canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
+            </div>
+        </div>
+    );
+}
+
+function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }: { poll: Poll, onVote: (i: number) => void, currentUserId: string, alignRight: boolean, memberDetails: Record<string, User> }) {
+    const { t } = useLanguage();
+    const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
+    
+    return (
+        <div className={cn("w-full space-y-3 p-1", alignRight ? "text-primary-foreground" : "text-card-foreground")}>
+            <div className="space-y-1">
+                <h4 className="font-bold text-base leading-tight">{poll.question}</h4>
+                <div className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest opacity-60">
+                    <span>{poll.isAnonymous ? t('poll_anonymous_label') : t('poll_view_results')}</span>
+                    {poll.isMultipleChoice && (
+                        <>
+                            <span className="w-1 h-1 rounded-full bg-current" />
+                            <span>{t('poll_multiple_choice_label')}</span>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                {poll.options.map((opt, i) => {
+                    const isVoted = opt.votes.includes(currentUserId);
+                    const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes.length / totalVotes) * 100);
+                    
+                    return (
+                        <button 
+                            key={i} 
+                            onClick={() => onVote(i)}
+                            className="w-full text-left relative group/opt overflow-hidden rounded-xl border border-current/10 transition-all active:scale-[0.98]"
+                        >
+                            <div 
+                                className={cn("absolute inset-y-0 left-0 transition-all duration-1000 ease-out", alignRight ? "bg-white/20" : "bg-primary/10")}
+                                style={{ width: `${percentage}%` }}
+                            />
+                            
+                            <div className="relative p-3 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className={cn(
+                                        "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                                        isVoted ? "bg-primary border-primary" : "border-current/20"
+                                    )}>
+                                        {isVoted && <Check className={cn("h-3 w-3", alignRight ? "text-primary" : "text-white")} strokeWidth={4} />}
+                                    </div>
+                                    <span className="text-sm font-medium truncate">{opt.text}</span>
+                                </div>
+                                <span className="text-xs font-black font-mono opacity-80">{percentage}%</span>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
+                    {t('poll_vote_count', { count: totalVotes })}
+                </p>
+                {!poll.isAnonymous && totalVotes > 0 && (
+                    <div className="flex -space-x-2 overflow-hidden">
+                        {poll.options.flatMap(o => o.votes).slice(0, 5).map(uid => (
+                            <Avatar key={uid} className="w-5 h-5 border-2 border-background ring-1 ring-current/10">
+                                <AvatarImage src={memberDetails[uid]?.avatar} />
+                                <AvatarFallback className="text-[6px]">{memberDetails[uid]?.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
