@@ -70,12 +70,11 @@ export const COMMON_EMOJIS = [
     '👀', '✅', '❌', '✨', '⚡️', '🚀', '🤝', '🤡', '💘', '🌚'
 ];
 
-// Helper to safely handle Firestore Timestamps and avoid client-side crashes
 const getSafeDate = (ts: any): Date => {
   if (ts && typeof ts.seconds === 'number') {
     return new Date(ts.seconds * 1000);
   }
-  return new Date(); // Fallback to now if timestamp is missing or pending
+  return new Date();
 };
 
 function DateSeparator({ date }: { date: string }) {
@@ -169,13 +168,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
 
-  // Management State
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
-  // Recording State
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -527,9 +524,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         const lowerHref = href.toLowerCase();
 
-        // 1. InfVid handling (/IV/V/ or /iv/v/)
         if (lowerHref.startsWith('/iv/v/')) {
-            const videoId = href.substring(6); // Extract ID regardless of prefix case
+            const videoId = href.substring(6);
             if (videoId) {
                 window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId } }));
                 return;
@@ -538,7 +534,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         let targetChat: Chat | null = null;
 
-        // 2. Username handling (@username)
         if (href.startsWith('@')) {
             const usernameRef = doc(db, 'usernames', href);
             const usernameSnap = await getDoc(usernameRef);
@@ -570,9 +565,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 return;
             }
         } 
-        // 3. Chat link handling (/G/ or /C/ case-insensitively)
         else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) {
-            // Our app stores these as uppercase /G/... or /C/... in Firestore
             const normalizedLink = (lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3);
             
             const linkRef = doc(db, 'chatLinks', encodeURIComponent(normalizedLink));
@@ -612,36 +605,43 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const originalContent = messageContent;
     const originalFile = fileToSend;
     const originalReplyTo = replyToMessage;
+    
+    // Clear state immediately for responsive feel
     setMessageContent('');
     setFileToSend(null);
     setReplyToMessage(null);
-    try {
-        if (originalFile?.type === 'video') {
-            await handleSendVideo(originalFile, originalContent, originalReplyTo);
-        } else if (originalFile?.type === 'voice') {
-            await handleSendVoice(originalFile, originalContent, originalReplyTo, recordingDuration);
-        } else if (originalFile?.type === 'circle') {
-            await handleSendCircle(originalFile, originalContent, originalReplyTo, recordingDuration);
-        } else if (originalFile?.type === 'music') {
-            await handleSendMusic(originalFile, originalContent, originalReplyTo);
-        } else if (originalFile?.type === 'file') {
-            await handleSendGenericFile(originalFile, originalContent, originalReplyTo);
-        } else {
-            await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
+
+    // Fire and forget the async sending process to allow UI to stay responsive
+    (async () => {
+        try {
+            if (originalFile?.type === 'video') {
+                await handleSendVideo(originalFile, originalContent, originalReplyTo);
+            } else if (originalFile?.type === 'voice') {
+                await handleSendVoice(originalFile, originalContent, originalReplyTo, recordingDuration);
+            } else if (originalFile?.type === 'circle') {
+                await handleSendCircle(originalFile, originalContent, originalReplyTo, recordingDuration);
+            } else if (originalFile?.type === 'music') {
+                await handleSendMusic(originalFile, originalContent, originalReplyTo);
+            } else if (originalFile?.type === 'file') {
+                await handleSendGenericFile(originalFile, originalContent, originalReplyTo);
+            } else {
+                await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            // Restore content if failed
+            setMessageContent(originalContent);
+            setFileToSend(originalFile);
+            setReplyToMessage(originalReplyTo);
+            if (error instanceof FirestorePermissionError) {
+                errorEmitter.emit('permission-error', error);
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || t('unexpected_error') });
+            }
+        } finally {
+            setIsSending(false);
         }
-    } catch (error) {
-        console.error('Error sending message:', error);
-        setMessageContent(originalContent);
-        setFileToSend(originalFile);
-        setReplyToMessage(originalReplyTo);
-        if (error instanceof FirestorePermissionError) {
-            errorEmitter.emit('permission-error', error);
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || t('unexpected_error') });
-        }
-    } finally {
-        setIsSending(false);
-    }
+    })();
 };
 
 const handleSendVoice = async (payload: {file: File, previewUrl: string}, content: string, replyTo: Message | null, duration: number) => {
@@ -684,6 +684,7 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
             const chunkRef = doc(collection(db, 'voiceChunks'));
             await setDoc(chunkRef, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
             chunkIds.push(chunkRef.id);
+            await new Promise(res => setTimeout(res, 0));
         }
         await updateDoc(messageRef, { voiceStatus: 'complete', voiceChunkIds: chunkIds });
     } catch (e) { console.error(e); }
@@ -729,6 +730,7 @@ const handleSendCircle = async (payload: {file: File, previewUrl: string}, conte
             const chunkRef = doc(collection(db, 'circleChunks'));
             await setDoc(chunkRef, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
             chunkIds.push(chunkRef.id);
+            await new Promise(res => setTimeout(res, 0));
         }
         await updateDoc(messageRef, { circleStatus: 'complete', circleChunkIds: chunkIds });
     } catch (e) { console.error(e); }
@@ -1534,7 +1536,6 @@ const handleSendPoll = async (poll: Poll) => {
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       
-      {/* Recording Overlay */}
       {(isRecordingVoice || isRecordingCircle) && (
         <div className={cn(
             "absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300",
@@ -1929,7 +1930,6 @@ const handleSendPoll = async (poll: Poll) => {
         </footer>
       )}
 
-      {/* Confirmation Dialogs */}
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader>
@@ -1975,7 +1975,6 @@ const handleSendPoll = async (poll: Poll) => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialogs */}
       {profileDialogUser && (
         <UserProfileDialog
           user={profileDialogUser}
@@ -2060,7 +2059,6 @@ function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpen
                 isAnonymous,
                 isMultipleChoice,
             });
-            // Reset state
             setQuestion('');
             setOptions(['', '']);
             setIsAnonymous(true);
@@ -2530,12 +2528,10 @@ function ChatMessage({
                         newOptions[optionIndex].votes.push(userId);
                     }
                 } else {
-                    // Check if already voted for this option
                     const alreadyVotedIndex = newOptions.findIndex(o => o.votes.includes(userId));
                     if (alreadyVotedIndex === optionIndex) {
                         newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
                     } else {
-                        // Remove from old and add to new
                         if (alreadyVotedIndex !== -1) {
                             newOptions[alreadyVotedIndex].votes = newOptions[alreadyVotedIndex].votes.filter(id => id !== userId);
                         }
@@ -2850,7 +2846,6 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }:
                                 alignRight ? "bg-white/10 hover:bg-white/20" : "bg-muted/50 hover:bg-muted"
                             )}
                         >
-                            {/* Fill background */}
                             <div 
                                 className={cn(
                                     "absolute inset-y-0 left-0 transition-all duration-1000",
@@ -2895,7 +2890,6 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }:
     );
 }
 
-// Fixed DropdownMenuSubTriggerContent name conflict and missing export
 const DropdownMenuSubTriggerContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuSubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuSubContent>

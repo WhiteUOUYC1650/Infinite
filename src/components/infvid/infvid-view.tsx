@@ -115,12 +115,10 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                 setFetchedExternalVideo(videoData);
                 setSelectedVideoId(initialVideoId);
             } else {
-                onClose();
                 toast({ variant: 'destructive', title: t('video_not_found') });
             }
         } catch (e) {
             console.error("Error loading initial video:", e);
-            onClose();
             toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
         }
     };
@@ -128,7 +126,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
     if (!videosLoading) {
         checkAndLoadVideo();
     }
-  }, [initialVideoId, db, videosLoading, videos, onClose, t, toast]);
+  }, [initialVideoId, db, videosLoading, videos, t, toast]);
 
   const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string) => {
     if (!db) return;
@@ -180,6 +178,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                 videoId: videoDocRef.id,
             });
             chunkIds.push(chunkDocRef.id);
+            // Non-blocking wait to allow UI updates
             await new Promise(res => setTimeout(res, 0));
         }
 
@@ -200,7 +199,8 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   const selectedVideo = useMemo(() => {
       if (!selectedVideoId) return null;
-      return videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null);
+      const baseVideo = videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null);
+      return baseVideo;
   }, [selectedVideoId, videos, fetchedExternalVideo]);
 
   return (
@@ -266,9 +266,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             sender={senders[selectedVideo.senderId]} 
             onClose={() => {
                 setSelectedVideoId(null);
-                if (initialVideoId === selectedVideo.id) {
-                    onClose();
-                }
+                setFetchedExternalVideo(null);
             }}
             currentUser={currentUser}
           />
@@ -326,7 +324,7 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
     );
 }
 
-function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser }) {
+function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser }) {
     const { t, language } = useLanguage();
     const db = useFirestore();
     const { toast } = useToast();
@@ -334,8 +332,9 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     const [isLoading, setIsLoading] = useState(true);
     const [commentText, setAddCommentText] = useState('');
     const [comments, setComments] = useState<VideoComment[]>([]);
+    const [video, setVideo] = useState<SharedVideo>(initialVideo);
     
-    const [likedBy, setLikedBy] = useState<string[]>(video.likedBy || []);
+    const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []);
     const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []);
     
     const viewIncremented = useRef(false);
@@ -343,12 +342,17 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
     const isLiked = likedBy.includes(currentUser.uid);
     const isSubscribed = userSubscriptions.includes(video.senderId);
 
-    // Fetch authors for comments to ensure up-to-date names/avatars
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]);
     const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
+    // Assembly Logic
     useEffect(() => {
-        if (!db || video.videoStatus !== 'complete' || !video.videoChunkIds) return;
+        if (!db || !video.videoChunkIds || video.videoStatus !== 'complete') {
+            if (video.videoStatus === 'uploading') {
+                setIsLoading(true);
+            }
+            return;
+        }
         
         const load = async () => {
             setIsLoading(true);
@@ -375,12 +379,15 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
         load();
     }, [video.id, db, video.videoStatus, video.videoChunkIds, video.videoMimeType]);
 
+    // Live Listeners
     useEffect(() => {
         if (!db) return;
         const videoRef = doc(db, 'videos', video.id);
         return onSnapshot(videoRef, (snapshot) => {
             if (snapshot.exists()) {
-                setLikedBy(snapshot.data().likedBy || []);
+                const data = { id: snapshot.id, ...snapshot.data() } as SharedVideo;
+                setVideo(data);
+                setLikedBy(data.likedBy || []);
             }
         });
     }, [db, video.id]);
@@ -497,7 +504,9 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser }: { video: Sh
                         {isLoading ? (
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-                                <p className="text-white/60 text-sm font-medium animate-pulse">Загрузка...</p>
+                                <p className="text-white/60 text-sm font-medium animate-pulse">
+                                    {video.videoStatus === 'uploading' ? t('processing_video') : t('creating')}...
+                                </p>
                             </div>
                         ) : videoUrl ? (
                             <video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />
@@ -668,7 +677,6 @@ function CommentItem({ comment, replies, currentUser, onReply, videoId, commentA
     const [showReplies, setShowReplies] = useState(false);
     const isLikedByMe = comment.likedBy?.includes(currentUser.uid);
 
-    // Use fetched author data if available, fallback to static comment data
     const author = commentAuthors[comment.userId];
     const displayName = author?.name || comment.userName;
     const displayAvatar = author?.avatar || comment.userAvatar;

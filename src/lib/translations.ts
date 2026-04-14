@@ -474,6 +474,7 @@ export const translations = {
       'poll_view_results': 'View Results',
       'poll_retract_vote': 'Retract Vote',
       'show_prem_badge': 'Show Premium Badge',
+      'likes': 'Likes: {count}',
     },
     ru: {
       'settings': 'Настройки',
@@ -947,6 +948,7 @@ export const translations = {
       'poll_view_results': 'Посмотреть результаты',
       'poll_retract_vote': 'Отменить голос',
       'show_prem_badge': 'Показывать значок Premium',
+      'likes': 'Лайки: {count}',
     }
   };
 
