@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
 import { GroupCallDialog } from './group-call-dialog';
+import { Capacitor } from '@capacitor/core';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -215,6 +216,40 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [item?.members, currentUser.uid]);
 
   const isOwner = item.ownerId === currentUser.uid;
+
+  // Global Fullscreen and Orientation logic
+  useEffect(() => {
+    const handleFullscreenChange = async () => {
+      const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      
+      if (Capacitor.isNativePlatform()) {
+        const { ScreenOrientation } = await import('@capacitor/screen-orientation');
+        try {
+          if (isFullscreen) {
+            // Unlock so user can rotate video manually
+            await ScreenOrientation.unlock();
+          } else {
+            // Restore portrait lock for non-tablet devices
+            const isTablet = window.innerWidth >= 768 || window.innerHeight >= 768;
+            if (!isTablet) {
+              await ScreenOrientation.lock({ orientation: 'portrait' });
+            } else {
+              await ScreenOrientation.unlock();
+            }
+          }
+        } catch (e) {
+          console.error("Orientation error during fullscreen change:", e);
+        }
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!db || !isMember || item.type !== 'dm' || !messageContent.trim()) return;

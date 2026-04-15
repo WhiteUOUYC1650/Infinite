@@ -20,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { enUS, ru } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { Capacitor } from '@capacitor/core';
 
 const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -178,7 +179,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                 videoId: videoDocRef.id,
             });
             chunkIds.push(chunkDocRef.id);
-            // Non-blocking wait to allow UI updates
             await new Promise(res => setTimeout(res, 0));
         }
 
@@ -413,6 +413,38 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
             }
         });
     }, [db, currentUser.uid]);
+
+    // Fullscreen Orientation Management
+    useEffect(() => {
+      const handleFullscreenChange = async () => {
+        const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+        
+        if (Capacitor.isNativePlatform()) {
+          const { ScreenOrientation } = await import('@capacitor/screen-orientation');
+          try {
+            if (isFullscreen) {
+              await ScreenOrientation.unlock();
+            } else {
+              const isTablet = window.innerWidth >= 768 || window.innerHeight >= 768;
+              if (!isTablet) {
+                await ScreenOrientation.lock({ orientation: 'portrait' });
+              } else {
+                await ScreenOrientation.unlock();
+              }
+            }
+          } catch (e) {
+            console.error("InfVid Fullscreen Orientation error:", e);
+          }
+        }
+      };
+
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+      return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      };
+    }, []);
 
     const handleAddComment = async (replyTo?: VideoComment) => {
         if (!db || !commentText.trim()) return;

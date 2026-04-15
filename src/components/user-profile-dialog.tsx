@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -131,7 +130,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none" : "rounded-lg")}>
+      <DialogContent 
+        hideCloseButton
+        className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none" : "rounded-lg")}
+      >
         <div className="flex flex-col h-full overflow-hidden relative">
             {/* Compact Sticky Header */}
             <div 

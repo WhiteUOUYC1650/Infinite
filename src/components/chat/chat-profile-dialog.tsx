@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -374,7 +373,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] max-h-[85vh]", experimentalDesign && !isEditing ? "rounded-[2rem] border-none" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] max-h-[85vh]", experimentalDesign && !isEditing ? "rounded-[2rem] border-none" : "rounded-lg")}>
         {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
