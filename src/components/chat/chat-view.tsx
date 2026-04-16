@@ -2805,8 +2805,9 @@ function ChatMessage({
     const isBetaTester = displaySender && !displaySender.isDeleted && displaySender.isBetaTester;
 
     const renderLink = ({ href, children, ...props }: any) => {
-        if (href && (href.startsWith('@') || href.startsWith('/G/') || href.startsWith('/C/') || href.startsWith('/IV/V/'))) {
-            return <a href={href} onClick={(e) => { e.preventDefault(); onInternalLinkClick(href); }} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer")} {...props}>{children}</a>;
+        const lowerHref = (href || '').toLowerCase();
+        if (href && (href.startsWith('@') || lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/') || lowerHref.startsWith('/iv/v/'))) {
+            return <a href={href} onClick={(e) => { e.preventDefault(); onInternalLinkClick(href); }} className={cn(alignRight ? "text-white" : "text-primary", "underline cursor-pointer font-bold")} {...props}>{children}</a>;
         }
         return <a href={href} target="_blank" rel="noopener noreferrer" className={cn(alignRight ? "text-white" : "text-primary", "underline")} {...props}>{children}</a>;
     };

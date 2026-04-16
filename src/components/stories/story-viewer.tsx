@@ -128,10 +128,11 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     try {
       await deleteDoc(doc(db, 'stories', currentStory.id));
       toast({ title: t('dm_success') });
-      if (stories.length === 1) onClose();
-      else {
+      if (stories.length === 1) {
+          onClose();
+      } else {
+          // Stay in viewer, just reset progress and adjust index
           setProgress(0);
-          // If we deleted the last one, go back, otherwise stay at index
           if (currentIndex >= stories.length - 1) {
               setCurrentIndex(Math.max(0, stories.length - 2));
           }
