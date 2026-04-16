@@ -475,6 +475,9 @@ export const translations = {
       'poll_retract_vote': 'Retract Vote',
       'show_prem_badge': 'Show Premium Badge',
       'likes': 'Likes: {count}',
+      'feed_title': 'Feed',
+      'feed_description': "Today's updates from your channels",
+      'no_feed_messages': 'No updates for today yet.',
     },
     ru: {
       'settings': 'Настройки',
@@ -949,6 +952,9 @@ export const translations = {
       'poll_retract_vote': 'Отменить голос',
       'show_prem_badge': 'Показывать значок Premium',
       'likes': 'Лайки: {count}',
+      'feed_title': 'Лента',
+      'feed_description': 'Сегодняшние обновления из ваших каналов',
+      'no_feed_messages': 'Сегодня обновлений пока нет.',
     }
   };
 

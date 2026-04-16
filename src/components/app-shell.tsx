@@ -12,8 +12,9 @@ import { SidebarContent } from '@/components/sidebar-content';
 import { ChatView } from '@/components/chat/chat-view';
 import { InfVidView } from '@/components/infvid/infvid-view';
 import { InfGamesView } from '@/components/infgames/infgames-view';
+import { FeedView } from '@/components/feed/feed-view';
 import type { PopulatedChat } from '@/types';
-import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell } from 'lucide-react';
+import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell, Newspaper } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -35,7 +36,7 @@ const iconMap = {
 };
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
-  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | 'feed' | null>(null);
   const [infVidInitialVideoId, setInfVidInitialVideoId] = useState<string | null>(null);
   const { isMobile } = useSidebar();
   const db = useFirestore();
@@ -102,7 +103,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     }
   }, [selectedItem, setActiveChatId]);
 
-  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames') => {
+  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames' | 'feed') => {
     setSelectedItem(item);
     if (item !== 'infvid') {
         setInfVidInitialVideoId(null);
@@ -254,6 +255,16 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const renderMainView = () => {
     if (!populatedUser) return <div className="flex h-svh items-center justify-center">Loading...</div>;
 
+    if (selectedItem === 'feed') {
+      return (
+          <FeedView 
+              currentUser={populatedUser} 
+              onClose={() => handleSelect(null as any)} 
+              onSelectChat={handleSelect}
+          />
+      );
+    }
+
     if (selectedItem === 'infvid') {
         return (
             <InfVidView 
@@ -312,7 +323,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500 cursor-pointer"
             onClick={handleAcceptIncoming}
           >
-              <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-w-sm border border-white/10 backdrop-blur-md">
+              <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-sm border border-white/10 backdrop-blur-md">
                   <div className="w-12 h-12 flex-shrink-0 bg-primary rounded-full flex items-center justify-center text-white font-bold">
                     <Phone className="h-6 w-6" />
                   </div>

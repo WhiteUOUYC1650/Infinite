@@ -21,7 +21,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2 } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -106,7 +106,7 @@ function HolidayBanner() {
 }
 
 interface SidebarContentProps {
-  onSelect: (item: PopulatedChat | 'infvid' | 'infgames') => void;
+  onSelect: (item: PopulatedChat | 'infvid' | 'infgames' | 'feed') => void;
   selectedId?: string;
   currentUser: AuthenticatedUser;
 }
@@ -360,6 +360,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <HolidayBanner />
 
             <div className="py-1 md:px-4 space-y-1">
+                <Button
+                    variant="ghost"
+                    onClick={() => { onSelect('feed'); setOpenMobile(false); }}
+                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                >
+                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                        <Newspaper className="h-5 w-5 text-muted-foreground" />
+                        <p className="font-semibold">{t('feed_title')}</p>
+                    </div>
+                </Button>
                 <Button
                     variant="ghost"
                     onClick={handleSelectSavedMessages}
