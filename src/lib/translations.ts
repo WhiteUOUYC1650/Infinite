@@ -478,6 +478,11 @@ export const translations = {
       'feed_title': 'Feed',
       'feed_description': "Today's updates from your channels",
       'no_feed_messages': 'No updates for today yet.',
+      'forward': 'Forward',
+      'forward_message': 'Forward Message',
+      'forward_to': 'Forward to...',
+      'select_target_chat': 'Select a chat to forward the message to',
+      'message_forwarded_success': 'Message forwarded successfully!',
     },
     ru: {
       'settings': 'Настройки',
@@ -955,6 +960,11 @@ export const translations = {
       'feed_title': 'Лента',
       'feed_description': 'Сегодняшние обновления из ваших каналов',
       'no_feed_messages': 'Сегодня обновлений пока нет.',
+      'forward': 'Переслать',
+      'forward_message': 'Переслать сообщение',
+      'forward_to': 'Переслать в...',
+      'select_target_chat': 'Выберите чат для пересылки',
+      'message_forwarded_success': 'Сообщение переслано!',
     }
   };
 

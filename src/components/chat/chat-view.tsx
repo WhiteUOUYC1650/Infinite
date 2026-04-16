@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2 } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -64,6 +64,7 @@ import { getCachedFile, cacheFile } from '@/lib/cache-utils';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
+import { ScrollArea } from '../ui/scroll-area';
 
 export const COMMON_EMOJIS = [
     '👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', 
@@ -159,6 +160,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const isMobile = useIsMobile();
+
+  // Forwarding State
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -217,7 +221,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const isOwner = item.ownerId === currentUser.uid;
 
-  // Global Fullscreen and Orientation logic
   useEffect(() => {
     const handleFullscreenChange = async () => {
       const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
@@ -226,10 +229,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const { ScreenOrientation } = await import('@capacitor/screen-orientation');
         try {
           if (isFullscreen) {
-            // Unlock so user can rotate video manually
             await ScreenOrientation.unlock();
           } else {
-            // Restore portrait lock for non-tablet devices
             const isTablet = window.innerWidth >= 768 || window.innerHeight >= 768;
             if (!isTablet) {
               await ScreenOrientation.lock({ orientation: 'portrait' });
@@ -641,12 +642,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const originalFile = fileToSend;
     const originalReplyTo = replyToMessage;
     
-    // Clear state immediately for responsive feel
     setMessageContent('');
     setFileToSend(null);
     setReplyToMessage(null);
 
-    // Fire and forget the async sending process to allow UI to stay responsive
     (async () => {
         try {
             if (originalFile?.type === 'video') {
@@ -664,7 +663,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             }
         } catch (error) {
             console.error('Error sending message:', error);
-            // Restore content if failed
             setMessageContent(originalContent);
             setFileToSend(originalFile);
             setReplyToMessage(originalReplyTo);
@@ -1135,6 +1133,63 @@ const handleSendPoll = async (poll: Poll) => {
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to create poll.' });
+    }
+};
+
+const handleForward = async (targetChatId: string) => {
+    if (!db || !forwardingMessage) return;
+    try {
+        const timestamp = Timestamp.now();
+        const targetChatRef = doc(db, 'chats', targetChatId);
+        const targetChatSnap = await getDoc(targetChatRef);
+        if (!targetChatSnap.exists()) return;
+        const targetChatData = targetChatSnap.data() as Chat;
+
+        const messageRef = doc(collection(db, 'chats', targetChatId, 'messages'));
+        const { id, sender, senderName, senderAvatar, reactions, readBy, timestamp: oldTs, editedAt, replyTo, ...forwardData } = forwardingMessage;
+        
+        const messageData = {
+            ...forwardData,
+            senderId: currentUser.uid,
+            timestamp,
+            readBy: [],
+        };
+
+        const batch = writeBatch(db);
+        batch.set(messageRef, messageData);
+
+        // Update target chat last message and unread counts
+        let contentForPreview = messageData.imageUrl ? t('image_attachment_placeholder') : (messageData.content || '').split('\n')[0];
+        if (messageData.videoMimeType) contentForPreview = t('video_attachment_placeholder');
+        if (messageData.musicMimeType) contentForPreview = t('music_attachment_placeholder');
+        if (messageData.poll) contentForPreview = `📊 ${messageData.poll.question}`;
+        if (messageData.voiceStatus) contentForPreview = t('voice_message_short');
+        if (messageData.circleStatus) contentForPreview = t('video_attachment_placeholder');
+
+        const lastMessageData = {
+            id: messageRef.id,
+            content: contentForPreview,
+            senderId: currentUser.uid,
+            senderName: currentUser.name || currentUser.username,
+            timestamp,
+        };
+
+        const updateData: any = { lastMessage: lastMessageData };
+        if (targetChatData.type !== 'channel' && targetChatId !== 'GENERAL_CHAT') {
+            targetChatData.members.forEach(m => {
+                if (m !== currentUser.uid) {
+                    updateData[`unreadCounts.${m}`] = increment(1);
+                }
+            });
+        }
+        batch.update(targetChatRef, updateData);
+        await batch.commit();
+        
+        toast({ title: t('dm_success'), description: t('message_forwarded_success') });
+        setForwardingMessage(null);
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Forwarding failed.' });
     }
 };
   
@@ -1806,6 +1861,7 @@ const handleSendPoll = async (poll: Poll) => {
                                           onPreviewImage={setPreviewImage}
                                           memberDetails={memberDetails}
                                           onSelectChat={onSelectChat}
+                                          onForward={(m) => setForwardingMessage(m)}
                                       />
                                   </React.Fragment>
                               );
@@ -2061,8 +2117,90 @@ const handleSendPoll = async (poll: Poll) => {
         onOpenChange={setShowNewPoll} 
         onSubmit={handleSendPoll} 
       />
+
+      <ForwardMessageDialog
+        open={!!forwardingMessage}
+        onOpenChange={(open) => !open && setForwardingMessage(null)}
+        onForward={handleForward}
+        currentUser={currentUser}
+      />
     </div>
   );
+}
+
+function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, onForward: (chatId: string) => Promise<void>, currentUser: AuthenticatedUser }) {
+    const db = useFirestore();
+    const { t } = useLanguage();
+    const chatsQuery = useMemoFirebase(() => {
+        if (!db) return null;
+        return query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
+    }, [db, currentUser.uid]);
+
+    const { data: chats, loading } = useCollection<Chat>(chatsQuery);
+    const [search, setSearch] = useState('');
+    const [isForwarding, setIsForwarding] = useState(false);
+
+    const filteredChats = useMemo(() => {
+        if (!chats) return [];
+        return chats.filter(c => {
+            if (c.id === currentUser.uid) return true;
+            if (c.name && c.name.toLowerCase().includes(search.toLowerCase())) return true;
+            if (c.type === 'dm') return true; // DMs are searched via member details usually, simplified here
+            return false;
+        }).sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0));
+    }, [chats, search, currentUser.uid]);
+
+    const handleSelect = async (chatId: string) => {
+        setIsForwarding(true);
+        await onForward(chatId);
+        setIsForwarding(false);
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-sm rounded-3xl p-0 overflow-hidden flex flex-col h-[70vh]">
+                <DialogHeader className="p-6 pb-2 border-b bg-muted/30">
+                    <DialogTitle className="text-xl font-bold font-headline">{t('forward_to')}</DialogTitle>
+                </DialogHeader>
+                <div className="p-4 border-b">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder={t('search_placeholder')} 
+                            value={search} 
+                            onChange={e => setSearch(e.target.value)} 
+                            className="pl-9 h-10 rounded-xl bg-muted/50 border-none"
+                        />
+                    </div>
+                </div>
+                <ScrollArea className="flex-1">
+                    {loading ? (
+                        <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
+                    ) : (
+                        <div className="p-2 space-y-1">
+                            {filteredChats.map(chat => (
+                                <button 
+                                    key={chat.id} 
+                                    onClick={() => handleSelect(chat.id)}
+                                    disabled={isForwarding}
+                                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted transition-colors text-left disabled:opacity-50"
+                                >
+                                    <Avatar className="h-10 w-10 shrink-0">
+                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback><Users className="h-5 w-5" /></AvatarFallback>}
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold truncate">{chat.id === currentUser.uid ? t('saved_messages') : (chat.name || 'Chat')}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{t(chat.type as any)}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpenChange: (v: boolean) => void, onSubmit: (poll: Poll) => void }) {
@@ -2288,6 +2426,7 @@ function ChatMessage({
     onPreviewImage,
     memberDetails,
     onSelectChat,
+    onForward,
 }: { 
     message: Message, 
     sender?: User, 
@@ -2304,6 +2443,7 @@ function ChatMessage({
     onPreviewImage: (url: string) => void;
     memberDetails: Record<string, User>;
     onSelectChat: (chat: PopulatedChat) => void;
+    onForward: (message: Message) => void;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -2891,6 +3031,7 @@ function ChatMessage({
                                 ))}
                             </DropdownMenuSubContent>
                         </DropdownMenuSub>
+                        {!fromBot && <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>}
                         {chat.type !== 'channel' && !displaySender?.isDeleted && <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>}
                         {(hasVideo || hasMusic || hasGenericFile || message.imageUrl || message.voiceStatus === 'complete' || message.circleStatus === 'complete') && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
                         {message.content && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
