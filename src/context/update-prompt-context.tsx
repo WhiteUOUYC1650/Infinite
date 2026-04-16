@@ -1,15 +1,18 @@
+
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { UpdatePromptDialog } from '@/components/update-prompt-dialog';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 const CURRENT_APP_VERSION = "0.3.3 Beta";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
   isUpdateAvailable: boolean;
+  downloadUpdate: () => Promise<void>;
 }
 
 const UpdatePromptContext = createContext<UpdatePromptContextType | undefined>(undefined);
@@ -17,30 +20,88 @@ const UpdatePromptContext = createContext<UpdatePromptContextType | undefined>(u
 export function UpdatePromptProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<any>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const db = useFirestore();
+  const { toast } = useToast();
+  const checkPerformed = useRef(false);
 
   useEffect(() => {
-    const checkVersion = async () => {
+    if (checkPerformed.current) return;
+    checkPerformed.current = true;
+
+    const checkVersionAndLaunchCount = async () => {
         if (!db) return;
+        
+        // 1. Increment launch count
+        const launches = parseInt(localStorage.getItem('launch_count') || '0') + 1;
+        localStorage.setItem('launch_count', launches.toString());
+
         try {
-            // Check the 'info/ver' path as requested
             const verDocRef = doc(db, 'info', 'ver');
             const verSnap = await getDoc(verDocRef);
+            
             if (verSnap.exists()) {
-                const latestVersion = verSnap.data()?.latest;
-                // If versions don't match, an update is available
+                const data = verSnap.data();
+                const latestVersion = data.latest;
+                setUpdateInfo(data);
+
                 if (latestVersion && latestVersion !== CURRENT_APP_VERSION) {
                     setIsUpdateAvailable(true);
+                    
+                    // 2. Show prompt every 10th launch
+                    if (launches % 10 === 0) {
+                        setIsOpen(true);
+                    }
                 }
-            } else {
-                console.log("Version document 'info/ver' not found in Firestore.");
             }
         } catch (error) {
             console.error("Error checking app version:", error);
         }
     };
-    checkVersion();
+    checkVersionAndLaunchCount();
   }, [db]);
+
+  const downloadUpdate = async () => {
+    if (!db || !updateInfo?.apkChunkIds || isDownloading) return;
+    setIsDownloading(true);
+    toast({ title: "Update", description: "Downloading APK file..." });
+
+    try {
+        const chunkIds = updateInfo.apkChunkIds;
+        const chunkSnaps = await Promise.all(
+            chunkIds.map((id: string) => getDoc(doc(db, 'apkChunks', id)))
+        );
+
+        const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string });
+        chunksData.sort((a, b) => a.part - b.part);
+
+        const assembledBase64 = chunksData.map(c => c.data).join('');
+        const binaryString = window.atob(assembledBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const blob = new Blob([bytes], { type: 'application/vnd.android.package-archive' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ title: "Success", description: "APK downloaded. Please open it to install." });
+        setIsOpen(false);
+    } catch (e: any) {
+        console.error(e);
+        toast({ variant: 'destructive', title: "Download Failed", description: e.message });
+    } finally {
+        setIsDownloading(false);
+    }
+  };
 
   const promptUpdate = useCallback(() => {
     setIsOpen(true);
@@ -53,6 +114,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
   const value = {
     promptUpdate,
     isUpdateAvailable,
+    downloadUpdate,
   };
 
   return (
@@ -61,7 +123,9 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
         <UpdatePromptDialog 
             open={isOpen} 
             onOpenChange={handleClose}
-            isUpdateAvailable={isUpdateAvailable} 
+            isUpdateAvailable={isUpdateAvailable}
+            onUpdate={downloadUpdate}
+            isDownloading={isDownloading}
         />
     </UpdatePromptContext.Provider>
   );

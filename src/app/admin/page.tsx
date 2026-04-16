@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +61,12 @@ function AdminPage() {
   const [goldDialogOpen, setGoldDialogOpen] = useState(false);
   const [selectedUserForGold, setSelectedUserForGold] = useState<User | null>(null);
   const [goldAmount, setGoldAmount] = useState('100');
+
+  // Update System State
+  const [isUploadingApk, setIsUploadingApk] = useState(false);
+  const [apkFile, setApkFile] = useState<File | null>(null);
+  const [newVersion, setNewVersion] = useState('0.3.3 Beta');
+  const apkInputRef = useRef<HTMLInputElement>(null);
 
   // --- Auth and Admin Check ---
   useEffect(() => {
@@ -208,6 +214,50 @@ function AdminPage() {
     }
   };
 
+  const handleUploadUpdate = async () => {
+    if (!db || !apkFile || !newVersion.trim() || isUploadingApk) return;
+    setIsUploadingApk(true);
+
+    try {
+        const apkBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(apkFile);
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        });
+
+        const CHUNK_SIZE = 900 * 1024;
+        const chunkIds: string[] = [];
+        const totalChunks = Math.ceil(apkBase64.length / CHUNK_SIZE);
+
+        for (let i = 0; i < apkBase64.length; i += CHUNK_SIZE) {
+            const chunkRef = doc(collection(db, 'apkChunks'));
+            await setDoc(chunkRef, {
+                data: apkBase64.substring(i, i + CHUNK_SIZE),
+                part: i / CHUNK_SIZE,
+                timestamp: serverTimestamp(),
+            });
+            chunkIds.push(chunkRef.id);
+            // Throttle slightly to avoid rate limits
+            await new Promise(r => setTimeout(r, 50));
+        }
+
+        const verRef = doc(db, 'info', 'ver');
+        await setDoc(verRef, {
+            latest: newVersion.trim(),
+            apkChunkIds: chunkIds,
+            updatedAt: serverTimestamp(),
+        });
+
+        toast({ title: t('dm_success'), description: "Update published successfully!" });
+        setApkFile(null);
+    } catch (e: any) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
+    } finally {
+        setIsUploadingApk(false);
+    }
+  };
+
   if (isLoading || !isAdmin) {
     return (
       <div className="flex h-svh items-center justify-center">
@@ -226,10 +276,11 @@ function AdminPage() {
       </header>
       <main className="flex-1 overflow-hidden pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Tabs defaultValue="users" className="flex h-full flex-col">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users">{t('admin_users_tab')} ({users?.length || 0})</TabsTrigger>
             <TabsTrigger value="groups">{t('admin_groups_tab')} ({groups.length || 0})</TabsTrigger>
             <TabsTrigger value="channels">{t('admin_channels_tab')} ({channels.length || 0})</TabsTrigger>
+            <TabsTrigger value="update">Update</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="flex-1 overflow-auto mt-4">
             <ItemList
@@ -259,6 +310,52 @@ function AdminPage() {
               loading={chatsLoading}
               renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} />}
             />
+          </TabsContent>
+          <TabsContent value="update" className="flex-1 overflow-auto mt-4">
+              <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                  <div className="text-center space-y-2">
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Upload className="h-8 w-8 text-primary" />
+                      </div>
+                      <h2 className="text-2xl font-bold font-headline">Publish APK Update</h2>
+                      <p className="text-sm text-muted-foreground">Upload a new APK version. Users will be notified every 10 launches.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                      <div className="space-y-2">
+                          <Label>Version Name</Label>
+                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.3.4 Beta" />
+                      </div>
+
+                      <div className="space-y-2">
+                          <Label>APK File</Label>
+                          <div 
+                            className={cn(
+                                "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
+                                apkFile ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"
+                            )}
+                            onClick={() => apkInputRef.current?.click()}
+                          >
+                              <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                              {apkFile ? (
+                                  <div className="flex items-center gap-3">
+                                      <FileJson className="h-8 w-8 text-primary" />
+                                      <div className="text-left">
+                                          <p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p>
+                                          <p className="text-[10px] text-muted-foreground">{(apkFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                      </div>
+                                  </div>
+                              ) : (
+                                  <p className="text-sm text-muted-foreground font-medium">Select APK file</p>
+                              )}
+                          </div>
+                      </div>
+
+                      <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || !newVersion.trim() || isUploadingApk}>
+                          {isUploadingApk ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Publish Update"}
+                      </Button>
+                  </div>
+              </div>
           </TabsContent>
         </Tabs>
       </main>

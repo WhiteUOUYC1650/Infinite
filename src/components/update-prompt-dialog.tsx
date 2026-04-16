@@ -1,8 +1,10 @@
+
 'use client';
 
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -10,15 +12,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useLanguage } from "@/context/language-context";
-import { Sparkles, Clock } from "lucide-react";
+import { Sparkles, Clock, Download, Loader2 } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface UpdatePromptDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     isUpdateAvailable?: boolean;
+    onUpdate?: () => void;
+    isDownloading?: boolean;
 }
 
-export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = false }: UpdatePromptDialogProps) {
+export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = false, onUpdate, isDownloading = false }: UpdatePromptDialogProps) {
     const { t } = useLanguage();
     
     const title = isUpdateAvailable ? t('update_available_title') : t('update_required_title');
@@ -42,10 +47,14 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
                         </AlertDialogDescription>
                     </div>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="sm:justify-center pt-2">
-                    <AlertDialogAction onClick={() => onOpenChange(false)} className="rounded-xl px-8 h-12 font-bold min-w-[140px]">
-                        {t('ok')}
-                    </AlertDialogAction>
+                <AlertDialogFooter className="sm:justify-center pt-4 flex-col gap-2">
+                    <Button onClick={onUpdate} disabled={isDownloading} className="w-full h-12 rounded-xl font-bold gap-2">
+                        {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        {t('update_infinite')}
+                    </Button>
+                    <AlertDialogCancel onClick={() => onOpenChange(false)} className="w-full h-12 rounded-xl font-medium border-none hover:bg-muted">
+                        {t('cancel')}
+                    </AlertDialogCancel>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
