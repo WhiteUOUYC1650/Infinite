@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -115,7 +114,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const db = useFirestore();
   const { language, t } = useLanguage();
   const { toast } = useToast();
-  const { toggleTheme, isDarkMode, experimentalDesign } = useTheme();
+  const { toggleTheme, isDarkMode, experimentalDesign, showFeed } = useTheme();
   const { setOpenMobile } = useSidebar();
   const { isUpdateAvailable } = useUpdatePrompt();
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -360,16 +359,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <HolidayBanner />
 
             <div className="py-1 md:px-4 space-y-1">
-                <Button
-                    variant="ghost"
-                    onClick={() => { onSelect('feed'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                >
-                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                        <Newspaper className="h-5 w-5 text-muted-foreground" />
-                        <p className="font-semibold">{t('feed_title')}</p>
-                    </div>
-                </Button>
+                {showFeed && (
+                  <Button
+                      variant="ghost"
+                      onClick={() => { onSelect('feed'); setOpenMobile(false); }}
+                      className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                  >
+                      <div className="flex items-center gap-3 w-full px-4 md:px-0">
+                          <Newspaper className="h-5 w-5 text-muted-foreground" />
+                          <p className="font-semibold">{t('feed_title')}</p>
+                      </div>
+                  </Button>
+                )}
                 <Button
                     variant="ghost"
                     onClick={handleSelectSavedMessages}

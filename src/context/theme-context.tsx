@@ -335,6 +335,8 @@ interface ThemeContextType {
   glassEffect: boolean;
   toggleGlassEffect: () => void;
   glassIntensity: number;
+  showFeed: boolean;
+  toggleShowFeed: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -348,6 +350,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
   const [glassEffect, setGlassEffect] = useState(false);
+  const [showFeed, setShowFeed] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -359,6 +362,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
     const storedExperimental = localStorage.getItem('app-experimental-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
+    const storedShowFeed = localStorage.getItem('app-show-feed');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -392,6 +396,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (storedGlassEffect) {
       setGlassEffect(storedGlassEffect === 'true');
+    }
+
+    if (storedShowFeed) {
+      setShowFeed(storedShowFeed === 'true');
     }
 
     setIsMounted(true);
@@ -528,6 +536,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const toggleShowFeed = () => {
+    setShowFeed(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-show-feed', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -546,6 +562,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     glassEffect,
     toggleGlassEffect,
     glassIntensity: glassEffect ? 70 : 0,
+    showFeed,
+    toggleShowFeed,
   };
 
   if (!isMounted) {

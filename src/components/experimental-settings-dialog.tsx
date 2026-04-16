@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -62,7 +61,7 @@ import { clearCacheDB } from '@/lib/cache-utils';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy';
 
-const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-smooth-scroll', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect'];
+const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-smooth-scroll', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect', 'app-show-feed'];
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
@@ -105,7 +104,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed } = useTheme();
   const { isUpdateAvailable, promptUpdate } = useUpdatePrompt();
   
   const auth = useAuth();
@@ -446,6 +445,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     { question: t('faq_poll_q'), answer: t('faq_poll_a') },
     { question: t('faq_story_q'), answer: t('faq_story_a') },
     { question: t('faq_transfer_q'), answer: t('faq_transfer_a') },
+    { question: t('faq_feed_q'), answer: t('faq_feed_a') },
   ];
 
   const ExperimentalProfileHeader = () => (
@@ -614,6 +614,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             checked={experimentalDesign} 
             onCheckedChange={toggleExperimentalDesign} 
             description={t('experimental_design_desc')} 
+        />
+        <SettingsSwitchItem 
+            id="show-feed-switch" 
+            label={t('show_feed_label')} 
+            checked={showFeed} 
+            onCheckedChange={toggleShowFeed} 
+            description={t('show_feed_desc')} 
         />
       </div>
   );
@@ -870,7 +877,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
             ) : (
                 <Button 
-                    onClick={handlePurchasePrem} 
+                    onClick={handlePurchasePurchase} 
                     disabled={isProcessingPurchase} 
                     className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
                 >
@@ -903,20 +910,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_infgames_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_infgames_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_feed_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_feed_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_transfers_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_transfers_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_forward_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_forward_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_polls_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_polls_desc')}</p>
-        </div>
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_bugfixes_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_bugfixes_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_minor_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_minor_desc')}</p>
         </div>
       </div>
     </div>
