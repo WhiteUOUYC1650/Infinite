@@ -414,7 +414,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                         <Gamepad2 className="h-5 w-5 text-muted-foreground" />
                         <div className="flex items-center gap-2">
                            <p className="font-semibold">{t('infgames_title')}</p>
-                           <Badge variant="secondary" className="h-4 px-1 text-[10px] leading-none">BETA</Badge>
+                           <Badge variant="secondary" className="h-4 px-1 text-[10px] Bird Beta">BETA</Badge>
                         </div>
                     </div>
                 </Button>
@@ -683,7 +683,13 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                     <div className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
                         {displayName}
                     </div>
-                    {isVerified ? <VerifiedBadge className="w-4 h-4 shrink-0" /> : isPrem ? <PremBadge className="w-4 h-4 shrink-0" /> : isBetaTester ? <BetaBadge className="w-4 h-4 shrink-0" /> : null}
+                    {!isSavedMessages && (
+                        <>
+                            {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
+                            {isPrem && <PremBadge className="w-4 h-4 shrink-0" />}
+                            {isBetaTester && <BetaBadge className="w-4 h-4 shrink-0" />}
+                        </>
+                    )}
                 </div>
                 {lastMessageContent && 
                     <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>

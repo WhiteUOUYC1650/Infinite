@@ -57,7 +57,9 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
               {displayName}
-              {user.isAdmin ? <VerifiedBadge /> : (user.subscriptionTier === 'prem' && user.showPremBadge) ? <PremBadge /> : user.isBetaTester ? <BetaBadge /> : null}
+              {user.isAdmin && <VerifiedBadge />}
+              {user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}
+              {user.isBetaTester && <BetaBadge />}
             </h2>
             <p className="text-muted-foreground text-sm font-medium">{displayUsername}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{getStatusText(user)}</p>
@@ -102,7 +104,9 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                 <h2 className="text-xl font-bold font-headline">
                     {displayName}
                 </h2>
-                {user.isAdmin ? <VerifiedBadge /> : (user.subscriptionTier === 'prem' && user.showPremBadge) ? <PremBadge /> : user.isBetaTester ? <BetaBadge /> : null}
+                {user.isAdmin && <VerifiedBadge />}
+                {user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}
+                {user.isBetaTester && <BetaBadge />}
             </div>
 
             {user.isBot ? (

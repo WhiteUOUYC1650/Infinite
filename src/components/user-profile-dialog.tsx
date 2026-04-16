@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -173,7 +174,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     <div className="text-center py-4">
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{displayName}</h2>
-                            {!user.isDeleted && (user.username === '@Infinite' || user.username === '@InfiniteBot' || user.username === '@VeoBot' || user.username === '@GeminiBot') ? <VerifiedBadge /> : (user.subscriptionTier === 'prem' && user.showPremBadge) ? <PremBadge /> : user.isBetaTester ? <BetaBadge /> : null}
+                            {!user.isDeleted && (
+                                <>
+                                    {(user.username === '@Infinite' || user.username === '@InfiniteBot' || user.username === '@VeoBot' || user.username === '@GeminiBot') && <VerifiedBadge />}
+                                    {user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}
+                                    {user.isBetaTester && <BetaBadge />}
+                                </>
+                            )}
                             {!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}
                         </div>
                         <p className="text-muted-foreground font-medium">{displayUsername}</p>

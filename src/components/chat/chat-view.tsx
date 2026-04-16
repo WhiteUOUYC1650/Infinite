@@ -1617,7 +1617,7 @@ const handleForward = async (targetChatId: string) => {
         onClose();
     } catch (e) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: t('leave_chat_error') });
+        toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') });
     } finally {
         setIsProcessingAction(false);
     }
@@ -1702,7 +1702,9 @@ const handleForward = async (targetChatId: string) => {
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {!isSavedMessagesChat && (
                                     <>
-                                        {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') ? <VerifiedBadge className="shrink-0" /> : (otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge) ? <PremBadge className="shrink-0" /> : (otherUser.isBetaTester && <BetaBadge className="shrink-0" />)}
+                                        {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
+                                        {otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge && <PremBadge className="shrink-0" />}
+                                        {otherUser.isBetaTester && <BetaBadge className="shrink-0" />}
                                     </>
                                 )}
                             </div>
@@ -2102,7 +2104,7 @@ const handleForward = async (targetChatId: string) => {
 
       {previewImage && (
           <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
-              <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90" hideCloseButton={false}>
+              <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90" hideCloseButton>
                   <div className="relative w-full h-full flex items-center justify-center">
                       <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" />
                   </div>
@@ -2150,6 +2152,16 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
         }).sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0));
     }, [chats, search, currentUser.uid]);
 
+    const allOtherUserIds = useMemo(() => {
+        if (!chats) return [];
+        return chats
+            .filter(c => c.type === 'dm' && c.id !== currentUser.uid)
+            .map(c => c.members.find(m => m !== currentUser.uid))
+            .filter(Boolean) as string[];
+    }, [chats, currentUser.uid]);
+
+    const { users: dmPartners } = useBatchUsers(allOtherUserIds);
+
     const handleSelect = async (chatId: string) => {
         setIsForwarding(true);
         await onForward(chatId);
@@ -2179,22 +2191,42 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
                         <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
                     ) : (
                         <div className="p-2 space-y-1">
-                            {filteredChats.map(chat => (
-                                <button 
-                                    key={chat.id} 
-                                    onClick={() => handleSelect(chat.id)}
-                                    disabled={isForwarding}
-                                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted transition-colors text-left disabled:opacity-50"
-                                >
-                                    <Avatar className="h-10 w-10 shrink-0">
-                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback><Users className="h-5 w-5" /></AvatarFallback>}
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-bold truncate">{chat.id === currentUser.uid ? t('saved_messages') : (chat.name || 'Chat')}</p>
-                                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{t(chat.type as any)}</p>
-                                    </div>
-                                </button>
-                            ))}
+                            {filteredChats.map(chat => {
+                                const isSaved = chat.id === currentUser.uid;
+                                const otherId = chat.type === 'dm' ? chat.members.find(m => m !== currentUser.uid) : null;
+                                const partner = otherId ? dmPartners[otherId] : null;
+                                
+                                const name = isSaved ? t('saved_messages') : chat.type === 'dm' ? (partner?.name || '...') : (chat.name || 'Chat');
+                                const avatar = chat.type === 'dm' ? partner?.avatar : chat.avatar;
+
+                                return (
+                                    <button 
+                                        key={chat.id} 
+                                        onClick={() => handleSelect(chat.id)}
+                                        disabled={isForwarding}
+                                        className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted transition-colors text-left disabled:opacity-50"
+                                    >
+                                        <Avatar className="h-10 w-10 shrink-0">
+                                            {isSaved ? (
+                                                <AvatarFallback className="bg-secondary"><Bookmark className="h-5 w-5" /></AvatarFallback>
+                                            ) : (
+                                                <>
+                                                    <AvatarImage src={avatar} />
+                                                    <AvatarFallback>
+                                                        {chat.type === 'dm' ? <UserIcon className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                                                    </AvatarFallback>
+                                                </>
+                                            )}
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold truncate">{name}</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
+                                                {isSaved ? 'CLOUD' : t(chat.type as any)}
+                                            </p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
                 </ScrollArea>
@@ -2838,7 +2870,9 @@ function ChatMessage({
                 {((chatType === 'group' && !isCurrentUser) || (chatType === 'channel') || fromBot) && displaySender && !isCircle && (
                     <div className="font-semibold text-sm mb-1 flex items-center gap-2 overflow-hidden">
                         <div className="truncate">{displayName}</div>
-                        {isVerified ? <VerifiedBadge className='shrink-0' /> : isPrem ? <PremBadge className='shrink-0' /> : isBetaTester ? <BetaBadge className='shrink-0' /> : null}
+                        {isVerified && <VerifiedBadge className='shrink-0' />}
+                        {isPrem && <PremBadge className='shrink-0' />}
+                        {isBetaTester && <BetaBadge className='shrink-0' />}
                         {isFromChannel ? <Badge variant="secondary" className='shrink-0'>{t('channel_badge')}</Badge> : (displaySender.isBot && !isVerified && <Badge variant="secondary" className='shrink-0'>BOT</Badge>)}
                     </div>
                 )}
@@ -3040,77 +3074,6 @@ function ChatMessage({
                         {canDeleteMessage && <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
-            </div>
-        </div>
-    );
-}
-
-function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }: { poll: Poll, onVote: (i: number) => void, currentUserId: string, alignRight: boolean, memberDetails: Record<string, User> }) {
-    const { t } = useLanguage();
-    const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
-    
-    return (
-        <div className={cn("w-full space-y-3 p-1", alignRight ? "text-primary-foreground" : "text-card-foreground")}>
-            <div className="space-y-1">
-                <h4 className="font-bold text-base leading-tight">{poll.question}</h4>
-                <div className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest opacity-60">
-                    <span>{poll.isAnonymous ? t('poll_anonymous_label') : t('poll_view_results')}</span>
-                    {poll.isMultipleChoice && (
-                        <>
-                            <span className="w-1 h-1 rounded-full bg-current" />
-                            <span>{t('poll_multiple_choice_label')}</span>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                {poll.options.map((opt, i) => {
-                    const isVoted = opt.votes.includes(currentUserId);
-                    const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes.length / totalVotes) * 100);
-                    
-                    return (
-                        <button 
-                            key={i} 
-                            onClick={() => onVote(i)}
-                            className="w-full text-left relative group/opt overflow-hidden rounded-xl border border-current/10 transition-all active:scale-[0.98]"
-                        >
-                            <div 
-                                className={cn("absolute inset-y-0 left-0 transition-all duration-1000 ease-out", alignRight ? "bg-white/20" : "bg-primary/10")}
-                                style={{ width: `${percentage}%` }}
-                            />
-                            
-                            <div className="relative p-3 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <div className={cn(
-                                        "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                                        isVoted ? "bg-primary border-primary" : "border-current/20"
-                                    )}>
-                                        {isVoted && <Check className={cn("h-3 w-3", alignRight ? "text-primary" : "text-white")} strokeWidth={4} />}
-                                    </div>
-                                    <span className="text-sm font-medium truncate">{opt.text}</span>
-                                </div>
-                                <span className="text-xs font-black font-mono opacity-80">{percentage}%</span>
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
-                    {t('poll_vote_count', { count: totalVotes })}
-                </p>
-                {!poll.isAnonymous && totalVotes > 0 && (
-                    <div className="flex -space-x-2 overflow-hidden">
-                        {poll.options.flatMap(o => o.votes).slice(0, 5).map(uid => (
-                            <Avatar key={uid} className="w-5 h-5 border-2 border-background ring-1 ring-current/10">
-                                <AvatarImage src={memberDetails[uid]?.avatar} />
-                                <AvatarFallback className="text-[6px]">{memberDetails[uid]?.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
     );

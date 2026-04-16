@@ -537,7 +537,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                                 <p className="text-white/60 text-sm font-medium animate-pulse">
-                                    {video.videoStatus === 'uploading' ? t('processing_video') : t('creating')}...
+                                    {video.videoStatus === 'uploading' ? t('processing_video') : t('loading_chats')}...
                                 </p>
                             </div>
                         ) : videoUrl ? (
@@ -939,7 +939,7 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
                 <DialogFooter className="gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUploading} className="rounded-full">{t('cancel')}</Button>
                     <Button onClick={handleSubmit} disabled={!file || !title.trim() || isUploading} className="rounded-full px-8 font-bold">
-                        {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : t('save')}
+                        {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('loading_chat')} </> : t('save')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

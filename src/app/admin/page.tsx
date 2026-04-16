@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,6 +44,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { BetaBadge } from '@/components/ui/beta-badge';
+import { PremBadge } from '@/components/ui/prem-badge';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 
 
@@ -433,6 +434,7 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta }: { user: User; onBa
         <div className="font-semibold flex items-center gap-2">
             {displayName} 
             {isProtectedUser && !user.isDeleted && <VerifiedBadge />}
+            {user.subscriptionTier === 'prem' && user.showPremBadge && !user.isDeleted && <PremBadge />}
             {user.isBetaTester && !isProtectedUser && !user.isDeleted && <BetaBadge />}
         </div>
         <p className="text-sm text-muted-foreground">{displayUsername}</p>
