@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -135,7 +136,7 @@ export const translations = {
       'you_left_the_channel_desc': 'You will no longer receive updates. You can rejoin using the link.',
       'welcome_title': 'Welcome to Infinite!',
       'welcome_subtitle': 'You are one of the first to experience the future of communication.',
-      'beta_badge': '0.3.3 Beta',
+      'beta_badge': '0.3.4 Beta',
       'welcome_message': 'Thank you for joining the beta test. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
       'continue_button': 'Continue',
       'thank_you_beta': 'Thank you for participating in the beta test!',
@@ -329,7 +330,7 @@ export const translations = {
       'subscribe_yearly': '5000 InfGold / year',
       'yearly_discount_note': 'Save 1000 InfGold!',
       'whats_new': "What's New",
-      'whats_new_title': "What's New in 0.3.3 Beta",
+      'whats_new_title': "What's New in 0.3.4 Beta",
       'whats_new_desc': "A summary of the latest features and improvements.",
       'whats_new_feed_title': 'Feed Function',
       'whats_new_feed_desc': 'Stay updated with all channel news in one place with the daily Feed.',
@@ -468,7 +469,7 @@ export const translations = {
       'poll_anonymous_label': 'Anonymous Voting',
       'poll_multiple_choice_label': 'Multiple Choice',
       'poll_add_option': 'Add Option',
-      'poll_vote_count': '{count, plural, one {# vote} other {# votes}}',
+      'poll_vote_count': '{count, plural, one {# vote} few {# votes} other {# votes}}',
       'poll_total_votes': 'Total votes: {count}',
       'poll_view_results': 'View Results',
       'poll_retract_vote': 'Retract Vote',
@@ -619,7 +620,7 @@ export const translations = {
       'you_left_the_channel_desc': 'Вы больше не будете получать обновления. Вы можете присоединиться снова по ссылке.',
       'welcome_title': 'Добро пожаловать в Infinite!',
       'welcome_subtitle': 'Вы один из первых, кто прикоснулся к будущему общения.',
-      'beta_badge': '0.3.3 Beta',
+      'beta_badge': '0.3.4 Beta',
       'welcome_message': 'Спасибо за участие в бета-тестировании. Мы усердно работаем над улучшениями, и ваш отзыв очень важен для нас.',
       'continue_button': 'Продолжить',
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
@@ -813,7 +814,7 @@ export const translations = {
       'subscribe_yearly': '5000 InfGold / год',
       'yearly_discount_note': 'Экономия 1000 InfGold!',
       'whats_new': "Что нового",
-      'whats_new_title': "Что нового в версии 0.3.3 Beta",
+      'whats_new_title': "Что нового в версии 0.3.4 Beta",
       'whats_new_desc': "Краткий обзор последних изменений и улучшений.",
       'whats_new_feed_title': 'Функция Ленты',
       'whats_new_feed_desc': 'Следите за всеми новостями каналов в одном месте благодаря ежедневной Ленте.',

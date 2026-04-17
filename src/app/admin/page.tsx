@@ -66,7 +66,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.3.3 Beta');
+  const [newVersion, setNewVersion] = useState('0.3.4 Beta');
   const apkInputRef = useRef<HTMLInputElement>(null);
 
   // --- Auth and Admin Check ---

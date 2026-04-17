@@ -7,7 +7,7 @@ import { useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
-const CURRENT_APP_VERSION = "0.3.3 Beta";
+const CURRENT_APP_VERSION = "0.3.4 Beta";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;

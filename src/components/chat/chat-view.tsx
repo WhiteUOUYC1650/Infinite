@@ -143,6 +143,262 @@ const compressImage = (file: File, quality = 0.85, maxDimension = 1920): Promise
   });
 };
 
+function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }: { poll: Poll, onVote: (index: number) => void, currentUserId: string, alignRight: boolean, memberDetails: Record<string, User> }) {
+    const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
+    const { t } = useLanguage();
+
+    return (
+        <div className={cn("space-y-3 my-2 min-w-[240px]", alignRight ? "text-white" : "text-card-foreground")}>
+            <div className="font-bold text-base flex items-center gap-2">
+                <ListTodo className="h-5 w-5 shrink-0 text-primary" />
+                {poll.question}
+            </div>
+            <div className="space-y-2">
+                {poll.options.map((option, index) => {
+                    const isVoted = option.votes.includes(currentUserId);
+                    const percentage = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
+                    
+                    return (
+                        <button 
+                            key={index} 
+                            onClick={() => onVote(index)}
+                            className="w-full group/poll relative text-left"
+                        >
+                            <div className="flex justify-between items-center mb-1 text-xs font-bold px-1">
+                                <div className="flex items-center gap-1.5 truncate mr-2">
+                                    {isVoted && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                                    <span className="truncate">{option.text}</span>
+                                </div>
+                                <span className="shrink-0 opacity-70">{percentage}%</span>
+                            </div>
+                            <div className={cn("h-2 w-full rounded-full overflow-hidden", alignRight ? "bg-black/20" : "bg-muted")}>
+                                <div 
+                                    className={cn("h-full transition-all duration-500 rounded-full", alignRight ? "bg-white" : "bg-primary")} 
+                                    style={{ width: `${percentage}%` }}
+                                />
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest opacity-60 px-1">
+                <span>{t('poll_vote_count', { count: totalVotes })}</span>
+                {poll.isAnonymous ? (
+                    <span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> {t('poll_anonymous_label')}</span>
+                ) : (
+                    <span>{t('poll_view_results')}</span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
+    const { isDarkMode } = useTheme();
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [maxTime, setMaxTime] = useState(duration || 0);
+
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.load();
+        }
+    }, [src]);
+
+    const togglePlay = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (audioRef.current) {
+            if (isPlaying) audioRef.current.pause();
+            else audioRef.current.play();
+            setIsPlaying(!isPlaying);
+        }
+    };
+
+    const onTimeUpdate = () => {
+        if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+            const d = audioRef.current.duration;
+            if (d && isFinite(d)) {
+                setMaxTime(d);
+            }
+        }
+    };
+
+    const formatTime = (time: number) => {
+        if (typeof time !== 'number' || isNaN(time) || !isFinite(time)) return "0:00";
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        if (audioRef.current && maxTime) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
+            audioRef.current.currentTime = percentage * maxTime;
+        }
+    };
+
+    const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
+    const accentClass = isDarkMode ? "bg-black" : "bg-white";
+
+    return (
+        <div className={cn(
+            "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all shadow-sm", 
+            isMusic ? "w-full max-w-[400px]" : "w-full max-w-[380px] min-w-[240px]",
+            uiClass
+        )}>
+            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
+            <button 
+                onClick={togglePlay} 
+                className={cn(
+                    "rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", 
+                    isMusic ? "w-12 h-12 bg-white/10" : "w-10 h-10",
+                    accentClass
+                )}
+            >
+                {isPlaying ? (
+                    <Pause className={cn("h-5 w-5", isDarkMode ? "text-white fill-white" : "text-primary fill-primary")} />
+                ) : (
+                    <Play className={cn("h-5 w-5 ml-0.5", isDarkMode ? "text-white fill-white" : "text-primary fill-primary")} />
+                )}
+            </button>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                {isMusic && fileName && (
+                    <div className="text-[10px] font-black uppercase tracking-tighter truncate mb-1 opacity-90">
+                        {fileName}
+                    </div>
+                )}
+                <div 
+                    className={cn(
+                        "relative h-2 w-full rounded-full overflow-hidden cursor-pointer", 
+                        isMusic ? "mb-1.5" : "mb-0",
+                        isDarkMode ? "bg-black/30" : "bg-white/30"
+                    )} 
+                    onClick={handleProgressClick}
+                >
+                    <div 
+                        className={cn("absolute h-full rounded-full transition-all duration-100", accentClass)} 
+                        style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
+                    />
+                </div>
+                {isMusic && !hideTime && (
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80 mt-1.5">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(maxTime)}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpenChange: (v: boolean) => void, onSubmit: (poll: Poll) => void }) {
+    const { t } = useLanguage();
+    const [question, setQuestion] = useState('');
+    const [options, setOptions] = useState(['', '']);
+    const [isAnonymous, setIsAnonymous] = useState(true);
+    const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+
+    const handleAddOption = () => {
+        if (options.length < 10) setOptions([...options, '']);
+    };
+
+    const handleRemoveOption = (index: number) => {
+        if (options.length > 2) {
+            const newOptions = [...options];
+            newOptions.splice(index, 1);
+            setOptions(newOptions);
+        }
+    };
+
+    const handleOptionChange = (index: number, value: string) => {
+        const newOptions = [...options];
+        newOptions[index] = value;
+        setOptions(newOptions);
+    };
+
+    const handleCreate = () => {
+        const validOptions = options.filter(opt => opt.trim() !== '');
+        if (question.trim() && validOptions.length >= 2) {
+            onSubmit({
+                question: question.trim(),
+                options: validOptions.map(text => ({ text, votes: [] })),
+                isAnonymous,
+                isMultipleChoice,
+            });
+            setQuestion('');
+            setOptions(['', '']);
+            setIsAnonymous(true);
+            setIsMultipleChoice(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0 gap-0">
+                <div className="bg-primary/5 p-6 border-b">
+                    <DialogTitle className="text-xl font-bold font-headline">{t('create_poll')}</DialogTitle>
+                </div>
+                <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('poll_question_label')}</Label>
+                        <Input 
+                            value={question} 
+                            onChange={e => setQuestion(e.target.value)} 
+                            placeholder={t('poll_question_placeholder')} 
+                            className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">ВАРИАНТЫ ОТВЕТА</Label>
+                        {options.map((opt, i) => (
+                            <div key={i} className="flex gap-2">
+                                <Input 
+                                    value={opt} 
+                                    onChange={e => handleOptionChange(i, e.target.value)} 
+                                    placeholder={`${t('poll_option_placeholder')}...`} 
+                                    className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary"
+                                />
+                                {options.length > 2 && (
+                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(i)} className="shrink-0 rounded-xl">
+                                        <Minus className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                        {options.length < 10 && (
+                            <Button variant="outline" onClick={handleAddOption} className="w-full rounded-xl border-dashed border-primary/30 text-primary hover:bg-primary/5">
+                                <Plus className="mr-2 h-4 w-4" /> {t('poll_add_option')}
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="anon-poll" className="cursor-pointer">{t('poll_anonymous_label')}</Label>
+                            <Switch id="anon-poll" checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="multi-poll" className="cursor-pointer">{t('poll_multiple_choice_label')}</Label>
+                            <Switch id="multi-poll" checked={isMultipleChoice} onCheckedChange={setIsMultipleChoice} />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="p-6 pt-0 gap-2">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl flex-1">{t('cancel')}</Button>
+                    <Button onClick={handleCreate} disabled={!question.trim() || options.filter(o => o.trim() !== '').length < 2} className="rounded-xl flex-[2] font-bold">
+                        {t('create_poll')}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
@@ -1192,6 +1448,14 @@ const handleForward = async (targetChatId: string) => {
         toast({ variant: 'destructive', title: 'Error', description: 'Forwarding failed.' });
     }
 };
+
+const handleVote = async (optionIndex: number) => {
+    if (!db || !messages) return;
+    // We need to find the message ID. In this implementation we find it via local state first.
+    // For production, the handleVote should probably be passed to ChatMessage which knows its own message.id
+    // But ChatMessage is already a child, let's look at how handleVote was being used.
+    // Fixed: The actual handleVote logic is within each ChatMessage call below.
+};
   
   const handleReply = (message: Message) => {
     setReplyToMessage(message);
@@ -1844,6 +2108,74 @@ const handleForward = async (targetChatId: string) => {
                               const prevMessageDate = prevMessage ? getSafeDate(prevMessage.timestamp) : null;
                               const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
 
+                              const handleToggleMessageReaction = async (emoji: string) => {
+                                if (!db) return;
+                                const messageRef = doc(db, 'chats', item.id, 'messages', message.id);
+                                const currentReactions = message.reactions || {};
+                                
+                                let alreadyMatchedEmoji: string | null = null;
+                                Object.entries(currentReactions).forEach(([key, voters]) => {
+                                    if (Array.isArray(voters) && voters.includes(currentUser.uid)) {
+                                        alreadyMatchedEmoji = key;
+                                    }
+                                });
+
+                                const updates: Record<string, any> = {};
+
+                                if (alreadyMatchedEmoji === emoji) {
+                                    updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
+                                } else {
+                                    if (alreadyMatchedEmoji) {
+                                        updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
+                                    }
+                                    updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
+                                }
+
+                                try {
+                                    await updateDoc(messageRef, updates);
+                                } catch (e) {
+                                    console.error("Failed to toggle reaction", e);
+                                }
+                              };
+
+                              const handleVoteLocal = async (optionIndex: number) => {
+                                if (!db || !message.poll) return;
+                                const msgRef = doc(db, 'chats', item.id, 'messages', message.id);
+                                
+                                try {
+                                    await runTransaction(db, async (transaction) => {
+                                        const snap = await transaction.get(msgRef);
+                                        if (!snap.exists()) return;
+                                        
+                                        const currentPoll = snap.data().poll as Poll;
+                                        const newOptions = [...currentPoll.options];
+                                        const userId = currentUser.uid;
+
+                                        if (currentPoll.isMultipleChoice) {
+                                            const isVoted = newOptions[optionIndex].votes.includes(userId);
+                                            if (isVoted) {
+                                                newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
+                                            } else {
+                                                newOptions[optionIndex].votes.push(userId);
+                                            }
+                                        } else {
+                                            const alreadyVotedIndex = newOptions.findIndex(o => o.votes.includes(userId));
+                                            if (alreadyVotedIndex === optionIndex) {
+                                                newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
+                                            } else {
+                                                if (alreadyVotedIndex !== -1) {
+                                                    newOptions[alreadyVotedIndex].votes = newOptions[alreadyVotedIndex].votes.filter(id => id !== userId);
+                                                }
+                                                newOptions[optionIndex].votes.push(userId);
+                                            }
+                                        }
+                                        transaction.update(msgRef, { poll: { ...currentPoll, options: newOptions } });
+                                    });
+                                } catch (e) {
+                                    console.error("Vote failed", e);
+                                }
+                              };
+
                               return (
                                   <React.Fragment key={message.id}>
                                       {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
@@ -1864,6 +2196,8 @@ const handleForward = async (targetChatId: string) => {
                                           memberDetails={memberDetails}
                                           onSelectChat={onSelectChat}
                                           onForward={(m) => setForwardingMessage(m)}
+                                          onVote={handleVoteLocal}
+                                          onToggleReaction={handleToggleMessageReaction}
                                       />
                                   </React.Fragment>
                               );
@@ -2235,213 +2569,6 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
     );
 }
 
-function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpenChange: (v: boolean) => void, onSubmit: (poll: Poll) => void }) {
-    const { t } = useLanguage();
-    const [question, setQuestion] = useState('');
-    const [options, setOptions] = useState(['', '']);
-    const [isAnonymous, setIsAnonymous] = useState(true);
-    const [isMultipleChoice, setIsMultipleChoice] = useState(false);
-
-    const handleAddOption = () => {
-        if (options.length < 10) setOptions([...options, '']);
-    };
-
-    const handleRemoveOption = (index: number) => {
-        if (options.length > 2) {
-            const newOptions = [...options];
-            newOptions.splice(index, 1);
-            setOptions(newOptions);
-        }
-    };
-
-    const handleOptionChange = (index: number, value: string) => {
-        const newOptions = [...options];
-        newOptions[index] = value;
-        setOptions(newOptions);
-    };
-
-    const handleCreate = () => {
-        const validOptions = options.filter(opt => opt.trim() !== '');
-        if (question.trim() && validOptions.length >= 2) {
-            onSubmit({
-                question: question.trim(),
-                options: validOptions.map(text => ({ text, votes: [] })),
-                isAnonymous,
-                isMultipleChoice,
-            });
-            setQuestion('');
-            setOptions(['', '']);
-            setIsAnonymous(true);
-            setIsMultipleChoice(false);
-        }
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md rounded-2xl overflow-hidden p-0 gap-0">
-                <div className="bg-primary/5 p-6 border-b">
-                    <DialogTitle className="text-xl font-bold font-headline">{t('create_poll')}</DialogTitle>
-                </div>
-                <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('poll_question_label')}</Label>
-                        <Input 
-                            value={question} 
-                            onChange={e => setQuestion(e.target.value)} 
-                            placeholder={t('poll_question_placeholder')} 
-                            className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary"
-                        />
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">ВАРИАНТЫ ОТВЕТА</Label>
-                        {options.map((opt, i) => (
-                            <div key={i} className="flex gap-2">
-                                <Input 
-                                    value={opt} 
-                                    onChange={e => handleOptionChange(i, e.target.value)} 
-                                    placeholder={`${t('poll_option_placeholder')}...`} 
-                                    className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary"
-                                />
-                                {options.length > 2 && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(i)} className="shrink-0 rounded-xl">
-                                        <Minus className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-                        {options.length < 10 && (
-                            <Button variant="outline" onClick={handleAddOption} className="w-full rounded-xl border-dashed border-primary/30 text-primary hover:bg-primary/5">
-                                <Plus className="mr-2 h-4 w-4" /> {t('poll_add_option')}
-                            </Button>
-                        )}
-                    </div>
-
-                    <div className="space-y-4 pt-2">
-                        <div className="flex items-center justify-between">
-                            <Label htmlFor="anon-poll" className="cursor-pointer">{t('poll_anonymous_label')}</Label>
-                            <Switch id="anon-poll" checked={isAnonymous} onCheckedChange={setIsAnonymous} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <Label htmlFor="multi-poll" className="cursor-pointer">{t('poll_multiple_choice_label')}</Label>
-                            <Switch id="multi-poll" checked={isMultipleChoice} onCheckedChange={setIsMultipleChoice} />
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter className="p-6 pt-0 gap-2">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl flex-1">{t('cancel')}</Button>
-                    <Button onClick={handleCreate} disabled={!question.trim() || options.filter(o => o.trim() !== '').length < 2} className="rounded-xl flex-[2] font-bold">
-                        {t('create_poll')}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
-    const { isDarkMode } = useTheme();
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [maxTime, setMaxTime] = useState(duration || 0);
-
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.load();
-        }
-    }, [src]);
-
-    const togglePlay = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (audioRef.current) {
-            if (isPlaying) audioRef.current.pause();
-            else audioRef.current.play();
-            setIsPlaying(!isPlaying);
-        }
-    };
-
-    const onTimeUpdate = () => {
-        if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime);
-            const d = audioRef.current.duration;
-            if (d && isFinite(d)) {
-                setMaxTime(d);
-            }
-        }
-    };
-
-    const formatTime = (time: number) => {
-        if (typeof time !== 'number' || isNaN(time) || !isFinite(time)) return "0:00";
-        const mins = Math.floor(time / 60);
-        const secs = Math.floor(time % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        e.stopPropagation();
-        if (audioRef.current && maxTime) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const percentage = x / rect.width;
-            audioRef.current.currentTime = percentage * maxTime;
-        }
-    };
-
-    const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
-    const accentClass = isDarkMode ? "bg-black" : "bg-white";
-
-    return (
-        <div className={cn(
-            "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all shadow-sm", 
-            isMusic ? "w-full max-w-[400px]" : "w-full max-w-[380px] min-w-[240px]",
-            uiClass
-        )}>
-            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
-            <button 
-                onClick={togglePlay} 
-                className={cn(
-                    "rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", 
-                    isMusic ? "w-12 h-12 bg-white/10" : "w-10 h-10",
-                    accentClass
-                )}
-            >
-                {isPlaying ? (
-                    <Pause className={cn("h-5 w-5", isDarkMode ? "text-white fill-white" : "text-primary fill-primary")} />
-                ) : (
-                    <Play className={cn("h-5 w-5 ml-0.5", isDarkMode ? "text-white fill-white" : "text-primary fill-primary")} />
-                )}
-            </button>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                {isMusic && fileName && (
-                    <div className="text-[10px] font-black uppercase tracking-tighter truncate mb-1 opacity-90">
-                        {fileName}
-                    </div>
-                )}
-                <div 
-                    className={cn(
-                        "relative h-2 w-full rounded-full overflow-hidden cursor-pointer", 
-                        isMusic ? "mb-1.5" : "mb-0",
-                        isDarkMode ? "bg-black/30" : "bg-white/30"
-                    )} 
-                    onClick={handleProgressClick}
-                >
-                    <div 
-                        className={cn("absolute h-full rounded-full transition-all duration-100", accentClass)} 
-                        style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
-                    />
-                </div>
-                {isMusic && !hideTime && (
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80 mt-1.5">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(maxTime)}</span>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
 function ChatMessage({ 
     message, 
     sender, 
@@ -2459,6 +2586,8 @@ function ChatMessage({
     memberDetails,
     onSelectChat,
     onForward,
+    onVote,
+    onToggleReaction,
 }: { 
     message: Message, 
     sender?: User, 
@@ -2476,6 +2605,8 @@ function ChatMessage({
     memberDetails: Record<string, User>;
     onSelectChat: (chat: PopulatedChat) => void;
     onForward: (message: Message) => void;
+    onVote: (index: number) => void;
+    onToggleReaction: (emoji: string) => void;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -2702,36 +2833,6 @@ function ChatMessage({
         });
     };
 
-    const handleToggleReaction = async (emoji: string) => {
-        if (!db) return;
-        const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
-        const currentReactions = message.reactions || {};
-        
-        let alreadyMatchedEmoji: string | null = null;
-        Object.entries(currentReactions).forEach(([key, voters]) => {
-            if (Array.isArray(voters) && voters.includes(currentUser.uid)) {
-                alreadyMatchedEmoji = key;
-            }
-        });
-
-        const updates: Record<string, any> = {};
-
-        if (alreadyMatchedEmoji === emoji) {
-            updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
-        } else {
-            if (alreadyMatchedEmoji) {
-                updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
-            }
-            updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
-        }
-
-        try {
-            await updateDoc(messageRef, updates);
-        } catch (e) {
-            console.error("Failed to toggle reaction", e);
-        }
-    };
-
     const handleScrollToReply = () => {
         if (message.replyTo) {
             const repliedMsgElement = document.getElementById(`message-${message.replyTo.messageId}`);
@@ -2743,44 +2844,6 @@ function ChatMessage({
         }
     };
 
-    const handleVote = async (optionIndex: number) => {
-        if (!db || !message.poll) return;
-        const msgRef = doc(db, 'chats', chat.id, 'messages', message.id);
-        
-        try {
-            await runTransaction(db, async (transaction) => {
-                const snap = await transaction.get(msgRef);
-                if (!snap.exists()) return;
-                
-                const currentPoll = snap.data().poll as Poll;
-                const newOptions = [...currentPoll.options];
-                const userId = currentUser.uid;
-
-                if (currentPoll.isMultipleChoice) {
-                    const isVoted = newOptions[optionIndex].votes.includes(userId);
-                    if (isVoted) {
-                        newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
-                    } else {
-                        newOptions[optionIndex].votes.push(userId);
-                    }
-                } else {
-                    const alreadyVotedIndex = newOptions.findIndex(o => o.votes.includes(userId));
-                    if (alreadyVotedIndex === optionIndex) {
-                        newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
-                    } else {
-                        if (alreadyVotedIndex !== -1) {
-                            newOptions[alreadyVotedIndex].votes = newOptions[alreadyVotedIndex].votes.filter(id => id !== userId);
-                        }
-                        newOptions[optionIndex].votes.push(userId);
-                    }
-                }
-                transaction.update(msgRef, { poll: { ...currentPoll, options: newOptions } });
-            });
-        } catch (e) {
-            console.error("Vote failed", e);
-        }
-    };
-
     const messageDate = getSafeDate(message.timestamp);
     const timestamp = format(messageDate, 'HH:mm');
     
@@ -2789,10 +2852,12 @@ function ChatMessage({
     const alignRight = isCurrentUser && !fromBot && chatType !== 'channel';
     const showAvatar = (chatType === 'group' && !isCurrentUser) || fromBot;
     
+    const isOfficialBot = message.fromChannelId === 'GENERAL_CHAT' || message.senderName === 'Infinite' || message.senderName === 'Infinite Bot';
+    
     const botUser: User | undefined = fromBot ? { 
         id: 'INFINITE_BOT', 
         name: message.senderName || 'Infinite', 
-        username: (message.fromChannelId === 'GENERAL_CHAT' || message.senderName === 'Infinite' || message.senderName === 'Infinite Bot') ? '@InfiniteBot' : '@channel_bot', 
+        username: isOfficialBot ? '@InfiniteBot' : '@channel_bot', 
         avatar: message.senderAvatar, 
         status: 'online', 
         isBot: true 
@@ -2992,7 +3057,7 @@ function ChatMessage({
                             </div>
                         </div>
                     ) : message.poll ? (
-                        <PollDisplay poll={message.poll} onVote={handleVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />
+                        <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />
                     ) : null}
                     {message.content && !isCircle && (
                         <div className={cn("text-sm break-words prose prose-sm max-w-none", alignRight ? "prose-invert text-white" : "dark:prose-invert")}>
@@ -3014,7 +3079,7 @@ function ChatMessage({
                         {reactionEntries.map(([emoji, voters]) => (
                             <button
                                 key={emoji}
-                                onClick={() => handleToggleReaction(emoji)}
+                                onClick={() => onToggleReaction(emoji)}
                                 className={cn(
                                     "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all shadow-sm",
                                     Array.isArray(voters) && voters.includes(currentUser.uid) 
@@ -3059,7 +3124,7 @@ function ChatMessage({
                                     <button 
                                         key={emoji} 
                                         className="text-xl hover:bg-muted p-1 rounded transition-colors"
-                                        onClick={() => handleToggleReaction(emoji)}
+                                        onClick={() => onToggleReaction(emoji)}
                                     >
                                         {emoji}
                                     </button>
