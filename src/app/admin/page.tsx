@@ -53,10 +53,9 @@ function AdminPage() {
   const router = useRouter();
   const db = useFirestore();
   const { toast } = useToast();
-  const { t } = useLanguage();
-
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLanguage();
 
   // Grant Gold State
   const [goldDialogOpen, setGoldDialogOpen] = useState(false);
