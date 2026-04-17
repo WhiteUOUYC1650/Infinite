@@ -1,4 +1,5 @@
 
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -501,6 +502,7 @@ export const translations = {
       'bot_username_label': 'Bot Handle (@)',
       'bot_name_label': 'Bot Name',
       'no_studio_bots': 'You haven\'t created any bots yet.',
+      'start_button': 'СТАРТ',
     },
     ru: {
       'settings': 'Настройки',
@@ -1001,6 +1003,7 @@ export const translations = {
       'bot_username_label': 'Юзернейм бота (@)',
       'bot_name_label': 'Имя бота',
       'no_studio_bots': 'Вы пока что не создали ни одного бота.',
+      'start_button': 'СТАРТ',
     }
   };
 

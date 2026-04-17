@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
-import type { CustomBot, BotBlock, BotBlockType } from '@/types';
+import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, MoveHorizontal, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
-  const [scripts, setScripts] = useState<BotBlock[][]>(bot.scripts || []);
+  const [scripts, setScripts] = useState<BotScript[]>(bot.scripts || []);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -61,32 +61,44 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     try {
         await updateDoc(doc(db, 'customBots', bot.id), { scripts });
         toast({ title: t('dm_success'), description: t('chat_update_success') });
-    } catch (e) { console.error(e); }
+    } catch (e: any) { 
+        console.error(e); 
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
     finally { setIsSaving(false); }
   };
 
   const addStack = (type: BotBlockType = 'event_start') => {
     const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: type === 'event_start' ? {} : { text: '' } };
-    setScripts([...scripts, [newBlock]]);
+    setScripts([...scripts, { id: Math.random().toString(36).substr(2, 9), blocks: [newBlock] }]);
   };
 
   const addBlockToStack = (stackIndex: number, type: BotBlockType) => {
     const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: { text: '' } };
     const newScripts = [...scripts];
-    newScripts[stackIndex] = [...newScripts[stackIndex], newBlock];
+    newScripts[stackIndex].blocks = [...newScripts[stackIndex].blocks, newBlock];
     setScripts(newScripts);
+  };
+
+  const handlePaletteClick = (type: BotBlockType) => {
+      if (type === 'event_start' || scripts.length === 0) {
+          addStack(type);
+      } else {
+          // Add to the last script
+          addBlockToStack(scripts.length - 1, type);
+      }
   };
 
   const updateBlockParam = (stackIndex: number, blockIndex: number, key: string, value: any) => {
     const newScripts = [...scripts];
-    newScripts[stackIndex][blockIndex].params = { ...newScripts[stackIndex][blockIndex].params, [key]: value };
+    newScripts[stackIndex].blocks[blockIndex].params = { ...newScripts[stackIndex].blocks[blockIndex].params, [key]: value };
     setScripts(newScripts);
   };
 
   const removeBlock = (stackIndex: number, blockIndex: number) => {
     const newScripts = [...scripts];
-    newScripts[stackIndex].splice(blockIndex, 1);
-    if (newScripts[stackIndex].length === 0) {
+    newScripts[stackIndex].blocks.splice(blockIndex, 1);
+    if (newScripts[stackIndex].blocks.length === 0) {
         newScripts.splice(stackIndex, 1);
     }
     setScripts(newScripts);
@@ -115,12 +127,12 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r bg-muted/20 p-4 shrink-0 overflow-y-auto">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">Palette</h3>
             <div className="space-y-3">
-                <BlockDraft type="event_start" label={t('block_event_received')} />
+                <BlockDraft type="event_start" label={t('block_event_received')} onClick={() => handlePaletteClick('event_start')} />
                 <div className="h-px bg-border my-4" />
-                <BlockDraft type="action_send" label={t('block_action_send')} />
-                <BlockDraft type="action_reply" label={t('block_action_reply')} />
-                <BlockDraft type="action_wait" label={t('block_action_wait').replace('{seconds}', '1')} />
-                <BlockDraft type="condition_if_text" label={t('block_condition_if').replace('{text}', '...')} />
+                <BlockDraft type="action_send" label={t('block_action_send')} onClick={() => handlePaletteClick('action_send')} />
+                <BlockDraft type="action_reply" label={t('block_action_reply')} onClick={() => handlePaletteClick('action_reply')} />
+                <BlockDraft type="action_wait" label={t('block_action_wait').replace('{seconds}', '1')} onClick={() => handlePaletteClick('action_wait')} />
+                <BlockDraft type="condition_if_text" label={t('block_condition_if').replace('{text}', '...')} onClick={() => handlePaletteClick('condition_if_text')} />
             </div>
             <Button onClick={() => addStack()} className="w-full mt-8 rounded-2xl h-14 border-2 border-dashed border-primary/40 bg-transparent text-primary hover:bg-primary/5 font-black uppercase tracking-widest text-[10px]">
                 <Plus className="mr-2 h-4 w-4" /> New Script
@@ -132,13 +144,13 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '24px 24px' }} />
             
             <div className="max-w-3xl mx-auto space-y-16">
-                {scripts.map((stack, sIdx) => (
-                    <div key={sIdx} className="relative animate-in slide-in-from-bottom-4 duration-300">
+                {scripts.map((script, sIdx) => (
+                    <div key={script.id} className="relative animate-in slide-in-from-bottom-4 duration-300">
                         {/* Stack Header */}
                         <div className="absolute -top-6 left-4 bg-muted px-2 py-0.5 rounded-t-lg text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
                         
                         <div className="flex flex-col items-center">
-                            {stack.map((block, bIdx) => (
+                            {script.blocks.map((block, bIdx) => (
                                 <React.Fragment key={block.id}>
                                     <BotBlockComponent 
                                         block={block} 
@@ -147,7 +159,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                                         onUpdate={updateBlockParam}
                                         onDelete={removeBlock}
                                     />
-                                    {bIdx < stack.length - 1 && (
+                                    {bIdx < script.blocks.length - 1 && (
                                         <div className="w-2 h-4 bg-muted/40" />
                                     )}
                                 </React.Fragment>
@@ -196,13 +208,19 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   );
 }
 
-function BlockDraft({ type, label }: { type: BotBlockType, label: string }) {
+function BlockDraft({ type, label, onClick }: { type: BotBlockType, label: string, onClick: () => void }) {
     const Icon = BLOCK_ICONS[type];
     return (
-        <div className={cn("p-3 rounded-xl border-b-4 text-white text-xs font-bold flex items-center gap-3 shadow-sm", BLOCK_COLORS[type])}>
+        <button 
+            onClick={onClick}
+            className={cn(
+                "w-full p-3 rounded-xl border-b-4 text-white text-xs font-bold flex items-center gap-3 shadow-sm transition-all active:scale-95 hover:brightness-110 text-left", 
+                BLOCK_COLORS[type]
+            )}
+        >
             <Icon className="h-4 w-4 shrink-0" />
             <span className="truncate">{label}</span>
-        </div>
+        </button>
     );
 }
 

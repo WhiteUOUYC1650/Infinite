@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search, PlayCircle } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -891,10 +891,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   };
 
-  const handleSendMessage = async () => {
-    if ((!messageContent.trim() && !fileToSend) || !db) return;
+  const handleSendMessage = async (customContent?: string) => {
+    const finalContent = customContent !== undefined ? customContent : messageContent;
+    if ((!finalContent.trim() && !fileToSend) || !db) return;
     setIsSending(true);
-    const originalContent = messageContent;
+    const originalContent = finalContent;
     const originalFile = fileToSend;
     const originalReplyTo = replyToMessage;
     
@@ -1451,10 +1452,7 @@ const handleForward = async (targetChatId: string) => {
 
 const handleVote = async (optionIndex: number) => {
     if (!db || !messages) return;
-    // We need to find the message ID. In this implementation we find it via local state first.
-    // For production, the handleVote should probably be passed to ChatMessage which knows its own message.id
-    // But ChatMessage is already a child, let's look at how handleVote was being used.
-    // Fixed: The actual handleVote logic is within each ChatMessage call below.
+    // Handled locally within ChatMessage and handleVoteLocal
 };
   
   const handleReply = (message: Message) => {
@@ -1890,6 +1888,8 @@ const handleVote = async (optionIndex: number) => {
   const isLoading = messagesLoading || chatLoading || (allUserIdsToFetch.length > 0 && membersLoading);
 
   const isSavedMessagesChat = item.type === 'dm' && item.id === currentUser.uid;
+  const isBotChat = item.type === 'dm' && otherUser?.isBot;
+  const isEmptyBotChat = isBotChat && !isLoading && (!messages || messages.length === 0);
 
   return (
     <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -2230,134 +2230,154 @@ const handleVote = async (optionIndex: number) => {
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
           <div className="max-w-3xl mx-auto flex flex-col gap-2">
-            {replyToMessage && (
-                <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <Reply className="h-4 w-4 text-primary shrink-0" />
-                        <div className="min-w-0">
-                            <div className="text-xs font-bold text-primary truncate">{replyToMessage.sender?.name || replyToMessage.senderName}</div>
-                            <div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div>
-                        </div>
+            {isEmptyBotChat ? (
+                <div className="flex flex-col items-center gap-4 py-8 animate-in fade-in zoom-in duration-500">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <Bot className="h-10 w-10" />
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}>
-                        <X className="h-4 w-4" />
+                    <div className="text-center space-y-1">
+                        <h3 className="font-bold text-lg">{t('bot_studio_title')}</h3>
+                        <p className="text-xs text-muted-foreground max-w-[240px]">{otherUser?.statusMessage || t('bot_studio_desc')}</p>
+                    </div>
+                    <Button 
+                        onClick={() => handleSendMessage('/start')} 
+                        className="w-full max-w-[200px] h-14 rounded-full text-xl font-black shadow-xl shadow-primary/20 tracking-tighter"
+                    >
+                        {t('start_button')}
                     </Button>
                 </div>
-            )}
-            {editingMessage && (
-                <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <Edit className="h-4 w-4 text-primary shrink-0" />
-                        <div className="min-w-0">
-                            <div className="text-xs font-bold text-primary">{t('editing_message')}</div>
-                            <div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div>
-                        </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCancelEdit}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
-            {fileToSend && (
-                <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
-                    <div className="flex items-center gap-2 min-w-0">
-                        {fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary shrink-0" /> : <FileIcon className="h-4 w-4 text-primary shrink-0" />}
-                        <div className="min-w-0">
-                            <div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div>
-                            <div className="text-[10px] text-muted-foreground">{(fileToSend.file.size / (1024 * 1024)).toFixed(2)} MB</div>
-                        </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
-            
-            <form onSubmit={handleSubmit} className="flex items-end gap-2 relative">
-                <div className="relative flex-1">
-                    <Textarea
-                        placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')}
-                        value={messageContent}
-                        onChange={(e) => setMessageContent(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSubmit(e);
-                            }
-                        }}
-                        className="min-h-[38px] h-[38px] max-h-32 py-2 px-4 resize-none placeholder:truncate"
-                    />
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0 h-[38px]">
-                    <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="shrink-0 h-9 w-9">
-                                <Paperclip className="h-5 w-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="top">
-                            <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b mb-1">
-                                {t('max_file_size_label', { size: maxFileSizeText })}
+            ) : (
+            <>
+                {replyToMessage && (
+                    <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <Reply className="h-4 w-4 text-primary shrink-0" />
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold text-primary truncate">{replyToMessage.sender?.name || replyToMessage.senderName}</div>
+                                <div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div>
                             </div>
-                            <DropdownMenuItem onSelect={() => handleAttachmentClick('image')}>
-                                <ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleAttachmentClick('video')}>
-                                <VideoIcon className="mr-2 h-4 w-4" /> {t('video')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleAttachmentClick('music')}>
-                                <MusicIcon className="mr-2 h-4 w-4" /> {t('music')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleAttachmentClick('file')}>
-                                <FileIcon className="mr-2 h-4 w-4" /> {t('file')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleAttachmentClick('poll')}>
-                                <ListTodo className="mr-2 h-4 w-4" /> {t('poll')}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    
-                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-
-                    {(messageContent.trim() || fileToSend) ? (
-                        <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full shadow-lg">
-                            {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}>
+                            <X className="h-4 w-4" />
                         </Button>
-                    ) : (
-                        <div className="flex items-center gap-1">
-                            <div className="relative">
-                                <Button 
-                                    type="button" 
-                                    size="icon" 
-                                    variant="ghost"
-                                    className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
-                                    onPointerDown={(e) => handlePointerDown(e, 'circle')}
-                                    onPointerMove={handlePointerMove}
-                                    onPointerUp={handlePointerUp}
-                                >
-                                    <Camera className="h-5 w-5" />
-                                </Button>
-                                <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
-                            </div>
-                            <div className="relative">
-                                <Button 
-                                    type="button" 
-                                    size="icon" 
-                                    variant="ghost"
-                                    className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
-                                    onPointerDown={(e) => handlePointerDown(e, 'voice')}
-                                    onPointerMove={handlePointerMove}
-                                    onPointerUp={handlePointerUp}
-                                >
-                                    <Mic className="h-5 w-5" />
-                                </Button>
-                                <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
+                    </div>
+                )}
+                {editingMessage && (
+                    <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <Edit className="h-4 w-4 text-primary shrink-0" />
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold text-primary">{t('editing_message')}</div>
+                                <div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div>
                             </div>
                         </div>
-                    )}
-                </div>
-            </form>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCancelEdit}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                {fileToSend && (
+                    <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                            {fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary shrink-0" /> : <FileIcon className="h-4 w-4 text-primary shrink-0" />}
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div>
+                                <div className="text-[10px] text-muted-foreground">{(fileToSend.file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="flex items-end gap-2 relative">
+                    <div className="relative flex-1">
+                        <Textarea
+                            placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')}
+                            value={messageContent}
+                            onChange={(e) => setMessageContent(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit(e);
+                                }
+                            }}
+                            className="min-h-[38px] h-[38px] max-h-32 py-2 px-4 resize-none placeholder:truncate"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 h-[38px]">
+                        <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon" className="shrink-0 h-9 w-9">
+                                    <Paperclip className="h-5 w-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" side="top">
+                                <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b mb-1">
+                                    {t('max_file_size_label', { size: maxFileSizeText })}
+                                </div>
+                                <DropdownMenuItem onSelect={() => handleAttachmentClick('image')}>
+                                    <ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentClick('video')}>
+                                    <VideoIcon className="mr-2 h-4 w-4" /> {t('video')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentClick('music')}>
+                                    <MusicIcon className="mr-2 h-4 w-4" /> {t('music')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentClick('file')}>
+                                    <FileIcon className="mr-2 h-4 w-4" /> {t('file')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentClick('poll')}>
+                                    <ListTodo className="mr-2 h-4 w-4" /> {t('poll')}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+
+                        {(messageContent.trim() || fileToSend) ? (
+                            <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full shadow-lg">
+                                {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                            </Button>
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                <div className="relative">
+                                    <Button 
+                                        type="button" 
+                                        size="icon" 
+                                        variant="ghost"
+                                        className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")}
+                                        onPointerDown={(e) => handlePointerDown(e, 'circle')}
+                                        onPointerMove={handlePointerMove}
+                                        onPointerUp={handlePointerUp}
+                                    >
+                                        <Camera className="h-5 w-5" />
+                                    </Button>
+                                    <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
+                                </div>
+                                <div className="relative">
+                                    <Button 
+                                        type="button" 
+                                        size="icon" 
+                                        variant="ghost"
+                                        className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")}
+                                        onPointerDown={(e) => handlePointerDown(e, 'voice')}
+                                        onPointerMove={handlePointerMove}
+                                        onPointerUp={handlePointerUp}
+                                    >
+                                        <Mic className="h-5 w-5" />
+                                    </Button>
+                                    <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </form>
+            </>
+            )}
           </div>
         </footer>
       )}

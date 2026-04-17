@@ -102,6 +102,11 @@ export type BotBlock = {
   params?: Record<string, any>;
 };
 
+export type BotScript = {
+  id: string;
+  blocks: BotBlock[];
+};
+
 export type CustomBot = {
   id: string;
   name: string;
@@ -109,7 +114,7 @@ export type CustomBot = {
   ownerId: string;
   avatar?: string;
   description?: string;
-  scripts: BotBlock[][]; // Array of stacks (each stack starts with an event)
+  scripts: BotScript[]; // Fixed: Using objects instead of nested arrays for Firestore compatibility
   isActive: boolean;
   createdAt: Timestamp;
 };

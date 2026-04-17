@@ -112,8 +112,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   }, []);
 
   // Global Custom Bot Engine Listener
-  // This engine allows custom bots to respond even when the owner is offline
-  // by executing logic on the client that receives the message.
   useEffect(() => {
     if (!db || !currentUser) return;
 
@@ -149,7 +147,8 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     });
 
     const executeBotLogic = async (bot: CustomBot, message: any, chatId: string) => {
-        for (const stack of bot.scripts) {
+        for (const script of bot.scripts) {
+            const stack = script.blocks;
             const eventBlock = stack[0];
             if (eventBlock.type === 'event_start') {
                 // Currently supports basic message trigger
@@ -419,7 +418,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     <>
       {!isMobile && (
         <Sidebar>
-          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />}
+          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedId === selectedItem?.id} currentUser={populatedUser} />}
         </Sidebar>
       )}
       <SidebarInset>
