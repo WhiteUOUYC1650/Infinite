@@ -1,4 +1,5 @@
 
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -55,7 +56,7 @@ service cloud.firestore {
       }
     }
 
-    // Реестр имен
+    // Реестр имен (используем getAfter для транзакций Bot Studio)
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
@@ -111,6 +112,12 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+
+    // История переводов
+    match /transfers/{transferId} {
+        allow read: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+    }
     
     // Чанки файлов
     match /videoChunks/{chunkId} { allow create, read: if true; }
@@ -120,7 +127,7 @@ service cloud.firestore {
     match /circleChunks/{chunkId} { allow create, read: if true; }
     match /apkChunks/{chunkId} { allow create, read: if true; }
     
-    // Ссылки
+    // Ссылки (используем getAfter для транзакций Bot Studio)
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;

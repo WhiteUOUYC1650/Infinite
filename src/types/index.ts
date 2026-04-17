@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -114,9 +115,19 @@ export type CustomBot = {
   ownerId: string;
   avatar?: string;
   description?: string;
-  scripts: BotScript[]; // Fixed: Using objects instead of nested arrays for Firestore compatibility
+  scripts: BotScript[]; 
   isActive: boolean;
   createdAt: Timestamp;
+};
+
+export type Transfer = {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  amount: number;
+  timestamp: Timestamp;
+  senderName?: string;
+  receiverName?: string;
 };
 
 export type VideoChunk = {

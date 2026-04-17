@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -417,7 +418,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  // Forwarding State
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1415,7 +1415,6 @@ const handleForward = async (targetChatId: string) => {
         const batch = writeBatch(db);
         batch.set(messageRef, messageData);
 
-        // Update target chat last message and unread counts
         let contentForPreview = messageData.imageUrl ? t('image_attachment_placeholder') : (messageData.content || '').split('\n')[0];
         if (messageData.videoMimeType) contentForPreview = t('video_attachment_placeholder');
         if (messageData.musicMimeType) contentForPreview = t('music_attachment_placeholder');
@@ -1452,7 +1451,6 @@ const handleForward = async (targetChatId: string) => {
 
 const handleVote = async (optionIndex: number) => {
     if (!db || !messages) return;
-    // Handled locally within ChatMessage and handleVoteLocal
 };
   
   const handleReply = (message: Message) => {
@@ -2652,6 +2650,8 @@ function ChatMessage({
     const messageRef = useRef<HTMLDivElement>(null);
     const circleVideoRef = useRef<HTMLVideoElement>(null);
 
+    const isMentionAll = useMemo(() => message.content?.toLowerCase().includes('@all'), [message.content]);
+
     useEffect(() => {
         const checkCache = async () => {
             const cached = await getCachedFile(message.id);
@@ -2945,11 +2945,12 @@ function ChatMessage({
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn(
-                "min-w-0 flex flex-col relative", 
+                "min-w-0 flex flex-col relative transition-all duration-500", 
                 isCircle 
                     ? "p-0 bg-transparent rounded-full shadow-none border-none ring-0 overflow-visible" 
                     : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-3 rounded-br-none max-w-[min(480px,calc(100%-4rem))]" : "bg-card text-card-foreground rounded-lg p-3 rounded-bl-none max-w-[min(480px,calc(100%-4rem))]"), 
-                ((hasMusic || hasGenericFile || message.poll) && !message.content.trim()) && "min-w-64"
+                ((hasMusic || hasGenericFile || message.poll) && !message.content.trim()) && "min-w-64",
+                isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400 ring-offset-2 bg-amber-50 dark:bg-amber-950/30"
             )}
             style={isCircle ? { boxShadow: 'none', background: 'transparent', filter: 'none' } : undefined}
             >

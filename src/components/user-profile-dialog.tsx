@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -26,7 +27,7 @@ import { useTheme } from '@/context/theme-context';
 import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { doc, runTransaction, increment, getDoc } from 'firebase/firestore';
+import { doc, runTransaction, increment, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 
@@ -95,18 +96,29 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     try {
         const senderRef = doc(db, 'users', authUser.uid);
         const receiverRef = doc(db, 'users', user.id);
+        const transferRef = doc(collection(db, 'transfers'));
 
         await runTransaction(db, async (transaction) => {
             const senderSnap = await transaction.get(senderRef);
             if (!senderSnap.exists()) throw new Error("Sender not found");
             
-            const senderBalance = senderSnap.data().infGoldBalance || 0;
+            const senderData = senderSnap.data();
+            const senderBalance = senderData.infGoldBalance || 0;
             if (senderBalance < amount) {
                 throw new Error(t('not_enough_gold_transfer'));
             }
 
             transaction.update(senderRef, { infGoldBalance: increment(-amount) });
             transaction.update(receiverRef, { infGoldBalance: increment(amount) });
+            
+            transaction.set(transferRef, {
+                senderId: authUser.uid,
+                receiverId: user.id,
+                amount: amount,
+                timestamp: serverTimestamp(),
+                senderName: senderData.name || senderData.username || 'User',
+                receiverName: user.name || user.username || 'Recipient'
+            });
         });
 
         toast({

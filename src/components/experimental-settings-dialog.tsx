@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -36,11 +38,11 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X } from 'lucide-react';
-import type { AuthenticatedUser } from '@/types';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown } from 'lucide-react';
+import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
-import { useAuth, useFirestore } from '@/firebase';
-import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
+import { useAuth, useFirestore, useCollection } from '@/firebase';
+import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -58,8 +60,9 @@ import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { clearCacheDB } from '@/lib/cache-utils';
+import { format } from 'date-fns';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory';
 
 const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-smooth-scroll', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect', 'app-show-feed'];
 
@@ -127,6 +130,37 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [wheelRotation, setWheelRotation] = useState(0);
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
 
+  // Transfer History State
+  const transfersQuery = useMemo(() => {
+    if (!db || !currentUser.uid || page !== 'transferHistory') return null;
+    return query(
+        collection(db, 'transfers'),
+        where('senderId', '==', currentUser.uid),
+        orderBy('timestamp', 'desc'),
+        limit(20)
+    );
+  }, [db, currentUser.uid, page]);
+
+  const receivedQuery = useMemo(() => {
+    if (!db || !currentUser.uid || page !== 'transferHistory') return null;
+    return query(
+        collection(db, 'transfers'),
+        where('receiverId', '==', currentUser.uid),
+        orderBy('timestamp', 'desc'),
+        limit(20)
+    );
+  }, [db, currentUser.uid, page]);
+
+  const { data: sentTransfers, loading: loadingSent } = useCollection<Transfer>(transfersQuery);
+  const { data: receivedTransfers, loading: loadingReceived } = useCollection<Transfer>(receivedQuery);
+
+  const combinedTransfers = useMemo(() => {
+    if (!sentTransfers && !receivedTransfers) return [];
+    return [...(sentTransfers || []), ...(receivedTransfers || [])]
+        .sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis())
+        .slice(0, 30);
+  }, [sentTransfers, receivedTransfers]);
+
   const calculateCacheSize = () => {
     if (typeof window === 'undefined') return '0 B';
     let total = 0;
@@ -136,7 +170,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         total += (localStorage.getItem(key) || '').length * 2;
       }
     }
-    // Estimate IndexedDB size if possible, or just note it's cleared
     if (total === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -374,8 +407,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             }
         }
         keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        // Clear IndexedDB Persistent Cache
         await clearCacheDB();
 
         toast({ title: t('dm_success'), description: t('cache_cleared_success') });
@@ -427,6 +458,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'whatsNew': return t('whats_new');
       case 'dataStorage': return t('data_storage');
       case 'privacy': return t('privacy_security');
+      case 'transferHistory': return t('transfer_history');
       default: return t('settings');
     }
   };
@@ -446,6 +478,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     { question: t('faq_story_q'), answer: t('faq_story_a') },
     { question: t('faq_transfer_q'), answer: t('faq_transfer_a') },
     { question: t('faq_feed_q'), answer: t('faq_feed_a') },
+    { question: t('faq_mention_all_q'), answer: t('faq_mention_all_a') },
   ];
 
   const ExperimentalProfileHeader = () => (
@@ -628,7 +661,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const currentTierLevel = currentUser.subscriptionTier ? ['none', 'super', 'mega', 'prem', 'giga', 'ultra'].indexOf(currentUser.subscriptionTier) : 0;
   const premTierLevel = 3;
   const hasPremAccess = currentTierLevel >= premTierLevel;
-  const allThemes: Theme[] = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'];
+  const allThemes: Theme[] = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger', 'shining_gold'];
   
   const themePageContent = (
     <RadioGroup value={theme} onValueChange={(v) => setTheme(v as any)} className="p-4 space-y-1">
@@ -832,6 +865,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <div className="border-t">
           <SettingsItem icon={Crown} label={t('infinite_prem')} onClick={() => navigateTo('prem')} />
           <SettingsItem icon={Gift} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} />
+          <SettingsItem icon={History} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} />
           {hasPremAccess && (
               <SettingsSwitchItem 
                 id="prem-badge-switch" 
@@ -843,6 +877,48 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           )}
         </div>
       </>
+  );
+
+  const transferHistoryPageContent = (
+    <div className="flex flex-col h-full">
+        {loadingSent && loadingReceived ? (
+            <div className="flex justify-center py-12"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
+        ) : combinedTransfers.length > 0 ? (
+            <div className="divide-y">
+                {combinedTransfers.map((tx) => {
+                    const isSent = tx.senderId === currentUser.uid;
+                    const Icon = isSent ? TrendingDown : TrendingUp;
+                    const otherParty = isSent ? tx.receiverName : tx.senderName;
+                    const date = tx.timestamp ? format(tx.timestamp.toMillis(), 'dd.MM, HH:mm') : '...';
+
+                    return (
+                        <div key={tx.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+                            <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"
+                            )}>
+                                <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm truncate">
+                                    {isSent ? t('sent') : t('received')} {isSent ? t('to_label' as any) : t('from_label' as any)} {otherParty}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-black">{date}</p>
+                            </div>
+                            <div className={cn("text-right font-black", isSent ? "text-red-500" : "text-green-500")}>
+                                {isSent ? '-' : '+'}{tx.amount}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        ) : (
+            <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                <History className="h-16 w-16 mb-4" strokeWidth={1} />
+                <p className="font-bold uppercase tracking-widest text-xs">{t('no_transfers')}</p>
+            </div>
+        )}
+    </div>
   );
 
   const premPageContent = (
@@ -877,7 +953,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
             ) : (
                 <Button 
-                    onClick={handlePurchasePurchase} 
+                    onClick={handlePurchasePrem} 
                     disabled={isProcessingPurchase} 
                     className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
                 >
@@ -910,12 +986,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_feed_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_feed_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_transfer_history_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_transfer_history_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_forward_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_forward_desc')}</p>
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_mention_all_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_mention_all_desc')}</p>
+        </div>
+        <div className="p-4 rounded-lg bg-card border">
+          <h3 className="font-semibold text-base mb-1">{t('whats_new_bot_studio_title')}</h3>
+          <p className="text-muted-foreground">{t('whats_new_bot_studio_desc')}</p>
         </div>
         <div className="p-4 rounded-lg bg-card border">
           <h3 className="font-semibold text-base mb-1">{t('whats_new_minor_title')}</h3>
@@ -942,6 +1022,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'whatsNew': return whatsNewPageContent;
       case 'dataStorage': return dataStoragePageContent;
       case 'privacy': return privacyPageContent;
+      case 'transferHistory': return transferHistoryPageContent;
       default: return null;
     }
   };
