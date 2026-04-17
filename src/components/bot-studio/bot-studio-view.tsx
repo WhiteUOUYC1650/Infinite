@@ -155,6 +155,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                                     <div className="min-w-0">
                                         <CardTitle className="truncate font-bold text-lg">{bot.name}</CardTitle>
                                         <CardDescription className="truncate font-medium">{bot.username}</CardDescription>
+                                        <p className="text-[10px] text-primary font-bold">/B/{bot.username.substring(1)}</p>
                                     </div>
                                     <Badge variant={bot.isActive ? "default" : "secondary"} className="ml-auto rounded-full text-[10px] h-5">
                                         {bot.isActive ? t('bot_active') : t('bot_inactive')}
@@ -177,7 +178,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                 ) : (
                     <div className="text-center py-20 bg-card rounded-3xl border-2 border-dashed opacity-40">
                         <Bot className="h-16 w-16 mx-auto mb-4" />
-                        <p className="font-bold uppercase tracking-widest text-xs">{t('no_bots_found')}</p>
+                        <p className="font-bold uppercase tracking-widest text-xs">{t('no_studio_bots')}</p>
                     </div>
                 )}
             </div>
@@ -185,7 +186,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
       </main>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl">
+        <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl max-h-[95vh] overflow-y-auto">
             <DialogHeader className="items-center text-center space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <Plus className="h-8 w-8 text-primary" />

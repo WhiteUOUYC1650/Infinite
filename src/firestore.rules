@@ -46,7 +46,7 @@ service cloud.firestore {
       allow list: if true; 
       allow create: if isOwner(userId) || (isSignedIn() && request.resource.data.isBot == true && request.resource.data.botOwnerId == request.auth.uid);
       // Разрешаем обновление баланса другим пользователям (для трансферов) и системных полей
-      allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen']));
+      allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge']));
       allow delete: if isOwner(userId) || isAdmin() || isBotOwner(userId);
 
       match /private/security {
@@ -59,7 +59,7 @@ service cloud.firestore {
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
-        allow create: if request.resource.data.uid == request.auth.uid || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
+        allow create: if request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
         allow update: if false;
         allow delete: if resource.data.uid == request.auth.uid || isAdmin() || isBotOwner(resource.data.uid);
     }
@@ -130,8 +130,8 @@ service cloud.firestore {
     match /botLinks/{linkId} {
       allow get: if true;
       allow list: if false;
-      allow create: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
     }
   }
 }

@@ -232,7 +232,7 @@ export const translations = {
       'faq_feed_q': 'What is the Feed?',
       'faq_feed_a': 'The Feed collects all messages sent **today** in all the channels you are subscribed to. It helps you quickly catch up on daily news without opening each channel individually.',
       'faq_security_a_2': 'Cloud Password protection adds an extra layer of security to your account during login.',
-      'no_bots_found': 'No bots found. The InfiniteBot account may not have been created yet.',
+      'no_bots_found': 'No bots found.',
       'bot_status': 'bot',
       'snowflakes': 'Snowflakes',
       'internal_link_not_found': 'Could not find a user or chat for "{link}".',
@@ -500,6 +500,7 @@ export const translations = {
       'bot_inactive': 'Inactive',
       'bot_username_label': 'Bot Handle (@)',
       'bot_name_label': 'Bot Name',
+      'no_studio_bots': 'You haven\'t created any bots yet.',
     },
     ru: {
       'settings': 'Настройки',
@@ -731,7 +732,7 @@ export const translations = {
       'faq_feed_q': 'Что такое Лента?',
       'faq_feed_a': 'Лента собирает все сообщения, отправленные **сегодня** во всех каналах, на которые вы подписаны. Это помогает быстро узнать новости дня, не открывая каждый канал по отдельности.',
       'faq_security_a_2': 'Защита облачным паролем добавляет дополнительный уровень безопасности вашей учетной записи при входе.',
-      'no_bots_found': 'Боты не найдены. Возможно, аккаунт InfiniteBot еще не создан.',
+      'no_bots_found': 'Боты не найдены.',
       'bot_status': 'бот',
       'snowflakes': 'Снежинки',
       'internal_link_not_found': 'Не удалось найти пользователя или чат для "{link}".',
@@ -999,6 +1000,7 @@ export const translations = {
       'bot_inactive': 'Неактивен',
       'bot_username_label': 'Юзернейм бота (@)',
       'bot_name_label': 'Имя бота',
+      'no_studio_bots': 'Вы пока что не создали ни одного бота.',
     }
   };
 
