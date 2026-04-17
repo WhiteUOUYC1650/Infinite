@@ -26,6 +26,8 @@ export type User = {
   subscriptions?: string[]; // Array of user IDs the user is subscribed to
   subscriberCount?: number;
   isBetaTester?: boolean;
+  isCustomBot?: boolean;
+  botOwnerId?: string;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };
@@ -83,6 +85,33 @@ export type Message = {
   reactions?: Record<string, string[]>; // emoji -> array of user IDs
   poll?: Poll;
   fromChannelId?: string;
+};
+
+// Bot Logic Types
+export type BotBlockType = 
+  | 'event_start' 
+  | 'action_send' 
+  | 'action_reply' 
+  | 'action_wait' 
+  | 'condition_if_text' 
+  | 'action_reaction';
+
+export type BotBlock = {
+  id: string;
+  type: BotBlockType;
+  params?: Record<string, any>;
+};
+
+export type CustomBot = {
+  id: string;
+  name: string;
+  username: string;
+  ownerId: string;
+  avatar?: string;
+  description?: string;
+  scripts: BotBlock[][]; // Array of stacks (each stack starts with an event)
+  isActive: boolean;
+  createdAt: Timestamp;
 };
 
 export type VideoChunk = {

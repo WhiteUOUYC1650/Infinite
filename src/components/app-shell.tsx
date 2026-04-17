@@ -13,12 +13,13 @@ import { ChatView } from '@/components/chat/chat-view';
 import { InfVidView } from '@/components/infvid/infvid-view';
 import { InfGamesView } from '@/components/infgames/infgames-view';
 import { FeedView } from '@/components/feed/feed-view';
+import { BotStudioView } from '@/components/bot-studio/bot-studio-view';
 import type { PopulatedChat } from '@/types';
 import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell, Newspaper } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion } from 'firebase/firestore';
-import type { User, AuthenticatedUser, Chat, Call } from '@/types';
+import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp } from 'firebase/firestore';
+import type { User, AuthenticatedUser, Chat, Call, CustomBot, BotBlock } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
 import { CallDialog } from './chat/call-dialog';
@@ -36,7 +37,7 @@ const iconMap = {
 };
 
 function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
-  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | 'feed' | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio' | null>(null);
   const [infVidInitialVideoId, setInfVidInitialVideoId] = useState<string | null>(null);
   const { isMobile } = useSidebar();
   const db = useFirestore();
@@ -103,12 +104,109 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     }
   }, [selectedItem, setActiveChatId]);
 
-  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames' | 'feed') => {
+  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio') => {
     setSelectedItem(item);
     if (item !== 'infvid') {
         setInfVidInitialVideoId(null);
     }
   }, []);
+
+  // Global Custom Bot Engine Listener
+  // This engine allows custom bots to respond even when the owner is offline
+  // by executing logic on the client that receives the message.
+  useEffect(() => {
+    if (!db || !currentUser) return;
+
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
+
+    const processedMsgIds = new Set<string>();
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+            const chatData = change.doc.data() as Chat;
+            const lastMsg = chatData.lastMessage;
+
+            if (lastMsg && lastMsg.senderId === currentUser.uid && !processedMsgIds.has(lastMsg.id)) {
+                processedMsgIds.add(lastMsg.id);
+
+                // Check if this chat contains a custom bot
+                const otherMembers = chatData.members.filter(m => m !== currentUser.uid);
+                for (const memberId of otherMembers) {
+                    const memberDoc = await getDoc(doc(db, 'users', memberId));
+                    if (memberDoc.exists() && memberDoc.data().isCustomBot) {
+                        const botId = memberId;
+                        const botLogicSnap = await getDoc(doc(db, 'customBots', botId));
+                        
+                        if (botLogicSnap.exists() && botLogicSnap.data().isActive) {
+                            const botLogic = botLogicSnap.data() as CustomBot;
+                            executeBotLogic(botLogic, lastMsg, change.doc.id);
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    const executeBotLogic = async (bot: CustomBot, message: any, chatId: string) => {
+        for (const stack of bot.scripts) {
+            const eventBlock = stack[0];
+            if (eventBlock.type === 'event_start') {
+                // Currently supports basic message trigger
+                let currentStackIndex = 1;
+                while (currentStackIndex < stack.length) {
+                    const block = stack[currentStackIndex];
+                    let skipNext = false;
+
+                    switch (block.type) {
+                        case 'condition_if_text':
+                            if (!message.content.toLowerCase().includes(block.params?.text.toLowerCase())) {
+                                skipNext = true;
+                            }
+                            break;
+                        case 'action_send':
+                            if (!skipNext) {
+                                await sendBotMessage(bot, block.params?.text, chatId);
+                            }
+                            break;
+                        case 'action_reply':
+                            if (!skipNext) {
+                                await sendBotMessage(bot, block.params?.text, chatId, {
+                                    messageId: message.id,
+                                    content: message.content,
+                                    senderName: currentUser.displayName || currentUser.email || 'User'
+                                });
+                            }
+                            break;
+                        case 'action_wait':
+                            await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000));
+                            break;
+                    }
+                    currentStackIndex++;
+                }
+            }
+        }
+    };
+
+    const sendBotMessage = async (bot: CustomBot, text: string, chatId: string, replyTo?: any) => {
+        const msgRef = doc(collection(db, 'chats', chatId, 'messages'));
+        const timestamp = Timestamp.now();
+        const msgData = {
+            senderId: bot.id,
+            content: text,
+            timestamp,
+            type: 'user',
+            readBy: [],
+            ...(replyTo && { replyTo })
+        };
+        await addDoc(collection(db, 'chats', chatId, 'messages'), msgData);
+        await updateDoc(doc(db, 'chats', chatId), {
+            lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name }
+        });
+    };
+
+    return () => unsubscribe();
+  }, [db, currentUser]);
 
   // Global Call Listener
   useEffect(() => {
@@ -261,6 +359,15 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
               currentUser={populatedUser} 
               onClose={() => handleSelect(null as any)} 
               onSelectChat={handleSelect}
+          />
+      );
+    }
+
+    if (selectedItem === 'bot_studio') {
+      return (
+          <BotStudioView 
+              currentUser={populatedUser} 
+              onClose={() => handleSelect(null as any)} 
           />
       );
     }
