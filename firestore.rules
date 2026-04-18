@@ -22,7 +22,7 @@ service cloud.firestore {
     // Информация о версии
     match /info/ver {
       allow get: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     match /config/version {
@@ -55,11 +55,11 @@ service cloud.firestore {
       }
     }
 
-    // Реестр имен
+    // Реестр имен (используем getAfter для транзакций Bot Studio)
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
-        allow create: if request.resource.data.uid == request.auth.uid || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
+        allow create: if request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
         allow update: if false;
         allow delete: if resource.data.uid == request.auth.uid || isAdmin() || isBotOwner(resource.data.uid);
     }
@@ -111,6 +111,12 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+
+    // История переводов
+    match /transfers/{transferId} {
+        allow read: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+    }
     
     // Чанки файлов
     match /videoChunks/{chunkId} { allow create, read: if true; }
@@ -118,9 +124,14 @@ service cloud.firestore {
     match /fileChunks/{chunkId} { allow create, read: if true; }
     match /voiceChunks/{chunkId} { allow create, read: if true; }
     match /circleChunks/{chunkId} { allow create, read: if true; }
-    match /apkChunks/{chunkId} { allow create, read: if true; }
     
-    // Ссылки
+    // Чанки APK (только админ может загружать)
+    match /apkChunks/{chunkId} { 
+      allow read: if true; 
+      allow create, delete: if isAdmin();
+    }
+    
+    // Ссылки (используем getAfter для транзакций Bot Studio)
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;
@@ -130,8 +141,8 @@ service cloud.firestore {
     match /botLinks/{linkId} {
       allow get: if true;
       allow list: if false;
-      allow create: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
     }
   }
 }
