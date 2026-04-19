@@ -1,15 +1,13 @@
 'use client';
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { useLanguage } from "@/context/language-context";
 import { Sparkles, Clock, Download, Loader2, X } from "lucide-react";
 import { Button } from "./ui/button";
@@ -29,15 +27,9 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
     const description = isUpdateAvailable ? t('update_available_description') : t('update_required_description');
 
     return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="rounded-3xl border-none shadow-2xl overflow-hidden outline-none">
-                <button 
-                  onClick={() => onOpenChange(false)}
-                  className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors opacity-70 z-[110]"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-                <AlertDialogHeader className="items-center text-center space-y-4">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="rounded-3xl border-none shadow-2xl overflow-hidden outline-none z-[1000]">
+                <DialogHeader className="items-center text-center space-y-4">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                         {isUpdateAvailable ? (
                             <Sparkles className="h-8 w-8 text-primary animate-pulse" />
@@ -46,13 +38,13 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
                         )}
                     </div>
                     <div className="space-y-2">
-                        <AlertDialogTitle className="text-2xl font-bold font-headline">{title}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground leading-relaxed">
+                        <DialogTitle className="text-2xl font-bold font-headline">{title}</DialogTitle>
+                        <DialogDescription className="text-muted-foreground leading-relaxed">
                             {description}
-                        </AlertDialogDescription>
+                        </DialogDescription>
                     </div>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="sm:justify-center pt-4 flex-col gap-2">
+                </DialogHeader>
+                <DialogFooter className="sm:justify-center pt-4 flex flex-col gap-2">
                     <Button onClick={onUpdate} disabled={isDownloading} className="w-full h-12 rounded-xl font-bold gap-2">
                         {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         {t('update_infinite')}
@@ -64,8 +56,8 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
                     >
                         {t('cancel')}
                     </Button>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }
