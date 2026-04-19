@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -18,7 +17,7 @@ import type { PopulatedChat } from '@/types';
 import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell, Newspaper } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { User, AuthenticatedUser, Chat, Call, CustomBot } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
