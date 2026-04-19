@@ -6,7 +6,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const BLOCK_COLORS: Record<BotBlockType, string> = {
-  event_start: 'bg-orange-500 border-orange-600',
+  event_start: 'bg-orange-600 border-orange-700',
+  event_message: 'bg-orange-500 border-orange-600',
   action_send: 'bg-blue-500 border-blue-600',
   action_reply: 'bg-indigo-500 border-indigo-600',
   action_wait: 'bg-amber-500 border-amber-600',
@@ -35,7 +36,8 @@ const BLOCK_COLORS: Record<BotBlockType, string> = {
 };
 
 const BLOCK_ICONS: Record<BotBlockType, any> = {
-  event_start: Play,
+  event_start: Zap,
+  event_message: MessageSquare,
   action_send: MessageSquare,
   action_reply: Wand2,
   action_wait: Clock,
@@ -77,8 +79,8 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     finally { setIsSaving(false); }
   };
 
-  const addStack = (type: BotBlockType = 'event_start') => {
-    const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: type === 'event_start' ? {} : { text: '' } };
+  const addStack = (type: BotBlockType) => {
+    const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: {} };
     setScripts([...scripts, { id: Math.random().toString(36).substr(2, 9), blocks: [newBlock] }]);
   };
 
@@ -90,10 +92,12 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   };
 
   const handlePaletteClick = (type: BotBlockType) => {
-      if (type === 'event_start' || scripts.length === 0) {
+      if (type.startsWith('event_')) {
           addStack(type);
-      } else {
+      } else if (scripts.length > 0) {
           addBlockToStack(scripts.length - 1, type);
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: 'Start with an event block first.' });
       }
   };
 
@@ -135,7 +139,8 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r bg-muted/20 p-4 shrink-0 overflow-y-auto">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">Palette</h3>
             <div className="space-y-2">
-                <BlockDraft type="event_start" label={t('block_event_received')} onClick={() => handlePaletteClick('event_start')} />
+                <BlockDraft type="event_start" label={t('block_event_start')} onClick={() => handlePaletteClick('event_start')} />
+                <BlockDraft type="event_message" label={t('block_event_received')} onClick={() => handlePaletteClick('event_message')} />
                 <div className="h-px bg-border my-2" />
                 <BlockDraft type="action_send" label={t('block_action_send')} onClick={() => handlePaletteClick('action_send')} />
                 <BlockDraft type="action_reply" label={t('block_action_reply')} onClick={() => handlePaletteClick('action_reply')} />
@@ -148,9 +153,9 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 <BlockDraft type="variable_set" label={t('block_variable_set' as any) || 'Set Variable'} onClick={() => handlePaletteClick('variable_set')} />
                 <BlockDraft type="action_wait" label={t('block_action_wait').replace('{seconds}', '1')} onClick={() => handlePaletteClick('action_wait')} />
             </div>
-            <Button onClick={() => addStack()} className="w-full mt-6 rounded-2xl h-14 border-2 border-dashed border-primary/40 bg-transparent text-primary hover:bg-primary/5 font-black uppercase tracking-widest text-[10px]">
-                <Plus className="mr-2 h-4 w-4" /> New Script
-            </Button>
+            <div className="mt-6 p-4 rounded-2xl border bg-card/50 text-[10px] text-muted-foreground leading-relaxed italic">
+                Tip: Click blocks to add them to your script. Event blocks always start a new script.
+            </div>
         </aside>
 
         {/* Workspace */}
@@ -225,7 +230,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                         <div className="w-20 h-20 rounded-full border-2 border-dashed flex items-center justify-center">
                             <MousePointer2 className="h-8 w-8 opacity-20" />
                         </div>
-                        <p className="font-bold text-sm uppercase tracking-widest opacity-40">Drop a block to start scripting</p>
+                        <p className="font-bold text-sm uppercase tracking-widest opacity-40">Choose an event block to start</p>
                     </div>
                 )}
             </div>
@@ -239,7 +244,11 @@ function BlockDraft({ type, label, onClick }: { type: BotBlockType, label: strin
     const Icon = BLOCK_ICONS[type];
     return (
         <button 
-            onClick={onClick}
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick();
+            }}
             className={cn(
                 "w-full p-2.5 rounded-xl border-b-4 text-white text-[11px] font-bold flex items-center gap-3 shadow-sm transition-all active:scale-95 hover:brightness-110 text-left", 
                 BLOCK_COLORS[type]

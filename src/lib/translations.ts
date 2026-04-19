@@ -495,6 +495,7 @@ export const translations = {
       'my_bots': 'My Bots',
       'edit_logic': 'Edit Script',
       'block_event_received': 'When Message Received',
+      'block_event_start': 'On START Button',
       'block_action_send': 'Send Message',
       'block_action_reply': 'Reply to Message',
       'block_action_wait': 'Wait {seconds}s',
@@ -514,6 +515,8 @@ export const translations = {
       'sent': 'Sent',
       'received': 'Received',
       'no_transfers': 'No transfers yet.',
+      'block_message': 'Message',
+      'block_start': 'START',
     },
     ru: {
       'settings': 'Настройки',
@@ -717,7 +720,7 @@ export const translations = {
       'faq_create_chat_q': 'Как создать группу или канал?',
       'faq_create_chat_a': "Вы можете создать новую группу или канал, нажав кнопку 'Новый диалог' (значок плюса) в правом верхнем углу боковой панели. Открыется диалоговое окно, в котором вы сможете выбрать тип чата и заполнит его данные.",
       'faq_invite_q': "Как пригласить людей в группу?",
-      'faq_invite_a': "Чтобы пригласить кого-то в свою группу, просто поделитесь уникальной ссылкой (например, `/G/vasha-gruppa`). Когда человек откроет её в поиске приложения, он увидит кнопку входа.",
+      'faq_invite_a': "To invite someone to a group you own, simply share the group's unique link (e.g., `/G/vasha-gruppa`) with them. Когда человек откроет её в поиске приложения, он увидит кнопку входа.",
       'faq_security_q': "Защищены ли мои данные?",
       'faq_security_a': "Да. Все общение с нашими серверами зашифровано. Ваши сообщения защищены правилами безопасности Firebase, которые гарантируют, что только участники чата могут читать его сообщения. Ваша учетная запись пользователя также защищена и доступна только вам.",
       'faq_edit_profile_q': "Как изменить свой псевдоним или статус?",
@@ -1008,6 +1011,7 @@ export const translations = {
       'my_bots': 'Мои боты',
       'edit_logic': 'Скрипты',
       'block_event_received': 'Когда получено сообщение',
+      'block_event_start': 'При нажатии СТАРТ',
       'block_action_send': 'Отправить текст',
       'block_action_reply': 'Ответить на сообщение',
       'block_action_wait': 'Ждать {seconds} сек.',
@@ -1027,6 +1031,8 @@ export const translations = {
       'sent': 'Отправлено',
       'received': 'Получено',
       'no_transfers': 'История пуста.',
+      'block_message': 'Сообщение',
+      'block_start': 'СТАРТ',
     }
   };
 

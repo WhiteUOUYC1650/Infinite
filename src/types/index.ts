@@ -90,6 +90,7 @@ export type Message = {
 // Bot Logic Types
 export type BotBlockType = 
   | 'event_start' 
+  | 'event_message'
   | 'action_send' 
   | 'action_reply' 
   | 'action_wait' 
