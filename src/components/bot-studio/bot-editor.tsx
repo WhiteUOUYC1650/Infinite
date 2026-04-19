@@ -5,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, Package, X } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -15,8 +15,6 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -151,7 +149,6 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       if (isEvent || scripts.length === 0) {
           setScripts([...scripts, { id: Math.random().toString(36).substr(2, 9), blocks: [newBlock] }]);
       } else {
-          // Add to the last script by default
           const lastIdx = scripts.length - 1;
           const newScripts = [...scripts];
           newScripts[lastIdx] = { ...newScripts[lastIdx], blocks: [...newScripts[lastIdx].blocks, newBlock] };
@@ -229,9 +226,9 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       <main className="flex-1 overflow-y-auto relative bg-muted/5">
         <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
         
-        <div className="max-w-4xl mx-auto p-8 md:p-16 space-y-12 pb-32">
+        <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-16 space-y-12 pb-32">
             {scripts.map((script, sIdx) => (
-                <div key={script.id} className="relative flex flex-col items-center bg-card/30 rounded-3xl p-6 border-2 border-dashed border-muted-foreground/10">
+                <div key={script.id} className="relative flex flex-col items-center bg-card/30 rounded-3xl p-3 sm:p-6 border-2 border-dashed border-muted-foreground/10">
                     <div className="absolute -top-3 left-6 bg-muted px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
                     
                     <div className="w-full flex flex-col items-center gap-3">
@@ -272,18 +269,18 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </div>
 
       <Dialog open={blockSelectorOpen} onOpenChange={setBlockSelectorOpen}>
-          <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden flex flex-col h-[70vh]">
+          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl p-0 overflow-hidden flex flex-col h-[70vh]">
               <DialogHeader className="p-6 pb-2 border-b bg-muted/20">
                   <DialogTitle className="text-xl font-bold font-headline">Добавить блок</DialogTitle>
               </DialogHeader>
               <Tabs defaultValue="events" className="flex-1 flex flex-col overflow-hidden">
                   <TabsList className="mx-6 mt-4 grid grid-cols-4 bg-muted/50 p-1 rounded-xl">
-                      <TabsTrigger value="events" className="rounded-lg text-[10px] uppercase font-bold">События</TabsTrigger>
-                      <TabsTrigger value="actions" className="rounded-lg text-[10px] uppercase font-bold">Действия</TabsTrigger>
-                      <TabsTrigger value="logic" className="rounded-lg text-[10px] uppercase font-bold">Логика</TabsTrigger>
-                      <TabsTrigger value="vars" className="rounded-lg text-[10px] uppercase font-bold">Память</TabsTrigger>
+                      <TabsTrigger value="events" className="rounded-lg text-[10px] uppercase font-bold px-1">События</TabsTrigger>
+                      <TabsTrigger value="actions" className="rounded-lg text-[10px] uppercase font-bold px-1">Действия</TabsTrigger>
+                      <TabsTrigger value="logic" className="rounded-lg text-[10px] uppercase font-bold px-1">Логика</TabsTrigger>
+                      <TabsTrigger value="vars" className="rounded-lg text-[10px] uppercase font-bold px-1">Память</TabsTrigger>
                   </TabsList>
-                  <ScrollArea className="flex-1 p-6">
+                  <ScrollArea className="flex-1 p-4 sm:p-6">
                       <TabsContent value="events" className="mt-0 space-y-2">
                           <PaletteItem type="event_start" label={t('block_event_start')} onClick={onAddFromFab} />
                           <PaletteItem type="event_message" label={t('block_event_received')} onClick={onAddFromFab} />
@@ -308,7 +305,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </Dialog>
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl">
+          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl border-none shadow-2xl">
               <DialogHeader className="items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                       <Settings className="h-8 w-8 text-primary" />
@@ -336,7 +333,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </Dialog>
 
       <Dialog open={!!imageToCrop} onOpenChange={(open) => !open && setImageToCrop('')}>
-        <DialogContent className="max-w-md rounded-3xl overflow-hidden p-6">
+        <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl overflow-hidden p-6">
             <DialogHeader>
                 <DialogTitle>Crop Bot Avatar</DialogTitle>
                 <DialogDescription>Adjust the frame to set your bot's look.</DialogDescription>
@@ -382,8 +379,8 @@ function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: stri
                 BLOCK_COLORS[type]
             )}
         >
-            <div className="p-2 bg-black/10 rounded-xl"><Icon className="h-5 w-5" /></div>
-            <span className="text-sm">{label}</span>
+            <div className="p-2 bg-black/10 rounded-xl shrink-0"><Icon className="h-5 w-5" /></div>
+            <span className="text-sm truncate">{label}</span>
         </button>
     );
 }
@@ -403,7 +400,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                 return <Input placeholder="Условие (напр. {msg_text} == старт)" value={block.params?.condition || ''} onChange={e => onUpdate(sIdx, bIdx, 'condition', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1" />;
             case 'variable_set':
                 return (
-                    <div className="flex gap-2 mt-1">
+                    <div className="flex flex-col sm:flex-row gap-2 mt-1">
                         <Input placeholder="Имя" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs" />
                         <Input placeholder="Значение" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs" />
                     </div>
@@ -415,14 +412,14 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
     };
 
     return (
-        <div className={cn("w-full max-w-[360px] p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all active:scale-[0.98]", BLOCK_COLORS[block.type])}>
-            <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-black/10 rounded-xl"><Icon className="h-4 w-4" /></div>
-                    <span className="font-black uppercase tracking-widest text-[10px]">{t(`block_${block.type.replace('action_', '').replace('event_', '').replace('logic_', '')}` as any) || block.type}</span>
+        <div className={cn("w-full max-w-full sm:max-w-[360px] p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all active:scale-[0.98]", BLOCK_COLORS[block.type])}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1.5 bg-black/10 rounded-xl shrink-0"><Icon className="h-4 w-4" /></div>
+                    <span className="font-black uppercase tracking-widest text-[10px] truncate">{t(`block_${block.type.replace('action_', '').replace('event_', '').replace('logic_', '')}` as any) || block.type}</span>
                 </div>
                 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                     <Button 
                         variant="ghost" 
                         size="icon" 
@@ -445,7 +442,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                         variant="ghost" 
                         size="icon" 
                         onClick={() => onDelete(sIdx, bIdx)}
-                        className="h-7 w-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-white ml-2"
+                        className="h-7 w-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-white ml-1 sm:ml-2"
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
