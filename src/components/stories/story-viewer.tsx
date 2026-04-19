@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -13,6 +12,7 @@ import { useLanguage } from '@/context/language-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +131,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
       if (stories.length === 1) {
           onClose();
       } else {
-          // Stay in viewer, just reset progress and adjust index
           setProgress(0);
           if (currentIndex >= stories.length - 1) {
               setCurrentIndex(Math.max(0, stories.length - 2));
@@ -151,15 +150,33 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     }
   };
 
-  const handleSaveToGallery = () => {
+  const handleSaveToGallery = async () => {
     if (currentStory.mediaUrl) {
-      const link = document.createElement('a');
-      link.href = currentStory.mediaUrl;
-      link.download = `infinite-story-${currentStory.id}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast({ title: t('dm_success') });
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { Filesystem, Directory } = await import('@capacitor/filesystem');
+          const cleanBase64 = currentStory.mediaUrl.split(',')[1];
+          const fileName = `infinite_story_${currentStory.id}.jpg`;
+          
+          await Filesystem.writeFile({
+            path: fileName,
+            data: cleanBase64,
+            directory: Directory.Documents,
+          });
+          toast({ title: t('dm_success'), description: "Saved to Documents" });
+        } catch (e) {
+          console.error(e);
+          toast({ variant: 'destructive', title: 'Error', description: "Failed to save story natively." });
+        }
+      } else {
+        const link = document.createElement('a');
+        link.href = currentStory.mediaUrl;
+        link.download = `infinite-story-${currentStory.id}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: t('dm_success') });
+      }
     }
   };
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -65,7 +64,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.3.4 Beta');
+  const [newVersion, setNewVersion] = useState('0.4 Beta');
   const apkInputRef = useRef<HTMLInputElement>(null);
 
   // --- Auth and Admin Check ---
@@ -324,7 +323,7 @@ function AdminPage() {
                   <div className="space-y-4">
                       <div className="space-y-2">
                           <Label>Version Name</Label>
-                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.3.4 Beta" />
+                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4 Beta" />
                       </div>
 
                       <div className="space-y-2">

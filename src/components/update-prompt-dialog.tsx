@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useLanguage } from "@/context/language-context";
-import { Sparkles, Clock, Download, Loader2 } from "lucide-react";
+import { Sparkles, Clock, Download, Loader2, X } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface UpdatePromptDialogProps {
@@ -31,7 +30,13 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+            <AlertDialogContent className="rounded-3xl border-none shadow-2xl overflow-hidden">
+                <button 
+                  onClick={() => onOpenChange(false)}
+                  className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors opacity-70"
+                >
+                  <X className="h-5 w-5" />
+                </button>
                 <AlertDialogHeader className="items-center text-center space-y-4">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                         {isUpdateAvailable ? (
@@ -52,9 +57,13 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
                         {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         {t('update_infinite')}
                     </Button>
-                    <AlertDialogCancel onClick={() => onOpenChange(false)} className="w-full h-12 rounded-xl font-medium border-none hover:bg-muted">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => onOpenChange(false)} 
+                      className="w-full h-12 rounded-xl font-medium border-none hover:bg-muted text-muted-foreground"
+                    >
                         {t('cancel')}
-                    </AlertDialogCancel>
+                    </Button>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

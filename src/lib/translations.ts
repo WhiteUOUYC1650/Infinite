@@ -1,5 +1,3 @@
-
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -137,7 +135,7 @@ export const translations = {
       'you_left_the_channel_desc': 'You will no longer receive updates. You can rejoin using the link.',
       'welcome_title': 'Welcome to Infinite!',
       'welcome_subtitle': 'You are one of the first to experience the future of communication.',
-      'beta_badge': '0.3.4 Beta',
+      'beta_badge': '0.4 Beta',
       'welcome_message': 'Thank you for joining the beta test. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
       'continue_button': 'Continue',
       'thank_you_beta': 'Thank you for participating in the beta test!',
@@ -333,7 +331,7 @@ export const translations = {
       'subscribe_yearly': '5000 InfGold / year',
       'yearly_discount_note': 'Save 1000 InfGold!',
       'whats_new': "What's New",
-      'whats_new_title': "What's New in 0.3.4 Beta",
+      'whats_new_title': "What's New in 0.4 Beta",
       'whats_new_desc': "A summary of the latest features and improvements.",
       'whats_new_transfer_history_title': 'Transfer History',
       'whats_new_transfer_history_desc': 'Track all your InfGold transactions with a detailed log in settings.',
@@ -576,7 +574,7 @@ export const translations = {
       'members_count': '{count, plural, one {# участник} few {# участника} other {# участников}}',
       'subscribers_count': '{count, plural, one {# подписчик} few {# подписчика} other {# подписчиков}}',
       'loading_chat': 'Загрузка чата...',
-      'chat_not_selected': 'Chat not selected',
+      'chat_not_selected': 'Чат не выбран',
       'no_messages_yet': 'Здесь пока ничего нет.',
       'message_placeholder': 'Сообщение',
       'publish_placeholder': 'Публикация',
@@ -646,7 +644,7 @@ export const translations = {
       'you_left_the_channel_desc': 'Вы больше не будете получать обновления. Вы можете присоединиться снова по ссылке.',
       'welcome_title': 'Добро пожаловать в Infinite!',
       'welcome_subtitle': 'Вы один из первых, кто прикоснулся к будущему общения.',
-      'beta_badge': '0.3.4 Beta',
+      'beta_badge': '0.4 Beta',
       'welcome_message': 'Спасибо за участие в бета-тестировании. Мы усердно работаем над улучшениями, и ваш отзыв очень важен для нас.',
       'continue_button': 'Продолжить',
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
@@ -842,7 +840,7 @@ export const translations = {
       'subscribe_yearly': '5000 InfGold / год',
       'yearly_discount_note': 'Экономия 1000 InfGold!',
       'whats_new': "Что нового",
-      'whats_new_title': "Что нового в версии 0.3.4 Beta",
+      'whats_new_title': "Что нового в версии 0.4 Beta",
       'whats_new_desc': "Краткий обзор последних изменений и улучшений.",
       'whats_new_transfer_history_title': 'История переводов',
       'whats_new_transfer_history_desc': 'Отслеживайте все свои транзакции InfGold с помощью подробного лога в настройках.',

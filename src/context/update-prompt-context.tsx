@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
@@ -6,8 +5,9 @@ import { UpdatePromptDialog } from '@/components/update-prompt-dialog';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "0.3.4 Beta";
+const CURRENT_APP_VERSION = "0.4 Beta";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
@@ -33,7 +33,6 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
     const checkVersionAndLaunchCount = async () => {
         if (!db) return;
         
-        // 1. Increment launch count
         const launches = parseInt(localStorage.getItem('launch_count') || '0') + 1;
         localStorage.setItem('launch_count', launches.toString());
 
@@ -49,7 +48,6 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
                 if (latestVersion && latestVersion !== CURRENT_APP_VERSION) {
                     setIsUpdateAvailable(true);
                     
-                    // 2. Show prompt every 10th launch
                     if (launches % 10 === 0) {
                         setIsOpen(true);
                     }
@@ -77,23 +75,38 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
         chunksData.sort((a, b) => a.part - b.part);
 
         const assembledBase64 = chunksData.map(c => c.data).join('');
-        const binaryString = window.atob(assembledBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
+        
+        if (Capacitor.isNativePlatform()) {
+          const { Filesystem, Directory } = await import('@capacitor/filesystem');
+          const fileName = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
+          
+          await Filesystem.writeFile({
+            path: fileName,
+            data: assembledBase64,
+            directory: Directory.Documents,
+          });
+          
+          toast({ title: "Success", description: "Update saved to Documents. Please install it manually." });
+        } else {
+          const binaryString = window.atob(assembledBase64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+          }
 
-        const blob = new Blob([bytes], { type: 'application/vnd.android.package-archive' });
-        const url = URL.createObjectURL(blob);
+          const blob = new Blob([bytes], { type: 'application/vnd.android.package-archive' });
+          const url = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          toast({ title: "Success", description: "APK downloaded. Please open it to install." });
+        }
         
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({ title: "Success", description: "APK downloaded. Please open it to install." });
         setIsOpen(false);
     } catch (e: any) {
         console.error(e);
@@ -108,6 +121,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const handleClose = () => {
+    // Explicitly set to false and let the dialog clean up
     setIsOpen(false);
   };
 
@@ -122,7 +136,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
         {children}
         <UpdatePromptDialog 
             open={isOpen} 
-            onOpenChange={handleClose}
+            onOpenChange={setIsOpen}
             isUpdateAvailable={isUpdateAvailable}
             onUpdate={downloadUpdate}
             isDownloading={isDownloading}

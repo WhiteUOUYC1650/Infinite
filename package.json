@@ -16,6 +16,7 @@
     "@capacitor/app": "^7.0.0",
     "@capacitor/cli": "^7.4.5",
     "@capacitor/core": "^8.0.1",
+    "@capacitor/filesystem": "^7.0.0",
     "@capacitor/local-notifications": "^7.0.0",
     "@capacitor/screen-orientation": "^7.0.0",
     "@hookform/resolvers": "^4.1.3",

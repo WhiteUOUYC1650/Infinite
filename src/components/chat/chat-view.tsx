@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React from 'react';
@@ -2772,8 +2770,8 @@ function ChatMessage({
     };
 
     const handleSaveToDevice = async () => {
-        let currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl;
-        let currentName = message.fileName || (hasVideo ? 'video.mp4' : hasMusic ? 'music.mp3' : message.voiceStatus ? 'voice.webm' : message.circleStatus ? 'circle.webm' : 'file');
+        let currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl || message.imageUrl;
+        let currentName = message.fileName || (hasVideo ? 'video.mp4' : hasMusic ? 'music.mp3' : message.voiceStatus ? 'voice.webm' : message.circleStatus ? 'circle.webm' : message.imageUrl ? 'image.jpg' : 'file');
 
         if (!currentUrl) {
             if (hasVideo) await fetchAndCacheVideo();
@@ -2781,16 +2779,45 @@ function ChatMessage({
             else if (hasGenericFile) await fetchAndCacheFile();
             else if (message.voiceStatus === 'complete') await fetchAndCacheVoice();
             else if (message.circleStatus === 'complete') await fetchAndCacheCircle();
-            currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl;
+            currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl || message.imageUrl;
         }
 
         if (currentUrl) {
-            const link = document.createElement('a');
-            link.href = currentUrl;
-            link.download = currentName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            if (Capacitor.isNativePlatform()) {
+              try {
+                const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                
+                // Get Base64 from the URL
+                const response = await fetch(currentUrl);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64data = await new Promise<string>((resolve) => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(blob);
+                });
+
+                const cleanBase64 = base64data.split(',')[1];
+                
+                await Filesystem.writeFile({
+                  path: currentName,
+                  data: cleanBase64,
+                  directory: Directory.Documents,
+                  recursive: true
+                });
+                toast({ title: t('dm_success'), description: "Saved to Documents" });
+              } catch (e) {
+                console.error("Native save error:", e);
+                toast({ variant: 'destructive', title: 'Error', description: "Failed to save file natively." });
+              }
+            } else {
+              const link = document.createElement('a');
+              link.href = currentUrl;
+              link.download = currentName;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              toast({ title: t('dm_success') });
+            }
         }
     };
 
