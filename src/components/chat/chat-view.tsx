@@ -3156,8 +3156,8 @@ function ChatMessage({
                 </div>
             </div>
 
-            <div className={cn("flex-shrink-0 self-center overflow-hidden w-0 group-hover:w-8 focus-within:w-8 transition-[width]", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}>
+            <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-opacity md:opacity-0 group-hover:opacity-100 focus-within:opacity-100", !alignRight && "order-last")}>
+                <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>
