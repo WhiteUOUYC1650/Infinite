@@ -6,7 +6,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -54,7 +56,6 @@ const BLOCK_ICONS: Record<BotBlockType, any> = {
   action_send_image: ImageIcon,
 };
 
-// Helper functions for cropping
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight), mediaWidth, mediaHeight);
 }
@@ -85,9 +86,15 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
+  
   const [scripts, setScripts] = useState<BotScript[]>(bot.scripts || []);
   const [botAvatar, setBotAvatar] = useState<string | undefined>(bot.avatar);
+  const [botName, setBotName] = useState(bot.name);
+  const [botDescription, setBotDescription] = useState(bot.description || '');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Bot Settings State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Avatar Edit State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +111,8 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
             const data = snap.data();
             setScripts(data.scripts || []);
             setBotAvatar(data.avatar);
+            setBotName(data.name);
+            setBotDescription(data.description || '');
         }
     });
   }, [bot.id, db]);
@@ -115,10 +124,19 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         const botRef = doc(db, 'customBots', bot.id);
         const userRef = doc(db, 'users', bot.id);
         
-        const updateData = { scripts, avatar: botAvatar || null };
+        const updateData = { 
+            scripts, 
+            avatar: botAvatar || null,
+            name: botName,
+            description: botDescription
+        };
         
         await updateDoc(botRef, updateData);
-        await updateDoc(userRef, { avatar: botAvatar || null });
+        await updateDoc(userRef, { 
+            avatar: botAvatar || null,
+            name: botName,
+            statusMessage: botDescription
+        });
         
         toast({ title: t('dm_success'), description: t('chat_update_success') });
     } catch (e: any) { 
@@ -207,26 +225,34 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
             </Button>
             
             <div className="flex items-center gap-3 min-w-0">
-                <div className="relative group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                    <Avatar className="h-10 w-10 border-2 border-primary/20 group-hover/avatar:opacity-50 transition-opacity">
-                        <AvatarImage src={botAvatar} />
-                        <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground" /></AvatarFallback>
+                <div className="relative group/avatar cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
+                    <Avatar className="h-10 w-10 border-2 border-primary/20 transition-all group-hover/avatar:border-primary/50">
+                        <AvatarImage src={botAvatar} className="object-cover" />
+                        <AvatarFallback className="bg-muted">
+                            <Bot className="h-5 w-5 text-muted-foreground" />
+                        </AvatarFallback>
                     </Avatar>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
-                        <Pencil className="h-4 w-4 text-white" />
+                    <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1 border-2 border-background shadow-sm scale-75 opacity-0 group-hover/avatar:opacity-100 transition-all">
+                        <Pencil className="h-3 w-3" />
                     </div>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
                 </div>
                 <div className="min-w-0">
-                    <h1 className="text-lg font-bold font-headline truncate leading-none">{bot.name}</h1>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">Bot Editor</p>
+                    <h1 className="text-base font-black font-headline truncate leading-tight">{botName}</h1>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor</p>
                 </div>
             </div>
         </div>
-        <Button onClick={handleSave} disabled={isSaving} className="rounded-xl gap-2 font-bold bg-green-600 hover:bg-green-700 h-10">
-            <Save className="h-4 w-4" />
-            <span>{t('save')}</span>
-        </Button>
+        
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)} className="rounded-xl h-10 w-10">
+                <Settings className="h-5 w-5 text-muted-foreground" />
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving} className="rounded-xl gap-2 font-bold bg-green-600 hover:bg-green-700 h-10 px-6 shadow-lg shadow-green-600/20">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span className="hidden sm:inline">{t('save')}</span>
+            </Button>
+        </div>
       </header>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -331,6 +357,47 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
             </div>
         </main>
       </div>
+
+      {/* Bot Details Settings Dialog */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl">
+              <DialogHeader className="items-center text-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <Settings className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                      <DialogTitle className="text-2xl font-bold font-headline">Bot Settings</DialogTitle>
+                      <DialogDescription>Manage your bot's public identity.</DialogDescription>
+                  </div>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
+                      <Input 
+                        value={botName} 
+                        onChange={e => setBotName(e.target.value)} 
+                        className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary font-bold"
+                        placeholder="My Awesome Bot"
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">About Bot / Status</Label>
+                      <Textarea 
+                        value={botDescription} 
+                        onChange={e => setBotDescription(e.target.value)} 
+                        className="rounded-xl bg-muted/50 border-none focus-visible:ring-primary resize-none min-h-[100px]"
+                        placeholder="What does this bot do?"
+                      />
+                  </div>
+              </div>
+
+              <DialogFooter className="gap-2">
+                  <Button variant="ghost" onClick={() => setIsSettingsOpen(false)} className="rounded-xl flex-1">{t('cancel')}</Button>
+                  <Button onClick={() => setIsSettingsOpen(false)} className="rounded-xl flex-[2] font-bold">Apply Changes</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <Dialog open={!!imageToCrop} onOpenChange={(open) => !open && setImageToCrop('')}>
         <DialogContent className="max-w-md rounded-3xl overflow-hidden p-6">
