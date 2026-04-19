@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -18,7 +18,7 @@ import type { PopulatedChat } from '@/types';
 import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell, Newspaper } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc } from 'firebase/firestore';
 import type { User, AuthenticatedUser, Chat, Call, CustomBot } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
@@ -86,8 +86,9 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   };
 
   useEffect(() => {
-    if (selectedItem && typeof selectedItem !== 'string') {
-      setActiveChatId(selectedItem.id);
+    const selectedId = typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
+    if (selectedId) {
+      setActiveChatId(selectedId);
     } else {
       setActiveChatId(null);
     }
@@ -135,7 +136,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
         const cond = block.params?.condition || '';
         if (!cond) return true;
         
-        // Simple evaluator: "{var} == value" or "text contains value"
         const resolvedCond = resolveVars(cond, vars).toLowerCase();
         const msgText = (message.content || '').toLowerCase();
         
@@ -151,7 +151,13 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     };
 
     const executeBotLogic = async (bot: CustomBot, message: any, chatId: string) => {
+        // Load persistent memory
+        const stateRef = doc(db, 'customBots', bot.id, 'userStates', currentUser.uid);
+        const stateSnap = await getDoc(stateRef);
+        const memory = stateSnap.exists() ? stateSnap.data().vars || {} : {};
+
         const vars: Record<string, string> = {
+            ...memory,
             'user_name': currentUser.displayName || 'User',
             'msg_text': message.content || '',
             'bot_name': bot.name,
@@ -171,7 +177,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             while (i < blocks.length) {
                 const block = blocks[i];
                 
-                // Logic Flow Control
                 if (block.type === 'logic_end_if') {
                     ifStack.pop();
                     i++;
@@ -185,9 +190,8 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
                     continue;
                 }
 
-                // If currently in a FALSE branch of an IF, skip this block
                 if (ifStack.some(val => val === false)) {
-                    if (block.type === 'logic_if') ifStack.push(false); // nested skip
+                    if (block.type === 'logic_if') ifStack.push(false);
                     i++;
                     continue;
                 }
@@ -209,15 +213,14 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
                     case 'action_wait':
                         await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000));
                         break;
-                    case 'condition_if_text': // Legacy support
-                        if (!message.content.toLowerCase().includes(block.params?.text.toLowerCase())) {
-                            i = blocks.length; // Stop script
-                        }
-                        break;
                 }
                 i++;
             }
         }
+
+        // Save persistent memory (exclude temporary system vars)
+        const { user_name, msg_text, bot_name, time, ...persistentOnly } = vars;
+        await setDoc(stateRef, { vars: persistentOnly, updatedAt: serverTimestamp() }, { merge: true });
     };
 
     const sendBotMessage = async (bot: CustomBot, text: string, chatId: string, replyTo?: any, imageUrl?: string) => {

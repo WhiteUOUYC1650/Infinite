@@ -341,8 +341,13 @@ function BotBlockComponent({
         }
     };
 
-    const labelKey = `block_${block.type.replace('action_', '').replace('event_', '').replace('condition_', '').replace('logic_', '').replace('variable_', '')}` as any;
-    const label = t(labelKey) || block.type;
+    const getLabel = () => {
+        if (block.type === 'event_message') return t('block_event_received');
+        if (block.type === 'event_start') return t('block_event_start');
+        
+        const key = `block_${block.type.replace('action_', '').replace('event_', '').replace('condition_', '').replace('logic_', '').replace('variable_', '')}` as any;
+        return t(key) || block.type;
+    };
 
     return (
         <div className={cn(
@@ -361,7 +366,7 @@ function BotBlockComponent({
                     <Icon className="h-4 w-4" />
                 </div>
                 <span className="font-black uppercase tracking-widest text-[10px]">
-                    {label}
+                    {getLabel()}
                 </span>
             </div>
 
