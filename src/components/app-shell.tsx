@@ -35,7 +35,7 @@ const iconMap = {
     Bot,
 };
 
-function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
+function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, sessionId: string }) {
   const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio' | null>(null);
   const [infVidInitialVideoId, setInfVidInitialVideoId] = useState<string | null>(null);
   const { isMobile } = useSidebar();
@@ -53,6 +53,9 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   // Bot engine stability refs
   const processedMsgIds = useRef<Set<string>>(new Set());
   const engineStartedAt = useRef<number>(Date.now());
+
+  const userDocRef = useMemoFirebase(() => db ? doc(db, 'users', currentUser.uid) : null, [db, currentUser.uid]);
+  const { data: userData } = useDoc<User>(userDocRef);
 
   useEffect(() => {
     if (!currentUser || !db) return;
@@ -104,7 +107,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
   // Global Custom Bot Engine
   useEffect(() => {
-    if (!db || !currentUser) return;
+    if (!db || !currentUser || !userData) return;
 
     const chatsRef = collection(db, 'chats');
     const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
@@ -115,12 +118,18 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             const lastMsg = chatData.lastMessage;
 
             if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
-                // Check if already processed
+                // SESSION LEADERSHIP CHECK: Only the active tab processes bots
+                // We use userData from the useDoc hook which stays in sync with Firestore
+                if ((userData as any).activeSessionId && (userData as any).activeSessionId !== sessionId) {
+                    return;
+                }
+
+                // Check if already processed locally
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
-                // Ignore messages sent more than 10 seconds before the session started
+                // Ignore messages sent more than 5 seconds before the session started
                 const msgTime = lastMsg.timestamp?.toMillis() || 0;
-                if (msgTime < engineStartedAt.current - 10000) {
+                if (msgTime < engineStartedAt.current - 5000) {
                     processedMsgIds.current.add(lastMsg.id);
                     return;
                 }
@@ -247,7 +256,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: currentUser.displayName || 'User' } }),
             ...(imageUrl && { imageUrl })
         };
-        // Use setDoc with msgRef so we have the same ID for lastMessage
+        // Standardize IDs for consistency across tabs
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), {
             lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name }
@@ -255,7 +264,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     };
 
     return () => unsubscribe();
-  }, [db, currentUser]);
+  }, [db, currentUser, userData, sessionId]);
 
   // Global Call Listener
   useEffect(() => {
@@ -329,8 +338,6 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
     };
   }, [db, handleSelect, currentUser.uid]);
 
-  const userDocRef = useMemoFirebase(() => db ? doc(db, 'users', currentUser.uid) : null, [db, currentUser.uid]);
-  const { data: userData } = useDoc<User>(userDocRef);
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
     if (!userData) return null;
     return { ...currentUser, ...userData, isAdmin: userData.username === '@Infinite' };
@@ -387,10 +394,10 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   );
 }
 
-export function AppShell({ user }: { user: FirebaseUser }) {
+export function AppShell({ user, sessionId }: { user: FirebaseUser, sessionId: string }) {
   return (
     <SidebarProvider>
-      <ChatUI currentUser={user} />
+      <ChatUI currentUser={user} sessionId={sessionId} />
     </SidebarProvider>
   );
 }

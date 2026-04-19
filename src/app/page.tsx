@@ -16,6 +16,7 @@ export default function Home() {
   const auth = useAuth();
   
   const [isVerifying, setIsVerifying] = useState(true);
+  const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const sessionRegistered = useRef(false);
 
   useEffect(() => {
@@ -41,7 +42,8 @@ export default function Home() {
         await updateDoc(userRef, { 
           'current-sessions': increment(1),
           status: 'online',
-          lastSeen: serverTimestamp()
+          lastSeen: serverTimestamp(),
+          activeSessionId: sessionId // Claim leadership for bots
         });
       } catch (e) {
         console.error("Failed to increment session:", e);
@@ -57,13 +59,19 @@ export default function Home() {
           const snap = await transaction.get(userRef);
           if (!snap.exists()) return;
           
-          const current = snap.data()?.['current-sessions'] || 0;
+          const data = snap.data();
+          const current = data?.['current-sessions'] || 0;
           const newVal = Math.max(0, current - 1);
           
           const updateData: any = { 'current-sessions': newVal };
           if (newVal === 0) {
             updateData.status = 'offline';
             updateData.lastSeen = serverTimestamp();
+          }
+          
+          // If we were the leader, clear it (optional, but clean)
+          if (data?.activeSessionId === sessionId) {
+              updateData.activeSessionId = null;
           }
           
           transaction.update(userRef, updateData);
@@ -167,7 +175,7 @@ export default function Home() {
     // Heartbeat to keep online status while window is active
     const interval = setInterval(() => {
       if (auth.currentUser) {
-        setDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }, { merge: true });
+        setDoc(userRef, { status: 'online', lastSeen: serverTimestamp(), activeSessionId: sessionId }, { merge: true });
       }
     }, 60000);
 
@@ -177,7 +185,7 @@ export default function Home() {
       if (appListener) appListener.remove();
       decrementSession();
     };
-  }, [user, authLoading, router, db, auth]);
+  }, [user, authLoading, router, db, auth, sessionId]);
 
   if (authLoading || isVerifying || !user) {
     return (
@@ -187,5 +195,5 @@ export default function Home() {
     );
   }
 
-  return <AppShell user={user} />;
+  return <AppShell user={user} sessionId={sessionId} />;
 }
