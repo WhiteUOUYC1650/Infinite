@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { useTheme } from '@/context/theme-context';
 
 const BLOCK_COLORS: Record<BotBlockType, string> = {
   event_start: 'bg-orange-600 border-orange-700',
@@ -87,6 +88,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
+  const { theme: colorTheme } = useTheme();
   
   const [scripts, setScripts] = useState<BotScript[]>(bot.scripts || []);
   const [botAvatar, setBotAvatar] = useState<string | undefined>(bot.avatar);
@@ -173,13 +175,16 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   };
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden relative">
-      <header className="flex h-16 items-center justify-between border-b px-4 bg-card shrink-0 z-20 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
-        <div className="flex items-center gap-4 min-w-0">
+    <div className="flex flex-col h-svh bg-background overflow-hidden relative">
+      <header className={cn(
+          "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+          colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
+      )}>
+        <div className="flex items-center gap-4 flex-1 min-w-0">
             <Button variant="ghost" size="icon" onClick={onBack}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative group/avatar cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
                     <Avatar className="h-10 w-10 border-2 border-primary/20">
                         <AvatarImage src={botAvatar} className="object-cover" />
@@ -196,7 +201,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 </div>
             </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
             <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)} className="rounded-xl h-10 w-10">
                 <Settings className="h-5 w-5 text-muted-foreground" />
             </Button>
@@ -208,9 +213,9 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </header>
 
       <main className="flex-1 overflow-y-auto relative bg-muted/5">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
+        <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
         
-        <div className="max-w-4xl mx-auto p-8 md:p-16 space-y-16 pb-40">
+        <div className="max-w-4xl mx-auto p-8 md:p-16 space-y-16 pb-48">
             {scripts.map((script, sIdx) => (
                 <div key={script.id} className="relative flex flex-col items-center">
                     <div className="absolute -top-6 left-4 bg-muted px-2 py-0.5 rounded-t-lg text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
@@ -247,7 +252,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         </div>
       </main>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[30]">
           <Button 
             onClick={() => setBlockSelector({ open: true, stackId: null, isStack: true })}
             className="h-16 px-10 rounded-[2rem] font-black text-lg gap-3 shadow-2xl shadow-primary/30 hover:scale-105 transition-transform"

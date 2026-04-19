@@ -15,11 +15,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { BotEditor } from './bot-editor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useTheme } from '@/context/theme-context';
+import { cn } from '@/lib/utils';
 
 export function BotStudioView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
+  const { theme: colorTheme } = useTheme();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newBotName, setNewBotName] = useState('');
@@ -110,18 +113,21 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
   }
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
-        <div className="flex items-center gap-4">
+    <div className="flex flex-col h-svh bg-background overflow-hidden">
+      <header className={cn(
+          "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+          colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
+      )}>
+        <div className="flex items-center gap-4 flex-1 min-w-0">
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-                <Cpu className="h-7 w-7 text-primary" />
-                <h1 className="text-xl font-bold font-headline">{t('bot_studio_title')}</h1>
+            <div className="flex items-center gap-2 overflow-hidden">
+                <Cpu className="h-7 w-7 text-primary shrink-0" />
+                <h1 className="text-xl font-bold font-headline truncate">{t('bot_studio_title')}</h1>
             </div>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="rounded-full gap-2 font-bold shadow-lg shadow-primary/20">
+        <Button onClick={() => setIsCreateOpen(true)} className="rounded-full gap-2 font-bold shadow-lg shadow-primary/20 h-10 px-4 shrink-0">
             <Plus className="h-4 w-4" />
             <span>{t('create_bot')}</span>
         </Button>
@@ -153,12 +159,12 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                                         <AvatarImage src={bot.avatar} />
                                         <AvatarFallback><Bot className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" /></AvatarFallback>
                                     </Avatar>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                         <CardTitle className="truncate font-bold text-lg">{bot.name}</CardTitle>
                                         <CardDescription className="truncate font-medium">{bot.username}</CardDescription>
                                         <p className="text-[10px] text-primary font-bold">/B/{bot.username.substring(1)}</p>
                                     </div>
-                                    <Badge variant={bot.isActive ? "default" : "secondary"} className="ml-auto rounded-full text-[10px] h-5">
+                                    <Badge variant={bot.isActive ? "default" : "secondary"} className="rounded-full text-[10px] h-5">
                                         {bot.isActive ? t('bot_active') : t('bot_inactive')}
                                     </Badge>
                                 </CardHeader>
@@ -185,6 +191,56 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
             </div>
         </div>
       </main>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
+              <DialogHeader className="items-center text-center space-y-4">
+                  <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-10 w-10 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                      <DialogTitle className="text-2xl font-bold font-headline">{t('create_bot')}</DialogTitle>
+                      <DialogDescription>
+                          Создайте уникального бота с собственной логикой.
+                      </DialogDescription>
+                  </div>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="bot-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
+                      <Input
+                          id="bot-name"
+                          value={newBotName}
+                          onChange={(e) => setNewBotName(e.target.value)}
+                          placeholder="Напр. Helper Bot"
+                          className="h-12 rounded-xl bg-muted/50 border-none focus-visible:ring-primary"
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="bot-handle" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('bot_username_label')}</Label>
+                      <div className="relative">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">@</span>
+                          <Input
+                              id="bot-handle"
+                              value={newBotHandle}
+                              onChange={(e) => setNewBotHandle(e.target.value.replace('@', ''))}
+                              placeholder="helper_bot"
+                              className="h-12 pl-7 rounded-xl bg-muted/50 border-none focus-visible:ring-primary"
+                          />
+                      </div>
+                  </div>
+              </div>
+              <DialogFooter className="flex-col gap-2">
+                  <Button onClick={handleCreateBot} disabled={isCreating || !newBotName.trim() || !newBotHandle.trim()} className="w-full h-12 rounded-xl font-bold">
+                      {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                      {t('create_bot')}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">
+                      {t('cancel')}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

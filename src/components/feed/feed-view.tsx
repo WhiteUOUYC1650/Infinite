@@ -27,7 +27,7 @@ const iconMap = {
 export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: AuthenticatedUser, onClose: () => void, onSelectChat: (chat: PopulatedChat) => void }) {
   const { t } = useLanguage();
   const db = useFirestore();
-  const { smoothScroll } = useTheme();
+  const { theme: colorTheme } = useTheme();
   
   const [messages, setMessages] = useState<(Message & { channelId: string, channelInfo: Chat })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,8 +107,11 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
   }, [onSelectChat]);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+    <div className="flex flex-col h-svh bg-background overflow-hidden">
+      <header className={cn(
+          "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+          colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
+      )}>
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-4">
           <ArrowLeft className="h-5 w-5" />
         </Button>

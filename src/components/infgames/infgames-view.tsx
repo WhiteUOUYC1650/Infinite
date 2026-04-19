@@ -12,11 +12,13 @@ import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
+import { useTheme } from '@/context/theme-context';
 
 type GameType = 'none' | 'gold_clicker';
 
 export function InfGamesView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
   const { t } = useLanguage();
+  const { theme: colorTheme } = useTheme();
   const [selectedGame, setSelectedGame] = useState<GameType>('none');
 
   const renderContent = () => {
@@ -43,8 +45,11 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
   };
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden relative">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+    <div className="flex flex-col h-svh bg-background overflow-hidden relative">
+      <header className={cn(
+          "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+          colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
+      )}>
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={selectedGame === 'none' ? onClose : () => setSelectedGame('none')}>
                 <ArrowLeft className="h-5 w-5" />

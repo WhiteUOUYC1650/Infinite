@@ -20,6 +20,7 @@ import { enUS, ru } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { Capacitor } from '@capacitor/core';
+import { useTheme } from '@/context/theme-context';
 
 const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -73,6 +74,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
+  const { theme: colorTheme } = useTheme();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -203,9 +205,12 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [selectedVideoId, videos, fetchedExternalVideo]);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
-        <div className="flex items-center gap-4">
+    <div className="flex flex-col h-svh bg-background overflow-hidden">
+      <header className={cn(
+          "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+          colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
+      )}>
+        <div className="flex items-center gap-4 flex-1 min-w-0">
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -216,7 +221,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             </div>
         </div>
         
-        <div className="flex-1 max-w-md mx-4 hidden md:block">
+        <div className="hidden md:block flex-1 max-w-md mx-4">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -228,10 +233,12 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             </div>
         </div>
 
-        <Button onClick={() => setIsUploadOpen(true)} className="gap-2 rounded-full">
-            <PlusCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('infvid_upload_title')}</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setIsUploadOpen(true)} className="gap-2 rounded-full h-10 px-4">
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('infvid_upload_title')}</span>
+            </Button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto">
