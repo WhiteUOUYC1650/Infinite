@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -102,13 +101,14 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
     const iconName = channel.icon as keyof typeof iconMap | undefined;
     onSelectChat({
       ...channel,
+      id: channel.id,
       iconComponent: iconName ? iconMap[iconName] : undefined
-    });
+    } as PopulatedChat);
   }, [onSelectChat]);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+      <header className="flex h-16 shrink-0 items-center border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-4">
           <ArrowLeft className="h-5 w-5" />
         </Button>

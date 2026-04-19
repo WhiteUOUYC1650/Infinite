@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -45,7 +44,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden relative">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={selectedGame === 'none' ? onClose : () => setSelectedGame('none')}>
                 <ArrowLeft className="h-5 w-5" />
@@ -61,7 +60,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 bg-muted/5">
+        <div className="p-4 md:p-6 bg-muted/5 min-h-full">
             {renderContent()}
         </div>
       </main>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -112,7 +111,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <ArrowLeft className="h-5 w-5" />
@@ -186,40 +185,6 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
             </div>
         </div>
       </main>
-
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl max-h-[95vh] overflow-y-auto">
-            <DialogHeader className="items-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <Plus className="h-8 w-8 text-primary" />
-                </div>
-                <div className="space-y-2">
-                    <DialogTitle className="text-2xl font-bold font-headline">{t('create_bot')}</DialogTitle>
-                    <DialogDescription>{t('bot_studio_desc')}</DialogDescription>
-                </div>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</label>
-                    <Input placeholder="Example: My Assistant" value={newBotName} onChange={e => setNewBotName(e.target.value)} className="rounded-xl h-12 border-none bg-muted/50 focus-visible:ring-primary" />
-                </div>
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_username_label')}</label>
-                    <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">@</span>
-                        <Input placeholder="my_helper_bot" value={newBotHandle} onChange={e => setNewBotHandle(e.target.value)} className="rounded-xl h-12 pl-8 border-none bg-muted/50 focus-visible:ring-primary" />
-                    </div>
-                </div>
-            </div>
-            <DialogFooter className="flex-col gap-2">
-                <Button className="w-full h-12 rounded-xl font-bold text-lg" onClick={handleCreateBot} disabled={isCreating || !newBotName || !newBotHandle}>
-                    {isCreating ? <Loader2 className="animate-spin mr-2" /> : null}
-                    {t('create_bot')}
-                </Button>
-                <Button variant="ghost" className="w-full h-12 rounded-xl font-medium" onClick={() => setIsCreateOpen(false)}>{t('cancel')}</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
