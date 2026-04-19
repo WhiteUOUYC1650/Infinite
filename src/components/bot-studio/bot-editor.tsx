@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, Package } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, Package, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -97,7 +97,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   const [isSaving, setIsSaving] = useState(false);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [blockSelector, setBlockSelector] = useState<{ open: boolean, stackId: string | null, isStack: boolean }>({ open: false, stackId: null, isStack: false });
+  const [blockSelectorOpen, setBlockSelectorOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -144,21 +144,20 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     }
   };
 
-  const addStack = (type: BotBlockType) => {
-    const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: {} };
-    setScripts([...scripts, { id: Math.random().toString(36).substr(2, 9), blocks: [newBlock] }]);
-    setBlockSelector({ open: false, stackId: null, isStack: false });
-  };
+  const onAddFromFab = (type: BotBlockType) => {
+      const isEvent = type.startsWith('event_');
+      const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: {} };
 
-  const addBlockToStack = (stackId: string, type: BotBlockType) => {
-    const newScripts = scripts.map(s => {
-        if (s.id === stackId) {
-            return { ...s, blocks: [...s.blocks, { id: Math.random().toString(36).substr(2, 9), type, params: {} }] };
-        }
-        return s;
-    });
-    setScripts(newScripts);
-    setBlockSelector({ open: false, stackId: null, isStack: false });
+      if (isEvent || scripts.length === 0) {
+          setScripts([...scripts, { id: Math.random().toString(36).substr(2, 9), blocks: [newBlock] }]);
+      } else {
+          // Add to the last script by default
+          const lastIdx = scripts.length - 1;
+          const newScripts = [...scripts];
+          newScripts[lastIdx] = { ...newScripts[lastIdx], blocks: [...newScripts[lastIdx].blocks, newBlock] };
+          setScripts(newScripts);
+      }
+      setBlockSelectorOpen(false);
   };
 
   const updateBlockParam = (sIdx: number, bIdx: number, key: string, value: any) => {
@@ -171,6 +170,21 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     const newScripts = [...scripts];
     newScripts[sIdx].blocks.splice(bIdx, 1);
     if (newScripts[sIdx].blocks.length === 0) newScripts.splice(sIdx, 1);
+    setScripts(newScripts);
+  };
+
+  const moveBlock = (sIdx: number, bIdx: number, direction: 'up' | 'down') => {
+    const newScripts = [...scripts];
+    const targetIdx = direction === 'up' ? bIdx - 1 : bIdx + 1;
+    
+    if (targetIdx < 0 || targetIdx >= newScripts[sIdx].blocks.length) return;
+
+    const blocks = [...newScripts[sIdx].blocks];
+    const temp = blocks[bIdx];
+    blocks[bIdx] = blocks[targetIdx];
+    blocks[targetIdx] = temp;
+
+    newScripts[sIdx] = { ...newScripts[sIdx], blocks };
     setScripts(newScripts);
   };
 
@@ -190,7 +204,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                         <AvatarImage src={botAvatar} className="object-cover" />
                         <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground" /></AvatarFallback>
                     </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1 border-2 border-background shadow-sm scale-75 opacity-0 group-hover/avatar:opacity-100 transition-all">
+                    <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1 border-2 border-background shadow-sm scale-75">
                         <Pencil className="h-3 w-3" />
                     </div>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
@@ -215,31 +229,26 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       <main className="flex-1 overflow-y-auto relative bg-muted/5">
         <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
         
-        <div className="max-w-4xl mx-auto p-8 md:p-16 space-y-16 pb-48">
+        <div className="max-w-4xl mx-auto p-8 md:p-16 space-y-12 pb-32">
             {scripts.map((script, sIdx) => (
-                <div key={script.id} className="relative flex flex-col items-center">
-                    <div className="absolute -top-6 left-4 bg-muted px-2 py-0.5 rounded-t-lg text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
+                <div key={script.id} className="relative flex flex-col items-center bg-card/30 rounded-3xl p-6 border-2 border-dashed border-muted-foreground/10">
+                    <div className="absolute -top-3 left-6 bg-muted px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
                     
-                    {script.blocks.map((block, bIdx) => (
-                        <React.Fragment key={block.id}>
+                    <div className="w-full flex flex-col items-center gap-3">
+                        {script.blocks.map((block, bIdx) => (
                             <BotBlockComponent 
+                                key={block.id}
                                 block={block} 
                                 sIdx={sIdx} 
                                 bIdx={bIdx}
+                                isFirst={bIdx === 0}
+                                isLast={bIdx === script.blocks.length - 1}
                                 onUpdate={updateBlockParam}
                                 onDelete={removeBlock}
+                                onMove={moveBlock}
                             />
-                            {bIdx < script.blocks.length - 1 ? <div className="w-1.5 h-4 bg-muted/40" /> : null}
-                        </React.Fragment>
-                    ))}
-
-                    <div className="w-1.5 h-4 bg-muted/40" />
-                    <button 
-                        onClick={() => setBlockSelector({ open: true, stackId: script.id, isStack: false })}
-                        className="w-10 h-10 rounded-2xl bg-card border-2 border-dashed flex items-center justify-center hover:border-primary/50 transition-colors shadow-sm group/add"
-                    >
-                        <Plus className="h-5 w-5 text-muted-foreground group-hover/add:text-primary" />
-                    </button>
+                        ))}
+                    </div>
                 </div>
             ))}
 
@@ -252,46 +261,46 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         </div>
       </main>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[30]">
+      {/* Floating Action Button */}
+      <div className="absolute bottom-8 right-8 z-[30]">
           <Button 
-            onClick={() => setBlockSelector({ open: true, stackId: null, isStack: true })}
-            className="h-16 px-10 rounded-[2rem] font-black text-lg gap-3 shadow-2xl shadow-primary/30 hover:scale-105 transition-transform"
+            onClick={() => setBlockSelectorOpen(true)}
+            className="h-16 w-16 rounded-full font-black shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all p-0 flex items-center justify-center"
           >
-            <Plus className="h-6 w-6" strokeWidth={3} />
-            <span>Новый Скрипт</span>
+            <Plus className="h-8 w-8" strokeWidth={3} />
           </Button>
       </div>
 
-      <Dialog open={blockSelector.open} onOpenChange={o => setBlockSelector(prev => ({ ...prev, open: o }))}>
+      <Dialog open={blockSelectorOpen} onOpenChange={setBlockSelectorOpen}>
           <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden flex flex-col h-[70vh]">
               <DialogHeader className="p-6 pb-2 border-b bg-muted/20">
-                  <DialogTitle className="text-xl font-bold font-headline">{blockSelector.isStack ? 'Выберите триггер' : 'Добавить блок'}</DialogTitle>
+                  <DialogTitle className="text-xl font-bold font-headline">Добавить блок</DialogTitle>
               </DialogHeader>
-              <Tabs defaultValue={blockSelector.isStack ? 'events' : 'actions'} className="flex-1 flex flex-col overflow-hidden">
+              <Tabs defaultValue="events" className="flex-1 flex flex-col overflow-hidden">
                   <TabsList className="mx-6 mt-4 grid grid-cols-4 bg-muted/50 p-1 rounded-xl">
-                      <TabsTrigger value="events" className="rounded-lg text-[10px] uppercase font-bold" disabled={!blockSelector.isStack}>События</TabsTrigger>
+                      <TabsTrigger value="events" className="rounded-lg text-[10px] uppercase font-bold">События</TabsTrigger>
                       <TabsTrigger value="actions" className="rounded-lg text-[10px] uppercase font-bold">Действия</TabsTrigger>
                       <TabsTrigger value="logic" className="rounded-lg text-[10px] uppercase font-bold">Логика</TabsTrigger>
                       <TabsTrigger value="vars" className="rounded-lg text-[10px] uppercase font-bold">Память</TabsTrigger>
                   </TabsList>
                   <ScrollArea className="flex-1 p-6">
                       <TabsContent value="events" className="mt-0 space-y-2">
-                          <PaletteItem type="event_start" label={t('block_event_start')} onClick={addStack} />
-                          <PaletteItem type="event_message" label={t('block_event_received')} onClick={addStack} />
+                          <PaletteItem type="event_start" label={t('block_event_start')} onClick={onAddFromFab} />
+                          <PaletteItem type="event_message" label={t('block_event_received')} onClick={onAddFromFab} />
                       </TabsContent>
                       <TabsContent value="actions" className="mt-0 space-y-2">
-                          <PaletteItem type="action_send" label={t('block_action_send')} onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
-                          <PaletteItem type="action_reply" label={t('block_action_reply')} onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
-                          <PaletteItem type="action_send_image" label="Отправить изображение" onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
+                          <PaletteItem type="action_send" label={t('block_action_send')} onClick={onAddFromFab} />
+                          <PaletteItem type="action_reply" label={t('block_action_reply')} onClick={onAddFromFab} />
+                          <PaletteItem type="action_send_image" label="Отправить изображение" onClick={onAddFromFab} />
                       </TabsContent>
                       <TabsContent value="logic" className="mt-0 space-y-2">
-                          <PaletteItem type="logic_if" label="Если" onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
-                          <PaletteItem type="logic_else" label="Иначе" onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
-                          <PaletteItem type="logic_end_if" label="Конец если" onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
-                          <PaletteItem type="action_wait" label="Подождать" onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
+                          <PaletteItem type="logic_if" label="Если" onClick={onAddFromFab} />
+                          <PaletteItem type="logic_else" label="Иначе" onClick={onAddFromFab} />
+                          <PaletteItem type="logic_end_if" label="Конец если" onClick={onAddFromFab} />
+                          <PaletteItem type="action_wait" label="Подождать" onClick={onAddFromFab} />
                       </TabsContent>
                       <TabsContent value="vars" className="mt-0 space-y-2">
-                          <PaletteItem type="variable_set" label="Установить переменную" onClick={t => addBlockToStack(blockSelector.stackId!, t)} />
+                          <PaletteItem type="variable_set" label="Установить переменную" onClick={onAddFromFab} />
                       </TabsContent>
                   </ScrollArea>
               </Tabs>
@@ -379,7 +388,7 @@ function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: stri
     );
 }
 
-function BotBlockComponent({ block, sIdx, bIdx, onUpdate, onDelete }: { block: BotBlock, sIdx: number, bIdx: number, onUpdate: any, onDelete: any }) {
+function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDelete, onMove }: { block: BotBlock, sIdx: number, bIdx: number, isFirst: boolean, isLast: boolean, onUpdate: any, onDelete: any, onMove: any }) {
     const { t } = useLanguage();
     const Icon = BLOCK_ICONS[block.type];
 
@@ -406,19 +415,43 @@ function BotBlockComponent({ block, sIdx, bIdx, onUpdate, onDelete }: { block: B
     };
 
     return (
-        <div className={cn("w-full max-w-[340px] p-4 rounded-3xl border-b-4 text-white shadow-xl relative group", BLOCK_COLORS[block.type])}>
-            <button onClick={() => onDelete(sIdx, bIdx)} className="absolute -right-2 -top-2 bg-background text-foreground border h-7 w-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:text-destructive">
-                <XIcon className="h-4 w-4" />
-            </button>
-            <div className="flex items-center gap-3 mb-2">
-                <div className="p-1.5 bg-black/10 rounded-xl"><Icon className="h-4 w-4" /></div>
-                <span className="font-black uppercase tracking-widest text-[10px]">{t(`block_${block.type.replace('action_', '').replace('event_', '').replace('logic_', '')}` as any) || block.type}</span>
+        <div className={cn("w-full max-w-[360px] p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all active:scale-[0.98]", BLOCK_COLORS[block.type])}>
+            <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-black/10 rounded-xl"><Icon className="h-4 w-4" /></div>
+                    <span className="font-black uppercase tracking-widest text-[10px]">{t(`block_${block.type.replace('action_', '').replace('event_', '').replace('logic_', '')}` as any) || block.type}</span>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        disabled={isFirst} 
+                        onClick={() => onMove(sIdx, bIdx, 'up')}
+                        className="h-7 w-7 rounded-lg bg-black/10 hover:bg-black/20 text-white disabled:opacity-20"
+                    >
+                        <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        disabled={isLast} 
+                        onClick={() => onMove(sIdx, bIdx, 'down')}
+                        className="h-7 w-7 rounded-lg bg-black/10 hover:bg-black/20 text-white disabled:opacity-20"
+                    >
+                        <ChevronDown className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => onDelete(sIdx, bIdx)}
+                        className="h-7 w-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-white ml-2"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
             {renderParams()}
         </div>
     );
-}
-
-function XIcon({ className }: { className?: string }) {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6L6 18M6 6l12 12" /></svg>;
 }
