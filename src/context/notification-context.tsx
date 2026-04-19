@@ -38,7 +38,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         if (status.display !== 'granted') {
           await LocalNotifications.requestPermissions();
         }
-      } else if ('Notification' in window) {
+      } else if (typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'default') {
           await Notification.requestPermission();
         }
@@ -130,9 +130,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       } catch (e) {
         console.error("Failed to show local notification", e);
       }
-    } else if ('Notification' in window && Notification.permission === 'granted') {
+    } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
-        const n = new Notification(title, {
+        // Constructing notification only in secure context or if supported
+        const n = new window.Notification(title, {
           body,
           icon: '/favicon.ico',
         });
@@ -141,7 +142,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: chat.id } }));
         };
       } catch (e) {
-        console.error("Browser notification failed", e);
+        console.warn("Browser notification construction failed:", e);
       }
     }
   };
@@ -172,13 +173,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (ringtoneRef.current) {
         ringtoneRef.current.play().catch(() => {});
       }
-      if ('Notification' in window && Notification.permission === 'granted') {
-        const n = new Notification(title, { body, icon: '/favicon.ico', tag: 'incoming-call' });
-        n.onclick = () => {
-          window.focus();
-          window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId } }));
-          if (ringtoneRef.current) ringtoneRef.current.pause();
-        };
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          const n = new window.Notification(title, { body, icon: '/favicon.ico', tag: 'incoming-call' });
+          n.onclick = () => {
+            window.focus();
+            window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId } }));
+            if (ringtoneRef.current) ringtoneRef.current.pause();
+          };
+        } catch (e) {
+          console.warn("Call notification construction failed:", e);
+        }
       }
     }
   };
