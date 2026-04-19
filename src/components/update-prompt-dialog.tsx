@@ -9,8 +9,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogPortal,
-  AlertDialogOverlay,
 } from "@/components/ui/alert-dialog"
 import { useLanguage } from "@/context/language-context";
 import { Sparkles, Clock, Download, Loader2, X } from "lucide-react";
@@ -32,46 +30,42 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogPortal>
-                {/* Принудительно устанавливаем z-index выше, чем у настроек (z-50) */}
-                <AlertDialogOverlay className="z-[100]" />
-                <AlertDialogContent className="rounded-3xl border-none shadow-2xl overflow-hidden z-[100] outline-none">
-                    <button 
-                      onClick={() => onOpenChange(false)}
-                      className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors opacity-70 z-[110]"
+            <AlertDialogContent className="rounded-3xl border-none shadow-2xl overflow-hidden outline-none">
+                <button 
+                  onClick={() => onOpenChange(false)}
+                  className="absolute right-4 top-4 rounded-full p-2 hover:bg-muted transition-colors opacity-70 z-[110]"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <AlertDialogHeader className="items-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        {isUpdateAvailable ? (
+                            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                        ) : (
+                            <Clock className="h-8 w-8 text-primary" />
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <AlertDialogTitle className="text-2xl font-bold font-headline">{title}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground leading-relaxed">
+                            {description}
+                        </AlertDialogDescription>
+                    </div>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="sm:justify-center pt-4 flex-col gap-2">
+                    <Button onClick={onUpdate} disabled={isDownloading} className="w-full h-12 rounded-xl font-bold gap-2">
+                        {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        {t('update_infinite')}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => onOpenChange(false)} 
+                      className="w-full h-12 rounded-xl font-medium border-none hover:bg-muted text-muted-foreground"
                     >
-                      <X className="h-5 w-5" />
-                    </button>
-                    <AlertDialogHeader className="items-center text-center space-y-4">
-                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                            {isUpdateAvailable ? (
-                                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-                            ) : (
-                                <Clock className="h-8 w-8 text-primary" />
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-bold font-headline">{title}</AlertDialogTitle>
-                            <AlertDialogDescription className="text-muted-foreground leading-relaxed">
-                                {description}
-                            </AlertDialogDescription>
-                        </div>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="sm:justify-center pt-4 flex-col gap-2">
-                        <Button onClick={onUpdate} disabled={isDownloading} className="w-full h-12 rounded-xl font-bold gap-2">
-                            {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            {t('update_infinite')}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          onClick={() => onOpenChange(false)} 
-                          className="w-full h-12 rounded-xl font-medium border-none hover:bg-muted text-muted-foreground"
-                        >
-                            {t('cancel')}
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogPortal>
+                        {t('cancel')}
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
         </AlertDialog>
     )
 }

@@ -21,7 +21,6 @@ const AlertDialogOverlay = React.forwardRef<
       "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
       className
     )}
-    data-dialog-overlay
     {...props}
     ref={ref}
   />
