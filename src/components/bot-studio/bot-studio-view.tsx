@@ -6,7 +6,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, doc, setDoc, deleteDoc, Timestamp, runTransaction, updateDoc } from 'firebase/firestore';
 import type { AuthenticatedUser, CustomBot } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2 } from 'lucide-react';
+import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BotEditor } from './bot-editor';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 export function BotStudioView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
   const { t } = useLanguage();
@@ -149,9 +150,10 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                         {myBots.map(bot => (
                             <Card key={bot.id} className="rounded-3xl border-none shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden bg-card">
                                 <CardHeader className="flex flex-row items-center gap-4 pb-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center shrink-0">
-                                        <Bot className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                                    </div>
+                                    <Avatar className="w-14 h-14 rounded-2xl border bg-muted flex items-center justify-center shrink-0">
+                                        <AvatarImage src={bot.avatar} />
+                                        <AvatarFallback><Bot className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" /></AvatarFallback>
+                                    </Avatar>
                                     <div className="min-w-0">
                                         <CardTitle className="truncate font-bold text-lg">{bot.name}</CardTitle>
                                         <CardDescription className="truncate font-medium">{bot.username}</CardDescription>

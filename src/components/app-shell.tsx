@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -119,15 +120,12 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
             if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
                 // SESSION LEADERSHIP CHECK: Only the active tab processes bots
-                // We use userData from the useDoc hook which stays in sync with Firestore
                 if ((userData as any).activeSessionId && (userData as any).activeSessionId !== sessionId) {
                     return;
                 }
 
-                // Check if already processed locally
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
-                // Ignore messages sent more than 5 seconds before the session started
                 const msgTime = lastMsg.timestamp?.toMillis() || 0;
                 if (msgTime < engineStartedAt.current - 5000) {
                     processedMsgIds.current.add(lastMsg.id);
@@ -172,7 +170,6 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     };
 
     const executeBotLogic = async (bot: CustomBot, message: any, chatId: string) => {
-        // Load persistent memory
         const stateRef = doc(db, 'customBots', bot.id, 'userStates', currentUser.uid);
         const stateSnap = await getDoc(stateRef);
         const memory = stateSnap.exists() ? stateSnap.data().vars || {} : {};
@@ -197,49 +194,21 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
             while (i < blocks.length) {
                 const block = blocks[i];
-                
-                if (block.type === 'logic_end_if') {
-                    ifStack.pop();
-                    i++;
-                    continue;
-                }
-                if (block.type === 'logic_else') {
-                    if (ifStack.length > 0) {
-                        ifStack[ifStack.length - 1] = !ifStack[ifStack.length - 1];
-                    }
-                    i++;
-                    continue;
-                }
-
-                if (ifStack.some(val => val === false)) {
-                    if (block.type === 'logic_if') ifStack.push(false);
-                    i++;
-                    continue;
-                }
+                if (block.type === 'logic_end_if') { ifStack.pop(); i++; continue; }
+                if (block.type === 'logic_else') { if (ifStack.length > 0) { ifStack[ifStack.length - 1] = !ifStack[ifStack.length - 1]; } i++; continue; }
+                if (ifStack.some(val => val === false)) { if (block.type === 'logic_if') ifStack.push(false); i++; continue; }
 
                 switch (block.type) {
-                    case 'logic_if':
-                        ifStack.push(checkCondition(block, message, vars));
-                        break;
-                    case 'variable_set':
-                        vars[block.params?.name] = resolveVars(block.params?.value, vars);
-                        break;
+                    case 'logic_if': ifStack.push(checkCondition(block, message, vars)); break;
+                    case 'variable_set': vars[block.params?.name] = resolveVars(block.params?.value, vars); break;
                     case 'action_send':
-                    case 'action_reply':
-                        await sendBotMessage(bot, resolveVars(block.params?.text, vars), chatId, block.type === 'action_reply' ? message : undefined);
-                        break;
-                    case 'action_send_image':
-                        await sendBotMessage(bot, resolveVars(block.params?.text, vars), chatId, undefined, resolveVars(block.params?.imageUrl, vars));
-                        break;
-                    case 'action_wait':
-                        await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000));
-                        break;
+                    case 'action_reply': await sendBotMessage(bot, resolveVars(block.params?.text, vars), chatId, block.type === 'action_reply' ? message : undefined); break;
+                    case 'action_send_image': await sendBotMessage(bot, resolveVars(block.params?.text, vars), chatId, undefined, resolveVars(block.params?.imageUrl, vars)); break;
+                    case 'action_wait': await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000)); break;
                 }
                 i++;
             }
         }
-
-        // Save persistent memory (exclude temporary system vars)
         const { user_name, msg_text, bot_name, time, ...persistentOnly } = vars;
         await setDoc(stateRef, { vars: persistentOnly, updatedAt: serverTimestamp() }, { merge: true });
     };
@@ -256,7 +225,6 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: currentUser.displayName || 'User' } }),
             ...(imageUrl && { imageUrl })
         };
-        // Standardize IDs for consistency across tabs
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), {
             lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name }

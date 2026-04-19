@@ -1,12 +1,12 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 const BLOCK_COLORS: Record<BotBlockType, string> = {
   event_start: 'bg-orange-600 border-orange-700',
@@ -50,18 +54,56 @@ const BLOCK_ICONS: Record<BotBlockType, any> = {
   action_send_image: ImageIcon,
 };
 
+// Helper functions for cropping
+function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
+  return centerCrop(makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight), mediaWidth, mediaHeight);
+}
+
+async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string> {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  const pixelRatio = window.devicePixelRatio;
+  canvas.width = crop.width * pixelRatio;
+  canvas.height = crop.height * pixelRatio;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No 2d context');
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image, crop.x * scaleX, crop.y * scaleY, crop.width * scaleX, crop.height * scaleY, 0, 0, crop.width, crop.height);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) { reject(new Error('Canvas is empty')); return; }
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    }, 'image/jpeg');
+  });
+}
+
 export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void }) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
   const [scripts, setScripts] = useState<BotScript[]>(bot.scripts || []);
+  const [botAvatar, setBotAvatar] = useState<string | undefined>(bot.avatar);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Avatar Edit State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imageToCrop, setImageToCrop] = useState('');
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isCropping, setIsCropping] = useState(false);
 
   useEffect(() => {
     if (!db) return;
     return onSnapshot(doc(db, 'customBots', bot.id), (snap) => {
         if (snap.exists()) {
-            setScripts(snap.data().scripts || []);
+            const data = snap.data();
+            setScripts(data.scripts || []);
+            setBotAvatar(data.avatar);
         }
     });
   }, [bot.id, db]);
@@ -70,13 +112,53 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     if (!db) return;
     setIsSaving(true);
     try {
-        await updateDoc(doc(db, 'customBots', bot.id), { scripts });
+        const botRef = doc(db, 'customBots', bot.id);
+        const userRef = doc(db, 'users', bot.id);
+        
+        const updateData = { scripts, avatar: botAvatar || null };
+        
+        await updateDoc(botRef, updateData);
+        await updateDoc(userRef, { avatar: botAvatar || null });
+        
         toast({ title: t('dm_success'), description: t('chat_update_success') });
     } catch (e: any) { 
         console.error(e); 
         toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
     finally { setIsSaving(false); }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file.size > 2 * 1024 * 1024) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Image too large (max 2MB)' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => setImageToCrop(reader.result?.toString() || '');
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height, 1));
+  };
+
+  const handleCropConfirm = async () => {
+    if (!completedCrop || !imgRef.current) return;
+    setIsCropping(true);
+    try {
+      const cropped = await getCroppedImg(imgRef.current, completedCrop);
+      setBotAvatar(cropped);
+      setImageToCrop('');
+    } catch (e) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Cropping failed' });
+    } finally {
+      setIsCropping(false);
+    }
   };
 
   const addStack = (type: BotBlockType) => {
@@ -119,13 +201,26 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       <header className="flex h-16 items-center justify-between border-b px-4 bg-card shrink-0 z-10">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0">
             <Button variant="ghost" size="icon" onClick={onBack}>
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="min-w-0">
-                <h1 className="text-lg font-bold font-headline truncate">{bot.name}</h1>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Bot Editor</p>
+            
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="relative group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                    <Avatar className="h-10 w-10 border-2 border-primary/20 group-hover/avatar:opacity-50 transition-opacity">
+                        <AvatarImage src={botAvatar} />
+                        <AvatarFallback><Ghost className="h-5 w-5 text-muted-foreground" /></AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                        <Pencil className="h-4 w-4 text-white" />
+                    </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                </div>
+                <div className="min-w-0">
+                    <h1 className="text-lg font-bold font-headline truncate leading-none">{bot.name}</h1>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">Bot Editor</p>
+                </div>
             </div>
         </div>
         <Button onClick={handleSave} disabled={isSaving} className="rounded-xl gap-2 font-bold bg-green-600 hover:bg-green-700 h-10">
@@ -236,6 +331,27 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
             </div>
         </main>
       </div>
+
+      <Dialog open={!!imageToCrop} onOpenChange={(open) => !open && setImageToCrop('')}>
+        <DialogContent className="max-w-md rounded-3xl overflow-hidden p-6">
+            <DialogHeader>
+                <DialogTitle>Crop Bot Avatar</DialogTitle>
+                <DialogDescription>Adjust the frame to set your bot's look.</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center my-4 overflow-hidden">
+                <ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={1}>
+                    <img ref={imgRef} src={imageToCrop} alt="Crop" onLoad={onImageLoad} className="max-h-[50vh] object-contain" />
+                </ReactCrop>
+            </div>
+            <DialogFooter className="gap-2">
+                <Button variant="ghost" onClick={() => setImageToCrop('')} className="rounded-xl">{t('cancel')}</Button>
+                <Button onClick={handleCropConfirm} disabled={isCropping} className="rounded-xl font-bold">
+                    {isCropping && <Clock className="mr-2 h-4 w-4 animate-spin" />}
+                    Set Avatar
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
