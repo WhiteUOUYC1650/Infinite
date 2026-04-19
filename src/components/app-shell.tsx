@@ -50,6 +50,10 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
   const [showSubPrompt, setShowSubPrompt] = useState(false);
   const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
 
+  // Bot engine stability refs
+  const processedMsgIds = useRef<Set<string>>(new Set());
+  const engineStartedAt = useRef<number>(Date.now());
+
   useEffect(() => {
     if (!currentUser || !db) return;
     const count = parseInt(localStorage.getItem('app_visit_count') || '0') + 1;
@@ -104,15 +108,24 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
     const chatsRef = collection(db, 'chats');
     const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-    const processedMsgIds = new Set<string>();
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach(async (change) => {
             const chatData = change.doc.data() as Chat;
             const lastMsg = chatData.lastMessage;
 
-            if (lastMsg && lastMsg.senderId === currentUser.uid && !processedMsgIds.has(lastMsg.id)) {
-                processedMsgIds.add(lastMsg.id);
+            if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
+                // Check if already processed
+                if (processedMsgIds.current.has(lastMsg.id)) return;
+                
+                // Ignore messages sent more than 10 seconds before the session started
+                const msgTime = lastMsg.timestamp?.toMillis() || 0;
+                if (msgTime < engineStartedAt.current - 10000) {
+                    processedMsgIds.current.add(lastMsg.id);
+                    return;
+                }
+
+                processedMsgIds.current.add(lastMsg.id);
                 const otherMembers = chatData.members.filter(m => m !== currentUser.uid);
                 for (const memberId of otherMembers) {
                     const memberDoc = await getDoc(doc(db, 'users', memberId));
@@ -229,12 +242,13 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
             senderId: bot.id,
             content: text || '',
             timestamp,
-            type: 'user',
+            type: 'user' as const,
             readBy: [],
             ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: currentUser.displayName || 'User' } }),
             ...(imageUrl && { imageUrl })
         };
-        await addDoc(collection(db, 'chats', chatId, 'messages'), msgData);
+        // Use setDoc with msgRef so we have the same ID for lastMessage
+        await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), {
             lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name }
         });
