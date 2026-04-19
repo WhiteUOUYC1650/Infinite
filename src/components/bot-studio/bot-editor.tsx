@@ -6,7 +6,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -210,7 +210,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 <div className="relative group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                     <Avatar className="h-10 w-10 border-2 border-primary/20 group-hover/avatar:opacity-50 transition-opacity">
                         <AvatarImage src={botAvatar} />
-                        <AvatarFallback><Ghost className="h-5 w-5 text-muted-foreground" /></AvatarFallback>
+                        <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground" /></AvatarFallback>
                     </Avatar>
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
                         <Pencil className="h-4 w-4 text-white" />
