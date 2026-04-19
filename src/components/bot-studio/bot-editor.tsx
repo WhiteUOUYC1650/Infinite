@@ -1,15 +1,14 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, MoveHorizontal, Wand2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Play, MousePointer2, MessageSquare, Clock, Ghost, Code2, ChevronDown, Wand2, Split, Database, Image as ImageIcon, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { 
@@ -28,6 +27,11 @@ const BLOCK_COLORS: Record<BotBlockType, string> = {
   action_wait: 'bg-amber-500 border-amber-600',
   condition_if_text: 'bg-emerald-500 border-emerald-600',
   action_reaction: 'bg-pink-500 border-pink-600',
+  logic_if: 'bg-purple-600 border-purple-700',
+  logic_else: 'bg-purple-500 border-purple-600',
+  logic_end_if: 'bg-purple-400 border-purple-500',
+  variable_set: 'bg-rose-500 border-rose-600',
+  action_send_image: 'bg-cyan-500 border-cyan-600',
 };
 
 const BLOCK_ICONS: Record<BotBlockType, any> = {
@@ -37,6 +41,11 @@ const BLOCK_ICONS: Record<BotBlockType, any> = {
   action_wait: Clock,
   condition_if_text: Code2,
   action_reaction: Ghost,
+  logic_if: Split,
+  logic_else: Split,
+  logic_end_if: Check,
+  variable_set: Database,
+  action_send_image: ImageIcon,
 };
 
 export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void }) {
@@ -74,7 +83,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   };
 
   const addBlockToStack = (stackIndex: number, type: BotBlockType) => {
-    const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: { text: '' } };
+    const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: {} };
     const newScripts = [...scripts];
     newScripts[stackIndex].blocks = [...newScripts[stackIndex].blocks, newBlock];
     setScripts(newScripts);
@@ -84,7 +93,6 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       if (type === 'event_start' || scripts.length === 0) {
           addStack(type);
       } else {
-          // Add to the last script
           addBlockToStack(scripts.length - 1, type);
       }
   };
@@ -124,17 +132,23 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Toolbox */}
-        <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r bg-muted/20 p-4 shrink-0 overflow-y-auto">
+        <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r bg-muted/20 p-4 shrink-0 overflow-y-auto">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">Palette</h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
                 <BlockDraft type="event_start" label={t('block_event_received')} onClick={() => handlePaletteClick('event_start')} />
-                <div className="h-px bg-border my-4" />
+                <div className="h-px bg-border my-2" />
                 <BlockDraft type="action_send" label={t('block_action_send')} onClick={() => handlePaletteClick('action_send')} />
                 <BlockDraft type="action_reply" label={t('block_action_reply')} onClick={() => handlePaletteClick('action_reply')} />
+                <BlockDraft type="action_send_image" label={t('block_action_send_image' as any) || 'Send Image'} onClick={() => handlePaletteClick('action_send_image')} />
+                <div className="h-px bg-border my-2" />
+                <BlockDraft type="logic_if" label={t('block_logic_if' as any) || 'If'} onClick={() => handlePaletteClick('logic_if')} />
+                <BlockDraft type="logic_else" label={t('block_logic_else' as any) || 'Else'} onClick={() => handlePaletteClick('logic_else')} />
+                <BlockDraft type="logic_end_if" label={t('block_logic_end_if' as any) || 'End If'} onClick={() => handlePaletteClick('logic_end_if')} />
+                <div className="h-px bg-border my-2" />
+                <BlockDraft type="variable_set" label={t('block_variable_set' as any) || 'Set Variable'} onClick={() => handlePaletteClick('variable_set')} />
                 <BlockDraft type="action_wait" label={t('block_action_wait').replace('{seconds}', '1')} onClick={() => handlePaletteClick('action_wait')} />
-                <BlockDraft type="condition_if_text" label={t('block_condition_if').replace('{text}', '...')} onClick={() => handlePaletteClick('condition_if_text')} />
             </div>
-            <Button onClick={() => addStack()} className="w-full mt-8 rounded-2xl h-14 border-2 border-dashed border-primary/40 bg-transparent text-primary hover:bg-primary/5 font-black uppercase tracking-widest text-[10px]">
+            <Button onClick={() => addStack()} className="w-full mt-6 rounded-2xl h-14 border-2 border-dashed border-primary/40 bg-transparent text-primary hover:bg-primary/5 font-black uppercase tracking-widest text-[10px]">
                 <Plus className="mr-2 h-4 w-4" /> New Script
             </Button>
         </aside>
@@ -146,7 +160,6 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
             <div className="max-w-3xl mx-auto space-y-16">
                 {scripts.map((script, sIdx) => (
                     <div key={script.id} className="relative animate-in slide-in-from-bottom-4 duration-300">
-                        {/* Stack Header */}
                         <div className="absolute -top-6 left-4 bg-muted px-2 py-0.5 rounded-t-lg text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
                         
                         <div className="flex flex-col items-center">
@@ -181,11 +194,25 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                                     <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'action_reply')}>
                                         <Wand2 className="h-4 w-4 mr-2 text-indigo-500" /> {t('block_action_reply')}
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'action_send_image')}>
+                                        <ImageIcon className="h-4 w-4 mr-2 text-cyan-500" /> Image
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'logic_if')}>
+                                        <Split className="h-4 w-4 mr-2 text-purple-500" /> {t('block_logic_if' as any) || 'If'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'logic_else')}>
+                                        <Split className="h-4 w-4 mr-2 text-purple-500" /> {t('block_logic_else' as any) || 'Else'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'logic_end_if')}>
+                                        <Check className="h-4 w-4 mr-2 text-purple-500" /> {t('block_logic_end_if' as any) || 'End If'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'variable_set')}>
+                                        <Database className="h-4 w-4 mr-2 text-rose-500" /> {t('block_variable_set' as any) || 'Variable'}
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'action_wait')}>
                                         <Clock className="h-4 w-4 mr-2 text-amber-500" /> {t('block_action_wait').replace('{seconds}', '1')}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => addBlockToStack(sIdx, 'condition_if_text')}>
-                                        <Code2 className="h-4 w-4 mr-2 text-emerald-500" /> {t('block_condition_if').replace('{text}', '...')}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -214,7 +241,7 @@ function BlockDraft({ type, label, onClick }: { type: BotBlockType, label: strin
         <button 
             onClick={onClick}
             className={cn(
-                "w-full p-3 rounded-xl border-b-4 text-white text-xs font-bold flex items-center gap-3 shadow-sm transition-all active:scale-95 hover:brightness-110 text-left", 
+                "w-full p-2.5 rounded-xl border-b-4 text-white text-[11px] font-bold flex items-center gap-3 shadow-sm transition-all active:scale-95 hover:brightness-110 text-left", 
                 BLOCK_COLORS[type]
             )}
         >
@@ -252,6 +279,43 @@ function BotBlockComponent({
                         className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 mt-1 font-bold text-xs"
                     />
                 );
+            case 'action_send_image':
+                return (
+                    <Input 
+                        placeholder="Image URL or Base64"
+                        value={block.params?.imageUrl || ''}
+                        onChange={e => onUpdate(stackIndex, blockIndex, 'imageUrl', e.target.value)}
+                        className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 mt-1 font-bold text-xs"
+                    />
+                );
+            case 'logic_if':
+                return (
+                    <div className="space-y-2 mt-1">
+                        <Input 
+                            placeholder="Condition (e.g. {var} == val)"
+                            value={block.params?.condition || ''}
+                            onChange={e => onUpdate(stackIndex, blockIndex, 'condition', e.target.value)}
+                            className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"
+                        />
+                    </div>
+                );
+            case 'variable_set':
+                return (
+                    <div className="flex gap-2 mt-1">
+                        <Input 
+                            placeholder="Name"
+                            value={block.params?.name || ''}
+                            onChange={e => onUpdate(stackIndex, blockIndex, 'name', e.target.value)}
+                            className="h-8 flex-1 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"
+                        />
+                        <Input 
+                            placeholder="Value"
+                            value={block.params?.value || ''}
+                            onChange={e => onUpdate(stackIndex, blockIndex, 'value', e.target.value)}
+                            className="h-8 flex-1 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"
+                        />
+                    </div>
+                );
             case 'action_wait':
                 return (
                     <Input 
@@ -263,35 +327,24 @@ function BotBlockComponent({
                         className="w-20 h-8 bg-black/10 border-none text-white focus-visible:ring-white/20 mt-1 font-bold text-xs"
                     />
                 );
-            case 'condition_if_text':
-                return (
-                    <div className="space-y-1 mt-1">
-                        <Input 
-                            placeholder="word or phrase"
-                            value={block.params?.text || ''}
-                            onChange={e => onUpdate(stackIndex, blockIndex, 'text', e.target.value)}
-                            className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"
-                        />
-                        <div className="flex items-center gap-1 text-[8px] opacity-60 uppercase font-black tracking-tighter">
-                            <ChevronDown className="h-3 w-3" /> Execute next if matches
-                        </div>
-                    </div>
-                );
             default:
                 return null;
         }
     };
 
+    const labelKey = `block_${block.type.replace('action_', '').replace('event_', '').replace('condition_', '').replace('logic_', '').replace('variable_', '')}` as any;
+    const label = t(labelKey) || block.type;
+
     return (
         <div className={cn(
-            "w-full max-w-[280px] p-4 rounded-2xl border-b-4 text-white shadow-lg relative group",
+            "w-full max-w-[320px] p-4 rounded-2xl border-b-4 text-white shadow-lg relative group",
             BLOCK_COLORS[block.type]
         )}>
             <button 
                 onClick={() => onDelete(stackIndex, blockIndex)}
                 className="absolute -right-2 -top-2 bg-background text-foreground border h-6 w-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:text-destructive"
             >
-                <X className="h-3 w-3" />
+                <XIcon className="h-3 w-3" />
             </button>
 
             <div className="flex items-center gap-3 mb-2">
@@ -299,7 +352,7 @@ function BotBlockComponent({
                     <Icon className="h-4 w-4" />
                 </div>
                 <span className="font-black uppercase tracking-widest text-[10px]">
-                    {t(`block_${block.type.replace('action_', '').replace('event_', '').replace('condition_', '')}` as any) || block.type}
+                    {label}
                 </span>
             </div>
 
@@ -308,7 +361,7 @@ function BotBlockComponent({
     );
 }
 
-function X({ className }: { className?: string }) {
+function XIcon({ className }: { className?: string }) {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
             <path d="M18 6L6 18M6 6l12 12" />

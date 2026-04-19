@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -95,7 +94,12 @@ export type BotBlockType =
   | 'action_reply' 
   | 'action_wait' 
   | 'condition_if_text' 
-  | 'action_reaction';
+  | 'action_reaction'
+  | 'logic_if'
+  | 'logic_else'
+  | 'logic_end_if'
+  | 'variable_set'
+  | 'action_send_image';
 
 export type BotBlock = {
   id: string;

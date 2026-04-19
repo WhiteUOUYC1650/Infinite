@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -498,6 +499,10 @@ export const translations = {
       'block_action_reply': 'Reply to Message',
       'block_action_wait': 'Wait {seconds}s',
       'block_condition_if': 'If message contains {text}',
+      'block_if': 'If',
+      'block_else': 'Else',
+      'block_end_if': 'End If',
+      'block_variable_set': 'Set Variable',
       'block_action_reaction': 'Add Reaction {emoji}',
       'bot_active': 'Active',
       'bot_inactive': 'Inactive',
@@ -1007,6 +1012,10 @@ export const translations = {
       'block_action_reply': 'Ответить на сообщение',
       'block_action_wait': 'Ждать {seconds} сек.',
       'block_condition_if': 'Если текст содержит {text}',
+      'block_if': 'Если',
+      'block_else': 'Иначе',
+      'block_end_if': 'Конец если',
+      'block_variable_set': 'Установить переменную',
       'block_action_reaction': 'Добавить реакцию {emoji}',
       'bot_active': 'Активен',
       'bot_inactive': 'Неактивен',
