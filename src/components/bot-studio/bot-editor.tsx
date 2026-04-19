@@ -154,7 +154,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 <BlockDraft type="action_wait" label={t('block_action_wait').replace('{seconds}', '1')} onClick={() => handlePaletteClick('action_wait')} />
             </div>
             <div className="mt-6 p-4 rounded-2xl border bg-card/50 text-[10px] text-muted-foreground leading-relaxed italic">
-                Tip: Click blocks to add them to your script. Event blocks always start a new script.
+                Tip: Use <span className="font-bold text-primary">{'{msg_text}'}</span> in variables or conditions to capture message content.
             </div>
         </aside>
 
@@ -301,7 +301,7 @@ function BotBlockComponent({
                 return (
                     <div className="space-y-2 mt-1">
                         <Input 
-                            placeholder="Condition (e.g. {var} == val)"
+                            placeholder="Condition (e.g. {msg_text} == start)"
                             value={block.params?.condition || ''}
                             onChange={e => onUpdate(stackIndex, blockIndex, 'condition', e.target.value)}
                             className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"
@@ -318,7 +318,7 @@ function BotBlockComponent({
                             className="h-8 flex-1 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"
                         />
                         <Input 
-                            placeholder="Value"
+                            placeholder="Value (e.g. {msg_text})"
                             value={block.params?.value || ''}
                             onChange={e => onUpdate(stackIndex, blockIndex, 'value', e.target.value)}
                             className="h-8 flex-1 bg-black/10 border-none text-white placeholder:text-white/40 focus-visible:ring-white/20 font-bold text-xs"

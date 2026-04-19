@@ -273,7 +273,7 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
         if (chatDoc.exists()) {
           const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
           const iconName = chatData.icon as keyof typeof iconMap | undefined;
-          handleSelect({ ...chatData, iconComponent: iconName ? iconMap[iconName] : undefined } as PopulatedChat);
+          handleSelect({ ...chatData, id: chatDoc.id, iconComponent: iconName ? iconMap[iconName] : undefined } as PopulatedChat);
         }
       } catch (e) { console.error(e); }
     };
@@ -346,7 +346,11 @@ function ChatUI({ currentUser }: { currentUser: FirebaseUser }) {
 
   return (
     <>
-      {!isMobile && <Sidebar>{populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />}</Sidebar>}
+      {!isMobile && (
+        <Sidebar>
+          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />}
+        </Sidebar>
+      )}
       <SidebarInset>
         {renderMainView()}
         {incomingCall && (
