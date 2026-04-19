@@ -55,7 +55,7 @@ const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<
       };
       img.onerror = (e) => reject(e);
     };
-    reader.onerror = (e) => reject(e);
+    reader.onerror = (error) => reject(error);
   });
 };
 
@@ -205,13 +205,13 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [selectedVideoId, videos, fetchedExternalVideo]);
 
   return (
-    <div className="flex flex-col h-svh bg-background overflow-hidden">
+    <div className="flex flex-col h-svh bg-background overflow-hidden relative">
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
       )}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
                 <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2 overflow-hidden">
@@ -525,8 +525,8 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background animate-in fade-in duration-300">
-            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20 pt-[env(safe-area-inset-top)]">
-                <Button variant="ghost" size="icon" onClick={onClose}>
+            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20 pt-[calc(1rem+env(safe-area-inset-top))]">
+                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div className="ml-4 flex items-center gap-2 overflow-hidden">

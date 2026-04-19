@@ -107,17 +107,17 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
   }, [onSelectChat]);
 
   return (
-    <div className="flex flex-col h-svh bg-background overflow-hidden">
+    <div className="flex flex-col h-svh bg-background overflow-hidden relative">
       <header className={cn(
           "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
       )}>
-        <Button variant="ghost" size="icon" onClick={onClose} className="mr-4">
+        <Button variant="ghost" size="icon" onClick={onClose} className="mr-4 shrink-0">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2">
-          <Newspaper className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold font-headline">{t('feed_title')}</h1>
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Newspaper className="h-6 w-6 text-primary shrink-0" />
+          <h1 className="text-xl font-bold font-headline truncate">{t('feed_title')}</h1>
         </div>
       </header>
 

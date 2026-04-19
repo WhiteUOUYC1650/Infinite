@@ -228,10 +228,10 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         
         <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-16 space-y-12 pb-32">
             {scripts.map((script, sIdx) => (
-                <div key={script.id} className="relative flex flex-col items-center bg-card/30 rounded-3xl p-3 sm:p-6 border-2 border-dashed border-muted-foreground/10">
+                <div key={script.id} className="relative flex flex-col items-stretch bg-card/30 rounded-3xl p-3 sm:p-6 border-2 border-dashed border-muted-foreground/10">
                     <div className="absolute -top-3 left-6 bg-muted px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
                     
-                    <div className="w-full flex flex-col items-center gap-3">
+                    <div className="w-full flex flex-col items-stretch gap-3">
                         {script.blocks.map((block, bIdx) => (
                             <BotBlockComponent 
                                 key={block.id}
@@ -412,7 +412,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
     };
 
     return (
-        <div className={cn("w-full max-w-full sm:max-w-[360px] p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all active:scale-[0.98]", BLOCK_COLORS[block.type])}>
+        <div className={cn("w-full p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all active:scale-[0.98]", BLOCK_COLORS[block.type])}>
             <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                     <div className="p-1.5 bg-black/10 rounded-xl shrink-0"><Icon className="h-4 w-4" /></div>

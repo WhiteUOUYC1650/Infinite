@@ -50,8 +50,8 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
           "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
       )}>
-        <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={selectedGame === 'none' ? onClose : () => setSelectedGame('none')}>
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+            <Button variant="ghost" size="icon" onClick={selectedGame === 'none' ? onClose : () => setSelectedGame('none')} className="shrink-0">
                 <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2 overflow-hidden">
