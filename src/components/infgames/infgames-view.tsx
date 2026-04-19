@@ -26,7 +26,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
         return <GoldClickerGame currentUser={currentUser} onBack={() => setSelectedGame('none')} />;
       default:
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <GameCard 
               title={t('game_gold_clicker')}
               description={t('game_gold_clicker_desc')}
@@ -34,7 +34,6 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
               color="bg-amber-500"
               onClick={() => setSelectedGame('gold_clicker')}
             />
-            {/* Placeholder for future games */}
             <div className="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-muted-foreground/40 gap-4">
                 <Gamepad2 className="h-12 w-12" />
                 <p className="font-bold uppercase tracking-widest text-xs text-center">{t('placeholder_title')}</p>
@@ -46,7 +45,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden relative">
-      <header className="flex h-16 items-center justify-between border-b px-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={selectedGame === 'none' ? onClose : () => setSelectedGame('none')}>
                 <ArrowLeft className="h-5 w-5" />
@@ -59,19 +58,16 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
                 <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
             </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-            {/* Gold balance is now only in the footer as requested */}
-        </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/5">
-        {renderContent()}
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-4 md:p-6 bg-muted/5">
+            {renderContent()}
+        </div>
       </main>
 
-      {/* Floating balance footer for rounded display */}
       {selectedGame === 'none' && (
-        <div className="absolute bottom-6 right-6 z-20 pointer-events-none">
+        <div className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-20 pointer-events-none">
             <div className="bg-card/80 backdrop-blur-xl border-2 border-primary/20 p-4 rounded-3xl shadow-2xl flex flex-col items-end gap-1 animate-in slide-in-from-bottom-4 duration-500">
                 <p className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t('inf_gold_balance')}</p>
                 <div className="flex items-center gap-2 text-2xl font-black text-primary">
@@ -109,7 +105,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const db = useFirestore();
     const { toast } = useToast();
     
-    // Config: 100,000 clicks = 1 InfGold
     const CLICKS_PER_GOLD = 100000;
 
     const [score, setScore] = useState(0);
@@ -163,7 +158,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                 const avg = recentIntervals.reduce((a, b) => a + b, 0) / 20;
                 const variance = recentIntervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / 20;
                 
-                // Human variance is usually > 2.0. Bots are very precise.
                 const varianceThreshold = 1.2 / Math.log2(clickPower + 1); 
                 if (variance < varianceThreshold) { 
                     setIsCheating(true);
@@ -179,7 +173,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const handleUpgrade = () => {
         if (score >= upgradeCost) {
             setScore(prev => prev - upgradeCost);
-            // New logic: +1 to power, 1.25x to cost
             setClickPower(prev => prev + 1);
             setUpgradeCost(prev => Math.round(prev * 1.25));
             toast({ title: t('dm_success'), description: t('game_click_power', { power: clickPower + 1 }) });
@@ -218,7 +211,7 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
     const earnedGold = Math.floor(score / CLICKS_PER_GOLD);
 
     return (
-        <div className="max-w-md mx-auto flex flex-col items-center gap-6 py-4 animate-in fade-in zoom-in duration-300">
+        <div className="max-w-md mx-auto flex flex-col items-center gap-6 py-4 animate-in fade-in zoom-in duration-300 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             {gameState === 'idle' && (
                 <div className="text-center space-y-6 pt-12">
                     <div className="w-32 h-32 bg-amber-500 rounded-full flex items-center justify-center mx-auto shadow-2xl experimental-glow">
@@ -236,7 +229,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
 
             {gameState === 'playing' && (
                 <div className="w-full flex flex-col items-center gap-6">
-                    {/* Stats Header */}
                     <div className="w-full bg-card border p-6 rounded-3xl shadow-lg space-y-4">
                         <div className="flex justify-between items-end">
                             <div className="space-y-1">
@@ -277,7 +269,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                         </div>
                     </div>
 
-                    {/* The Button */}
                     <div className="relative mt-4">
                         <button 
                             onMouseDown={handleClick}
@@ -306,7 +297,6 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
                         <p className="font-bold text-muted-foreground uppercase tracking-widest text-[10px] animate-pulse">Кликай, чтобы заработать!</p>
                     )}
 
-                    {/* Actions */}
                     <div className="w-full space-y-3 pt-8">
                         <Button 
                             onClick={handleClaim} 

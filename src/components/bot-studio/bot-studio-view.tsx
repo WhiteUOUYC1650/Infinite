@@ -112,7 +112,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 items-center justify-between border-b px-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <ArrowLeft className="h-5 w-5" />
@@ -128,9 +128,9 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
         </Button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-muted/5">
-        <div className="max-w-4xl mx-auto space-y-8">
-            <div className="bg-primary/10 rounded-3xl p-8 border border-primary/20 flex flex-col md:flex-row items-center gap-8 shadow-inner animate-in fade-in zoom-in duration-500">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-4 md:p-8 bg-muted/5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+            <div className="bg-primary/10 rounded-3xl p-8 border border-primary/20 flex flex-col md:flex-row items-center gap-8 shadow-inner animate-in fade-in zoom-in duration-500 mb-8">
                 <div className="w-20 h-20 rounded-[2rem] bg-background flex items-center justify-center shadow-xl">
                     <Code2 className="h-10 w-10 text-primary" />
                 </div>

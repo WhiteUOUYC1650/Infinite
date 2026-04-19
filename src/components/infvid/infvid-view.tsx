@@ -205,7 +205,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 items-center justify-between border-b px-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onClose}>
                 <ArrowLeft className="h-5 w-5" />
@@ -235,28 +235,30 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         </Button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/10">
-        {videosLoading ? (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-        ) : videos && videos.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
-                {videos.map((video) => (
-                    <VideoCard 
-                        key={video.id} 
-                        video={video} 
-                        sender={senders[video.senderId]} 
-                        onClick={() => setSelectedVideoId(video.id)}
-                    />
-                ))}
-            </div>
-        ) : (
-            <div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center">
-                <PlayCircle className="h-20 w-20 mb-4 opacity-20" />
-                <h3 className="text-xl font-semibold">{t('infvid_no_videos')}</h3>
-            </div>
-        )}
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+            {videosLoading ? (
+                <div className="flex h-full items-center justify-center py-20">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+            ) : videos && videos.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                    {videos.map((video) => (
+                        <VideoCard 
+                            key={video.id} 
+                            video={video} 
+                            sender={senders[video.senderId]} 
+                            onClick={() => setSelectedVideoId(video.id)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20">
+                    <PlayCircle className="h-20 w-20 mb-4 opacity-20" />
+                    <h3 className="text-xl font-semibold">{t('infvid_no_videos')}</h3>
+                </div>
+            )}
+        </div>
       </main>
 
       {selectedVideo && (
@@ -345,7 +347,6 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]);
     const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
-    // Assembly Logic
     useEffect(() => {
         if (!db || !video.videoChunkIds || video.videoStatus !== 'complete') {
             if (video.videoStatus === 'uploading') {
@@ -379,7 +380,6 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
         load();
     }, [video.id, db, video.videoStatus, video.videoChunkIds, video.videoMimeType]);
 
-    // Live Listeners
     useEffect(() => {
         if (!db) return;
         const videoRef = doc(db, 'videos', video.id);
@@ -414,7 +414,6 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
         });
     }, [db, currentUser.uid]);
 
-    // Fullscreen Orientation Management
     useEffect(() => {
       const handleFullscreenChange = async () => {
         const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
@@ -520,7 +519,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background animate-in fade-in duration-300">
-            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20">
+            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20 pt-[env(safe-area-inset-top)]">
                 <Button variant="ghost" size="icon" onClick={onClose}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -548,7 +547,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                     </div>
                 </section>
                 
-                <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6">
+                <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
                     <div className="flex-1 space-y-6">
                         <div className="space-y-4">
                             <h2 className="text-2xl font-bold font-headline leading-tight">{video.title}</h2>

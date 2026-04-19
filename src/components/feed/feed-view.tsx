@@ -32,7 +32,6 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
   
   const [messages, setMessages] = useState<(Message & { channelId: string, channelInfo: Chat })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!db || !currentUser) return;
@@ -40,7 +39,6 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
     const fetchFeed = async () => {
       setIsLoading(true);
       try {
-        // 1. Get user's channels
         const chatsRef = collection(db, 'chats');
         const channelsQuery = query(
           chatsRef, 
@@ -56,7 +54,6 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
           return;
         }
 
-        // 2. Fetch today's messages from each channel
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startTimestamp = Timestamp.fromDate(startOfToday);
@@ -81,7 +78,6 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
           });
         }));
 
-        // 3. Sort globally
         allMessages.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
         setMessages(allMessages);
       } catch (e) {
@@ -112,7 +108,7 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      <header className="flex h-16 items-center border-b px-4 shrink-0 bg-background/80 backdrop-blur-md sticky top-0 z-10">
+      <header className="flex h-16 shrink-0 items-center border-b px-4 bg-background/80 backdrop-blur-md sticky top-0 z-10 pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Button variant="ghost" size="icon" onClick={onClose} className="mr-4">
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -122,42 +118,40 @@ export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: 
         </div>
       </header>
 
-      <main className="flex-1 overflow-hidden relative">
-        <ScrollArea className="h-full">
-          <div className="max-w-2xl mx-auto p-4 space-y-6">
-            <div className="text-center py-4">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
-                {format(new Date(), 'dd MMMM yyyy')}
-              </p>
-              <h2 className="text-lg font-medium text-muted-foreground mt-1">
-                {t('feed_description')}
-              </h2>
-            </div>
-
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              </div>
-            ) : messages.length > 0 ? (
-              <div className="space-y-8 pb-12">
-                {messages.map((message) => (
-                  <FeedItem 
-                    key={message.id}
-                    message={message}
-                    channel={message.channelInfo}
-                    sender={memberDetails[message.senderId]}
-                    onOpenChannel={() => handleOpenChannel(message.channelInfo)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 opacity-50">
-                <Newspaper className="h-16 w-16 mx-auto mb-4" strokeWidth={1} />
-                <p className="text-xl font-semibold">{t('no_feed_messages')}</p>
-              </div>
-            )}
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto p-4 space-y-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+          <div className="text-center py-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
+              {format(new Date(), 'dd MMMM yyyy')}
+            </p>
+            <h2 className="text-lg font-medium text-muted-foreground mt-1">
+              {t('feed_description')}
+            </h2>
           </div>
-        </ScrollArea>
+
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : messages.length > 0 ? (
+            <div className="space-y-8">
+              {messages.map((message) => (
+                <FeedItem 
+                  key={message.id}
+                  message={message}
+                  channel={message.channelInfo}
+                  sender={memberDetails[message.senderId]}
+                  onOpenChannel={() => handleOpenChannel(message.channelInfo)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 opacity-50">
+              <Newspaper className="h-16 w-16 mx-auto mb-4" strokeWidth={1} />
+              <p className="text-xl font-semibold">{t('no_feed_messages')}</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
@@ -179,7 +173,6 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
 
   return (
     <div className="bg-card border rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4">
-      {/* Header - Channel Info */}
       <div className="p-4 flex items-center justify-between border-b bg-muted/20">
         <button onClick={onOpenChannel} className="flex items-center gap-3 text-left group">
           <Avatar className="h-10 w-10 border group-hover:scale-105 transition-transform">
@@ -198,14 +191,12 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
         </Button>
       </div>
 
-      {/* Media Content */}
       {message.imageUrl && (
         <div className="aspect-video relative overflow-hidden bg-zinc-900 border-b">
           <img src={message.imageUrl} alt="Attachment" className="w-full h-full object-cover" />
         </div>
       )}
 
-      {/* Text Content */}
       {message.content && (
         <div className="p-6">
           <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -222,7 +213,6 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
         </div>
       )}
 
-      {/* Footer Meta */}
       <div className="px-6 pb-6 pt-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
             {message.reactions && Object.keys(message.reactions).length > 0 && (
