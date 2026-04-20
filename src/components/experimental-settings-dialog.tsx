@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -37,8 +36,9 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -62,7 +62,7 @@ import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { clearCacheDB } from '@/lib/cache-utils';
 import { format } from 'date-fns';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide';
 
 const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-smooth-scroll', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect', 'app-show-feed'];
 
@@ -157,7 +157,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const combinedTransfers = useMemo(() => {
     if (!sentTransfers && !receivedTransfers) return [];
     return [...(sentTransfers || []), ...(receivedTransfers || [])]
-        .sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis())
+        .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))
         .slice(0, 30);
   }, [sentTransfers, receivedTransfers]);
 
@@ -459,12 +459,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'dataStorage': return t('data_storage');
       case 'privacy': return t('privacy_security');
       case 'transferHistory': return t('transfer_history');
+      case 'botGuide': return t('bot_guide_title');
       default: return t('settings');
     }
   };
   
   const faqs = [
     { question: t('faq_markdown_q'), answer: t('faq_markdown_a') },
+    { question: t('faq_bot_prog_q'), answer: `${t('faq_bot_prog_a')}\n\n[BOT_GUIDE_BUTTON]` },
     { question: t('faq_create_chat_q'), answer: t('faq_create_chat_a') },
     { question: t('faq_invite_q'), answer: t('faq_invite_a') },
     { question: t('faq_edit_profile_q'), answer: t('faq_edit_profile_a') },
@@ -827,10 +829,24 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                            a: ({node, ...props}) => <a href={props.href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props} />
+                            a: ({node, ...props}) => {
+                                if (props.href === 'BOT_GUIDE_BUTTON') {
+                                    return (
+                                        <Button 
+                                            variant="outline" 
+                                            className="w-full h-12 rounded-xl mt-4 font-bold border-primary/20 hover:bg-primary/5 gap-2"
+                                            onClick={() => navigateTo('botGuide')}
+                                        >
+                                            <BookOpen className="h-5 w-5 text-primary" />
+                                            {t('open_full_guide')}
+                                        </Button>
+                                    );
+                                }
+                                return <a href={props.href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" {...props} />
+                            }
                         }}
                     >
-                        {faq.answer}
+                        {faq.answer.replace('[BOT_GUIDE_BUTTON]', '[](BOT_GUIDE_BUTTON)')}
                     </ReactMarkdown>
                 </div>
             </AccordionContent>
@@ -901,7 +917,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm truncate">
-                                    {isSent ? t('sent') : t('received')} {isSent ? t('to_label' as any) : t('from_label' as any)} {otherParty}
+                                    {isSent ? t('sent') : t('received')} {isSent ? 'to' : 'from'} {otherParty}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground uppercase font-black">{date}</p>
                             </div>
@@ -985,24 +1001,77 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <p className="text-muted-foreground">{t('whats_new_desc')}</p>
       </div>
       <div className="space-y-4 text-sm">
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_transfer_history_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_transfer_history_desc')}</p>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_bot_studio_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_bot_studio_desc')}</p>
         </div>
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_mention_all_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_mention_all_desc')}</p>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><FileCheck className="h-4 w-4 text-primary" /> {t('whats_new_save_fix_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_save_fix_desc')}</p>
         </div>
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_bot_studio_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_bot_studio_desc')}</p>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('whats_new_minor_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_minor_desc')}</p>
         </div>
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="font-semibold text-base mb-1">{t('whats_new_minor_title')}</h3>
-          <p className="text-muted-foreground">{t('whats_new_minor_desc')}</p>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><X className="h-4 w-4 text-primary" /> {t('whats_new_bug_fix_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_bug_fix_desc')}</p>
         </div>
       </div>
     </div>
+  );
+
+  const botGuidePageContent = (
+      <div className="p-6 space-y-8 pb-20">
+          <div className="text-center space-y-2">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold font-headline">{t('bot_guide_title')}</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">{t('bot_guide_intro')}</p>
+          </div>
+
+          <section className="space-y-4">
+            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary">{t('bot_guide_events')}</h3>
+            <div className="p-5 rounded-2xl bg-muted/30 border space-y-4">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_event_start')}</ReactMarkdown>
+                <Separator />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_event_msg')}</ReactMarkdown>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary">{t('bot_guide_actions')}</h3>
+            <div className="p-5 rounded-2xl bg-muted/30 border space-y-4">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_action_send')}</ReactMarkdown>
+                <Separator />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_action_reply')}</ReactMarkdown>
+                <Separator />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_action_image')}</ReactMarkdown>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary">{t('bot_guide_logic')}</h3>
+            <div className="p-5 rounded-2xl bg-muted/30 border space-y-4">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_logic_if')}</ReactMarkdown>
+                <Separator />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_logic_wait')}</ReactMarkdown>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary">{t('bot_guide_vars')}</h3>
+            <div className="p-5 rounded-2xl bg-muted/30 border space-y-4">
+                <p className="text-xs font-bold text-muted-foreground uppercase">{t('bot_guide_var_intro')}</p>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">
+                    {`${t('bot_guide_var_user')}\n\n${t('bot_guide_var_msg')}\n\n${t('bot_guide_var_bot')}\n\n${t('bot_guide_var_time')}`}
+                </ReactMarkdown>
+                <Separator />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="text-sm prose dark:prose-invert max-w-none">{t('bot_guide_var_set')}</ReactMarkdown>
+            </div>
+          </section>
+      </div>
   );
 
 
@@ -1023,6 +1092,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       case 'dataStorage': return dataStoragePageContent;
       case 'privacy': return privacyPageContent;
       case 'transferHistory': return transferHistoryPageContent;
+      case 'botGuide': return botGuidePageContent;
       default: return null;
     }
   };

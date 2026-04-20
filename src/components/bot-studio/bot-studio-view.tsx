@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -135,14 +136,14 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-4 md:p-8 bg-muted/5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
-            <div className="bg-primary/10 rounded-3xl p-8 border border-primary/20 flex flex-col md:flex-row items-center gap-8 shadow-inner animate-in fade-in zoom-in duration-500 mb-8">
-                <div className="w-20 h-20 rounded-[2rem] bg-background flex items-center justify-center shadow-xl">
+        <div className="w-full mx-auto p-4 md:p-8 bg-muted/5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+            <div className="bg-primary/10 rounded-3xl p-8 border border-primary/20 flex flex-col md:flex-row items-center gap-8 shadow-inner animate-in fade-in zoom-in duration-500 mb-8 w-full">
+                <div className="w-20 h-20 rounded-[2rem] bg-background flex items-center justify-center shadow-xl shrink-0">
                     <Code2 className="h-10 w-10 text-primary" />
                 </div>
-                <div className="text-center md:text-left space-y-2">
+                <div className="text-center md:text-left space-y-2 flex-1">
                     <h2 className="text-2xl font-black font-headline text-primary">{t('bot_studio_title')}</h2>
-                    <p className="text-muted-foreground max-w-md">{t('bot_studio_desc')}</p>
+                    <p className="text-muted-foreground">{t('bot_studio_desc')}</p>
                 </div>
             </div>
 
@@ -152,7 +153,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                 {loading ? (
                     <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                 ) : myBots && myBots.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {myBots.map(bot => (
                             <Card key={bot.id} className="rounded-3xl border-none shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden bg-card">
                                 <CardHeader className="flex flex-row items-center gap-4 pb-4">
