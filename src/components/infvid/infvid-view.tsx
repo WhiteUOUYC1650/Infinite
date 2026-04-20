@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -543,7 +544,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                                 <p className="text-white/60 text-sm font-medium animate-pulse">
-                                    {video.videoStatus === 'uploading' ? t('processing_video') : t('loading_chats')}...
+                                    {video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...
                                 </p>
                             </div>
                         ) : videoUrl ? (
