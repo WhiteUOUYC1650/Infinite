@@ -114,7 +114,7 @@ service cloud.firestore {
 
     // История переводов
     match /transfers/{transferId} {
-        allow read, list: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+        allow read, list: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
     
