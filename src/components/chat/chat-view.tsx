@@ -414,6 +414,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null); // For mobile click interaction
   const isMobile = useIsMobile();
 
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
@@ -559,11 +560,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !isMember) return null;
-    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp'));
+    // Load last 50 messages only for performance optimization
+    return query(
+        collection(db, 'chats', item.id, 'messages'), 
+        orderBy('timestamp', 'desc'), 
+        limit(50)
+    );
   }, [db, item.id, isMember]);
 
-  const { data: messages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
   
+  // Messages are fetched in descending order, need to reverse for the chronological list
+  const messages = useMemo(() => {
+    if (!rawMessages) return null;
+    return [...rawMessages].reverse();
+  }, [rawMessages]);
+
   const allUserIdsToFetch = useMemo(() => {
     const ids = new Set<string>(item.members || []);
     messages?.forEach(m => {
@@ -1960,7 +1972,10 @@ const handleVote = async (optionIndex: number) => {
                             <Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => isRecordingCircle ? stopCircleRecording(true) : stopVoiceRecording(true)}>
                                 <Trash className="mr-2 h-4 w-4" /> {t('cancel')}
                             </Button>
-                            <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => isRecordingCircle ? stopCircleRecording() : stopVoiceRecording()}>
+                            <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={async () => {
+                                if (isRecordingCircle) stopCircleRecording();
+                                else stopVoiceRecording();
+                            }}>
                                 <Send className="mr-2 h-4 w-4" /> {t('start_chat')}
                             </Button>
                         </div>
@@ -2260,6 +2275,8 @@ const handleVote = async (optionIndex: number) => {
                                           onVote={handleVoteLocal}
                                           onToggleReaction={handleToggleMessageReaction}
                                           isMobile={isMobile}
+                                          isActiveOnMobile={activeMessageId === message.id}
+                                          onToggleActiveOnMobile={() => setActiveMessageId(prev => prev === message.id ? null : message.id)}
                                       />
                                   </React.Fragment>
                               );
@@ -2671,6 +2688,8 @@ function ChatMessage({
     onVote,
     onToggleReaction,
     isMobile,
+    isActiveOnMobile,
+    onToggleActiveOnMobile,
 }: { 
     message: Message, 
     sender?: User, 
@@ -2691,6 +2710,8 @@ function ChatMessage({
     onVote: (index: number) => void;
     onToggleReaction: (emoji: string) => void;
     isMobile: boolean;
+    isActiveOnMobile?: boolean;
+    onToggleActiveOnMobile?: () => void;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -3021,7 +3042,12 @@ function ChatMessage({
     const isCircle = message.circleStatus === 'complete';
 
     return (
-        <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}>
+        <div 
+            ref={messageRef} 
+            id={`message-${message.id}`} 
+            className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")}
+            onClick={() => isMobile && onToggleActiveOnMobile?.()}
+        >
             {showAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     {displaySender ? (
@@ -3224,7 +3250,13 @@ function ChatMessage({
                 </div>
             </div>
 
-            <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100", !alignRight && "order-last")}>
+            <div className={cn(
+                "flex-shrink-0 self-center w-8 flex justify-center transition-all", 
+                isMobile 
+                    ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") 
+                    : "opacity-0 group-hover:opacity-100 focus-within:opacity-100", 
+                !alignRight && "order-last"
+            )}>
                 <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
