@@ -31,7 +31,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2, Pencil, Cake } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import ReactCrop, {
   centerCrop,
   makeAspectCrop,
@@ -45,6 +46,11 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
   statusMessage: z.string().max(120, { message: 'Status must be 120 characters or less.' }).optional(),
   avatar: z.string().optional(),
+  birthday: z.object({
+    day: z.string().min(1),
+    month: z.string().min(1),
+    year: z.string().optional(),
+  }).optional(),
 });
 
 interface EditProfileDialogProps {
@@ -143,6 +149,11 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       name: user.name || '',
       statusMessage: user.statusMessage || '',
       avatar: user.avatar || '',
+      birthday: user.birthday ? {
+        day: user.birthday.day.toString(),
+        month: user.birthday.month.toString(),
+        year: user.birthday.year?.toString() || '',
+      } : undefined,
     },
   });
 
@@ -153,6 +164,11 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             name: user.name || '',
             statusMessage: user.statusMessage || '',
             avatar: user.avatar || '',
+            birthday: user.birthday ? {
+                day: user.birthday.day.toString(),
+                month: user.birthday.month.toString(),
+                year: user.birthday.year?.toString() || '',
+            } : undefined,
         });
         setAvatarPreview(user.avatar);
         setImageToCrop(''); // Also reset cropper state
@@ -219,6 +235,14 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
         avatar: values.avatar,
     };
 
+    if (values.birthday?.day && values.birthday?.month) {
+        updatedData.birthday = {
+            day: parseInt(values.birthday.day),
+            month: parseInt(values.birthday.month),
+            year: values.birthday.year ? parseInt(values.birthday.year) : null,
+        };
+    }
+
     setDoc(userRef, updatedData, { merge: true })
         .then(() => {
             toast({ title: t('dm_success'), description: t('profile_update_success') });
@@ -233,6 +257,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             errorEmitter.emit('permission-error', permissionError);
       });
   };
+
+  const monthNames = (t('months') || '').split(',');
 
   const dialogContent = imageToCrop ? (
     <>
@@ -275,20 +301,20 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
              {/* Avatar uploader */}
             <div className="flex justify-center">
               <div className="relative">
                 <button type="button" onClick={handleAvatarClick} className="rounded-full">
-                  <Avatar className="h-24 w-24">
+                  <Avatar className="h-24 w-24 border-2 border-primary/20 shadow-lg">
                     <AvatarImage src={avatarPreview || undefined} />
-                    <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className='bg-muted text-foreground'>{user.name?.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </button>
                 <button
                   type="button"
                   onClick={handleAvatarClick}
-                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -330,12 +356,80 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 text-primary">
+                    <Cake className="h-4 w-4" />
+                    <Label className="font-bold">{t('birthday_label')}</Label>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                    <FormField
+                        control={form.control}
+                        name="birthday.day"
+                        render={({ field }) => (
+                            <FormItem>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
+                                            <SelectValue placeholder={t('day')} />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {Array.from({ length: 31 }, (_, i) => (
+                                            <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="birthday.month"
+                        render={({ field }) => (
+                            <FormItem>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
+                                            <SelectValue placeholder={t('month_label')} />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {monthNames.map((name, i) => (
+                                            <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="birthday.year"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <Input 
+                                        type="number" 
+                                        placeholder={t('year_label')} 
+                                        {...field} 
+                                        className="h-11 rounded-xl bg-muted/50 border-none"
+                                        min="1900"
+                                        max={new Date().getFullYear()}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className='rounded-xl'>
                 {t('cancel')}
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? t('saving') : t('save')}
+              <Button type="submit" disabled={form.formState.isSubmitting} className='rounded-xl font-bold'>
+                {form.formState.isSubmitting ? <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> {t('saving')}</> : t('save')}
               </Button>
             </DialogFooter>
           </form>
@@ -345,7 +439,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className='rounded-[1.5rem]'>
         {dialogContent}
       </DialogContent>
     </Dialog>

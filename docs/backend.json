@@ -53,6 +53,28 @@
         "lastSeen": {
             "type": "object",
             "description": "Server timestamp of when the user was last active."
+        },
+        "infGoldBalance": {
+            "type": "number",
+            "description": "The user's balance of InfGold."
+        },
+        "subscriptionTier": {
+            "type": "string",
+            "enum": ["none", "super", "mega", "prem", "giga", "ultra"],
+            "description": "The user's current subscription tier."
+        },
+        "lastDailyBonusClaimed": {
+            "type": "object",
+            "description": "Server timestamp of when the user last claimed their daily bonus."
+        },
+        "birthday": {
+          "type": "object",
+          "properties": {
+            "day": { "type": "number" },
+            "month": { "type": "number" },
+            "year": { "type": "number" }
+          },
+          "required": ["day", "month"]
         }
       },
       "required": ["name", "username", "avatar", "status"]
@@ -86,14 +108,33 @@
             "type": "string",
             "description": "URL to an image attachment, in Base64 data URI format."
         },
-        "videoInfo": {
-            "type": "object",
-            "description": "Information about a video attachment.",
-            "properties": {
-                "chunkCount": { "type": "number" },
-                "mimeType": { "type": "string" },
-                "status": { "type": "string", "enum": ["uploading", "complete", "failed"] }
-            }
+        "videoMimeType": {
+            "type": "string",
+            "description": "MIME type of the video attachment."
+        },
+        "videoStatus": {
+            "type": "string",
+            "enum": ["uploading", "complete", "failed"],
+            "description": "The upload status of the video attachment."
+        },
+        "videoChunkIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of document IDs for the video chunks in the global 'videoChunks' collection."
+        },
+        "musicMimeType": {
+            "type": "string",
+            "description": "MIME type of the music attachment."
+        },
+        "musicStatus": {
+            "type": "string",
+            "enum": ["uploading", "complete", "failed"],
+            "description": "The upload status of the music attachment."
+        },
+        "musicChunkIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of document IDs for the music chunks in the global 'musicChunks' collection."
         },
         "timestamp": {
           "type": "object",
@@ -138,18 +179,33 @@
             "required": ["messageId", "content", "senderName"]
         }
       },
-      "required": ["senderId", "content", "timestamp"]
+      "required": ["senderId", "timestamp"]
     },
     "VideoChunk": {
       "title": "Video Chunk",
       "description": "A single chunk of a video file, stored separately to avoid document size limits.",
       "type": "object",
       "properties": {
+        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
         "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
         "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
         "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
       },
-      "required": ["data", "part", "senderId"]
+      "required": ["chatId", "messageId", "data", "part", "senderId"]
+    },
+    "MusicChunk": {
+      "title": "Music Chunk",
+      "description": "A single chunk of a music file, stored separately to avoid document size limits.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
+        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
+        "data": { "type": "string", "description": "Base64 encoded data of the music chunk." },
+        "part": { "type": "number", "description": "The order of this chunk in the music sequence." },
+        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
+      },
+      "required": ["chatId", "messageId", "data", "part", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -268,11 +324,17 @@
       },
       "description": "Stores messages for a specific chat."
     },
-    "/chats/{chatId}/messages/{messageId}/videoChunks/{chunkId}": {
+    "/videoChunks/{chunkId}": {
       "schema": {
         "$ref": "#/backend/entities/VideoChunk"
       },
-      "description": "Stores individual chunks of uploaded video files for a specific message."
+      "description": "Stores individual chunks of uploaded video files."
+    },
+    "/musicChunks/{chunkId}": {
+      "schema": {
+        "$ref": "#/backend/entities/MusicChunk"
+      },
+      "description": "Stores individual chunks of uploaded music files."
     },
     "/chatLinks/{linkId}": {
       "schema": {

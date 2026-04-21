@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search, PlayCircle } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Check, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search, PlayCircle, Cake, Gift, Coins } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -251,7 +250,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
             isMusic ? "w-full max-w-[400px]" : "w-full max-w-[380px] min-w-[240px]",
             uiClass
         )}>
-            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
+            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
                 onClick={togglePlay} 
                 className={cn(
@@ -448,6 +447,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const recordingStartTimeRef = useRef<number>(0);
   const isRecordingRequestedRef = useRef<boolean>(false);
   const touchStartPos = useRef<{ x: number, y: number } | null>(null);
+
+  const [dismissedBirthdays, setDismissedBirthdays] = useState<Set<string>>(new Set());
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -684,6 +685,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     return true;
   }, [isMember, item, currentUser.uid, otherUser]);
+
+  const isBirthdayToday = useMemo(() => {
+    if (item.type !== 'dm' || !otherUser?.birthday || dismissedBirthdays.has(item.id)) return false;
+    const now = new Date();
+    return otherUser.birthday.day === now.getDate() && otherUser.birthday.month === (now.getMonth() + 1);
+  }, [item.type, item.id, otherUser?.birthday, dismissedBirthdays]);
+
+  const otherUserAge = useMemo(() => {
+    if (!isBirthdayToday || !otherUser?.birthday?.year) return null;
+    return new Date().getFullYear() - otherUser.birthday.year;
+  }, [isBirthdayToday, otherUser?.birthday?.year]);
 
   const initialLoadRef = useRef<Record<string, boolean>>({});
   const prevMessagesCountRef = useRef<Record<string, number>>({});
@@ -1965,134 +1977,163 @@ const handleVote = async (optionIndex: number) => {
       )}
 
       <header className={cn(
-          "flex-shrink-0 flex items-center p-4 border-b pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+          "flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
       )}>
-        <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0">
-            <X className="h-5 w-5" />
-        </Button>
-        
-        <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
-            {item.type === "dm" ? (
-                otherUser ? ( 
-                    <button
-                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full"
-                        onClick={() => setProfileDialogUser(otherUser)}
-                        disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
-                    >
-                        <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessagesChat} />
-                        <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
-                                {!isSavedMessagesChat && (
-                                    <>
-                                        {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
-                                        {otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge && <PremBadge className="shrink-0" />}
-                                        {otherUser.isBetaTester && <BetaBadge className="shrink-0" />}
-                                    </>
+        <div className="flex items-center p-2">
+            <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0">
+                <X className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
+                {item.type === "dm" ? (
+                    otherUser ? ( 
+                        <button
+                            className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full"
+                            onClick={() => setProfileDialogUser(otherUser)}
+                            disabled={otherUser.id === currentUser.uid || !!otherUser.isDeleted}
+                        >
+                            <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessagesChat} />
+                            <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
+                                    {!isSavedMessagesChat && (
+                                        <>
+                                            {(otherUser?.username === '@InfiniteBot' || otherUser?.username === '@VeoBot') && <VerifiedBadge className="shrink-0" />}
+                                            {otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge && <PremBadge className="shrink-0" />}
+                                            {otherUser.isBetaTester && <BetaBadge className="shrink-0" />}
+                                        </>
+                                    )}
+                                </div>
+                                {otherUser.id !== currentUser.uid && (
+                                    <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
+                                        {getStatusText(otherUser)}
+                                    </div>
                                 )}
                             </div>
-                            {otherUser.id !== currentUser.uid && (
-                                <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
-                                    {getStatusText(otherUser)}
-                                </div>
+                        </button>
+                    ) : ( 
+                        <div className="flex items-center min-w-0 h-full">
+                            <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
+                            <div className="ml-3 space-y-2">
+                                <div className='h-4 w-32 bg-muted rounded animate-pulse' />
+                                <div className='h-3 w-24 bg-muted rounded animate-pulse' />
+                            </div>
+                        </div>
+                    )
+                ) : ( 
+                    <button 
+                        className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full"
+                        onClick={() => setShowChatProfile(true)}
+                        disabled={item.id === 'GENERAL_CHAT'}
+                    >
+                        <Avatar className="h-10 w-10 mr-3 shrink-0">
+                            {item.avatar ? (
+                                <AvatarImage src={item.avatar} alt={item.name} />
+                            ) : (
+                                <AvatarFallback>
+                                    {item.iconComponent && <item.iconComponent className="h-5 w-5" />}
+                                </AvatarFallback>
                             )}
+                        </Avatar>
+                        <div className="min-w-0 overflow-hidden flex flex-col justify-center h-full">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
+                                {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate mt-1 leading-none">
+                                {item.id === 'GENERAL_CHAT'
+                                    ? t('public_chat_description')
+                                    : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })}
+                            </p>
                         </div>
                     </button>
-                ) : ( 
-                    <div className="flex items-center min-w-0 h-full">
-                        <div className='w-10 h-10 bg-muted rounded-full animate-pulse' />
-                        <div className="ml-3 space-y-2">
-                            <div className='h-4 w-32 bg-muted rounded animate-pulse' />
-                            <div className='h-3 w-24 bg-muted rounded animate-pulse' />
-                        </div>
-                    </div>
-                )
-            ) : ( 
-                 <button 
-                    className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full"
-                    onClick={() => setShowChatProfile(true)}
-                    disabled={item.id === 'GENERAL_CHAT'}
-                >
-                    <Avatar className="h-10 w-10 mr-3 shrink-0">
-                        {item.avatar ? (
-                            <AvatarImage src={item.avatar} alt={item.name} />
-                        ) : (
-                            <AvatarFallback>
-                                {item.iconComponent && <item.iconComponent className="h-5 w-5" />}
-                            </AvatarFallback>
-                        )}
-                    </Avatar>
-                    <div className="min-w-0 overflow-hidden flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
-                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate mt-1 leading-none">
-                            {item.id === 'GENERAL_CHAT'
-                                ? t('public_chat_description')
-                                : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })}
-                        </p>
-                    </div>
-                </button>
-            )}
+                )}
+            </div>
+
+            <div className="flex items-center gap-1 ml-2 shrink-0">
+                {item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && (
+                    <>
+                        <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)}>
+                            <Phone className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(true)}>
+                            <Video className="h-5 w-5" />
+                        </Button>
+                    </>
+                )}
+                {item.type !== 'dm' && isOwner && !activeGroupCall && (
+                <Button variant="ghost" size="icon" onClick={handleStartGroupCall}>
+                    <Radio className="h-5 w-5" />
+                </Button>
+                )}
+                
+                {item.id !== 'GENERAL_CHAT' && (
+                    <DropdownMenu modal={true}>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {item.id !== currentUser.uid && (
+                                <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                                    <Info className="mr-2 h-4 w-4" />
+                                    <span>{t('info')}</span>
+                                </DropdownMenuItem>
+                            )}
+                            {(item.id === currentUser.uid || isOwner || (item.type === 'dm' && item.id !== currentUser.uid)) && (
+                                <DropdownMenuItem onSelect={() => setShowClearConfirm(true)}>
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    <span>{t('clear_history')}</span>
+                                </DropdownMenuItem>
+                            )}
+                            {item.id !== currentUser.uid && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    {isOwner || item.type === 'dm' ? (
+                                        <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>{t('delete_chat')}</span>
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                            <LogOut className="mr-2 h-4 w-4" />
+                                            <span>{t('leave')}</span>
+                                        </DropdownMenuItem>
+                                    )}
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+            </div>
         </div>
 
-        <div className="flex items-center gap-1 ml-2 shrink-0">
-            {item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && (
-                <>
-                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)}>
-                        <Phone className="h-5 w-5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(true)}>
-                        <Video className="h-5 w-5" />
-                    </Button>
-                </>
-            )}
-            {item.type !== 'dm' && isOwner && !activeGroupCall && (
-              <Button variant="ghost" size="icon" onClick={handleStartGroupCall}>
-                <Radio className="h-5 w-5" />
-              </Button>
-            )}
-            
-            {item.id !== 'GENERAL_CHAT' && (
-                <DropdownMenu modal={true}>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {item.id !== currentUser.uid && (
-                            <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
-                                <Info className="mr-2 h-4 w-4" />
-                                <span>{t('info')}</span>
-                            </DropdownMenuItem>
-                        )}
-                        {(item.id === currentUser.uid || isOwner || (item.type === 'dm' && item.id !== currentUser.uid)) && (
-                            <DropdownMenuItem onSelect={() => setShowClearConfirm(true)}>
-                                <Trash className="mr-2 h-4 w-4" />
-                                <span>{t('clear_history')}</span>
-                            </DropdownMenuItem>
-                        )}
-                        {item.id !== currentUser.uid && (
-                            <>
-                                <DropdownMenuSeparator />
-                                {isOwner || item.type === 'dm' ? (
-                                    <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        <span>{t('delete_chat')}</span>
-                                    </DropdownMenuItem>
-                                ) : (
-                                    <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        <span>{t('leave')}</span>
-                                    </DropdownMenuItem>
-                                )}
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )}
-        </div>
+        {isBirthdayToday && (
+            <div className="px-4 py-3 bg-gradient-to-r from-orange-400/20 to-rose-400/20 flex items-center justify-between border-t border-orange-500/10 animate-in slide-in-from-top duration-500">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                        <Cake className="h-6 w-6 text-orange-600 animate-bounce" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="font-bold text-sm leading-tight truncate">
+                            {otherUserAge 
+                                ? t('birthday_banner_age', { name: otherUser?.name, age: otherUserAge }) 
+                                : t('birthday_banner_today', { name: otherUser?.name })}
+                        </p>
+                        <button 
+                            className="text-[10px] font-black uppercase tracking-widest text-orange-700 hover:text-orange-800 transition-colors flex items-center gap-1 mt-1"
+                            onClick={() => setProfileDialogUser(otherUser)}
+                        >
+                            <Gift className="h-3 w-3" />
+                            {t('send_gold')}
+                        </button>
+                    </div>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/60" onClick={() => setDismissedBirthdays(prev => new Set(prev).add(item.id))}>
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+        )}
       </header>
 
       <div className="relative flex-1 min-h-0">
@@ -2218,6 +2259,7 @@ const handleVote = async (optionIndex: number) => {
                                           onForward={(m) => setForwardingMessage(m)}
                                           onVote={handleVoteLocal}
                                           onToggleReaction={handleToggleMessageReaction}
+                                          isMobile={isMobile}
                                       />
                                   </React.Fragment>
                               );
@@ -2628,6 +2670,7 @@ function ChatMessage({
     onForward,
     onVote,
     onToggleReaction,
+    isMobile,
 }: { 
     message: Message, 
     sender?: User, 
@@ -2647,6 +2690,7 @@ function ChatMessage({
     onForward: (message: Message) => void;
     onVote: (index: number) => void;
     onToggleReaction: (emoji: string) => void;
+    isMobile: boolean;
 }) {
     const db = useFirestore();
     const { t } = useLanguage();

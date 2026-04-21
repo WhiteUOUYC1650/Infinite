@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -28,6 +27,11 @@ export type User = {
   isBetaTester?: boolean;
   isCustomBot?: boolean;
   botOwnerId?: string;
+  birthday?: {
+    day: number;
+    month: number;
+    year?: number;
+  };
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };

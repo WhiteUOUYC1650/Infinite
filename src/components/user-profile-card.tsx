@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { AuthenticatedUser, User } from '@/types';
@@ -15,6 +14,7 @@ import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Badge } from './ui/badge';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { useTheme } from '@/context/theme-context';
+import { Cake } from 'lucide-react';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -47,6 +47,12 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
   const displayUsername = user.isDeleted ? '' : user.username;
+
+  const birthdayText = useMemo(() => {
+    if (!user.birthday) return null;
+    const months = (t('months') || '').split(',');
+    return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;
+  }, [user.birthday, t]);
   
   if (experimentalDesign) {
     return (
@@ -71,6 +77,13 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
             <div className="flex items-center justify-center gap-2 py-2">
               <InfGoldIcon className="h-6 w-6 experimental-glow" />
               <span className="font-bold text-2xl tracking-tighter">{user.infGoldBalance ?? 0}</span>
+            </div>
+          )}
+
+          {birthdayText && (
+            <div className="flex items-center justify-center gap-2 text-xs font-bold text-primary">
+                <Cake className="h-3.5 w-3.5" />
+                <span>{birthdayText}</span>
             </div>
           )}
 
@@ -115,6 +128,13 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                 <p className="text-muted-foreground text-sm">{displayUsername}</p>
             )}
             <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
+
+            {birthdayText && (
+                <div className="flex items-center justify-center gap-2 mt-2 text-xs font-bold text-primary">
+                    <Cake className="h-3.5 w-3.5" />
+                    <span>{birthdayText}</span>
+                </div>
+            )}
 
             {!user.isDeleted && !user.isBot && (
                  <div className="flex items-center justify-center gap-2 mt-4">
