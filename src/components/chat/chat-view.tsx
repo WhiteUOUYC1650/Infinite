@@ -1498,7 +1498,7 @@ const handleVote = async (optionIndex: number) => {
         if (chatSnap.exists()) {
             const targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
             const iconName = targetChat.icon as keyof typeof iconMap | undefined;
-            const populatedChat: PopulatedChat = { ...targetChat, iconComponent: iconName ? iconMap[iconName] : undefined };
+            const populatedChat: PopulatedChat = { ...targetChat, id: chatSnap.id, iconComponent: iconName ? iconMap[iconName] : undefined };
             onSelectChat(populatedChat);
         } else {
             toast({ variant: 'destructive', title: 'Error', description: t('discussion_chat_not_found') });
@@ -3224,7 +3224,7 @@ function ChatMessage({
                 </div>
             </div>
 
-            <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? "opacity-100" : "md:opacity-0 group-hover:opacity-100 focus-within:opacity-100", !alignRight && "order-last")}>
+            <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>

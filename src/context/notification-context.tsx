@@ -103,13 +103,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [user, db, activeChatId, t]);
 
   const showNotification = async (chat: Chat, message: any) => {
+    const senderName = message.senderName || 'User';
     const title = chat.type === 'dm' 
-      ? t('new_message_from', { name: message.senderName || 'User' })
-      : `${chat.name}`;
+      ? t('new_message_from', { name: senderName })
+      : `${chat.name || 'Chat'}`;
     
     let body = chat.type === 'dm' 
-      ? message.content 
-      : `${message.senderName}: ${message.content}`;
+      ? (message.content || t('image_attachment_placeholder'))
+      : `${senderName}: ${message.content || t('image_attachment_placeholder')}`;
     
     if (body.length > 150) body = body.substring(0, 147) + '...';
 
@@ -118,11 +119,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         await LocalNotifications.schedule({
           notifications: [
             {
-              title,
-              body,
+              title: title || "New Message",
+              body: body || "",
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
-              sound: undefined,
               extra: { chatId: chat.id }
             }
           ]
@@ -132,9 +132,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
-        // Constructing notification only in secure context or if supported
-        const n = new window.Notification(title, {
-          body,
+        const n = new window.Notification(title || "New Message", {
+          body: body || "",
           icon: '/favicon.ico',
         });
         n.onclick = () => {
@@ -156,11 +155,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         await LocalNotifications.schedule({
           notifications: [
             {
-              title,
-              body,
+              title: title || "Incoming Call",
+              body: body || "",
               id: 999, // Unique ID for calls
               schedule: { at: new Date(Date.now() + 100) },
-              sound: 'ringtone.mp3', // Note: Android requires this to be in resources/raw
               extra: { chatId, isCall: true },
               ongoing: true,
             }
@@ -175,7 +173,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          const n = new window.Notification(title, { body, icon: '/favicon.ico', tag: 'incoming-call' });
+          const n = new window.Notification(title || "Incoming Call", { body, icon: '/favicon.ico', tag: 'incoming-call' });
           n.onclick = () => {
             window.focus();
             window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId } }));
