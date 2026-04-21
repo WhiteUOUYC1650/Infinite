@@ -251,7 +251,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
             isMusic ? "w-full max-w-[400px]" : "w-full max-w-[380px] min-w-[240px]",
             uiClass
         )}>
-            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
+            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
                 onClick={togglePlay} 
                 className={cn(
@@ -2615,27 +2615,24 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         } catch (e) { console.error(e); } finally { setIsLoadingFile(false); }
     };
 
-    const handleSaveToDevice = async () => {
-        let currentUrl = videoUrl || musicUrl || fileUrl || voiceUrl || circleUrl || message.imageUrl;
-        if (currentUrl) {
-            if (Capacitor.isNativePlatform()) {
-              try {
-                const { Filesystem, Directory } = await import('@capacitor/filesystem');
-                const response = await fetch(currentUrl);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                const base64data = await new Promise<string>((resolve) => { reader.onloadend = () => resolve(reader.result as string); reader.readAsDataURL(blob); });
-                await Filesystem.writeFile({ path: message.fileName || 'file', data: base64data.split(',')[1], directory: Directory.Documents, recursive: true });
-                toast({ title: t('dm_success'), description: "Saved to Documents" });
-              } catch (e) { toast({ variant: 'destructive', title: 'Error' }); }
-            } else {
-              const link = document.createElement('a');
-              link.href = currentUrl;
-              link.download = message.fileName || 'file';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }
+    const handleCopy = () => {
+        if (message.content) {
+            navigator.clipboard.writeText(message.content);
+            toast({ title: t('copy_success_toast') });
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!db) return;
+        const messageRef = doc(db, 'chats', chat.id, 'messages', message.id);
+        try {
+            await deleteDoc(messageRef);
+        } catch (serverError) {
+             const permissionError = new FirestorePermissionError({
+                path: messageRef.path,
+                operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
         }
     };
 
