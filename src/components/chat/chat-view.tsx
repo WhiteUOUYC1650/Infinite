@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -286,7 +285,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                     />
                 </div>
                 {isMusic && !hideTime && (
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter opacity-80 mt-1.5">
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80">
                         <span>{formatTime(currentTime)}</span>
                         <span>{formatTime(maxTime)}</span>
                     </div>
@@ -2190,7 +2189,7 @@ const handleForward = async (targetChatId: string) => {
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-0 overflow-y-auto pl-[env(safe-area-inset-left))] pr-[env(safe-area-inset-right))]">
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left))] pr-[env(safe-area-inset-right))]">
                   <div ref={loadMoreSentinelRef} className="h-4 w-full flex items-center justify-center py-8">
                       {hasMore && <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />}
                   </div>
