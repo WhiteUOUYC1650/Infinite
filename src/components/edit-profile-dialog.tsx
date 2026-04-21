@@ -56,10 +56,10 @@ const formSchema = z.object({
   }),
 }).refine((data) => {
   const { day, month, year } = data.birthday;
-  const isAnyFieldFilled = !!day || !!month || !!year;
-  // If any part of birthday is touched, both day and month are required.
+  const isAnyFieldFilled = (day && day !== 'none') || (month && month !== 'none') || (!!year && year !== '');
+  
   if (isAnyFieldFilled) {
-    return !!day && !!month;
+    return day !== 'none' && month !== 'none';
   }
   return true;
 }, {
@@ -165,8 +165,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       statusMessage: user.statusMessage || '',
       avatar: user.avatar || '',
       birthday: {
-        day: user.birthday?.day?.toString() || '',
-        month: user.birthday?.month?.toString() || '',
+        day: user.birthday?.day?.toString() || 'none',
+        month: user.birthday?.month?.toString() || 'none',
         year: user.birthday?.year?.toString() || '',
       },
     },
@@ -179,7 +179,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
   // Calculate days in month
   const daysInMonth = useMemo(() => {
     const month = parseInt(watchMonth);
-    if (!month) return 31;
+    if (!month || isNaN(month)) return 31;
     
     if ([4, 6, 9, 11].includes(month)) return 30;
     if (month === 2) {
@@ -192,8 +192,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
 
   // Adjust day if month change makes current day invalid
   useEffect(() => {
-    if (watchDay && parseInt(watchDay) > daysInMonth) {
-      form.setValue('birthday.day', '', { shouldValidate: true });
+    if (watchDay && watchDay !== 'none' && parseInt(watchDay) > daysInMonth) {
+      form.setValue('birthday.day', 'none', { shouldValidate: true });
     }
   }, [daysInMonth, watchDay, form]);
 
@@ -205,8 +205,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             statusMessage: user.statusMessage || '',
             avatar: user.avatar || '',
             birthday: {
-                day: user.birthday?.day?.toString() || '',
-                month: user.birthday?.month?.toString() || '',
+                day: user.birthday?.day?.toString() || 'none',
+                month: user.birthday?.month?.toString() || 'none',
                 year: user.birthday?.year?.toString() || '',
             },
         });
@@ -276,11 +276,11 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
         birthday: null, // Default to null if cleared
     };
 
-    if (values.birthday?.day && values.birthday?.month) {
+    if (values.birthday?.day && values.birthday?.day !== 'none' && values.birthday?.month && values.birthday?.month !== 'none') {
         updatedData.birthday = {
             day: parseInt(values.birthday.day),
             month: parseInt(values.birthday.month),
-            year: values.birthday.year ? parseInt(values.birthday.year) : null,
+            year: (values.birthday.year && values.birthday.year !== '') ? parseInt(values.birthday.year) : null,
         };
     }
 
@@ -320,7 +320,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                     ref={imgRef}
                     alt="Crop me"
                     src={imageToCrop}
-                    onImageLoad={onImageLoad}
+                    onLoad={onImageLoad}
                     className="max-h-full max-w-full object-contain"
                 />
             </ReactCrop>
@@ -410,14 +410,14 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                             name="birthday.day"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                         <FormControl>
                                             <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
                                                 <SelectValue placeholder={t('day')} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent position="popper" className="max-h-[200px]">
-                                            <SelectItem value="">{t('none_label')}</SelectItem>
+                                            <SelectItem value="none">{t('none_label')}</SelectItem>
                                             {Array.from({ length: daysInMonth }, (_, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
                                             ))}
@@ -431,14 +431,14 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                             name="birthday.month"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                         <FormControl>
                                             <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
                                                 <SelectValue placeholder={t('month_label')} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent position="popper" className="max-h-[200px]">
-                                            <SelectItem value="">{t('none_label')}</SelectItem>
+                                            <SelectItem value="none">{t('none_label')}</SelectItem>
                                             {monthNames.map((name, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
                                             ))}
