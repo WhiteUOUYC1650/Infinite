@@ -144,14 +144,27 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     if (callStatus === 'ended' && !peerConnection.current) return;
     setCallStatus('ended');
     
-    // Crucial for releasing hardware and resetting OS volume mode
-    localStreamRef.current?.getTracks().forEach(track => {
-        track.stop();
-        track.enabled = false;
-    });
+    // Stop local tracks
+    if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+    }
+
+    // Stop remote tracks
+    if (remoteStreamRef.current) {
+        remoteStreamRef.current.getTracks().forEach(track => {
+            track.stop();
+            track.enabled = false;
+        });
+    }
     
-    peerConnection.current?.close();
-    peerConnection.current = null;
+    if (peerConnection.current) {
+        peerConnection.current.close();
+        peerConnection.current = null;
+    }
+    
     localStreamRef.current = null;
     remoteStreamRef.current = null;
 
@@ -159,6 +172,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
         const callDocRef = doc(db, 'calls', chat.id);
         updateDoc(callDocRef, { status: 'ended' }).catch(() => {});
     }
+    
     setTimeout(() => onOpenChange(false), 1500);
   };
 
@@ -184,6 +198,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
 
             const pc = new RTCPeerConnection(servers);
             peerConnection.current = pc;
+
+            // Proper track addition for two-way audio/video
             stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
             const remoteStream = new MediaStream();
@@ -193,7 +209,10 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             }
 
             pc.ontrack = (event) => {
-                event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
+                event.streams[0].getTracks().forEach(track => {
+                    remoteStream.addTrack(track);
+                });
+                setCallStatus('connected');
             };
 
             pc.onconnectionstatechange = () => {
@@ -312,6 +331,12 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                     </div>
                   )}
                 </div>
+                
+                {callStatus === 'connected' && (
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold font-mono">
+                        {format(new Date(duration * 1000), 'mm:ss')}
+                    </div>
+                )}
 
                 <div className="mt-auto p-8 bg-gradient-to-t from-black/80 to-transparent flex justify-center gap-6 z-30">
                   <Button variant={isMuted ? "destructive" : "secondary"} size="icon" className="w-16 h-16 rounded-full" onClick={toggleMute}>

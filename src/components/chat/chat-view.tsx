@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -507,22 +508,35 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, []);
 
   useEffect(() => {
-    if (!db || !isMember || item.type !== 'dm' || !messageContent.trim()) return;
+    if (!db || !isMember || !messageContent.trim()) {
+        if (db && isMember) {
+            updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
+        }
+        return;
+    }
     
-    const typingRef = doc(db, 'chats', item.id);
-    updateDoc(typingRef, { [`typingStatus.${currentUser.uid}`]: true });
+    updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: true });
 
     const timeout = setTimeout(() => {
-        updateDoc(typingStatusRef, { [`typingStatus.${currentUser.uid}`]: false });
+        updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false });
     }, 3000);
-
-    const typingStatusRef = doc(db, 'chats', item.id);
 
     return () => {
         clearTimeout(timeout);
-        updateDoc(typingStatusRef, { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
+        updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
     };
-  }, [messageContent, db, isMember, item.id, item.type, currentUser.uid]);
+  }, [messageContent, db, isMember, item.id, currentUser.uid]);
+
+  // Handle visibility change to hide typing status
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden' && db && isMember) {
+            updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
+        }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [db, isMember, item.id, currentUser.uid]);
 
   useEffect(() => {
     if (!db || item.type === 'dm' || !isMember) return;
@@ -1846,13 +1860,23 @@ const handleVote = async (optionIndex: number) => {
     setIsProcessingAction(true);
     try {
         const chatRef = doc(db, 'chats', item.id);
-        await deleteDoc(chatRef);
         
+        // 1. Delete all messages
+        const messagesRef = collection(db, 'chats', item.id, 'messages');
+        const snapshot = await getDocs(messagesRef);
+        const batch = writeBatch(db);
+        snapshot.forEach(d => batch.delete(d.ref));
+        
+        // 2. Delete the chat document
+        batch.delete(chatRef);
+        
+        // 3. Delete the chat link if it exists
         if (item.link) {
             const linkRef = doc(db, 'chatLinks', encodeURIComponent(item.link));
-            await deleteDoc(linkRef);
+            batch.delete(linkRef);
         }
         
+        await batch.commit();
         toast({ title: t('dm_success'), description: t('delete_chat_success') });
         setShowDeleteConfirm(false);
         onClose();
@@ -2032,7 +2056,7 @@ const handleVote = async (optionIndex: number) => {
             )}
             
             {item.id !== 'GENERAL_CHAT' && (
-                <DropdownMenu modal={false}>
+                <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
                     </DropdownMenuTrigger>
@@ -3156,8 +3180,8 @@ function ChatMessage({
                 </div>
             </div>
 
-            <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-opacity md:opacity-0 group-hover:opacity-100 focus-within:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu>
+            <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? "opacity-100" : "md:opacity-0 group-hover:opacity-100 focus-within:opacity-100", !alignRight && "order-last")}>
+                <DropdownMenu modal={true}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>

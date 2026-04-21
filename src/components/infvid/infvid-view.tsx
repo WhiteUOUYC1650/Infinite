@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -10,7 +9,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment, PopulatedChat } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -879,7 +878,23 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl">
+            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl relative">
+                {isUploading && (
+                    <div className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+                        <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        </div>
+                        <h3 className="text-2xl font-bold font-headline mb-4">{t('infvid_upload_warning_title')}</h3>
+                        <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto mb-6">
+                            {t('infvid_upload_warning_desc')}
+                        </p>
+                        <div className="flex items-center gap-2 text-primary font-bold animate-pulse uppercase tracking-widest text-xs">
+                           <AlertCircle className="h-4 w-4" />
+                           {t('processing_video')}
+                        </div>
+                    </div>
+                )}
+                
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold font-headline">{t('infvid_upload_title')}</DialogTitle>
                 </DialogHeader>
@@ -946,7 +961,7 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
                 <DialogFooter className="gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUploading} className="rounded-full">{t('cancel')}</Button>
                     <Button onClick={handleSubmit} disabled={!file || !title.trim() || isUploading} className="rounded-full px-8 font-bold">
-                        {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('loading_chat')} </> : t('save')}
+                        {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('loading')}... </> : t('save')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

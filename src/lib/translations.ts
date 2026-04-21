@@ -540,6 +540,8 @@ export const translations = {
       'bot_guide_var_bot': '- `{bot_name}`: Your bot\'s name.',
       'bot_guide_var_time': '- `{time}`: Current server time.',
       'bot_guide_var_set': '**Variable Set**: Save custom data to bot memory (e.g. `{score}`). These variables are persistent for each user.',
+      'infvid_upload_warning_title': 'Uploading in Progress...',
+      'infvid_upload_warning_desc': 'Please do not minimize the app or lock your screen while your video is uploading. This ensures all data chunks are processed correctly.',
     },
     ru: {
       'settings': 'Настройки',
@@ -768,7 +770,7 @@ export const translations = {
       'faq_story_q': 'Как добавить историю?',
       'faq_story_a': 'На боковой панели над списком чатов есть лента историй. Нажмите на значок «+» на своем аватаре, чтобы загрузить фото-историю.',
       'faq_transfer_q': 'Как отправить InfGold другу?',
-      'faq_transfer_a': 'Откройте профиль друга, нажав на его аватар в чате. Затем нажмите кнопку «Отправить Gold» и введите сумму. Вы можете просмотреть свою историю в Настройках > InfGold > История переводов.',
+      'faq_transfer_a': 'Открыйте профиль друга, нажав на его аватар в чате. Затем нажмите кнопку «Отправить Gold» и введите сумму. Вы можете просмотреть свою историю в Настройках > InfGold > История переводов.',
       'faq_feed_q': 'Что такое Лента?',
       'faq_feed_a': 'Лента собирает все сообщения, отправленные **сегодня** во всех каналах, на которые вы подписаны. Это помогает быстро узнать новости дня, не открывая каждый канал по отдельности.',
       'faq_mention_all_q': 'Как отметить всех в чате?',
@@ -945,7 +947,7 @@ export const translations = {
       'incorrect_recovery_code': 'Неверный код восстановления.',
       'recovery_success': 'Доступ восстановлен. Защита облачным паролем отключена.',
       'recovery_via_bot': 'Получить код через бота',
-      'enter_bot_code': 'Введите код из /B/Infinite',
+      'enter_bot_code': 'Enter code from /B/Infinite',
       'bot_code_sent': 'Код подтверждения отправлен в ваш чат с /B/Infinite',
       'incorrect_bot_code': 'Неверный код подтверждения от бота.',
       'password_is_set': 'Пароль установлен',
@@ -1079,6 +1081,8 @@ export const translations = {
       'bot_guide_var_bot': '- `{bot_name}`: Имя вашего бота.',
       'bot_guide_var_time': '- `{time}`: Текущее время сервера.',
       'bot_guide_var_set': '**Установить переменную**: Сохранить данные в память бота (например, `{score}`). Эти переменные сохраняются для каждого пользователя отдельно.',
+      'infvid_upload_warning_title': 'Идет загрузка...',
+      'infvid_upload_warning_desc': 'Пожалуйста, не сворачивайте приложение и не блокируйте экран, пока ваше видео загружается. Это гарантирует правильную обработку всех фрагментов данных.',
     }
   };
 
