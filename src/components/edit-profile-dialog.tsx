@@ -404,7 +404,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                                 <SelectValue placeholder={t('day')} />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent position="popper" className="max-h-[300px]">
+                                        <SelectContent position="popper" className="max-h-[200px]">
                                             {Array.from({ length: daysInMonth }, (_, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
                                             ))}
@@ -424,7 +424,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                                 <SelectValue placeholder={t('month_label')} />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent position="popper" className="max-h-[300px]">
+                                        <SelectContent position="popper" className="max-h-[200px]">
                                             {monthNames.map((name, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
                                             ))}
