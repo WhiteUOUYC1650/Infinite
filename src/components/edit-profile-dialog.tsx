@@ -320,7 +320,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                     ref={imgRef}
                     alt="Crop me"
                     src={imageToCrop}
-                    onLoad={onImageLoad}
+                    onImageLoad={onImageLoad}
                     className="max-h-full max-w-full object-contain"
                 />
             </ReactCrop>
@@ -417,6 +417,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent position="popper" className="max-h-[200px]">
+                                            <SelectItem value="">{t('none_label')}</SelectItem>
                                             {Array.from({ length: daysInMonth }, (_, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
                                             ))}
@@ -437,6 +438,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent position="popper" className="max-h-[200px]">
+                                            <SelectItem value="">{t('none_label')}</SelectItem>
                                             {monthNames.map((name, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
                                             ))}
@@ -462,7 +464,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                             onBlur={(e) => {
                                                 const val = parseInt(e.target.value);
                                                 const currentYear = new Date().getFullYear();
-                                                if (val < 1900) form.setValue('birthday.year', '1900');
+                                                if (val < 1900 && e.target.value !== '') form.setValue('birthday.year', '1900');
                                                 if (val > currentYear) form.setValue('birthday.year', currentYear.toString());
                                             }}
                                         />
