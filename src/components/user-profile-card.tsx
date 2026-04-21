@@ -16,6 +16,7 @@ import { Badge } from './ui/badge';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { useTheme } from '@/context/theme-context';
 import { Cake } from 'lucide-react';
+import { ScrollArea } from './ui/scroll-area';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -57,9 +58,9 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   
   if (experimentalDesign) {
     return (
-      <div className="flex flex-col overflow-hidden max-h-[80vh]">
+      <div className="flex flex-col overflow-hidden max-h-[85vh]">
         {/* Experimental Header Background */}
-        <div className="flex flex-col items-center pt-6 pb-4 px-4 bg-gradient-to-b from-primary/10 to-transparent shrink-0">
+        <div className="flex flex-col items-center pt-8 pb-6 px-6 bg-gradient-to-b from-primary/10 to-transparent shrink-0">
           <UserAvatarWithStatus user={user as any} className="w-24 h-24 text-3xl mb-4 border-4 border-background shadow-xl rounded-full experimental-glow" />
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold font-headline flex items-center justify-center gap-2">
@@ -73,86 +74,92 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
           </div>
         </div>
 
-        <div className="px-4 pb-6 space-y-4 overflow-y-auto">
-          {!user.isDeleted && !user.isBot && (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <InfGoldIcon className="h-6 w-6 experimental-glow" />
-              <span className="font-bold text-2xl tracking-tighter">{user.infGoldBalance ?? 0}</span>
-            </div>
-          )}
+        <ScrollArea className="flex-1 px-6 pb-6">
+          <div className="space-y-4 pb-2">
+            {!user.isDeleted && !user.isBot && (
+              <div className="flex items-center justify-center gap-2 py-2">
+                <InfGoldIcon className="h-6 w-6 experimental-glow" />
+                <span className="font-bold text-2xl tracking-tighter">{user.infGoldBalance ?? 0}</span>
+              </div>
+            )}
 
-          {birthdayText && (
-            <div className="flex items-center justify-center gap-2 text-xs font-bold text-primary">
-                <Cake className="h-3.5 w-3.5" />
-                <span>{birthdayText}</span>
-            </div>
-          )}
+            {birthdayText && (
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-primary">
+                  <Cake className="h-3.5 w-3.5" />
+                  <span>{birthdayText}</span>
+              </div>
+            )}
 
-          {user.statusMessage && !user.isDeleted && (
-            <div className="text-center p-4 bg-muted/40 rounded-[1.5rem] border border-border/50">
-              <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
-            </div>
-          )}
+            {user.statusMessage && !user.isDeleted && (
+              <div className="text-center p-4 bg-muted/40 rounded-[1.5rem] border border-border/50">
+                <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
+              </div>
+            )}
 
-          <div className="flex flex-col gap-2">
-            <Button 
-              onClick={onEditProfile} 
-              disabled={!!user.isDeleted}
-              className="w-full rounded-[1.25rem] h-12 font-bold shadow-lg shadow-primary/20"
-            >
-              {t('edit_profile')}
-            </Button>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button 
+                onClick={onEditProfile} 
+                disabled={!!user.isDeleted}
+                className="w-full rounded-[1.25rem] h-12 font-bold shadow-lg shadow-primary/20"
+              >
+                {t('edit_profile')}
+              </Button>
+            </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col p-6">
-        <div className='relative mx-auto w-24 h-24 mb-4 shrink-0'>
-             <UserAvatarWithStatus user={user} className="w-24 h-24 text-3xl" />
-        </div>
-        <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-                <h2 className="text-xl font-bold font-headline">
-                    {displayName}
-                </h2>
-                {user.isAdmin && <VerifiedBadge />}
-                {user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}
-                {user.isBetaTester && <BetaBadge />}
-            </div>
-
-            {user.isBot ? (
-                <p className="text-muted-foreground text-sm">/B/Infinite</p>
-            ) : (
-                <p className="text-muted-foreground text-sm">{displayUsername}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
-
-            {birthdayText && (
-                <div className="flex items-center justify-center gap-2 mt-2 text-xs font-bold text-primary">
-                    <Cake className="h-3.5 w-3.5" />
-                    <span>{birthdayText}</span>
+    <div className="flex flex-col p-6 max-h-[85vh] overflow-hidden">
+        <ScrollArea className="flex-1 pr-2">
+            <div className="flex flex-col items-center">
+                <div className='relative w-24 h-24 mb-4 shrink-0'>
+                     <UserAvatarWithStatus user={user} className="w-24 h-24 text-3xl" />
                 </div>
-            )}
+                <div className="text-center w-full">
+                    <div className="flex items-center justify-center gap-2">
+                        <h2 className="text-xl font-bold font-headline">
+                            {displayName}
+                        </h2>
+                        {user.isAdmin && <VerifiedBadge />}
+                        {user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}
+                        {user.isBetaTester && <BetaBadge />}
+                    </div>
 
-            {!user.isDeleted && !user.isBot && (
-                 <div className="flex items-center justify-center gap-2 mt-4">
-                    <InfGoldIcon className="h-5 w-5" />
-                    <span className="font-semibold text-lg">{user.infGoldBalance ?? 0}</span>
+                    {user.isBot ? (
+                        <p className="text-muted-foreground text-sm">/B/Infinite</p>
+                    ) : (
+                        <p className="text-muted-foreground text-sm">{displayUsername}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
+
+                    {birthdayText && (
+                        <div className="flex items-center justify-center gap-2 mt-2 text-xs font-bold text-primary">
+                            <Cake className="h-3.5 w-3.5" />
+                            <span>{birthdayText}</span>
+                        </div>
+                    )}
+
+                    {!user.isDeleted && !user.isBot && (
+                         <div className="flex items-center justify-center gap-2 mt-4">
+                            <InfGoldIcon className="h-5 w-5" />
+                            <span className="font-semibold text-lg">{user.infGoldBalance ?? 0}</span>
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
 
-        {user.statusMessage && !user.isDeleted && (
-             <div className="text-center p-3 mt-4 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
-                <p className="text-sm">{user.statusMessage}</p>
+                {user.statusMessage && !user.isDeleted && (
+                     <div className="text-center p-3 mt-4 bg-muted/50 rounded-lg w-full">
+                        <p className="text-sm">{user.statusMessage}</p>
+                    </div>
+                )}
             </div>
-        )}
+        </ScrollArea>
        
-        <div className='mt-6 flex justify-center'>
-            <Button onClick={onEditProfile} disabled={!!user.isDeleted} className="w-full sm:w-auto">
+        <div className='mt-6 shrink-0 flex justify-center border-t pt-4'>
+            <Button onClick={onEditProfile} disabled={!!user.isDeleted} className="w-full">
                 {t('edit_profile')}
             </Button>
         </div>

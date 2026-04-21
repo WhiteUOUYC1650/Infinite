@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -24,12 +22,13 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, runTransaction, increment, getDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
+import { ScrollArea } from './ui/scroll-area';
 
 interface UserProfileDialogProps {
   user: User;
@@ -141,11 +140,17 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
   const displayUsername = user.isDeleted ? '' : user.username;
 
+  const birthdayText = useMemo(() => {
+    if (!user.birthday) return null;
+    const months = (t('months') || '').split(',');
+    return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;
+  }, [user.birthday, t]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         hideCloseButton
-        className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none" : "rounded-lg")}
+        className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-lg")}
       >
         <div className="flex flex-col h-full overflow-hidden relative">
             {/* Compact Sticky Header */}
@@ -164,17 +169,14 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                 </Button>
             </div>
 
-            <div 
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto"
-            >
-                <div className={cn(experimentalDesign ? "bg-gradient-to-b from-primary/10 to-background pt-6 pb-6 px-6" : "pt-8 pb-4 px-6")}>
+            <ScrollArea className="flex-1" onScroll={handleScroll}>
+                <div className={cn(experimentalDesign ? "bg-gradient-to-b from-primary/10 to-background pt-8 pb-6 px-6" : "pt-8 pb-4 px-6")}>
                     <DialogHeader className="p-0 relative">
                         <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => onOpenChange(false)} 
-                            className={cn("absolute -top-2 -right-2 z-10 rounded-full", (showCompactHeader) && "hidden")}
+                            className={cn("absolute -top-4 -right-2 z-10 rounded-full", (showCompactHeader) && "hidden")}
                         >
                             <X className="h-5 w-5" />
                         </Button>
@@ -203,6 +205,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         <div className="flex items-center justify-center gap-2 mb-4">
                             <InfGoldIcon className="h-5 w-5" />
                             <span className="font-bold text-lg">{user.infGoldBalance ?? 0}</span>
+                        </div>
+                    )}
+
+                    {birthdayText && (
+                        <div className="flex items-center justify-center gap-2 mb-4 text-xs font-bold text-primary">
+                            <Cake className="h-3.5 w-3.5" />
+                            <span>{birthdayText}</span>
                         </div>
                     )}
 
@@ -243,27 +252,27 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             </button>
                         </div>
                     )}
-                </div>
 
-                <div className={cn("px-6 pb-8", !experimentalDesign && "pt-2")}>
-                    {user.statusMessage && !user.isDeleted && (
-                        <div className="text-center p-4 bg-muted/50 rounded-2xl mb-6">
-                            <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
-                        </div>
-                    )}
-                    
-                    {!experimentalDesign && !user.isBot && !user.isDeleted && (
-                        <Button 
-                            variant="outline" 
-                            className="w-full rounded-xl h-12 mb-4 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100"
-                            onClick={() => setShowSendGold(true)}
-                        >
-                            <Coins className="mr-2 h-5 w-5" />
-                            {t('send_gold')}
-                        </Button>
-                    )}
+                    <div className="px-2 pt-6 pb-4">
+                        {user.statusMessage && !user.isDeleted && (
+                            <div className="text-center p-4 bg-muted/50 rounded-2xl mb-4">
+                                <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
+                            </div>
+                        )}
+                        
+                        {!experimentalDesign && !user.isBot && !user.isDeleted && (
+                            <Button 
+                                variant="outline" 
+                                className="w-full rounded-xl h-12 mb-4 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100"
+                                onClick={() => setShowSendGold(true)}
+                            >
+                                <Coins className="mr-2 h-5 w-5" />
+                                {t('send_gold')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </ScrollArea>
 
             {!experimentalDesign && (
                 <div className='shrink-0 p-6 border-t flex justify-center bg-background'>

@@ -34,6 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Loader2, Pencil, Cake } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
+import { ScrollArea } from './ui/scroll-area';
 import ReactCrop, {
   centerCrop,
   makeAspectCrop,
@@ -262,12 +263,12 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
   const monthNames = (t('months') || '').split(',');
 
   const dialogContent = imageToCrop ? (
-    <>
-        <DialogHeader>
+    <div className="flex flex-col h-full max-h-[80vh]">
+        <DialogHeader className="p-6 pb-2 shrink-0">
             <DialogTitle>Crop your new avatar</DialogTitle>
             <DialogDescription>Adjust the selection to crop your image. It will be a 1:1 square.</DialogDescription>
         </DialogHeader>
-        <div className="flex justify-center">
+        <div className="flex-1 flex items-center justify-center p-4 min-h-0">
             <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -280,167 +281,171 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                     ref={imgRef}
                     alt="Crop me"
                     src={imageToCrop}
-                    onLoad={onImageLoad}
-                    style={{ maxHeight: '60vh' }}
+                    onImageLoad={onImageLoad}
+                    className="max-h-full max-w-full object-contain"
                 />
             </ReactCrop>
         </div>
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-2 shrink-0 gap-2">
             <Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button>
             <Button onClick={handleCropConfirm} disabled={isCropping}>
                 {isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Crop & Save
             </Button>
         </DialogFooter>
-    </>
+    </div>
   ) : (
-    <>
-        <DialogHeader>
+    <div className="flex flex-col h-full max-h-[85vh]">
+        <DialogHeader className="p-6 pb-2 shrink-0">
           <DialogTitle>{t('edit_profile')}</DialogTitle>
           <DialogDescription>
             {t('edit_profile_desc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-             {/* Avatar uploader */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <button type="button" onClick={handleAvatarClick} className="rounded-full">
-                  <Avatar className="h-24 w-24 border-2 border-primary/20 shadow-lg">
-                    <AvatarImage src={avatarPreview || undefined} />
-                    <AvatarFallback className='bg-muted text-foreground'>{user.name?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAvatarClick}
-                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept="image/png, image/jpeg, image/gif"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                  />
-                </FormControl>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+            <ScrollArea className="flex-1 px-6 py-4">
+              <div className="space-y-6 pb-4">
+                {/* Avatar uploader */}
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <button type="button" onClick={handleAvatarClick} className="rounded-full">
+                      <Avatar className="h-24 w-24 border-2 border-primary/20 shadow-lg">
+                        <AvatarImage src={avatarPreview || undefined} />
+                        <AvatarFallback className='bg-muted text-foreground'>{user.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAvatarClick}
+                      className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <FormControl>
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/gif"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                      />
+                    </FormControl>
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('nickname_label')}</FormLabel>
+                      <FormControl>
+                        <Input placeholder={t('nickname_placeholder')} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="statusMessage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('account_description_label')}</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder={t('account_description_placeholder')} {...field} className="resize-none" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-4 pt-2">
+                    <div className="flex items-center gap-2 text-primary">
+                        <Cake className="h-4 w-4" />
+                        <Label className="font-bold">{t('birthday_label')}</Label>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                        <FormField
+                            control={form.control}
+                            name="birthday.day"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
+                                                <SelectValue placeholder={t('day')} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {Array.from({ length: 31 }, (_, i) => (
+                                                <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="birthday.month"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
+                                                <SelectValue placeholder={t('month_label')} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {monthNames.map((name, i) => (
+                                                <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="birthday.year"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            placeholder={t('year_label')} 
+                                            {...field} 
+                                            className="h-11 rounded-xl bg-muted/50 border-none"
+                                            min="1900"
+                                            max={new Date().getFullYear()}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
               </div>
-            </div>
+            </ScrollArea>
 
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('nickname_label')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('nickname_placeholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="statusMessage"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('account_description_label')}</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder={t('account_description_placeholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                    <Cake className="h-4 w-4" />
-                    <Label className="font-bold">{t('birthday_label')}</Label>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                    <FormField
-                        control={form.control}
-                        name="birthday.day"
-                        render={({ field }) => (
-                            <FormItem>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
-                                            <SelectValue placeholder={t('day')} />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {Array.from({ length: 31 }, (_, i) => (
-                                            <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="birthday.month"
-                        render={({ field }) => (
-                            <FormItem>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
-                                            <SelectValue placeholder={t('month_label')} />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {monthNames.map((name, i) => (
-                                            <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="birthday.year"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormControl>
-                                    <Input 
-                                        type="number" 
-                                        placeholder={t('year_label')} 
-                                        {...field} 
-                                        className="h-11 rounded-xl bg-muted/50 border-none"
-                                        min="1900"
-                                        max={new Date().getFullYear()}
-                                    />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
-                </div>
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className='rounded-xl'>
+            <DialogFooter className="p-6 pt-2 shrink-0 gap-2 border-t mt-auto">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className='rounded-xl flex-1'>
                 {t('cancel')}
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting} className='rounded-xl font-bold'>
+              <Button type="submit" disabled={form.formState.isSubmitting} className='rounded-xl font-bold flex-1'>
                 {form.formState.isSubmitting ? <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> {t('saving')}</> : t('save')}
               </Button>
             </DialogFooter>
           </form>
         </Form>
-    </>
+    </div>
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='rounded-[1.5rem]'>
+      <DialogContent className='rounded-[2rem] p-0 overflow-hidden max-w-sm'>
         {dialogContent}
       </DialogContent>
     </Dialog>
