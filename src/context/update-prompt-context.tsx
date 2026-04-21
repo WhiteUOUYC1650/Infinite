@@ -7,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "0.4 Beta";
+const CURRENT_APP_VERSION = "0.4.1 Beta";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
@@ -119,11 +119,6 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
   const promptUpdate = useCallback(() => {
     setIsOpen(true);
   }, []);
-
-  const handleClose = () => {
-    // Explicitly set to false and let the dialog clean up
-    setIsOpen(false);
-  };
 
   const value = {
     promptUpdate,

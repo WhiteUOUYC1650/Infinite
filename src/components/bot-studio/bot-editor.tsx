@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -173,16 +172,47 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
 
   const moveBlock = (sIdx: number, bIdx: number, direction: 'up' | 'down') => {
     const newScripts = [...scripts];
-    const targetIdx = direction === 'up' ? bIdx - 1 : bIdx + 1;
+    const script = { ...newScripts[sIdx] };
+    const blocks = [...script.blocks];
     
-    if (targetIdx < 0 || targetIdx >= newScripts[sIdx].blocks.length) return;
+    // Don't move trigger blocks (index 0)
+    if (bIdx === 0) return;
 
-    const blocks = [...newScripts[sIdx].blocks];
-    const temp = blocks[bIdx];
-    blocks[bIdx] = blocks[targetIdx];
-    blocks[targetIdx] = temp;
-
-    newScripts[sIdx] = { ...newScripts[sIdx], blocks };
+    if (direction === 'up') {
+        if (bIdx > 1) {
+            // Standard swap within script
+            const temp = blocks[bIdx];
+            blocks[bIdx] = blocks[bIdx - 1];
+            blocks[bIdx - 1] = temp;
+            newScripts[sIdx] = { ...script, blocks };
+        } else if (sIdx > 0) {
+            // Move to end of previous script
+            const prevScript = { ...newScripts[sIdx - 1] };
+            const prevBlocks = [...prevScript.blocks];
+            const blockToMove = blocks.splice(bIdx, 1)[0];
+            prevBlocks.push(blockToMove);
+            
+            newScripts[sIdx - 1] = { ...prevScript, blocks: prevBlocks };
+            newScripts[sIdx] = { ...script, blocks };
+        }
+    } else { // direction === 'down'
+        if (bIdx < blocks.length - 1) {
+            // Standard swap within script
+            const temp = blocks[bIdx];
+            blocks[bIdx] = blocks[bIdx + 1];
+            blocks[bIdx + 1] = temp;
+            newScripts[sIdx] = { ...script, blocks };
+        } else if (sIdx < newScripts.length - 1) {
+            // Move to start (after trigger) of next script
+            const nextScript = { ...newScripts[sIdx + 1] };
+            const nextBlocks = [...nextScript.blocks];
+            const blockToMove = blocks.splice(bIdx, 1)[0];
+            nextBlocks.splice(1, 0, blockToMove);
+            
+            newScripts[sIdx + 1] = { ...nextScript, blocks: nextBlocks };
+            newScripts[sIdx] = { ...script, blocks };
+        }
+    }
     setScripts(newScripts);
   };
 
@@ -239,8 +269,8 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                                 block={block} 
                                 sIdx={sIdx} 
                                 bIdx={bIdx}
-                                isFirst={bIdx === 0}
-                                isLast={bIdx === script.blocks.length - 1}
+                                isFirst={bIdx === 1 && sIdx === 0}
+                                isLast={bIdx === script.blocks.length - 1 && sIdx === scripts.length - 1}
                                 onUpdate={updateBlockParam}
                                 onDelete={removeBlock}
                                 onMove={moveBlock}
@@ -389,6 +419,7 @@ function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: stri
 function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDelete, onMove }: { block: BotBlock, sIdx: number, bIdx: number, isFirst: boolean, isLast: boolean, onUpdate: any, onDelete: any, onMove: any }) {
     const { t } = useLanguage();
     const Icon = BLOCK_ICONS[block.type];
+    const isTrigger = bIdx === 0;
 
     const renderParams = () => {
         switch (block.type) {
@@ -413,41 +444,43 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
     };
 
     return (
-        <div className={cn("w-full p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all active:scale-[0.98]", BLOCK_COLORS[block.type])}>
+        <div className={cn("w-full p-4 rounded-3xl border-b-4 text-white shadow-xl relative group transition-all", isTrigger ? "" : "active:scale-[0.98]", BLOCK_COLORS[block.type])}>
             <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                     <div className="p-1.5 bg-black/10 rounded-xl shrink-0"><Icon className="h-4 w-4" /></div>
                     <span className="font-black uppercase tracking-widest text-[10px] truncate">{t(`block_${block.type.replace('action_', '').replace('event_', '').replace('logic_', '')}` as any) || block.type}</span>
                 </div>
                 
-                <div className="flex items-center gap-1 shrink-0">
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        disabled={isFirst} 
-                        onClick={() => onMove(sIdx, bIdx, 'up')}
-                        className="h-7 w-7 rounded-lg bg-black/10 hover:bg-black/20 text-white disabled:opacity-20"
-                    >
-                        <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        disabled={isLast} 
-                        onClick={() => onMove(sIdx, bIdx, 'down')}
-                        className="h-7 w-7 rounded-lg bg-black/10 hover:bg-black/20 text-white disabled:opacity-20"
-                    >
-                        <ChevronDown className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => onDelete(sIdx, bIdx)}
-                        className="h-7 w-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-white ml-1 sm:ml-2"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
+                {!isTrigger && (
+                    <div className="flex items-center gap-1 shrink-0">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={isFirst} 
+                            onClick={() => onMove(sIdx, bIdx, 'up')}
+                            className="h-7 w-7 rounded-lg bg-black/10 hover:bg-black/20 text-white disabled:opacity-20"
+                        >
+                            <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={isLast} 
+                            onClick={() => onMove(sIdx, bIdx, 'down')}
+                            className="h-7 w-7 rounded-lg bg-black/10 hover:bg-black/20 text-white disabled:opacity-20"
+                        >
+                            <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => onDelete(sIdx, bIdx)}
+                            className="h-7 w-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-white ml-1 sm:ml-2"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
             </div>
             {renderParams()}
         </div>

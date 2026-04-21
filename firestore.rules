@@ -45,8 +45,8 @@ service cloud.firestore {
       allow read: if true; 
       allow list: if true; 
       allow create: if isOwner(userId) || (isSignedIn() && request.resource.data.isBot == true && request.resource.data.botOwnerId == request.auth.uid);
-      // Разрешаем обновление баланса другим пользователям (для трансферов) и системных полей
-      allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge']));
+      // Разрешаем обновление системных полей
+      allow update: if isAdmin() || isOwner(userId) || isBotOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge']));
       allow delete: if isOwner(userId) || isAdmin() || isBotOwner(userId);
 
       match /private/security {
@@ -114,7 +114,7 @@ service cloud.firestore {
 
     // История переводов
     match /transfers/{transferId} {
-        allow read: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+        allow read, list: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
     
