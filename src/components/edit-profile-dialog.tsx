@@ -53,7 +53,18 @@ const formSchema = z.object({
     day: z.string(),
     month: z.string(),
     year: z.string().optional(),
-  }).optional(),
+  }),
+}).refine((data) => {
+  const { day, month, year } = data.birthday;
+  const isAnyFieldFilled = !!day || !!month || !!year;
+  // If any part of birthday is touched, both day and month are required.
+  if (isAnyFieldFilled) {
+    return !!day && !!month;
+  }
+  return true;
+}, {
+  message: 'Day and month are required.',
+  path: ['birthday.day'],
 });
 
 interface EditProfileDialogProps {
@@ -148,6 +159,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: {
       name: user.name || '',
       statusMessage: user.statusMessage || '',
@@ -199,7 +211,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             },
         });
         setAvatarPreview(user.avatar);
-        setImageToCrop(''); // Also reset cropper state
+        setImageToCrop('');
     }
   }, [open, user, form]);
 
@@ -210,7 +222,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 2 * 1024 * 1024) {
         toast({
             variant: 'destructive',
             title: 'Image too large',
@@ -218,7 +230,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
         });
         return;
       }
-      setCrop(undefined) // Makes crop preview update between images.
+      setCrop(undefined)
       const reader = new FileReader();
       reader.addEventListener('load', () =>
         setImageToCrop(reader.result?.toString() || ''),
@@ -261,6 +273,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
         statusMessage: values.statusMessage,
         hasSetNickname: true,
         avatar: values.avatar,
+        birthday: null, // Default to null if cleared
     };
 
     if (values.birthday?.day && values.birthday?.month) {
@@ -332,7 +345,6 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
             <ScrollArea className="flex-1 px-6 py-4">
               <div className="space-y-6 pb-4">
-                {/* Avatar uploader */}
                 <div className="flex justify-center">
                   <div className="relative">
                     <button type="button" onClick={handleAvatarClick} className="rounded-full">
@@ -467,7 +479,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className='rounded-xl flex-1'>
                 {t('cancel')}
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting} className='rounded-xl font-bold flex-1'>
+              <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid} className='rounded-xl font-bold flex-1'>
                 {form.formState.isSubmitting ? <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> {t('saving')}</> : t('save')}
               </Button>
             </DialogFooter>
