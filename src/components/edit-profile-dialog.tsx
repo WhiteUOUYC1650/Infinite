@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore } from '@/firebase';
@@ -28,7 +28,7 @@ import type { AuthenticatedUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -159,6 +159,31 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       },
     },
   });
+
+  const watchMonth = useWatch({ control: form.control, name: 'birthday.month' });
+  const watchYear = useWatch({ control: form.control, name: 'birthday.year' });
+  const watchDay = useWatch({ control: form.control, name: 'birthday.day' });
+
+  // Calculate days in month
+  const daysInMonth = useMemo(() => {
+    const month = parseInt(watchMonth);
+    if (!month) return 31;
+    
+    if ([4, 6, 9, 11].includes(month)) return 30;
+    if (month === 2) {
+      const year = parseInt(watchYear || '0');
+      if (year && ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0)) return 29;
+      return 28;
+    }
+    return 31;
+  }, [watchMonth, watchYear]);
+
+  // Adjust day if month change makes current day invalid
+  useEffect(() => {
+    if (watchDay && parseInt(watchDay) > daysInMonth) {
+      form.setValue('birthday.day', '', { shouldValidate: true });
+    }
+  }, [daysInMonth, watchDay, form]);
 
   // Reset form and preview when dialog opens/closes or user changes
   useEffect(() => {
@@ -379,8 +404,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                                 <SelectValue placeholder={t('day')} />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent>
-                                            {Array.from({ length: 31 }, (_, i) => (
+                                        <SelectContent position="popper" className="max-h-[300px]">
+                                            {Array.from({ length: daysInMonth }, (_, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -399,7 +424,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                                 <SelectValue placeholder={t('month_label')} />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent>
+                                        <SelectContent position="popper" className="max-h-[300px]">
                                             {monthNames.map((name, i) => (
                                                 <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
                                             ))}
@@ -422,6 +447,12 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                             className="h-11 rounded-xl bg-muted/50 border-none"
                                             min="1900"
                                             max={new Date().getFullYear()}
+                                            onBlur={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                const currentYear = new Date().getFullYear();
+                                                if (val < 1900) form.setValue('birthday.year', '1900');
+                                                if (val > currentYear) form.setValue('birthday.year', currentYear.toString());
+                                            }}
                                         />
                                     </FormControl>
                                 </FormItem>
