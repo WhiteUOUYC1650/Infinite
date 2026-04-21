@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -49,8 +50,8 @@ const formSchema = z.object({
   statusMessage: z.string().max(120, { message: 'Status must be 120 characters or less.' }).optional(),
   avatar: z.string().optional(),
   birthday: z.object({
-    day: z.string().min(1),
-    month: z.string().min(1),
+    day: z.string(),
+    month: z.string(),
     year: z.string().optional(),
   }).optional(),
 });
@@ -151,11 +152,11 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       name: user.name || '',
       statusMessage: user.statusMessage || '',
       avatar: user.avatar || '',
-      birthday: user.birthday ? {
-        day: user.birthday.day.toString(),
-        month: user.birthday.month.toString(),
-        year: user.birthday.year?.toString() || '',
-      } : undefined,
+      birthday: {
+        day: user.birthday?.day?.toString() || '',
+        month: user.birthday?.month?.toString() || '',
+        year: user.birthday?.year?.toString() || '',
+      },
     },
   });
 
@@ -166,11 +167,11 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             name: user.name || '',
             statusMessage: user.statusMessage || '',
             avatar: user.avatar || '',
-            birthday: user.birthday ? {
-                day: user.birthday.day.toString(),
-                month: user.birthday.month.toString(),
-                year: user.birthday.year?.toString() || '',
-            } : undefined,
+            birthday: {
+                day: user.birthday?.day?.toString() || '',
+                month: user.birthday?.month?.toString() || '',
+                year: user.birthday?.year?.toString() || '',
+            },
         });
         setAvatarPreview(user.avatar);
         setImageToCrop(''); // Also reset cropper state
@@ -281,7 +282,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                     ref={imgRef}
                     alt="Crop me"
                     src={imageToCrop}
-                    onImageLoad={onImageLoad}
+                    onLoad={onImageLoad}
                     className="max-h-full max-w-full object-contain"
                 />
             </ReactCrop>
@@ -372,7 +373,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                             name="birthday.day"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
                                         <FormControl>
                                             <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
                                                 <SelectValue placeholder={t('day')} />
@@ -392,7 +393,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                             name="birthday.month"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
                                         <FormControl>
                                             <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
                                                 <SelectValue placeholder={t('month_label')} />
@@ -417,6 +418,7 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
                                             type="number" 
                                             placeholder={t('year_label')} 
                                             {...field} 
+                                            value={field.value ?? ''}
                                             className="h-11 rounded-xl bg-muted/50 border-none"
                                             min="1900"
                                             max={new Date().getFullYear()}
