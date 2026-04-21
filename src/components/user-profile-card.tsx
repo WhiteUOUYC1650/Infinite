@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useMemo } from 'react';
 import type { AuthenticatedUser, User } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
