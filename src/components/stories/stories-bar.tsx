@@ -65,7 +65,7 @@ export function StoriesBar({ currentUser }: { currentUser: AuthenticatedUser }) 
   const currentUserHasStories = stories.some(s => s.userId === currentUser.uid);
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 overflow-x-auto no-scrollbar bg-background/50 backdrop-blur-sm border-b">
+    <div className="flex items-center gap-4 px-4 py-3 overflow-x-auto no-scrollbar bg-background/50 backdrop-blur-sm border-b shrink-0 h-28">
       {/* My Story / Add Story Button */}
       <div className="flex flex-col items-center gap-1 shrink-0">
         <div className="relative group">

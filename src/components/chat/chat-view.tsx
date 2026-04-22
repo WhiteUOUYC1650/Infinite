@@ -748,16 +748,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     lastScrollHeightRef.current = container.scrollHeight;
   }, [messages, item.id, scrollToBottom]);
 
-  // Handle new messages sent by current user
+  // "Eternal scroll" cycle during message appearance animations
   useEffect(() => {
     if (messages && messages.length > 0) {
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg.senderId === currentUser.uid) {
-            scrollToBottom(smoothScroll ? 'smooth' : 'auto');
-        }
-    }
-  }, [messages, currentUser.uid, scrollToBottom, smoothScroll]);
+        const interval = setInterval(() => {
+            scrollToBottom('auto');
+        }, 50);
 
+        const timeout = setTimeout(() => {
+            clearInterval(interval);
+        }, 1500);
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timeout);
+        };
+    }
+  }, [messages?.length, item.id, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -2411,7 +2418,7 @@ const handleForward = async (targetChatId: string) => {
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={handleSendMessageToUser} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(u => item.members.includes(u.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={handleJoinDiscussion} />}
       <GroupCallDialog open={showGroupCallDialog} onOpenChange={setShowGroupCallDialog} chat={item} currentUser={currentUser} isOwner={isOwner} />
-      {previewImage && <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}><DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90" hideCloseButton><div className="relative w-full h-full flex items-center justify-center"><img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" /></div></DialogContent></Dialog>}
+      {previewImage && <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}><DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90"><div className="relative w-full h-full flex items-center justify-center"><img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" /></div></DialogContent></Dialog>}
       <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={handleSendPoll} />
       <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={handleForward} currentUser={currentUser} />
@@ -2688,3 +2695,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
