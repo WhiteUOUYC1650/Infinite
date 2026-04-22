@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -243,6 +244,8 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
 
     const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
     const accentClass = isDarkMode ? "bg-black" : "bg-white";
+
+    if (!src) return null;
 
     return (
         <div className={cn(
@@ -715,86 +718,46 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return new Date().getFullYear() - otherUser.birthday.year;
   }, [isBirthdayToday, otherUser?.birthday?.year]);
 
-  const initialLoadRef = useRef<Record<string, boolean>>({});
-  const prevMessagesCountRef = useRef<Record<string, number>>({});
-  const prevScrollHeightRef = useRef<number>(0);
-
-  const scrollToBottom = useCallback((behaviorOverride?: ScrollBehavior) => {
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (scrollContainerRef.current) {
-        const behavior = behaviorOverride || (smoothScroll ? 'smooth' : 'auto');
         const container = scrollContainerRef.current;
-        
-        const performScroll = () => {
-            if (container) {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior
-                });
-            }
-        };
-
-        requestAnimationFrame(performScroll);
-        setTimeout(performScroll, 50);
-        setTimeout(performScroll, 150);
+        requestAnimationFrame(() => {
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: behavior
+            });
+        });
     }
-  }, [smoothScroll]);
+  }, []);
+
+  const prevMessagesLength = useRef(0);
+  const initialLoadRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (messagesLoading || !messages) return;
-
-    const currentChatId = item.id;
-    const currentCount = messages.length;
-    const prevCount = prevMessagesCountRef.current[currentChatId] || 0;
-
-    if (!initialLoadRef.current[currentChatId]) {
-        initialLoadRef.current[currentChatId] = true;
-        prevMessagesCountRef.current[currentChatId] = currentCount;
-        scrollToBottom('auto');
-    } else if (currentCount > prevCount) {
-        // If we prepended messages (scrolled up to load more), adjust scroll position to prevent jump
-        if (scrollContainerRef.current && scrollContainerRef.current.scrollTop < 200) {
-            const delta = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current;
-            if (delta > 0) {
-                scrollContainerRef.current.scrollTop += delta;
-            }
-        } else {
-            // New message arrived at the bottom
-            scrollToBottom();
-        }
-        prevMessagesCountRef.current[currentChatId] = currentCount;
-    }
+    if (!messages) return;
     
-    if (scrollContainerRef.current) {
-        prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
-    }
-  }, [messages, messagesLoading, item.id, scrollToBottom]);
-
-  useEffect(() => {
-    if (item.id) {
-        initialLoadRef.current[item.id] = false;
-        setMessageLimit(50);
-    }
-  }, [item.id]);
-
-  // Infinite Scroll Sentinel Observer
-  useEffect(() => {
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel || !hasMore || messagesLoading) return;
-
-    const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-            setMessageLimit(prev => prev + 50);
+    const isFirstLoad = !initialLoadRef.current[item.id];
+    if (isFirstLoad) {
+        initialLoadRef.current[item.id] = true;
+        scrollToBottom('auto');
+    } else if (messages.length > prevMessagesLength.current) {
+        // Only scroll if a new message was added at the end (not when history loads)
+        // If we are doing infinite scroll, we should anchor, but here we just want basic scroll down
+        const isNearBottom = scrollContainerRef.current && 
+            (scrollContainerRef.current.scrollHeight - scrollContainerRef.current.scrollTop - scrollContainerRef.current.clientHeight < 300);
+        
+        if (isNearBottom || messages[messages.length - 1].senderId === currentUser.uid) {
+            scrollToBottom(smoothScroll ? 'smooth' : 'auto');
         }
-    }, { threshold: 0.1 });
+    }
+    prevMessagesLength.current = messages.length;
+  }, [messages, item.id, scrollToBottom, smoothScroll, currentUser.uid]);
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, messagesLoading]);
 
   const handleMediaLoad = useCallback(() => {
-    if (scrollContainerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 250;
+    const container = scrollContainerRef.current;
+    if (container) {
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
         if (isNearBottom) {
             scrollToBottom();
         }
@@ -827,14 +790,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
         setStickyDate(currentStickyDate);
 
-    }, []);
+        // Infinite Scroll
+        if (scrollTop < 50 && hasMore && !messagesLoading) {
+            setMessageLimit(prev => prev + 50);
+        }
 
-    useEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-        handleScroll(); 
-    }, [handleScroll, messages]); 
-
+    }, [hasMore, messagesLoading]);
 
   const handleSendMessageToUser = async (targetUser: User) => {
     if (!db || !currentUser || targetUser.isDeleted) return;
@@ -2189,10 +2150,9 @@ const handleForward = async (targetChatId: string) => {
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left))] pr-[env(safe-area-inset-right))]">
-                  <div ref={loadMoreSentinelRef} className="h-4 w-full flex items-center justify-center py-8">
-                      {hasMore && <Loader2 className="h-6 w-6 animate-spin text-primary opacity-50" />}
-                  </div>
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left))] pr-[env(safe-area-inset-right))] flex flex-col">
+                  <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
+                  <div className="flex-1" />
                   {isLoading && messageLimit === 50 ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -2680,10 +2640,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 <div className="overflow-hidden">
                     {message.voiceStatus === 'complete' ? <CustomAudioPlayer src={voiceUrl || ''} hideTime={true} /> :
-                     message.circleStatus === 'complete' ? <div className="rounded-full overflow-hidden w-48 h-48 bg-black"><video ref={circleVideoRef} src={circleUrl || ''} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" /></div> :
+                     message.circleStatus === 'complete' ? <div className="rounded-full overflow-hidden w-48 h-48 bg-black">{circleUrl && <video ref={circleVideoRef} src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}</div> :
                      message.videoMimeType ? <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={fetchAndCacheVideo}>{videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}</div> :
                      message.musicMimeType ? <CustomAudioPlayer src={musicUrl || ''} isMusic={true} fileName={message.fileName} /> :
-                     message.imageUrl ? <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full rounded-lg cursor-pointer" /> :
+                     message.imageUrl ? <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
                      message.poll ? <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} /> :
                      <div className="text-sm break-words whitespace-pre-wrap"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>}
                 </div>
@@ -2700,7 +2660,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>
-                        {isCurrentUser && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
                         {isCurrentUser && <DropdownMenuItem onSelect={handleDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -2708,3 +2668,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
