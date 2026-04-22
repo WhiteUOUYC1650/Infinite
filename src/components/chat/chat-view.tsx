@@ -201,14 +201,14 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
     const [maxTime, setMaxTime] = useState(duration || 0);
 
     useEffect(() => {
-        if (audioRef.current) {
+        if (audioRef.current && src) {
             audioRef.current.load();
         }
     }, [src]);
 
     const togglePlay = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (audioRef.current) {
+        if (audioRef.current && src) {
             if (isPlaying) audioRef.current.pause();
             else audioRef.current.play();
             setIsPlaying(!isPlaying);
@@ -242,10 +242,10 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
         }
     };
 
+    if (!src) return null;
+
     const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
     const accentClass = isDarkMode ? "bg-black" : "bg-white";
-
-    if (!src) return null;
 
     return (
         <div className={cn(
@@ -425,6 +425,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
@@ -719,18 +720,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [isBirthdayToday, otherUser?.birthday?.year]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    if (scrollContainerRef.current) {
-        const container = scrollContainerRef.current;
-        requestAnimationFrame(() => {
-            container.scrollTo({
-                top: container.scrollHeight,
-                behavior: behavior
-            });
-        });
+    if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior });
     }
   }, []);
 
-  const prevMessagesLength = useRef(0);
   const initialLoadRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -739,18 +733,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const isFirstLoad = !initialLoadRef.current[item.id];
     if (isFirstLoad) {
         initialLoadRef.current[item.id] = true;
-        scrollToBottom('auto');
-    } else if (messages.length > prevMessagesLength.current) {
-        // Only scroll if a new message was added at the end (not when history loads)
-        // If we are doing infinite scroll, we should anchor, but here we just want basic scroll down
-        const isNearBottom = scrollContainerRef.current && 
-            (scrollContainerRef.current.scrollHeight - scrollContainerRef.current.scrollTop - scrollContainerRef.current.clientHeight < 300);
-        
-        if (isNearBottom || messages[messages.length - 1].senderId === currentUser.uid) {
+        setTimeout(() => scrollToBottom('auto'), 100);
+    } else {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg && lastMsg.senderId === currentUser.uid) {
             scrollToBottom(smoothScroll ? 'smooth' : 'auto');
         }
     }
-    prevMessagesLength.current = messages.length;
   }, [messages, item.id, scrollToBottom, smoothScroll, currentUser.uid]);
 
 
@@ -2150,7 +2139,7 @@ const handleForward = async (targetChatId: string) => {
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left))] pr-[env(safe-area-inset-right))] flex flex-col">
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] flex flex-col">
                   <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
                   <div className="flex-1" />
                   {isLoading && messageLimit === 50 ? (
@@ -2242,6 +2231,7 @@ const handleForward = async (targetChatId: string) => {
                                   </React.Fragment>
                               );
                           })}
+                          <div ref={messagesEndRef} className="h-px" />
                       </div>
                   ) : (
                       <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">
@@ -2616,7 +2606,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const displayName = message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name);
 
     return (
-        <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
+        <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {((chatType === 'group' && !isCurrentUser) || message.type === 'announcement') ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     <button onClick={handleAvatarClick} disabled={isCurrentUser || (message.type === 'announcement' && !message.fromChannelId) || (sender && !!sender.isDeleted)}>

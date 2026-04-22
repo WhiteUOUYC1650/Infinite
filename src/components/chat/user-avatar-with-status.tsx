@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -58,7 +59,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
   return (
     <div className={cn("relative h-10 w-10 shrink-0", className)}>
       <Avatar className="h-full w-full text-inherit">
-        {user?.avatar ? <AvatarImage src={user.avatar} alt={user.name} /> : null}
+        {user?.avatar ? <AvatarImage src={user.avatar} alt={user.name || 'User'} /> : null}
         <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
             {user?.name?.charAt(0) || '?'}
         </AvatarFallback>
@@ -74,3 +75,4 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     </div>
   );
 }
+

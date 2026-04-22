@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -1021,7 +1022,7 @@ export const translations = {
       'poll_anonymous_label': 'Анонимное голосование',
       'poll_multiple_choice_label': 'Выбор нескольких вариантов',
       'poll_add_option': 'Добавить вариант',
-      'poll_vote_count': '{count, plural, one {# голос} few {# голоса} other {# годов}}',
+      'poll_vote_count': '{count, plural, one {# голос} few {# голоса} other {# голосов}}',
       'poll_total_votes': 'Всего голосов: {count}',
       'poll_view_results': 'Посмотреть результаты',
       'poll_retract_vote': 'Отменить голос',
@@ -1139,3 +1140,4 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
     return values[key] !== undefined ? String(values[key]) : match;
   });
 }
+
