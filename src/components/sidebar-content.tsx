@@ -20,7 +20,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -42,6 +42,8 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { StoriesBar } from './stories/stories-bar';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const iconMap = {
     Users,
@@ -361,212 +363,210 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         </div>
       </SidebarHeader>
 
-      <ScrollArea className="flex-1">
-        <SidebarBody className="px-2">
-            <StoriesBar currentUser={currentUser} />
-            
-            <HolidayBanner />
+      <SidebarBody className="px-2">
+          <StoriesBar currentUser={currentUser} />
+          
+          <HolidayBanner />
 
-            <div className="py-1 space-y-0.5">
-                {showFeed && (
-                  <Button
-                      variant="ghost"
-                      onClick={() => { onSelect('feed'); setOpenMobile(false); }}
-                      className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                  >
-                      <div className="flex items-center gap-3 w-full">
-                          <Newspaper className="h-4 w-4 text-muted-foreground" />
-                          <p className="font-semibold text-sm">{t('feed_title')}</p>
+          <div className="py-1 space-y-0.5">
+              {showFeed && (
+                <Button
+                    variant="ghost"
+                    onClick={() => { onSelect('feed'); setOpenMobile(false); }}
+                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                >
+                    <div className="flex items-center gap-3 w-full">
+                        <Newspaper className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-semibold text-sm">{t('feed_title')}</p>
+                    </div>
+                </Button>
+              )}
+              <Button
+                  variant="ghost"
+                  onClick={handleSelectSavedMessages}
+                  className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === currentUser.uid && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+              >
+                  <div className="flex items-center gap-3 w-full">
+                      <Bookmark className="h-4 w-4 text-muted-foreground" />
+                      <p className="font-semibold text-sm">{t('saved_messages')}</p>
+                  </div>
+              </Button>
+              <Button
+                  variant="ghost"
+                  onClick={handleSelectGeneralChat}
+                  className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'GENERAL_CHAT' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+              >
+                  <div className="flex items-center gap-3 w-full">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                         <p className="font-semibold text-sm">{t('general_chat')}</p>
                       </div>
-                  </Button>
-                )}
-                <Button
-                    variant="ghost"
-                    onClick={handleSelectSavedMessages}
-                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === currentUser.uid && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                >
-                    <div className="flex items-center gap-3 w-full">
-                        <Bookmark className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-semibold text-sm">{t('saved_messages')}</p>
-                    </div>
-                </Button>
-                <Button
-                    variant="ghost"
-                    onClick={handleSelectGeneralChat}
-                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'GENERAL_CHAT' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                >
-                    <div className="flex items-center gap-3 w-full">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex items-center gap-2">
-                           <p className="font-semibold text-sm">{t('general_chat')}</p>
-                        </div>
-                    </div>
-                </Button>
-                <Button
-                    variant="ghost"
-                    onClick={() => { onSelect('infvid'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                >
-                    <div className="flex items-center gap-3 w-full">
-                        <InfVidIcon className="h-4 w-4" />
-                        <div className="flex items-center gap-2">
-                           <p className="font-semibold text-sm">{t('infvid_title')}</p>
-                           <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
-                        </div>
-                    </div>
-                </Button>
-                <Button
-                    variant="ghost"
-                    onClick={() => { onSelect('infgames'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infgames' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                >
-                    <div className="flex items-center gap-3 w-full">
-                        <Gamepad2 className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex items-center gap-2">
-                           <p className="font-semibold text-sm">{t('infgames_title')}</p>
-                           <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
-                        </div>
-                    </div>
-                </Button>
-                <Button
-                    variant="ghost"
-                    onClick={() => { onSelect('bot_studio'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'bot_studio' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
-                >
-                    <div className="flex items-center gap-3 w-full">
-                        <Cpu className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex items-center gap-2">
-                           <p className="font-semibold text-sm">{t('bot_studio_title')}</p>
-                           <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
-                        </div>
-                    </div>
-                </Button>
-            </div>
-          {chatsLoading ? (
-            <div className='p-4 text-xs'>{t('loading_chats')}</div>
-          ) : (
-          <Accordion
-            type="multiple"
-            defaultValue={['bots', 'direct-messages', 'groups', 'channels']}
-            className="w-full"
-          >
-            <AccordionItem value="bots" className="border-none">
-              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
-                {t('bots')}
-              </AccordionTrigger>
-              <AccordionContent className="pb-0">
-                <div className="space-y-0.5">
-                    {isBotLoading ? (
-                        <DMChatItemSkeleton />
-                    ) : primaryBots.length > 0 ? (
-                        primaryBots.map(bot => (
-                            <Button
-                                key={bot.id}
-                                variant="ghost"
-                                onClick={() => handleSelectBot(bot)}
-                                className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden", selectedId === [currentUser.uid, bot.id].sort().join('_') && 'bg-sidebar-accent')}
-                            >
-                                <div className="flex items-center gap-3 w-full">
-                                    <UserAvatarWithStatus user={bot} isSelected={selectedId === [currentUser.uid, bot.id].sort().join('_')} className="h-9 w-9" />
-                                    <div className="flex-1 w-0 min-w-0 overflow-hidden">
-                                         <div className="flex items-center gap-2">
-                                            <div className={cn("font-semibold truncate text-sm", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
-                                            <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Button>
-                        ))
-                    ) : (
-                        <div className='px-4 text-[10px] text-muted-foreground'>{t('no_bots_found')}</div>
-                    )}
+                  </div>
+              </Button>
+              <Button
+                  variant="ghost"
+                  onClick={() => { onSelect('infvid'); setOpenMobile(false); }}
+                  className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+              >
+                  <div className="flex items-center gap-3 w-full">
+                      <InfVidIcon className="h-4 w-4" />
+                      <div className="flex items-center gap-2">
+                         <p className="font-semibold text-sm">{t('infvid_title')}</p>
+                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
+                      </div>
+                  </div>
+              </Button>
+              <Button
+                  variant="ghost"
+                  onClick={() => { onSelect('infgames'); setOpenMobile(false); }}
+                  className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infgames' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+              >
+                  <div className="flex items-center gap-3 w-full">
+                      <Gamepad2 className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                         <p className="font-semibold text-sm">{t('infgames_title')}</p>
+                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
+                      </div>
+                  </div>
+              </Button>
+              <Button
+                  variant="ghost"
+                  onClick={() => { onSelect('bot_studio'); setOpenMobile(false); }}
+                  className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'bot_studio' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+              >
+                  <div className="flex items-center gap-3 w-full">
+                      <Cpu className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                         <p className="font-semibold text-sm">{t('bot_studio_title')}</p>
+                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
+                      </div>
+                  </div>
+              </Button>
+          </div>
+        {chatsLoading ? (
+          <div className='p-4 text-xs'>{t('loading_chats')}</div>
+        ) : (
+        <Accordion
+          type="multiple"
+          defaultValue={['bots', 'direct-messages', 'groups', 'channels']}
+          className="w-full"
+        >
+          <AccordionItem value="bots" className="border-none">
+            <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
+              {t('bots')}
+            </AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <div className="space-y-0.5">
+                  {isBotLoading ? (
+                      <DMChatItemSkeleton />
+                  ) : primaryBots.length > 0 ? (
+                      primaryBots.map(bot => (
+                          <Button
+                              key={bot.id}
+                              variant="ghost"
+                              onClick={() => handleSelectBot(bot)}
+                              className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden", selectedId === [currentUser.uid, bot.id].sort().join('_') && 'bg-sidebar-accent')}
+                          >
+                              <div className="flex items-center gap-3 w-full">
+                                  <UserAvatarWithStatus user={bot} isSelected={selectedId === [currentUser.uid, bot.id].sort().join('_')} className="h-9 w-9" />
+                                  <div className="flex-1 w-0 min-w-0 overflow-hidden">
+                                       <div className="flex items-center gap-2">
+                                          <div className={cn("font-semibold truncate text-sm", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
+                                          <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />
+                                      </div>
+                                  </div>
+                              </div>
+                          </Button>
+                      ))
+                  ) : (
+                      <div className='px-4 text-[10px] text-muted-foreground'>{t('no_bots_found')}</div>
+                  )}
 
-                    {dmUsersLoading ? null : (otherBotMessages.length > 0 && <Separator className="my-1 mx-4" />)}
+                  {dmUsersLoading ? null : (otherBotMessages.length > 0 && <Separator className="my-1 mx-4" />)}
 
-                    {dmUsersLoading ? (
-                        otherBotMessages.length > 0 && <DMChatItemSkeleton />
-                    ) : otherBotMessages.length > 0 ? (
-                        otherBotMessages.map((chat) => {
-                        const otherUserId = chat.members.find(id => id !== currentUser.uid);
-                        const otherUser = otherUserId ? dmUsers[otherUserId] : null;
-                        if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
-
-                        return (
-                            <DMChatItemComponent
-                            key={chat.id}
-                            item={chat}
-                            otherUser={otherUser}
-                            onSelect={handleSelect}
-                            selectedId={selectedId}
-                            currentUserId={currentUser.uid}
-                            />
-                        );
-                    })) : null}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="direct-messages" className="border-none">
-              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
-                {t('direct_messages')}
-              </AccordionTrigger>
-              <AccordionContent className="pb-0">
-                <div className="space-y-0.5">
                   {dmUsersLoading ? (
-                    <>
-                        <DMChatItemSkeleton />
-                        <DMChatItemSkeleton />
-                    </>
-                  ) : userDirectMessages.map((chat) => {
-                    const otherUserId = chat.members.find(id => id !== currentUser.uid);
-                    const otherUser = otherUserId ? dmUsers[otherUserId] : null;
-                    if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
+                      otherBotMessages.length > 0 && <DMChatItemSkeleton />
+                  ) : otherBotMessages.length > 0 ? (
+                      otherBotMessages.map((chat) => {
+                      const otherUserId = chat.members.find(id => id !== currentUser.uid);
+                      const otherUser = otherUserId ? dmUsers[otherUserId] : null;
+                      if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
 
-                    return (
-                        <DMChatItemComponent
-                            key={chat.id}
-                            item={chat}
-                            otherUser={otherUser}
-                            onSelect={handleSelect}
-                            selectedId={selectedId}
-                            currentUserId={currentUser.uid}
-                        />
-                    );
-                  })}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+                      return (
+                          <DMChatItemComponent
+                          key={chat.id}
+                          item={chat}
+                          otherUser={otherUser}
+                          onSelect={handleSelect}
+                          selectedId={selectedId}
+                          currentUserId={currentUser.uid}
+                          />
+                      );
+                  })) : null}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-            <AccordionItem value="groups" className="border-none">
-              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
-                {t('groups')}
-              </AccordionTrigger>
-              <AccordionContent className="pb-0">
-                <div className="space-y-0.5">
-                  {groupDiscussions.map((chat) => (
-                    <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+          <AccordionItem value="direct-messages" className="border-none">
+            <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
+              {t('direct_messages')}
+            </AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <div className="space-y-0.5">
+                {dmUsersLoading ? (
+                  <>
+                      <DMChatItemSkeleton />
+                      <DMChatItemSkeleton />
+                  </>
+                ) : userDirectMessages.map((chat) => {
+                  const otherUserId = chat.members.find(id => id !== currentUser.uid);
+                  const otherUser = otherUserId ? dmUsers[otherUserId] : null;
+                  if (!otherUser) return <DMChatItemSkeleton key={chat.id} />;
 
-            <AccordionItem value="channels" className="border-none">
-              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
-                {t('channels')}
-              </AccordionTrigger>
-              <AccordionContent className="pb-0">
-                <div className="space-y-0.5">
-                  {channels.map((channel) => (
-                     <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+                  return (
+                      <DMChatItemComponent
+                          key={chat.id}
+                          item={chat}
+                          otherUser={otherUser}
+                          onSelect={handleSelect}
+                          selectedId={selectedId}
+                          currentUserId={currentUser.uid}
+                      />
+                  );
+                })}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-          </Accordion>
-          )}
-        </SidebarBody>
-      </ScrollArea>
+          <AccordionItem value="groups" className="border-none">
+            <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
+              {t('groups')}
+            </AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <div className="space-y-0.5">
+                {groupDiscussions.map((chat) => (
+                  <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="channels" className="border-none">
+            <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
+              {t('channels')}
+            </AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <div className="space-y-0.5">
+                {channels.map((channel) => (
+                   <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+        </Accordion>
+        )}
+      </SidebarBody>
       
       <Separator />
 
@@ -669,19 +669,8 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
   const lastMessage = item.lastMessage;
-  let lastMessageContent: string | undefined;
-  if (lastMessage?.imageUrl) {
-    lastMessageContent = t('image_attachment_placeholder');
-  } else if (lastMessage?.videoMimeType) {
-    lastMessageContent = t('video_attachment_placeholder');
-  } else if (lastMessage?.musicMimeType) {
-    lastMessageContent = t('music_attachment_placeholder');
-  } else {
-    lastMessageContent = lastMessage?.content;
-  }
   
   const lastMessageSenderIsCurrentUser = lastMessage?.senderId === currentUserId;
-
   const otherUserIdInDM = item.members.find(id => id !== currentUserId);
 
   const isRead = useMemo(() => {
@@ -691,6 +680,18 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
     }
     return false;
   }, [lastMessage, lastMessageSenderIsCurrentUser, item.type, otherUserIdInDM]);
+
+  const { icon: AttachmentIcon, text: attachmentText } = useMemo(() => {
+    if (lastMessage?.imageUrl) return { icon: <ImageIcon className="h-3 w-3 shrink-0" />, text: t('photo') };
+    if (lastMessage?.videoMimeType) return { icon: <VideoIcon className="h-3 w-3 shrink-0" />, text: t('video') };
+    if (lastMessage?.musicMimeType) return { icon: <MusicIcon className="h-3 w-3 shrink-0" />, text: t('music') };
+    if (lastMessage?.voiceStatus) return { icon: <Mic className="h-3 w-3 shrink-0" />, text: t('voice_message_short') };
+    if (lastMessage?.fileStatus) return { icon: <FileIcon className="h-3 w-3 shrink-0" />, text: t('file') };
+    if (lastMessage?.poll) return { icon: <ListTodo className="h-3 w-3 shrink-0" />, text: t('poll') };
+    return { icon: null, text: '' };
+  }, [lastMessage, t]);
+
+  const displayContent = lastMessage?.content || attachmentText;
 
   return (
     <Button
@@ -714,17 +715,22 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                         </>
                     )}
                 </div>
-                {lastMessageContent && 
-                    <p className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
-                        {lastMessageSenderIsCurrentUser && !isSavedMessages ? (
+                {displayContent && 
+                    <div className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                        {lastMessageSenderIsCurrentUser && !isSavedMessages && (
                             (lastMessage.videoStatus === 'uploading' || lastMessage.musicStatus === 'uploading') ? (
                                 <Clock className="h-2.5 w-2.5 shrink-0" />
                             ) : (
-                                isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5 shrink-0" />
+                                isRead ? <CheckCheck className="h-3 w-3 shrink-0" /> : <Check className="h-2.5 w-2.5 shrink-0" />
                             )
-                        ) : null}
-                       <span className="truncate">{lastMessageContent}</span>
-                    </p>
+                        )}
+                        {AttachmentIcon}
+                        <div className="truncate flex-1">
+                            <ReactMarkdown components={{ p: ({children}) => <span className="inline">{children}</span> }}>
+                                {displayContent}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
                 }
             </div>
         </div>
@@ -751,16 +757,17 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     return false;
   }, [lastMessage, senderIsCurrentUser, item.type, currentUserId]);
   
-  let lastMessageContent: string | undefined;
-  if (lastMessage?.imageUrl) {
-    lastMessageContent = t('image_attachment_placeholder');
-  } else if (lastMessage?.videoMimeType) {
-    lastMessageContent = t('video_attachment_placeholder');
-  } else if (lastMessage?.musicMimeType) {
-    lastMessageContent = t('music_attachment_placeholder');
-  } else {
-    lastMessageContent = lastMessage?.content;
-  }
+  const { icon: AttachmentIcon, text: attachmentText } = useMemo(() => {
+    if (lastMessage?.imageUrl) return { icon: <ImageIcon className="h-3 w-3 shrink-0" />, text: t('photo') };
+    if (lastMessage?.videoMimeType) return { icon: <VideoIcon className="h-3 w-3 shrink-0" />, text: t('video') };
+    if (lastMessage?.musicMimeType) return { icon: <MusicIcon className="h-3 w-3 shrink-0" />, text: t('music') };
+    if (lastMessage?.voiceStatus) return { icon: <Mic className="h-3 w-3 shrink-0" />, text: t('voice_message_short') };
+    if (lastMessage?.fileStatus) return { icon: <FileIcon className="h-3 w-3 shrink-0" />, text: t('file') };
+    if (lastMessage?.poll) return { icon: <ListTodo className="h-3 w-3 shrink-0" />, text: t('poll') };
+    return { icon: null, text: '' };
+  }, [lastMessage, t]);
+
+  const displayContent = lastMessage?.content || attachmentText;
 
   let senderPrefix = '';
   if (item.type === 'group' && lastMessage && !senderIsCurrentUser) {
@@ -792,19 +799,22 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
             </div>
             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
           </div>
-          {lastMessageContent && (
-            <p className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+          {displayContent && (
+            <div className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
                 {senderIsCurrentUser ? (
                     (lastMessage?.videoStatus === 'uploading' || lastMessage?.musicStatus === 'uploading') ? (
                         <Clock className="h-2.5 w-2.5 shrink-0" />
                     ) : (
-                        isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5 shrink-0" />
+                        isRead ? <CheckCheck className="h-3 w-3 shrink-0" /> : <Check className="h-2.5 w-2.5 shrink-0" />
                     )
-                ) : (
-                    (lastMessage?.videoMimeType && <VideoIcon className="h-2.5 w-2.5 shrink-0" />) || (lastMessage?.musicMimeType && <MusicIcon className="h-2.5 w-2.5 shrink-0" />)
-                )}
-                <span className="truncate">{senderPrefix}{lastMessageContent}</span>
-            </p>
+                ) : null}
+                {AttachmentIcon}
+                <div className="truncate flex-1">
+                    <ReactMarkdown components={{ p: ({children}) => <span className="inline">{senderPrefix}{children}</span> }}>
+                        {displayContent}
+                    </ReactMarkdown>
+                </div>
+            </div>
           )}
         </div>
       </div>
