@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Bookmark, Ghost, User as UserIcon } from "lucide-react";
 
 interface UserAvatarWithStatusProps {
-  user?: User;
+  user?: User | null;
   className?: string;
   isSavedMessages?: boolean;
   isSelected?: boolean;
@@ -75,4 +74,3 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     </div>
   );
 }
-

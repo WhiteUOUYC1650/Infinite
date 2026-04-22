@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -201,7 +200,7 @@ export const translations = {
       'faq_title': 'Frequently Asked Questions',
       'faq_desc': 'Find answers to common questions about Infinite.',
       'faq_markdown_q': 'How do I format messages with Markdown?',
-      'faq_markdown_a': 'Infinite supports basic Markdown for text formatting. Here are some examples:\n\n- `*italic*` or `_italic_` for *italic text*\n- `**bold**` or `__bold__` for **bold text**\n- `~~strikethrough~~` for ~~strikethrough~~\n- `[link text](https://example.com)` for hyperlinks\n- For bulleted lists, start a line with `-` or `*`\n- For numbered lists, start a line with `1.`\n\nFor a full guide, visit the [Markdown Guide](https://www.markdown-guide.org/basic-syntax/).',
+      'faq_markdown_a': 'Infinite supports basic Markdown for text formatting. Here are some examples:\n\n- `*italic*` or `_italic_` for *italic text*\n- `**bold**` or `__bold__` for **bold text**\n- `**bold**` or `__bold__` for **bold text**\n- `~~strikethrough~~` for ~~strikethrough~~\n- `[link text](https://example.com)` for hyperlinks\n- For bulleted lists, start a line with `-` or `*`\n- For numbered lists, start a line with `1.`\n\nFor a full guide, visit the [Markdown Guide](https://www.markdown-guide.org/basic-syntax/).',
       'faq_create_chat_q': 'How do I create a group or channel?',
       'faq_create_chat_a': "You can create a new group or channel by clicking the 'New Conversation' button (the plus icon) in the top right of the sidebar. This will open a dialog where you can choose what type of chat you want to create and fill in its details.",
       'faq_invite_q': "How do I invite people to a group?",
@@ -765,7 +764,7 @@ export const translations = {
       'faq_media_q': "Как я могу отправить фото, видео или музыку?",
       'faq_media_a': "В поле ввода сообщения нажмите на иконку скрепки, чтобы открыть меню вложений. Оттуда вы можете выбрать 'Фото', 'Видео' или 'Музыка', чтобы выбрать файл с вашего устройства.",
       'faq_infgold_q': "Что такое InfGold и как его получить?",
-      'faq_infgold_a': "InfGold — это наша виртуальная валюта. Вы можете зарабатывать её бесплатно каждый день, вращая колесо 'Ежедневного бонуса' в настройках InfGold. Затем вы можете использовать InfGold для покупки подписок 'Infinite Prem'.",
+      'faq_infgold_a': "InfGold — это наша вчерашняя валюта. Вы можете зарабатывать её бесплатно каждый день, вращая колесо 'Ежедневного бонуса' в настройках InfGold. Затем вы можете использовать InfGold для покупки подписок 'Infinite Prem'.",
       'faq_prem_q': "Что такое 'Infinite Prem'?",
       'faq_prem_a': "'Infinite Prem' — это подписка, которая открывает доступ к эксклюзивным возможностям, таким как премиум-темы (например, 'Сияющее золото'), специальные значки в профиле и многое другое. Вы можете подписаться, используя InfGold.",
       'faq_infvid_title': 'Что такое InfVid?',
@@ -778,7 +777,7 @@ export const translations = {
       'faq_story_a': 'На боковой панели над списком чатов есть лента историй. Нажмите на значок «+» на своем аватаре, чтобы загрузить фото-историю.',
       'faq_transfer_q': 'How do I send InfGold to a friend?',
       'faq_transfer_a': 'Открыйте профиль друга, нажав на его аватар в чате. Затем нажмите кнопку «Отправить Gold» и введите сумму. Вы можете просмотреть свою историю в Настройках > InfGold > История переводов.',
-      'faq_feed_q': 'What is the Feed?',
+      'faq_feed_q': 'Что такое Лента?',
       'faq_feed_a': 'Лента собирает все сообщения, отправленные **сегодня** во всех каналах, на которые вы подписаны. Это помогает быстро узнать новости дня, не открывая каждый канал по отдельности.',
       'faq_mention_all_q': 'Как отметить всех в чате?',
       'faq_mention_all_a': 'Напишите `@all` в своем сообщении. В Общем чате это отметит всех зарегистрированных пользователей, а в группах и каналах — всех участников или подписчиков.',
@@ -1080,7 +1079,7 @@ export const translations = {
       'bot_guide_action_image': '**Отправить изображение**: Отправляет картинку по ссылке или в Base64.',
       'bot_guide_logic': 'Logic',
       'bot_guide_logic_if': '**Если**: Проверка условия (например, если сообщение содержит определенное слово).',
-      'bot_guide_logic_wait': '**Ждать**: Пауза в выполнении скрипта на несколько секунд.',
+      'bot_guide_logic_wait': '**Ждать**: Пауза в выполнении скрипта на после нескольких секунд.',
       'bot_guide_vars': 'Память (Переменные)',
       'bot_guide_var_intro': 'Используйте фигурные скобки, чтобы вставлять динамические данные в сообщения:',
       'bot_guide_var_user': '- `{user_name}`: Имя пользователя, который общается с ботом.',
@@ -1140,4 +1139,3 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
     return values[key] !== undefined ? String(values[key]) : match;
   });
 }
-

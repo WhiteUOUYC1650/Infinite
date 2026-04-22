@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -40,8 +39,13 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
 
   const handleCreateBot = async () => {
     if (!db || !newBotName.trim() || !newBotHandle.trim()) return;
-    setIsCreating(true);
 
+    if (/\s/.test(newBotHandle.trim())) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Bot handle cannot contain spaces.' });
+        return;
+    }
+
+    setIsCreating(true);
     const fullHandle = '@' + newBotHandle.replace('@', '').trim();
 
     try {
@@ -225,7 +229,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                           <Input
                               id="bot-handle"
                               value={newBotHandle}
-                              onChange={(e) => setNewBotHandle(e.target.value.replace('@', ''))}
+                              onChange={(e) => setNewBotHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
                               placeholder="helper_bot"
                               className="h-12 pl-7 rounded-xl bg-muted/50 border-none focus-visible:ring-primary"
                           />

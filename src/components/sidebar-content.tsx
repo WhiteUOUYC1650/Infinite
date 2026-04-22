@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -135,7 +134,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
-  const directMessages = useMemo(() => chats?.filter((chat) => chat.type === 'dm' && chat.id !== currentUser.uid) || [], [chats, currentUser.uid]);
+  const sortedChats = useMemo(() => {
+    if (!chats) return [];
+    return [...chats].sort((a, b) => {
+        const timeA = a.lastMessage?.timestamp?.toMillis() || 0;
+        const timeB = b.lastMessage?.timestamp?.toMillis() || 0;
+        return timeB - timeA;
+    });
+  }, [chats]);
+  
+  const directMessages = useMemo(() => sortedChats.filter((chat) => chat.type === 'dm' && chat.id !== currentUser.uid), [sortedChats, currentUser.uid]);
   
   const allDmUserIds = useMemo(() => {
     return Array.from(new Set(directMessages.map(c => c.members.find(m => m !== currentUser.uid)).filter(Boolean) as string[]));
@@ -151,7 +159,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         const otherUser = dmUsers[otherUserId];
         return otherUser && otherUser.isBot;
     });
-  }, [directMessages, dmUsers, primaryBots, currentUser.uid]);
+  }, [directMessages, dmUsers, primaryBots]);
 
   const userDirectMessages = useMemo(() => {
     return directMessages.filter(chat => {
@@ -161,7 +169,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         const otherUser = dmUsers[otherUserId];
         return !otherUser || !otherUser.isBot;
     });
-  }, [directMessages, dmUsers, primaryBots, currentUser.uid]);
+  }, [directMessages, dmUsers, primaryBots]);
 
   useEffect(() => {
     if (currentUser && currentUser.hasSetNickname === false && !editProfileInitiallyShown) {
@@ -202,8 +210,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [db]);
 
 
-  const groupDiscussions = useMemo(() => chats?.filter((chat) => chat.type === 'group' && chat.id !== 'GENERAL_CHAT') || [], [chats]);
-  const channels = useMemo(() => chats?.filter((chat) => chat.type === 'channel' || (chat as any).type === 'broadcast') || [], [chats]);
+  const groupDiscussions = useMemo(() => sortedChats.filter((chat) => chat.type === 'group' && chat.id !== 'GENERAL_CHAT'), [sortedChats]);
+  const channels = useMemo(() => sortedChats.filter((chat) => chat.type === 'channel' || (chat as any).type === 'broadcast'), [sortedChats]);
 
   const handleSelect = (item: Chat) => {
     const iconName = item.icon as keyof typeof iconMap | undefined;
@@ -335,119 +343,119 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   return (
     <>
-      <SidebarHeader className="p-4 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+      <SidebarHeader className="p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold font-headline text-primary">
+              <h1 className="text-xl font-bold font-headline text-primary">
                 Infinite
               </h1>
             </div>
             <div className='flex items-center'>
-              <Button variant="ghost" size="icon" onClick={() => setShowSearchDialog(true)}>
-                  <Search className="h-6 w-6" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSearchDialog(true)}>
+                  <Search className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setShowNewChat(true)}>
-                  <PlusCircle className="h-6 w-6" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowNewChat(true)}>
+                  <PlusCircle className="h-5 w-5" />
               </Button>
             </div>
         </div>
       </SidebarHeader>
 
       <ScrollArea className="flex-1">
-        <SidebarBody className="pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+        <SidebarBody className="px-2">
             <StoriesBar currentUser={currentUser} />
             
             <HolidayBanner />
 
-            <div className="py-1 md:px-4 space-y-1">
+            <div className="py-1 space-y-0.5">
                 {showFeed && (
                   <Button
                       variant="ghost"
                       onClick={() => { onSelect('feed'); setOpenMobile(false); }}
-                      className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                      className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                   >
-                      <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                          <Newspaper className="h-5 w-5 text-muted-foreground" />
-                          <p className="font-semibold">{t('feed_title')}</p>
+                      <div className="flex items-center gap-3 w-full">
+                          <Newspaper className="h-4 w-4 text-muted-foreground" />
+                          <p className="font-semibold text-sm">{t('feed_title')}</p>
                       </div>
                   </Button>
                 )}
                 <Button
                     variant="ghost"
                     onClick={handleSelectSavedMessages}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === currentUser.uid && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === currentUser.uid && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
-                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                        <Bookmark className="h-5 w-5 text-muted-foreground" />
-                        <p className="font-semibold">{t('saved_messages')}</p>
+                    <div className="flex items-center gap-3 w-full">
+                        <Bookmark className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-semibold text-sm">{t('saved_messages')}</p>
                     </div>
                 </Button>
                 <Button
                     variant="ghost"
                     onClick={handleSelectGeneralChat}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'GENERAL_CHAT' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'GENERAL_CHAT' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
-                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                        <Globe className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex items-center gap-3 w-full">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
                         <div className="flex items-center gap-2">
-                           <p className="font-semibold">{t('general_chat')}</p>
+                           <p className="font-semibold text-sm">{t('general_chat')}</p>
                         </div>
                     </div>
                 </Button>
                 <Button
                     variant="ghost"
                     onClick={() => { onSelect('infvid'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
-                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                        <InfVidIcon className="h-5 w-5" />
+                    <div className="flex items-center gap-3 w-full">
+                        <InfVidIcon className="h-4 w-4" />
                         <div className="flex items-center gap-2">
-                           <p className="font-semibold">{t('infvid_title')}</p>
-                           <Badge variant="secondary" className="h-4 px-1 text-[10px] leading-none">BETA</Badge>
+                           <p className="font-semibold text-sm">{t('infvid_title')}</p>
+                           <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
                         </div>
                     </div>
                 </Button>
                 <Button
                     variant="ghost"
                     onClick={() => { onSelect('infgames'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'infgames' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infgames' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
-                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                        <Gamepad2 className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex items-center gap-3 w-full">
+                        <Gamepad2 className="h-4 w-4 text-muted-foreground" />
                         <div className="flex items-center gap-2">
-                           <p className="font-semibold">{t('infgames_title')}</p>
-                           <Badge variant="secondary" className="h-4 px-1 text-[10px] Bird Beta">BETA</Badge>
+                           <p className="font-semibold text-sm">{t('infgames_title')}</p>
+                           <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
                         </div>
                     </div>
                 </Button>
                 <Button
                     variant="ghost"
                     onClick={() => { onSelect('bot_studio'); setOpenMobile(false); }}
-                    className={cn("w-full justify-start h-auto py-2 text-left", selectedId === 'bot_studio' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
+                    className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'bot_studio' && 'bg-sidebar-accent text-sidebar-accent-foreground')}
                 >
-                    <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                        <Cpu className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex items-center gap-3 w-full">
+                        <Cpu className="h-4 w-4 text-muted-foreground" />
                         <div className="flex items-center gap-2">
-                           <p className="font-semibold">{t('bot_studio_title')}</p>
-                           <Badge variant="secondary" className="h-4 px-1 text-[10px]">NEW</Badge>
+                           <p className="font-semibold text-sm">{t('bot_studio_title')}</p>
+                           <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
                         </div>
                     </div>
                 </Button>
             </div>
           {chatsLoading ? (
-            <div className='p-4'>{t('loading_chats')}</div>
+            <div className='p-4 text-xs'>{t('loading_chats')}</div>
           ) : (
           <Accordion
             type="multiple"
             defaultValue={['bots', 'direct-messages', 'groups', 'channels']}
             className="w-full"
           >
-            <AccordionItem value="bots">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
+            <AccordionItem value="bots" className="border-none">
+              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
                 {t('bots')}
               </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-1">
+              <AccordionContent className="pb-0">
+                <div className="space-y-0.5">
                     {isBotLoading ? (
                         <DMChatItemSkeleton />
                     ) : primaryBots.length > 0 ? (
@@ -456,24 +464,24 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                 key={bot.id}
                                 variant="ghost"
                                 onClick={() => handleSelectBot(bot)}
-                                className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", selectedId === [currentUser.uid, bot.id].sort().join('_') && 'bg-sidebar-accent')}
+                                className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden", selectedId === [currentUser.uid, bot.id].sort().join('_') && 'bg-sidebar-accent')}
                             >
-                                <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                                    <UserAvatarWithStatus user={bot} isSelected={selectedId === [currentUser.uid, bot.id].sort().join('_')} />
+                                <div className="flex items-center gap-3 w-full">
+                                    <UserAvatarWithStatus user={bot} isSelected={selectedId === [currentUser.uid, bot.id].sort().join('_')} className="h-9 w-9" />
                                     <div className="flex-1 w-0 min-w-0 overflow-hidden">
                                          <div className="flex items-center gap-2">
-                                            <div className={cn("font-semibold truncate", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
-                                            <VerifiedBadge className="w-4 h-4 shrink-0" />
+                                            <div className={cn("font-semibold truncate text-sm", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
+                                            <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />
                                         </div>
                                     </div>
                                 </div>
                             </Button>
                         ))
                     ) : (
-                        <div className='px-4 text-xs text-muted-foreground'>{t('no_bots_found')}</div>
+                        <div className='px-4 text-[10px] text-muted-foreground'>{t('no_bots_found')}</div>
                     )}
 
-                    {dmUsersLoading ? null : (otherBotMessages.length > 0 && <Separator className="my-1" />)}
+                    {dmUsersLoading ? null : (otherBotMessages.length > 0 && <Separator className="my-1 mx-4" />)}
 
                     {dmUsersLoading ? (
                         otherBotMessages.length > 0 && <DMChatItemSkeleton />
@@ -498,12 +506,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="direct-messages">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
+            <AccordionItem value="direct-messages" className="border-none">
+              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
                 {t('direct_messages')}
               </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-1">
+              <AccordionContent className="pb-0">
+                <div className="space-y-0.5">
                   {dmUsersLoading ? (
                     <>
                         <DMChatItemSkeleton />
@@ -529,12 +537,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="groups">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
+            <AccordionItem value="groups" className="border-none">
+              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
                 {t('groups')}
               </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-1">
+              <AccordionContent className="pb-0">
+                <div className="space-y-0.5">
                   {groupDiscussions.map((chat) => (
                     <ChatItemComponent key={chat.id} item={chat} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
                   ))}
@@ -542,12 +550,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="channels">
-              <AccordionTrigger className="hover:no-underline text-sm font-semibold text-muted-foreground px-4">
+            <AccordionItem value="channels" className="border-none">
+              <AccordionTrigger className="hover:no-underline text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 py-2 px-4 h-auto">
                 {t('channels')}
               </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-1">
+              <AccordionContent className="pb-0">
+                <div className="space-y-0.5">
                   {channels.map((channel) => (
                      <ChatItemComponent key={channel.id} item={channel} onSelect={handleSelect} selectedId={selectedId} currentUserId={currentUser.uid} />
                   ))}
@@ -562,20 +570,20 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <Separator />
 
-      <SidebarFooter className={cn("p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pl-[calc(0.5rem+env(safe-area-inset-left))] pr-[calc(0.5rem+env(safe-area-inset-right))]", experimentalDesign && "bg-muted/30 rounded-t-2xl border-t shadow-[0_-4px_12px_rgba(0,0,0,0.05)]")}>
+      <SidebarFooter className={cn("p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]", experimentalDesign && "bg-muted/30 rounded-t-2xl border-t")}>
         <div className="flex items-center gap-2">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
                 <button className={cn(
-                  "flex items-center gap-2 flex-1 truncate p-2 rounded-xl hover:bg-sidebar-accent text-left transition-all",
-                  experimentalDesign && "bg-background/50 backdrop-blur-md border border-border/50 shadow-sm"
+                  "flex items-center gap-2 flex-1 truncate p-1.5 rounded-xl hover:bg-sidebar-accent text-left transition-all",
+                  experimentalDesign && "bg-background/50 border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
-                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} />
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className="h-9 w-9" />
                     )}
                     <div className="flex-1 truncate">
                     <p className="font-bold text-sm leading-tight">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{currentUser.isDeleted ? '' : t(currentUser.status as 'online' | 'away' | 'offline' || 'online')}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{currentUser.isDeleted ? '' : t(currentUser.status as any || 'online')}</p>
                     </div>
                 </button>
             </PopoverTrigger>
@@ -589,14 +597,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn(experimentalDesign && "rounded-xl bg-background/50")}>
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9", experimentalDesign && "rounded-xl bg-background/50")}>
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative", experimentalDesign && "rounded-xl bg-background/50")}>
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9", experimentalDesign && "rounded-xl bg-background/50")}>
               <div className="relative">
-                <Cog className="h-5 w-5" />
+                <Cog className="h-4 w-4" />
                 {isUpdateAvailable && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 rounded-full bg-orange-500 ring-2 ring-background animate-pulse" />
                 )}
@@ -638,11 +646,11 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 function DMChatItemSkeleton() {
     return (
         <div className={cn(buttonVariants({variant: "ghost"}), "w-full justify-start h-auto py-2 text-left pointer-events-none")}>
-            <div className="flex items-center gap-3 w-full px-4 md:px-0">
-                <Skeleton className='w-10 h-10 rounded-full' />
+            <div className="flex items-center gap-3 w-full">
+                <Skeleton className='w-9 h-9 rounded-full' />
                 <div className="flex-1 truncate space-y-2">
-                    <Skeleton className='h-4 w-3/4' />
-                    <Skeleton className='h-3 w-1/2' />
+                    <Skeleton className='h-3.5 w-3/4' />
+                    <Skeleton className='h-2.5 w-1/2' />
                 </div>
             </div>
       </div>
@@ -689,39 +697,39 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         key={item.id}
         variant="ghost"
         onClick={() => onSelect(item)}
-        className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
+        className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
         >
-        <div className="flex items-center gap-3 w-full px-4 md:px-0">
-            <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} />
+        <div className="flex items-center gap-3 w-full">
+            <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} className="h-9 w-9" />
             <div className="flex-1 w-0 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-2">
-                    <div className={cn("font-semibold truncate", isSelected && "text-sidebar-accent-foreground")}>
+                    <div className={cn("font-semibold truncate text-sm", isSelected && "text-sidebar-accent-foreground")}>
                         {displayName}
                     </div>
                     {!isSavedMessages && (
                         <>
-                            {isVerified && <VerifiedBadge className="w-4 h-4 shrink-0" />}
-                            {isPrem && <PremBadge className="w-4 h-4 shrink-0" />}
-                            {isBetaTester && <BetaBadge className="w-4 h-4 shrink-0" />}
+                            {isVerified && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
+                            {isPrem && <PremBadge className="w-3.5 h-3.5 shrink-0" />}
+                            {isBetaTester && <BetaBadge className="w-3.5 h-3.5 shrink-0" />}
                         </>
                     )}
                 </div>
                 {lastMessageContent && 
-                    <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+                    <p className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
                         {lastMessageSenderIsCurrentUser && !isSavedMessages ? (
                             (lastMessage.videoStatus === 'uploading' || lastMessage.musicStatus === 'uploading') ? (
-                                <Clock className="h-3 w-3 shrink-0" />
+                                <Clock className="h-2.5 w-2.5 shrink-0" />
                             ) : (
-                                isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-3 w-3 shrink-0" />
+                                isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5 shrink-0" />
                             )
                         ) : null}
-                       <span>{lastMessageContent}</span>
+                       <span className="truncate">{lastMessageContent}</span>
                     </p>
                 }
             </div>
         </div>
         {unreadCount > 0 && (
-            <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary">{unreadCount}</Badge>
+            <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary h-4 min-w-4 px-1 text-[9px]">{unreadCount}</Badge>
         )}
     </Button>
   );
@@ -765,43 +773,43 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
     <Button
       variant="ghost"
       onClick={() => onSelect(item)}
-      className={cn("relative w-full justify-start h-auto py-2 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
+      className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden", isSelected && 'bg-sidebar-accent')}
     >
-      <div className="flex items-center gap-3 w-full px-4 md:px-0">
-        <Avatar className="h-10 w-10 shrink-0">
+      <div className="flex items-center gap-3 w-full">
+        <Avatar className="h-9 w-9 shrink-0">
             {item.avatar ? (
                 <AvatarImage src={item.avatar} alt={item.name} />
             ) : (
                 <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
-                    {Icon && <Icon className="h-5 w-5" />}
+                    {Icon && <Icon className="h-4 w-4" />}
                 </AvatarFallback>
             )}
         </Avatar>
         <div className="flex-1 w-0 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            <div className={cn("font-semibold truncate", isSelected ? "text-sidebar-accent-foreground" : "")}>
+            <div className={cn("font-semibold truncate text-sm", isSelected ? "text-sidebar-accent-foreground" : "")}>
                 {item.name}
             </div>
-            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-4 h-4 shrink-0" />}
+            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
           </div>
           {lastMessageContent && (
-            <p className={cn("text-xs truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
+            <p className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
                 {senderIsCurrentUser ? (
                     (lastMessage?.videoStatus === 'uploading' || lastMessage?.musicStatus === 'uploading') ? (
-                        <Clock className="h-3 w-3 shrink-0" />
+                        <Clock className="h-2.5 w-2.5 shrink-0" />
                     ) : (
-                        isRead ? <CheckCheck className="h-4 w-4" /> : <Check className="h-3 w-3 shrink-0" />
+                        isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5 shrink-0" />
                     )
                 ) : (
-                    (lastMessage?.videoMimeType && <VideoIcon className="h-3 w-3 shrink-0" />) || (lastMessage?.musicMimeType && <MusicIcon className="h-3 w-3 shrink-0" />)
+                    (lastMessage?.videoMimeType && <VideoIcon className="h-2.5 w-2.5 shrink-0" />) || (lastMessage?.musicMimeType && <MusicIcon className="h-2.5 w-2.5 shrink-0" />)
                 )}
-                <span>{senderPrefix}{lastMessageContent}</span>
+                <span className="truncate">{senderPrefix}{lastMessageContent}</span>
             </p>
           )}
         </div>
       </div>
       {unreadCount > 0 && (
-          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary">{unreadCount}</Badge>
+          <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary h-4 min-w-4 px-1 text-[9px]">{unreadCount}</Badge>
       )}
     </Button>
   );

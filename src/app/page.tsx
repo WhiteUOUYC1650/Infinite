@@ -177,7 +177,7 @@ export default function Home() {
       if (auth.currentUser) {
         setDoc(userRef, { status: 'online', lastSeen: serverTimestamp(), activeSessionId: sessionId }, { merge: true });
       }
-    }, 60000);
+    }, 120000); // Increased to 2 minutes for battery optimization
 
     return () => {
       clearInterval(interval);

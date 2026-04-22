@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -10,7 +9,7 @@ import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField, getDocs, runTransaction, where } from 'firebase/firestore';
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { format, isSameDay } from 'date-fns';
@@ -193,7 +192,7 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }:
     );
 }
 
-function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
+function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string | null | undefined, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
     const { isDarkMode } = useTheme();
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -428,6 +427,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastScrollHeightRef = useRef<number>(0);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
@@ -727,20 +727,36 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const initialLoadRef = useRef<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (!messages) return;
-    
+  // Scroll Anchoring and Staggered Loading
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !messages) return;
+
     const isFirstLoad = !initialLoadRef.current[item.id];
+    
     if (isFirstLoad) {
         initialLoadRef.current[item.id] = true;
-        setTimeout(() => scrollToBottom('auto'), 100);
-    } else {
+        scrollToBottom('auto');
+    } else if (lastScrollHeightRef.current > 0) {
+        // We loaded older messages, adjust scroll position to stay on same message
+        const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
+        if (heightDiff > 0) {
+            container.scrollTop += heightDiff;
+        }
+    }
+    
+    lastScrollHeightRef.current = container.scrollHeight;
+  }, [messages, item.id, scrollToBottom]);
+
+  // Handle new messages sent by current user
+  useEffect(() => {
+    if (messages && messages.length > 0) {
         const lastMsg = messages[messages.length - 1];
-        if (lastMsg && lastMsg.senderId === currentUser.uid) {
+        if (lastMsg.senderId === currentUser.uid) {
             scrollToBottom(smoothScroll ? 'smooth' : 'auto');
         }
     }
-  }, [messages, item.id, scrollToBottom, smoothScroll, currentUser.uid]);
+  }, [messages, currentUser.uid, scrollToBottom, smoothScroll]);
 
 
   const handleMediaLoad = useCallback(() => {
@@ -757,7 +773,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const container = scrollContainerRef.current;
         if (!container) return;
 
-        const { scrollTop } = container;
+        const { scrollTop, scrollHeight } = container;
+        lastScrollHeightRef.current = scrollHeight;
+
         const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
         
         let currentStickyDate: string | null = null;
@@ -779,8 +797,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
         setStickyDate(currentStickyDate);
 
-        // Infinite Scroll
-        if (scrollTop < 50 && hasMore && !messagesLoading) {
+        // Infinite Scroll logic: increase limit when reaching the top
+        if (scrollTop < 100 && hasMore && !messagesLoading) {
             setMessageLimit(prev => prev + 50);
         }
 
@@ -1473,6 +1491,7 @@ const handleForward = async (targetChatId: string) => {
   };
 
   const handleSetEditingMessage = (message: Message | null) => {
+    if (message?.poll) return; // Prevent editing polls
     setEditingMessage(message);
     if (message !== null) {
         setReplyToMessage(null);
@@ -2121,7 +2140,7 @@ const handleForward = async (targetChatId: string) => {
         )}
       </header>
 
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 bg-background">
           <div className="absolute inset-0 flex flex-col">
               {activeGroupCall && (
                 <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300">
@@ -2139,15 +2158,19 @@ const handleForward = async (targetChatId: string) => {
                       <Badge variant="secondary">{stickyDate}</Badge>
                   </div>
               )}
-              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] flex flex-col">
+              <div 
+                ref={scrollContainerRef} 
+                onScroll={handleScroll} 
+                className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col justify-end"
+              >
                   <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
-                  <div className="flex-1" />
+                  
                   {isLoading && messageLimit === 50 ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
                       </div>
                   ) : isMember && messages && messages.length > 0 ? (
-                      <div className="space-y-4 p-4">
+                      <div className="space-y-2 py-4 flex flex-col">
                           {messages.map((message, index) => {
                               const sender = memberDetails[message.senderId];
                               const messageDate = getSafeDate(message.timestamp);
@@ -2205,33 +2228,35 @@ const handleForward = async (targetChatId: string) => {
                               return (
                                   <React.Fragment key={message.id}>
                                       {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                      <ChatMessage 
-                                          message={message} 
-                                          sender={sender}
-                                          isCurrentUser={message.senderId === currentUser.uid} 
-                                          chatType={item.type} 
-                                          onAvatarClick={setProfileDialogUser}
-                                          chat={item}
-                                          currentUser={currentUser}
-                                          onInternalLinkClick={handleInternalLinkClick}
-                                          onReply={handleReply}
-                                          setEditingMessage={handleSetEditingMessage}
-                                          onMediaLoad={handleMediaLoad}
-                                          localMediaUrl={localMediaCache[message.id]}
-                                          onPreviewImage={setPreviewImage}
-                                          memberDetails={memberDetails}
-                                          onSelectChat={onSelectChat}
-                                          onForward={(m) => setForwardingMessage(m)}
-                                          onVote={handleVoteLocal}
-                                          onToggleReaction={handleToggleMessageReaction}
-                                          isMobile={isMobile}
-                                          isActiveOnMobile={activeMessageId === message.id}
-                                          onToggleActiveOnMobile={() => setActiveMessageId(prev => prev === message.id ? null : message.id)}
-                                      />
+                                      <div className="message-stagger-item" style={{ animationDelay: `${(index % 10) * 0.05}s` }}>
+                                          <ChatMessage 
+                                              message={message} 
+                                              sender={sender}
+                                              isCurrentUser={message.senderId === currentUser.uid} 
+                                              chatType={item.type} 
+                                              onAvatarClick={setProfileDialogUser}
+                                              chat={item}
+                                              currentUser={currentUser}
+                                              onInternalLinkClick={handleInternalLinkClick}
+                                              onReply={handleReply}
+                                              setEditingMessage={handleSetEditingMessage}
+                                              onMediaLoad={handleMediaLoad}
+                                              localMediaUrl={localMediaCache[message.id]}
+                                              onPreviewImage={setPreviewImage}
+                                              memberDetails={memberDetails}
+                                              onSelectChat={onSelectChat}
+                                              onForward={(m) => setForwardingMessage(m)}
+                                              onVote={handleVoteLocal}
+                                              onToggleReaction={handleToggleMessageReaction}
+                                              isMobile={isMobile}
+                                              isActiveOnMobile={activeMessageId === message.id}
+                                              onToggleActiveOnMobile={() => setActiveMessageId(prev => prev === message.id ? null : message.id)}
+                                          />
+                                      </div>
                                   </React.Fragment>
                               );
                           })}
-                          <div ref={messagesEndRef} className="h-px" />
+                          <div ref={messagesEndRef} className="h-px shrink-0" />
                       </div>
                   ) : (
                       <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">
@@ -2244,7 +2269,7 @@ const handleForward = async (targetChatId: string) => {
 
       {canSendMessage && (
         <footer className={cn(
-            "flex-shrink-0 p-4 border-t pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
+            "flex-shrink-0 p-3 border-t pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-background",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
           <div className="max-w-3xl mx-auto flex flex-col gap-2">
@@ -2318,7 +2343,7 @@ const handleForward = async (targetChatId: string) => {
                                     handleSubmit(e);
                                 }
                             }}
-                            className="min-h-[38px] h-[38px] max-h-32 py-2 px-4 resize-none placeholder:truncate"
+                            className="min-h-[38px] h-[38px] max-h-32 py-2 px-4 resize-none placeholder:truncate bg-muted/50 border-none rounded-2xl"
                         />
                     </div>
 
@@ -2357,14 +2382,8 @@ const handleForward = async (targetChatId: string) => {
                             </Button>
                         ) : (
                             <div className="flex items-center gap-1">
-                                <div className="relative">
-                                    <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")} onPointerDown={(e) => handlePointerDown(e, 'circle')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}><Camera className="h-5 w-5" /></Button>
-                                    <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
-                                </div>
-                                <div className="relative">
-                                    <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")} onPointerDown={(e) => handlePointerDown(e, 'voice')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}><Mic className="h-5 w-5" /></Button>
-                                    <span className="absolute -top-1 -right-1 pointer-events-none select-none text-[9px] font-bold text-primary bg-background/80 rounded-full px-0.5 border border-primary/20">β</span>
-                                </div>
+                                <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full transition-all", isRecordingCircle && "text-primary scale-125")} onPointerDown={(e) => handlePointerDown(e, 'circle')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}><Camera className="h-5 w-5" /></Button>
+                                <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full transition-all", isRecordingVoice && "text-primary scale-125")} onPointerDown={(e) => handlePointerDown(e, 'voice')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}><Mic className="h-5 w-5" /></Button>
                             </div>
                         )}
                     </div>
@@ -2396,6 +2415,17 @@ const handleForward = async (targetChatId: string) => {
       <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={handleSendPoll} />
       <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={handleForward} currentUser={currentUser} />
+
+      <style jsx global>{`
+        @keyframes stagger-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .message-stagger-item {
+          opacity: 0;
+          animation: stagger-in 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }
@@ -2615,31 +2645,31 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-3 rounded-br-none max-w-[calc(100%-4rem)]" : "bg-card text-card-foreground rounded-lg p-3 rounded-bl-none max-w-[calc(100%-4rem)]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-2 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg p-2 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircle && (
-                    <div className="font-semibold text-sm mb-1 flex items-center gap-2">
+                    <div className="font-semibold text-sm mb-0.5 flex items-center gap-2">
                         <span className="truncate">{displayName}</span>
                         {sender?.username === '@InfiniteBot' && <VerifiedBadge className='shrink-0' />}
                     </div>
                 )}
                 {message.replyTo && !isCircle && (
-                    <button onClick={() => document.getElementById(`message-${message.replyTo?.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className={cn("mb-2 p-2 rounded-md w-full text-left truncate", alignRight ? "bg-black/10" : "bg-muted")}>
-                        <div className="text-xs font-bold opacity-70">{message.replyTo.senderName}</div>
-                        <div className="text-xs truncate">{message.replyTo.content}</div>
+                    <button onClick={() => document.getElementById(`message-${message.replyTo?.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className={cn("mb-1.5 p-1.5 rounded-md w-full text-left truncate", alignRight ? "bg-black/10" : "bg-muted")}>
+                        <div className="text-[10px] font-bold opacity-70">{message.replyTo.senderName}</div>
+                        <div className="text-[11px] truncate">{message.replyTo.content}</div>
                     </button>
                 )}
                 <div className="overflow-hidden">
-                    {message.voiceStatus === 'complete' ? <CustomAudioPlayer src={voiceUrl || ''} hideTime={true} /> :
+                    {message.voiceStatus === 'complete' ? <CustomAudioPlayer src={voiceUrl} hideTime={true} /> :
                      message.circleStatus === 'complete' ? <div className="rounded-full overflow-hidden w-48 h-48 bg-black">{circleUrl && <video ref={circleVideoRef} src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}</div> :
                      message.videoMimeType ? <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={fetchAndCacheVideo}>{videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}</div> :
-                     message.musicMimeType ? <CustomAudioPlayer src={musicUrl || ''} isMusic={true} fileName={message.fileName} /> :
-                     message.imageUrl ? <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
+                     message.musicMimeType ? <CustomAudioPlayer src={musicUrl} isMusic={true} fileName={message.fileName} /> :
+                     message.imageUrl ? <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
                      message.poll ? <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} /> :
                      <div className="text-sm break-words whitespace-pre-wrap"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>}
                 </div>
-                <div className={cn("flex items-center gap-1.5 mt-1 text-[10px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
+                <div className={cn("flex items-center gap-1.5 mt-0.5 text-[9px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
                     <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
-                    {isCurrentUser && !isCircle && (isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}
+                    {isCurrentUser && !isCircle && (isRead ? <CheckCheck className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />)}
                 </div>
             </div>
 
@@ -2658,4 +2688,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
-

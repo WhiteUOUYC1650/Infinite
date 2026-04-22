@@ -8,13 +8,13 @@ export function Snowfall() {
 
   const snowflakes = useMemo(() => {
     if (!showSnowflakes) return [];
-    return Array.from({ length: 150 }).map((_, i) => {
+    return Array.from({ length: 30 }).map((_, i) => {
       const style = {
         left: `${Math.random() * 100}vw`,
-        width: `${Math.random() * 3 + 1}px`,
-        height: `${Math.random() * 3 + 1}px`,
+        width: `${Math.random() * 2 + 1}px`,
+        height: `${Math.random() * 2 + 1}px`,
         animationDelay: `${Math.random() * 10}s`,
-        animationDuration: `${Math.random() * 5 + 5}s`,
+        animationDuration: `${Math.random() * 8 + 7}s`,
       };
       return <div key={i} className="snowflake" style={style} />;
     });
