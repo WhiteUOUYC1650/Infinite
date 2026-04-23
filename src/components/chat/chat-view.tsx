@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -47,7 +48,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import ReactMarkdown from 'react-markdown';
@@ -1208,7 +1208,7 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
             const chunkDocRef = doc(collection(db, 'videoChunks'));
             await setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid });
             chunkIds.push(chunkDocRef.id);
-            await new Promise(res => setTimeout(res, 0));
+            await new Promise(res => setTimeout(res, 50));
         }
         await updateDoc(messageRef, { videoStatus: 'complete', videoChunkIds: chunkIds });
         const chatDoc = await getDoc(chatRef);
@@ -2169,10 +2169,13 @@ const handleForward = async (targetChatId: string) => {
               <div 
                 ref={scrollContainerRef} 
                 onScroll={handleScroll} 
-                className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col justify-end"
+                className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col"
               >
                   <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
                   
+                  {/* Push content down */}
+                  <div className="flex-1" />
+
                   {isLoading && messageLimit === 50 ? (
                       <div className="flex h-full items-center justify-center">
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -2424,21 +2427,23 @@ const handleForward = async (targetChatId: string) => {
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={handleSendMessageToUser} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(u => item.members.includes(u.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={handleJoinDiscussion} />}
       <GroupCallDialog open={showGroupCallDialog} onOpenChange={setShowGroupCallDialog} chat={item} currentUser={currentUser} isOwner={isOwner} />
-      {previewImage && <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}><DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90 text-white"><div className="relative w-full h-full flex items-center justify-center"><img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" /></div></DialogContent></Dialog>}
+      {previewImage && (
+        <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+            <DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/95 text-white flex flex-col">
+                <div className="absolute top-4 right-4 z-50">
+                    <Button variant="ghost" size="icon" onClick={() => setPreviewImage(null)} className="rounded-full bg-white/10 hover:bg-white/20 text-white">
+                        <X className="h-6 w-6" />
+                    </Button>
+                </div>
+                <div className="flex-1 flex items-center justify-center p-4">
+                    <img src={previewImage} alt="Preview" className="max-w-full max-h-full object-contain shadow-2xl" />
+                </div>
+            </DialogContent>
+        </Dialog>
+      )}
       <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={handleSendPoll} />
       <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={handleForward} currentUser={currentUser} />
-
-      <style jsx global>{`
-        @keyframes stagger-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .message-stagger-item {
-          opacity: 0;
-          animation: stagger-in 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }

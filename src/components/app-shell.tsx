@@ -54,6 +54,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   // Bot engine stability refs
   const processedMsgIds = useRef<Set<string>>(new Set());
   const engineStartedAt = useRef<number>(Date.now());
+  const botDetectionCache = useRef<Record<string, boolean>>({});
 
   const userDocRef = useMemoFirebase(() => db ? doc(db, 'users', currentUser.uid) : null, [db, currentUser.uid]);
   const { data: userData } = useDoc<User>(userDocRef);
@@ -119,8 +120,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             const lastMsg = chatData.lastMessage;
 
             if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
-                // SESSION LEADERSHIP CHECK: Only the active tab processes bots
-                if ((userData as any).activeSessionId && (userData as any).activeSessionId !== sessionId) {
+                // LEADERSHIP CHECK: Current session is leader if matches or if server value is old/missing
+                const currentLeader = (userData as any).activeSessionId;
+                if (currentLeader && currentLeader !== sessionId) {
                     return;
                 }
 
@@ -135,12 +137,17 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                 processedMsgIds.current.add(lastMsg.id);
                 const otherMembers = chatData.members.filter(m => m !== currentUser.uid);
                 for (const memberId of otherMembers) {
+                    if (botDetectionCache.current[memberId] === false) continue;
+
                     const memberDoc = await getDoc(doc(db, 'users', memberId));
                     if (memberDoc.exists() && memberDoc.data().isCustomBot) {
+                        botDetectionCache.current[memberId] = true;
                         const botLogicSnap = await getDoc(doc(db, 'customBots', memberId));
                         if (botLogicSnap.exists() && botLogicSnap.data().isActive) {
                             executeBotLogic(botLogicSnap.data() as CustomBot, lastMsg, change.doc.id);
                         }
+                    } else {
+                        botDetectionCache.current[memberId] = false;
                     }
                 }
             }

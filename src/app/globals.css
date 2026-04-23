@@ -102,17 +102,9 @@ body {
 }
 
 @keyframes snowfall {
-  0% {
-    transform: translateY(-10vh);
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(110vh);
-    opacity: 0;
-  }
+  0% { transform: translateY(-10vh); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(110vh); opacity: 0; }
 }
 
 .snowflake {
@@ -126,6 +118,16 @@ body {
   pointer-events: none;
 }
 
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-stagger-item {
+  opacity: 0;
+  animation: stagger-in 0.3s ease-out forwards;
+}
+
 @keyframes experimental-glow {
   0%, 100% { filter: drop-shadow(0 0 5px hsl(var(--primary) / 0.4)); }
   50% { filter: drop-shadow(0 0 15px hsl(var(--primary) / 0.8)); }
@@ -135,7 +137,7 @@ body {
   animation: experimental-glow 3s infinite ease-in-out;
 }
 
-/* Universal Glass Effect Styles - Disabling for circle messages */
+/* Universal Glass Effect Styles */
 [data-glass-effect="true"] .bg-primary:not(.rounded-full),
 [data-glass-effect="true"] .outgoing-msg > div:not(.rounded-full),
 [data-glass-effect="true"] .incoming-msg > div:not(.rounded-full),

@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -27,6 +28,7 @@ export type User = {
   isBetaTester?: boolean;
   isCustomBot?: boolean;
   botOwnerId?: string;
+  activeSessionId?: string | null;
   birthday?: {
     day: number;
     month: number;
