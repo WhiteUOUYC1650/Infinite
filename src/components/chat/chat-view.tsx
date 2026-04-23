@@ -457,6 +457,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const touchStartPos = useRef<{ x: number, y: number } | null>(null);
 
   const [dismissedBirthdays, setDismissedBirthdays] = useState<Set<string>>(new Set());
+  
+  // Animation scroll logic
+  const [animatingCount, setAnimatingCount] = useState(0);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -748,23 +751,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     lastScrollHeightRef.current = container.scrollHeight;
   }, [messages, item.id, scrollToBottom]);
 
-  // "Eternal scroll" cycle during message appearance animations
+  // "Eternal scroll" cycle based on animation counter
   useEffect(() => {
-    if (messages && messages.length > 0) {
+    if (animatingCount > 0) {
         const interval = setInterval(() => {
             scrollToBottom('auto');
         }, 50);
 
-        const timeout = setTimeout(() => {
-            clearInterval(interval);
-        }, 1500);
-
-        return () => {
-            clearInterval(interval);
-            clearTimeout(timeout);
-        };
+        return () => clearInterval(interval);
     }
-  }, [messages?.length, item.id, scrollToBottom]);
+  }, [animatingCount, scrollToBottom]);
+  
+  // Reset animation count on chat change
+  useEffect(() => {
+    setAnimatingCount(0);
+  }, [item.id]);
 
   const handleMediaLoad = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -2235,7 +2236,12 @@ const handleForward = async (targetChatId: string) => {
                               return (
                                   <React.Fragment key={message.id}>
                                       {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                      <div className="message-stagger-item" style={{ animationDelay: `${(index % 10) * 0.05}s` }}>
+                                      <div 
+                                        className="message-stagger-item" 
+                                        style={{ animationDelay: `${(index % 10) * 0.05}s` }}
+                                        onAnimationStart={() => setAnimatingCount(prev => prev + 1)}
+                                        onAnimationEnd={() => setAnimatingCount(prev => prev - 1)}
+                                      >
                                           <ChatMessage 
                                               message={message} 
                                               sender={sender}
@@ -2350,7 +2356,7 @@ const handleForward = async (targetChatId: string) => {
                                     handleSubmit(e);
                                 }
                             }}
-                            className="min-h-[38px] h-[38px] max-h-32 py-2 px-4 resize-none placeholder:truncate bg-muted/50 border-none rounded-2xl"
+                            className="min-h-[38px] h-[38px] max-h-32 resize-none placeholder:truncate bg-muted/50 border-none rounded-2xl"
                         />
                     </div>
 
@@ -2418,7 +2424,7 @@ const handleForward = async (targetChatId: string) => {
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={handleSendMessageToUser} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(u => item.members.includes(u.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={handleJoinDiscussion} />}
       <GroupCallDialog open={showGroupCallDialog} onOpenChange={setShowGroupCallDialog} chat={item} currentUser={currentUser} isOwner={isOwner} />
-      {previewImage && <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}><DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90"><div className="relative w-full h-full flex items-center justify-center"><img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" /></div></DialogContent></Dialog>}
+      {previewImage && <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}><DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/90 text-white"><div className="relative w-full h-full flex items-center justify-center"><img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" /></div></DialogContent></Dialog>}
       <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} />
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={handleSendPoll} />
       <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={handleForward} currentUser={currentUser} />
@@ -2666,10 +2672,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     </button>
                 )}
                 <div className="overflow-hidden">
-                    {message.voiceStatus === 'complete' ? <CustomAudioPlayer src={voiceUrl} hideTime={true} /> :
+                    {message.voiceStatus === 'complete' ? <CustomAudioPlayer src={voiceUrl || null} hideTime={true} /> :
                      message.circleStatus === 'complete' ? <div className="rounded-full overflow-hidden w-48 h-48 bg-black">{circleUrl && <video ref={circleVideoRef} src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}</div> :
                      message.videoMimeType ? <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={fetchAndCacheVideo}>{videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}</div> :
-                     message.musicMimeType ? <CustomAudioPlayer src={musicUrl} isMusic={true} fileName={message.fileName} /> :
+                     message.musicMimeType ? <CustomAudioPlayer src={musicUrl || null} isMusic={true} fileName={message.fileName} /> :
                      message.imageUrl ? <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
                      message.poll ? <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} /> :
                      <div className="text-sm break-words whitespace-pre-wrap"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>}
@@ -2695,4 +2701,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
-
