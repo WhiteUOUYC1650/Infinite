@@ -460,6 +460,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   // Animation scroll logic
   const [animatingCount, setAnimatingCount] = useState(0);
+  const isTransitioningRef = useRef(false);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -753,19 +754,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // "Eternal scroll" cycle based on animation counter
   useEffect(() => {
-    if (animatingCount > 0) {
-        const interval = setInterval(() => {
+    const interval = setInterval(() => {
+        if (animatingCount > 0 || isTransitioningRef.current) {
             scrollToBottom('auto');
-        }, 50);
+        }
+    }, 50);
 
-        return () => clearInterval(interval);
-    }
+    return () => clearInterval(interval);
   }, [animatingCount, scrollToBottom]);
   
-  // Reset animation count on chat change
+  // Set transitioning buffer on chat or message count change
   useEffect(() => {
     setAnimatingCount(0);
-  }, [item.id]);
+    isTransitioningRef.current = true;
+    const timer = setTimeout(() => {
+        isTransitioningRef.current = false;
+    }, 1000); // 1 second buffer to ensure animations start and catch scroll loop
+
+    return () => clearTimeout(timer);
+  }, [item.id, messages?.length]);
 
   const handleMediaLoad = useCallback(() => {
     const container = scrollContainerRef.current;

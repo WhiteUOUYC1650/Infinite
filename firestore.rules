@@ -110,6 +110,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /userStates/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/customBots/$(botId)).data.ownerId == request.auth.uid);
+        allow write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     // История переводов
