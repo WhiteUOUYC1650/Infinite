@@ -749,6 +749,28 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     lastScrollHeightRef.current = container.scrollHeight;
   }, [messages, item.id, scrollToBottom]);
 
+  // Resize observer to handle dynamic content height changes (like images/videos loading)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // If we are already near bottom or currently animating/transitioning, keep sticking to bottom
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom || animatingCount > 0 || isTransitioningRef.current) {
+        scrollToBottom('auto');
+      }
+    });
+
+    // Observe the list container to detect when items resize (e.g. images finish loading)
+    const list = container.querySelector('.flex.flex-col');
+    if (list) {
+      resizeObserver.observe(list);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [animatingCount, scrollToBottom]);
+
   // "Eternal scroll" cycle based on animation counter
   useEffect(() => {
     const interval = setInterval(() => {
@@ -2289,7 +2311,8 @@ const handleForward = async (targetChatId: string) => {
 
       {canSendMessage && (
         <footer className={cn(
-            "flex-shrink-0 p-3 border-t pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-background",
+            "flex-shrink-0 p-2 md:p-3 border-t bg-background",
+            "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
           <div className="max-w-3xl mx-auto flex flex-col gap-2">
