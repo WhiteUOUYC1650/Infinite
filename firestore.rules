@@ -55,7 +55,7 @@ service cloud.firestore {
       }
     }
 
-    // Реестр имен (используем getAfter для транзакций Bot Studio)
+    // Реестр имен
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
@@ -136,7 +136,7 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
     
-    // Ссылки (используем getAfter для транзакций Bot Studio)
+    // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;
