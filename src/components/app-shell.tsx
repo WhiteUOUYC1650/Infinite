@@ -183,7 +183,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
         const vars: Record<string, string> = {
             ...memory,
-            'user_name': currentUser.displayName || 'User',
+            'user_name': userData.name || currentUser.displayName || 'User',
             'msg_text': message.content || '',
             'bot_name': bot.name,
             'time': new Date().toLocaleTimeString()
@@ -229,7 +229,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             timestamp,
             type: 'user' as const,
             readBy: [],
-            ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: currentUser.displayName || 'User' } }),
+            ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || currentUser.displayName || 'User' } }),
             ...(imageUrl && { imageUrl })
         };
         await setDoc(msgRef, msgData);

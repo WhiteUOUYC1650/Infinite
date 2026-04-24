@@ -46,7 +46,7 @@ service cloud.firestore {
       allow list: if true; 
       allow create: if isOwner(userId) || (isSignedIn() && request.resource.data.isBot == true && request.resource.data.botOwnerId == request.auth.uid);
       // Разрешаем обновление системных полей
-      allow update: if isAdmin() || isOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge']));
+      allow update: if isAdmin() || isOwner(userId) || isBotOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge', 'activeSessionId']));
       allow delete: if isOwner(userId) || isAdmin() || isBotOwner(userId);
 
       match /private/security {
@@ -64,7 +64,7 @@ service cloud.firestore {
         allow delete: if resource.data.uid == request.auth.uid || isAdmin() || isBotOwner(resource.data.uid);
     }
 
-    // Чаты
+    // Чаты (ЛС, Группы, Каналы)
     match /chats/{chatId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
@@ -82,7 +82,7 @@ service cloud.firestore {
       }
     }
     
-    // Истории
+    // Истории (Stories)
     match /stories/{storyId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -105,11 +105,16 @@ service cloud.firestore {
       }
     }
     
-    // Bot Studio
+    // Custom Bot Logic (Bot Studio)
     match /customBots/{botId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /userStates/{userId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/customBots/$(botId)).data.ownerId == request.auth.uid);
+        allow write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     // История переводов
@@ -124,9 +129,14 @@ service cloud.firestore {
     match /fileChunks/{chunkId} { allow create, read: if true; }
     match /voiceChunks/{chunkId} { allow create, read: if true; }
     match /circleChunks/{chunkId} { allow create, read: if true; }
-    match /apkChunks/{chunkId} { allow read: if true; allow create, delete: if isAdmin(); }
     
-    // Ссылки
+    // Чанки APK (только админ может загружать)
+    match /apkChunks/{chunkId} { 
+      allow read: if true; 
+      allow create, delete: if isAdmin();
+    }
+    
+    // Ссылки (используем getAfter для транзакций Bot Studio)
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;
@@ -137,7 +147,7 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
       allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
     }
   }
 }
