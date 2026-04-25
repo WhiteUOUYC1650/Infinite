@@ -426,6 +426,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScrollHeightRef = useRef<number>(0);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
+  const isAtBottomRef = useRef(true);
 
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
 
@@ -756,7 +757,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     const resizeObserver = new ResizeObserver(() => {
       // If we are already near bottom or currently animating/transitioning, keep sticking to bottom
-      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      const isNearBottom = scrollContainerRef.current ? (scrollContainerRef.current.scrollHeight - scrollContainerRef.current.scrollTop - scrollContainerRef.current.clientHeight < 150) : false;
       if (isNearBottom || animatingCount > 0 || isTransitioningRef.current) {
         scrollToBottom('auto');
       }
@@ -784,13 +785,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   // Set transitioning buffer on chat or message count change
   useEffect(() => {
-    setAnimatingCount(0);
-    isTransitioningRef.current = true;
-    const timer = setTimeout(() => {
-        isTransitioningRef.current = false;
-    }, 1000); // 1 second buffer to ensure animations start and catch scroll loop
+    const isNewChat = !initialLoadRef.current[item.id];
+    const isNearBottom = isAtBottomRef.current;
 
-    return () => clearTimeout(timer);
+    // Only force-scroll if it's a new chat OR user was already at the bottom
+    if (isNewChat || isNearBottom) {
+        setAnimatingCount(0);
+        isTransitioningRef.current = true;
+        const timer = setTimeout(() => {
+            isTransitioningRef.current = false;
+        }, 1000); 
+        return () => clearTimeout(timer);
+    }
   }, [item.id, messages?.length]);
 
   const handleMediaLoad = useCallback(() => {
@@ -807,8 +813,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const container = scrollContainerRef.current;
         if (!container) return;
 
-        const { scrollTop, scrollHeight } = container;
+        const { scrollTop, scrollHeight, clientHeight } = container;
         lastScrollHeightRef.current = scrollHeight;
+
+        // Keep track of bottom status
+        isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
 
         const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
         
@@ -2107,7 +2116,7 @@ const handleForward = async (targetChatId: string) => {
                 )}
                 
                 {item.id !== 'GENERAL_CHAT' && (
-                    <DropdownMenu modal={true}>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
                         </DropdownMenuTrigger>
@@ -2333,7 +2342,7 @@ const handleForward = async (targetChatId: string) => {
             <>
                 {replyToMessage && (
                     <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-0">
                             <Reply className="h-4 w-4 text-primary shrink-0" />
                             <div className="min-w-0">
                                 <div className="text-xs font-bold text-primary truncate">{replyToMessage.sender?.name || replyToMessage.senderName}</div>
@@ -2347,7 +2356,7 @@ const handleForward = async (targetChatId: string) => {
                 )}
                 {editingMessage && (
                     <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-0">
                             <Edit className="h-4 w-4 text-primary shrink-0" />
                             <div className="min-w-0">
                                 <div className="text-xs font-bold text-primary">{t('editing_message')}</div>
@@ -2361,7 +2370,7 @@ const handleForward = async (targetChatId: string) => {
                 )}
                 {fileToSend && (
                     <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-0">
                             {fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary shrink-0" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary shrink-0" /> : <FileIcon className="h-4 w-4 text-primary shrink-0" />}
                             <div className="min-w-0">
                                 <div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div>
@@ -2724,7 +2733,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={true}>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'}>
                         <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
