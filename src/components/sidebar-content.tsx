@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -610,7 +611,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </PopoverContent>
           </Popover>
           <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9", experimentalDesign && "rounded-xl bg-background/50")}>
-            {isDarkMode ? <Suspense fallback={<Sun className="h-4 w-4" />}><Sun className="h-4 w-4" /></Suspense> : <Moon className="h-4 w-4" />}
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            

@@ -106,7 +106,10 @@ export type BotBlockType =
   | 'logic_else'
   | 'logic_end_if'
   | 'variable_set'
-  | 'action_send_image';
+  | 'action_send_image'
+  | 'action_send_video'
+  | 'action_send_music'
+  | 'action_send_file';
 
 export type BotBlock = {
   id: string;

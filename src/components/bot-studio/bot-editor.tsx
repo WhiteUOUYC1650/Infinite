@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -5,7 +6,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,9 @@ const BLOCK_COLORS: Record<BotBlockType, string> = {
   logic_end_if: 'bg-purple-400 border-purple-500',
   variable_set: 'bg-rose-500 border-rose-600',
   action_send_image: 'bg-cyan-500 border-cyan-600',
+  action_send_video: 'bg-slate-500 border-slate-600',
+  action_send_music: 'bg-green-600 border-green-700',
+  action_send_file: 'bg-zinc-600 border-zinc-700',
 };
 
 const BLOCK_ICONS: Record<BotBlockType, any> = {
@@ -54,6 +58,9 @@ const BLOCK_ICONS: Record<BotBlockType, any> = {
   logic_end_if: Check,
   variable_set: Database,
   action_send_image: ImageIcon,
+  action_send_video: Video,
+  action_send_music: Music,
+  action_send_file: FileText,
 };
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
@@ -319,7 +326,10 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                       <TabsContent value="actions" className="mt-0 space-y-2">
                           <PaletteItem type="action_send" label={t('block_action_send')} onClick={onAddFromFab} />
                           <PaletteItem type="action_reply" label={t('block_action_reply')} onClick={onAddFromFab} />
-                          <PaletteItem type="action_send_image" label="Отправить изображение" onClick={onAddFromFab} />
+                          <PaletteItem type="action_send_image" label="Отправить фото" onClick={onAddFromFab} />
+                          <PaletteItem type="action_send_video" label={t('action_send_video')} onClick={onAddFromFab} />
+                          <PaletteItem type="action_send_music" label={t('action_send_music')} onClick={onAddFromFab} />
+                          <PaletteItem type="action_send_file" label={t('action_send_file')} onClick={onAddFromFab} />
                       </TabsContent>
                       <TabsContent value="logic" className="mt-0 space-y-2">
                           <PaletteItem type="logic_if" label="Если" onClick={onAddFromFab} />
@@ -420,6 +430,20 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
     const { t } = useLanguage();
     const Icon = BLOCK_ICONS[block.type];
     const isTrigger = bIdx === 0;
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                onUpdate(sIdx, bIdx, 'mediaData', reader.result);
+                onUpdate(sIdx, bIdx, 'fileName', file.name);
+                onUpdate(sIdx, bIdx, 'mimeType', file.type);
+            };
+        }
+    };
 
     const renderParams = () => {
         switch (block.type) {
@@ -427,7 +451,35 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
             case 'action_reply':
                 return <Input placeholder="Введите сообщение..." value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1" />;
             case 'action_send_image':
-                return <Input placeholder="URL изображения или Base64..." value={block.params?.imageUrl || ''} onChange={e => onUpdate(sIdx, bIdx, 'imageUrl', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1" />;
+            case 'action_send_video':
+            case 'action_send_music':
+            case 'action_send_file':
+                return (
+                    <div className="space-y-2 mt-1">
+                        <div className="flex gap-2">
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-9 flex-1 bg-black/10 hover:bg-black/20 text-white font-bold text-xs rounded-xl"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Upload className="mr-2 h-3 w-3" />
+                                {block.params?.mediaData ? t('file_selected') : t('choose_file')}
+                            </Button>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept={block.type === 'action_send_image' ? "image/*" : block.type === 'action_send_video' ? "video/*" : block.type === 'action_send_music' ? "audio/*" : "*/*"} 
+                                onChange={handleFileSelect} 
+                            />
+                        </div>
+                        {block.params?.fileName && (
+                            <p className="text-[9px] font-bold opacity-60 truncate px-2">{block.params.fileName}</p>
+                        )}
+                        <Input placeholder="Описание (необязательно)..." value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1" />
+                    </div>
+                );
             case 'logic_if':
                 return <Input placeholder="Условие (напр. {msg_text} == старт)" value={block.params?.condition || ''} onChange={e => onUpdate(sIdx, bIdx, 'condition', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1" />;
             case 'variable_set':

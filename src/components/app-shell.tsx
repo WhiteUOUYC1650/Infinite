@@ -18,8 +18,8 @@ import type { PopulatedChat } from '@/types';
 import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell, Newspaper } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc, serverTimestamp } from 'firebase/firestore';
-import type { User, AuthenticatedUser, Chat, Call, CustomBot } from '@/types';
+import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import type { User, AuthenticatedUser, Chat, Call, CustomBot, BotBlock } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
 import { CallDialog } from './chat/call-dialog';
@@ -120,11 +120,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             const lastMsg = chatData.lastMessage;
 
             if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
-                // LEADERSHIP CHECK: Current session is leader if matches or if server value is old/missing
+                // LEADERSHIP CHECK
                 const currentLeader = (userData as any).activeSessionId;
-                if (currentLeader && currentLeader !== sessionId) {
-                    return;
-                }
+                if (currentLeader && currentLeader !== sessionId) return;
 
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
@@ -209,8 +207,12 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                     case 'logic_if': ifStack.push(checkCondition(block, message, vars)); break;
                     case 'variable_set': vars[block.params?.name] = resolveVars(block.params?.value, vars); break;
                     case 'action_send':
-                    case 'action_reply': await sendBotMessage(bot, resolveVars(block.params?.text, vars), chatId, block.type === 'action_reply' ? message : undefined); break;
-                    case 'action_send_image': await sendBotMessage(bot, resolveVars(block.params?.text, vars), chatId, undefined, resolveVars(block.params?.imageUrl, vars)); break;
+                    case 'action_reply': 
+                    case 'action_send_image':
+                    case 'action_send_video':
+                    case 'action_send_music':
+                    case 'action_send_file':
+                        await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? message : undefined), vars); break;
                     case 'action_wait': await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000)); break;
                 }
                 i++;
@@ -220,22 +222,65 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         await setDoc(stateRef, { vars: persistentOnly, updatedAt: serverTimestamp() }, { merge: true });
     };
 
-    const sendBotMessage = async (bot: CustomBot, text: string, chatId: string, replyTo?: any, imageUrl?: string) => {
+    const sendBotMessage = async (bot: CustomBot, block: BotBlock, chatId: string, replyTo?: any, vars?: Record<string, string>) => {
         const msgRef = doc(collection(db, 'chats', chatId, 'messages'));
         const timestamp = Timestamp.now();
-        const msgData = {
+        const text = resolveVars(block.params?.text, vars || {});
+        const mediaData = block.params?.mediaData;
+        const mimeType = block.params?.mimeType;
+        const fileName = block.params?.fileName;
+
+        const msgData: any = {
             senderId: bot.id,
             content: text || '',
             timestamp,
             type: 'user' as const,
             readBy: [],
             ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || currentUser.displayName || 'User' } }),
-            ...(imageUrl && { imageUrl })
         };
+
+        let lastMsgContent = text || 'Message';
+
+        if (block.type === 'action_send_image' && mediaData) {
+            msgData.imageUrl = mediaData;
+            lastMsgContent = t('image_attachment_placeholder');
+        } else if (block.type === 'action_send_video' && mediaData) {
+            msgData.videoMimeType = mimeType || 'video/mp4';
+            msgData.videoStatus = 'uploading';
+            lastMsgContent = t('video_attachment_placeholder');
+        } else if (block.type === 'action_send_music' && mediaData) {
+            msgData.musicMimeType = mimeType || 'audio/mpeg';
+            msgData.musicStatus = 'uploading';
+            msgData.fileName = fileName || 'audio.mp3';
+            lastMsgContent = t('music_attachment_placeholder');
+        } else if (block.type === 'action_send_file' && mediaData) {
+            msgData.fileMimeType = mimeType || 'application/octet-stream';
+            msgData.fileStatus = 'uploading';
+            msgData.fileName = fileName || 'file.bin';
+            lastMsgContent = t('file_attachment_placeholder');
+        }
+
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), {
-            lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name }
+            lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, content: lastMsgContent }
         });
+
+        // Handle chunking for non-image media
+        if (mediaData && (block.type === 'action_send_video' || block.type === 'action_send_music' || block.type === 'action_send_file')) {
+            const base64 = mediaData.split(',')[1];
+            const CHUNK_SIZE = 900 * 1024;
+            const chunkIds: string[] = [];
+            const colName = block.type === 'action_send_video' ? 'videoChunks' : block.type === 'action_send_music' ? 'musicChunks' : 'fileChunks';
+            const statusKey = block.type === 'action_send_video' ? 'videoStatus' : block.type === 'action_send_music' ? 'musicStatus' : 'fileStatus';
+            const idKey = block.type === 'action_send_video' ? 'videoChunkIds' : block.type === 'action_send_music' ? 'musicChunkIds' : 'fileChunkIds';
+
+            for (let j = 0; i < base64.length; j += CHUNK_SIZE) {
+                const chunkRef = doc(collection(db, colName));
+                await setDoc(chunkRef, { data: base64.substring(j, j + CHUNK_SIZE), part: j/CHUNK_SIZE, senderId: bot.id });
+                chunkIds.push(chunkRef.id);
+            }
+            await updateDoc(msgRef, { [statusKey]: 'complete', [idKey]: chunkIds });
+        }
     };
 
     return () => unsubscribe();

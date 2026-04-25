@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -555,6 +556,11 @@ export const translations = {
       'admin_broadcast_button': 'Start Broadcast',
       'admin_broadcast_success': 'Broadcast successfully sent to {count} users.',
       'admin_notify_update_label': 'Notify users via Bot',
+      'action_send_audio': 'Send Music',
+      'action_send_video': 'Send Video',
+      'action_send_file': 'Send File',
+      'choose_file': 'Choose File',
+      'file_selected': 'File selected',
     },
     ru: {
       'settings': 'Настройки',
@@ -584,7 +590,7 @@ export const translations = {
       'username_placeholder': 'вашеимя',
       'username_placeholder_short': '@имяпользователя',
       'user_not_found': 'Пользователь не найден.',
-      'searching': 'Печатает...',
+      'searching': 'Соединение...',
       'start_chat': 'Начать чат',
       'chat_exists': 'Чат уже существует',
       'chat_exists_desc': 'Этот чат уже есть в вашем списке.',
@@ -754,6 +760,7 @@ export const translations = {
       'help': 'Помощь и FAQ',
       'faq_title': 'Часто задаваемые вопросы',
       'faq_desc': 'Найдите ответы на распространенные вопросы об Infinite.',
+      'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
       'faq_markdown_q': 'Как форматировать сообщения с помощью Markdown?',
       'faq_markdown_a': 'Infinite поддерживает базовый Markdown для форматирования текста. Вот несколько примеров:\n\n- `*курсив*` или `_italic_` для *курсивного текста*\n- `**жирный**` или `__bold__` для жирного текста\n- `~~зачеркнутый~~` для зачеркнутого текста\n- `[текст ссылки](https://...)` для гиперссылок\n- Для маркированных списков, начните строку с `-` или `*`\n- Для нумерованных списков, начните строку с `1.`\n\nПолное руководство смотрите в [руководстве по Markdown](https://www.markdown-guide.org/basic-syntax/).',
       'faq_create_chat_q': 'Как создать группу или канал?',
@@ -1110,6 +1117,11 @@ export const translations = {
       'admin_broadcast_button': 'Начать рассылку',
       'admin_broadcast_success': 'Рассылка успешно завершена. Сообщение получили {count} пользователей.',
       'admin_notify_update_label': 'Оповестить пользователей через Бота',
+      'action_send_audio': 'Отправить музыку',
+      'action_send_video': 'Отправить видео',
+      'action_send_file': 'Отправить файл',
+      'choose_file': 'Выбрать файл',
+      'file_selected': 'Файл выбран',
     }
   };
 
