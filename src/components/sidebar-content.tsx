@@ -125,9 +125,21 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false);
   const [showUserProfilePopover, setShowUserProfilePopover] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   const [primaryBots, setPrimaryBots] = useState<User[]>([]);
   const [isBotLoading, setIsBotLoading] = useState(true);
+
+  useEffect(() => {
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    setIsOnline(navigator.onLine);
+    return () => {
+        window.removeEventListener('online', handleStatus);
+        window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
 
   const chatsQuery = useMemo(() => {
     if (!db) return null;
@@ -348,8 +360,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <SidebarHeader className="p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold font-headline text-primary">
-                Infinite
+              <h1 className={cn("text-xl font-bold font-headline transition-all", isOnline ? "text-primary" : "text-muted-foreground animate-pulse")}>
+                {isOnline ? 'Infinite' : t('searching')}
               </h1>
             </div>
             <div className='flex items-center'>
@@ -598,7 +610,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </PopoverContent>
           </Popover>
           <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9", experimentalDesign && "rounded-xl bg-background/50")}>
-            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {isDarkMode ? <Suspense fallback={<Sun className="h-4 w-4" />}><Sun className="h-4 w-4" /></Suspense> : <Moon className="h-4 w-4" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            
