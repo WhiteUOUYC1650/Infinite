@@ -2485,15 +2485,20 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
     const { data: chats, loading } = useCollection<Chat>(chatsQuery);
     const [search, setSearch] = useState('');
     const [isForwarding, setIsForwarding] = useState(false);
+    
     const filteredChats = useMemo(() => {
         if (!chats) return [];
         return chats.filter(c => {
+            // Cannot forward to other's channels
+            if (c.type === 'channel' && c.ownerId !== currentUser.uid) return false;
+
             if (c.id === currentUser.uid) return true;
             if (c.name && c.name.toLowerCase().includes(search.toLowerCase())) return true;
             if (c.type === 'dm') return true; 
             return false;
         }).sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0));
     }, [chats, search, currentUser.uid]);
+
     const allOtherUserIds = useMemo(() => {
         if (!chats) return [];
         return chats.filter(c => c.type === 'dm' && c.id !== currentUser.uid).map(c => c.members.find(m => m !== currentUser.uid)).filter(Boolean) as string[];
@@ -2726,7 +2731,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>
                         {isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                        {isCurrentUser && <DropdownMenuItem onSelect={handleDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                        {(isCurrentUser || chat.ownerId === currentUser.uid) && <DropdownMenuItem onSelect={handleDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

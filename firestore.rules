@@ -73,11 +73,18 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() || (request.resource.data.senderId != null); 
+        // Запрещаем отправку в каналы всем, кроме владельца
+        allow create: if isSignedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+        ) && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid
+        );
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content', 'poll'])
         );
+        // Владелец чата может удалять ЛЮБЫЕ сообщения
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
       }
     }
