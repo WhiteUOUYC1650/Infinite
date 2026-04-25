@@ -3,11 +3,11 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp, getDocs, Timestamp } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2, Send, MessageSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +45,8 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { PremBadge } from '@/components/ui/prem-badge';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 
 
 function AdminPage() {
@@ -64,8 +66,13 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.4 Beta');
+  const [newVersion, setNewVersion] = useState('0.4.2 Beta');
+  const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
+
+  // Broadcast State
+  const [broadcastText, setBroadcastText] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
   // --- Auth and Admin Check ---
   useEffect(() => {
@@ -213,6 +220,65 @@ function AdminPage() {
     }
   };
 
+  const sendBotBroadcast = async (text: string) => {
+    if (!db || !text.trim()) return;
+    
+    try {
+        const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
+        const botLinkSnap = await getDoc(botLinkRef);
+        if (!botLinkSnap.exists()) throw new Error("Bot link not found");
+
+        const botId = botLinkSnap.data().botId;
+        const botUserSnap = await getDoc(doc(db, 'users', botId));
+        if (!botUserSnap.exists()) throw new Error("Bot user not found");
+        const botData = botUserSnap.data() as User;
+
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const targetUsers = usersSnap.docs.filter(d => !d.data().isBot && !d.data().isDeleted);
+
+        let sentCount = 0;
+        for (const userDoc of targetUsers) {
+            const uid = userDoc.id;
+            const members = [uid, botId].sort();
+            const chatId = members.join('_');
+            const chatRef = doc(db, 'chats', chatId);
+
+            const chatSnap = await getDoc(chatRef);
+            if (!chatSnap.exists()) {
+                await setDoc(chatRef, {
+                    type: 'dm',
+                    members: members,
+                    unreadCounts: { [uid]: 1 },
+                    icon: 'Bot',
+                });
+            } else {
+                await updateDoc(chatRef, { [`unreadCounts.${uid}`]: increment(1) });
+            }
+
+            const message = {
+                senderId: botId,
+                type: 'announcement',
+                content: text,
+                timestamp: Timestamp.now(),
+                senderName: botData.name,
+                senderAvatar: botData.avatar || null,
+                readBy: []
+            };
+            const msgRef = await addDoc(collection(db, 'chats', chatId, 'messages'), message);
+            await updateDoc(chatRef, { lastMessage: { ...message, id: msgRef.id } });
+            sentCount++;
+            
+            // Minor throttle to avoid heavy bursts
+            if (sentCount % 5 === 0) await new Promise(r => setTimeout(r, 100));
+        }
+
+        return sentCount;
+    } catch (e) {
+        console.error("Broadcast failed:", e);
+        throw e;
+    }
+  };
+
   const handleUploadUpdate = async () => {
     if (!db || !apkFile || !newVersion.trim() || isUploadingApk) return;
     setIsUploadingApk(true);
@@ -226,7 +292,6 @@ function AdminPage() {
 
         const CHUNK_SIZE = 900 * 1024;
         const chunkIds: string[] = [];
-        const totalChunks = Math.ceil(apkBase64.length / CHUNK_SIZE);
 
         for (let i = 0; i < apkBase64.length; i += CHUNK_SIZE) {
             const chunkRef = doc(collection(db, 'apkChunks'));
@@ -236,7 +301,6 @@ function AdminPage() {
                 timestamp: serverTimestamp(),
             });
             chunkIds.push(chunkRef.id);
-            // Throttle slightly to avoid rate limits
             await new Promise(r => setTimeout(r, 50));
         }
 
@@ -247,6 +311,12 @@ function AdminPage() {
             updatedAt: serverTimestamp(),
         });
 
+        if (notifyUpdate) {
+            const updateMsgEn = `Update ${newVersion.trim()} is out! We recommend updating to get access to the latest features!`;
+            const updateMsgRu = `Вышло обновление ${newVersion.trim()}! Советуем обновиться, чтобы получить доступ к последним функциям!`;
+            await sendBotBroadcast(updateMsgRu);
+        }
+
         toast({ title: t('dm_success'), description: "Update published successfully!" });
         setApkFile(null);
     } catch (e: any) {
@@ -255,6 +325,20 @@ function AdminPage() {
     } finally {
         setIsUploadingApk(false);
     }
+  };
+
+  const handleBroadcast = async () => {
+      if (!broadcastText.trim() || isBroadcasting) return;
+      setIsBroadcasting(true);
+      try {
+          const count = await sendBotBroadcast(broadcastText);
+          toast({ title: t('dm_success'), description: t('admin_broadcast_success', { count }) });
+          setBroadcastText('');
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Broadcast Failed', description: e.message });
+      } finally {
+          setIsBroadcasting(false);
+      }
   };
 
   if (isLoading || !isAdmin) {
@@ -275,10 +359,11 @@ function AdminPage() {
       </header>
       <main className="flex-1 overflow-hidden pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Tabs defaultValue="users" className="flex h-full flex-col">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="users">{t('admin_users_tab')} ({users?.length || 0})</TabsTrigger>
-            <TabsTrigger value="groups">{t('admin_groups_tab')} ({groups.length || 0})</TabsTrigger>
-            <TabsTrigger value="channels">{t('admin_channels_tab')} ({channels.length || 0})</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="users">{t('admin_users_tab')}</TabsTrigger>
+            <TabsTrigger value="groups">{t('admin_groups_tab')}</TabsTrigger>
+            <TabsTrigger value="channels">{t('admin_channels_tab')}</TabsTrigger>
+            <TabsTrigger value="broadcast">{t('admin_broadcast_tab')}</TabsTrigger>
             <TabsTrigger value="update">Update</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="flex-1 overflow-auto mt-4">
@@ -310,6 +395,37 @@ function AdminPage() {
               renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} />}
             />
           </TabsContent>
+          <TabsContent value="broadcast" className="flex-1 overflow-auto mt-4">
+              <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                  <div className="text-center space-y-2">
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <MessageSquare className="h-8 w-8 text-primary" />
+                      </div>
+                      <h2 className="text-2xl font-bold font-headline">{t('admin_broadcast_title')}</h2>
+                      <p className="text-sm text-muted-foreground">{t('admin_broadcast_desc')}</p>
+                  </div>
+
+                  <div className="space-y-4">
+                      <div className="space-y-2">
+                          <Label>{t('admin_broadcast_label')}</Label>
+                          <Textarea 
+                            value={broadcastText} 
+                            onChange={e => setBroadcastText(e.target.value)} 
+                            placeholder="Type broadcast message..." 
+                            className="min-h-[150px] rounded-xl bg-muted/50 border-none"
+                          />
+                      </div>
+                      <Button 
+                        className="w-full h-12 rounded-xl font-bold gap-2" 
+                        onClick={handleBroadcast} 
+                        disabled={!broadcastText.trim() || isBroadcasting}
+                      >
+                          {isBroadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                          {t('admin_broadcast_button')}
+                      </Button>
+                  </div>
+              </div>
+          </TabsContent>
           <TabsContent value="update" className="flex-1 overflow-auto mt-4">
               <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
                   <div className="text-center space-y-2">
@@ -323,7 +439,7 @@ function AdminPage() {
                   <div className="space-y-4">
                       <div className="space-y-2">
                           <Label>Version Name</Label>
-                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4 Beta" />
+                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4.2 Beta" />
                       </div>
 
                       <div className="space-y-2">
@@ -348,6 +464,11 @@ function AdminPage() {
                                   <p className="text-sm text-muted-foreground font-medium">Select APK file</p>
                               )}
                           </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                          <Label className="cursor-pointer">{t('admin_notify_update_label')}</Label>
+                          <Switch checked={notifyUpdate} onCheckedChange={setNotifyUpdate} />
                       </div>
 
                       <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || !newVersion.trim() || isUploadingApk}>
