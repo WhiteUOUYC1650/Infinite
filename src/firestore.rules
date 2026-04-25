@@ -45,7 +45,7 @@ service cloud.firestore {
       allow read: if true; 
       allow list: if true; 
       allow create: if isOwner(userId) || (isSignedIn() && request.resource.data.isBot == true && request.resource.data.botOwnerId == request.auth.uid);
-      // Разрешаем обновление системных полей
+      // Разрешаем обновление системных полей, включая активную сессию
       allow update: if isAdmin() || isOwner(userId) || isBotOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge', 'activeSessionId']));
       allow delete: if isOwner(userId) || isAdmin() || isBotOwner(userId);
 
@@ -73,11 +73,21 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() || (request.resource.data.senderId != null); 
+        
+        // КРИТИЧЕСКОЕ: Запрещаем отправку в каналы всем, кроме владельца (ownerId)
+        allow create: if isSignedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+        ) && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid
+        );
+        
         allow update: if isSignedIn() && (
           request.auth.uid == resource.data.senderId ||
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content', 'poll'])
         );
+        
+        // Владелец чата может удалять ЛЮБЫЕ сообщения в своем чате
         allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
       }
     }
@@ -136,7 +146,7 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
     
-    // Ссылки (используем getAfter для транзакций Bot Studio)
+    // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if false;
