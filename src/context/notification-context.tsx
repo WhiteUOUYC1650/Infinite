@@ -40,7 +40,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         }
       } else if (typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'default') {
-          await Notification.requestPermission();
+          await Notification.permission.then((permission) => {
+             if (permission !== 'granted') {
+                window.Notification.requestPermission();
+             }
+          });
         }
       }
     } catch (e) {
@@ -123,7 +127,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               body: body || "",
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
-              extra: { chatId: chat.id }
+              extra: { chatId: chat.id },
+              smallIcon: "ic_stat_notification", // Using custom Android resource
             }
           ]
         });
@@ -134,7 +139,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       try {
         const n = new window.Notification(title || "New Message", {
           body: body || "",
-          icon: '/favicon.ico',
+          icon: '/notification-icon.png', // Path to custom web icon in public/
         });
         n.onclick = () => {
           window.focus();
@@ -161,6 +166,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               schedule: { at: new Date(Date.now() + 100) },
               extra: { chatId, isCall: true },
               ongoing: true,
+              smallIcon: "ic_stat_notification", // Using custom Android resource
             }
           ]
         });
@@ -173,7 +179,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          const n = new window.Notification(title || "Incoming Call", { body, icon: '/favicon.ico', tag: 'incoming-call' });
+          const n = new window.Notification(title || "Incoming Call", { 
+            body, 
+            icon: '/notification-icon.png', // Path to custom web icon in public/
+            tag: 'incoming-call' 
+          });
           n.onclick = () => {
             window.focus();
             window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId } }));
