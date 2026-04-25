@@ -456,10 +456,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const [dismissedBirthdays, setDismissedBirthdays] = useState<Set<string>>(new Set());
   
-  // Animation scroll logic
-  const [animatingCount, setAnimatingCount] = useState(0);
-  const isTransitioningRef = useRef(false);
-  const isInitialLoadGate = useRef(true); // Gating initial load animations
+  const isInitialLoadRef = useRef(true);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -728,22 +725,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
-  const initialLoadMapRef = useRef<Record<string, boolean>>({});
-
-  // Scroll Anchoring and Staggered Loading
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !messages) return;
 
-    const isFirstLoad = !initialLoadMapRef.current[item.id];
-    
-    if (isFirstLoad) {
-        initialLoadMapRef.current[item.id] = true;
+    if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
         scrollToBottom('auto');
     } else if (lastScrollHeightRef.current > 0) {
-        // Anchoring logic for older messages
         const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
-        if (heightDiff > 0) {
+        // Only anchor if we prepended messages (Infinite Scroll Up)
+        if (heightDiff > 0 && container.scrollTop < 200) {
             container.scrollTop += heightDiff;
         }
     }
@@ -751,68 +743,29 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     lastScrollHeightRef.current = container.scrollHeight;
   }, [messages, item.id, scrollToBottom]);
 
-  // Resize observer to handle dynamic content height changes (like images/videos loading)
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      // Force scroll only during initial load animations OR if the user is already at the bottom
-      if ((isInitialLoadGate.current && animatingCount > 0) || isAtBottomRef.current) {
+      // Scroll to bottom ONLY if user was already at bottom. 
+      // This prevents jumps when menus open if user is reading history.
+      if (isAtBottomRef.current) {
         scrollToBottom('auto');
       }
     });
 
     const list = container.querySelector('.flex.flex-col');
-    if (list) {
-      resizeObserver.observe(list);
-    }
-
+    if (list) resizeObserver.observe(list);
     return () => resizeObserver.disconnect();
-  }, [animatingCount, scrollToBottom]);
+  }, [scrollToBottom]);
 
-  // "Eternal scroll" cycle for smooth message appearance
   useEffect(() => {
-    const interval = setInterval(() => {
-        if ((isInitialLoadGate.current && animatingCount > 0) || isTransitioningRef.current || isAtBottomRef.current) {
-            scrollToBottom('auto');
-        }
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [animatingCount, scrollToBottom]);
-  
-  // Set transitioning buffer and handle the "Gated Variable" deletion
-  useEffect(() => {
-    const isNewChat = !initialLoadMapRef.current[item.id];
-    
-    if (isNewChat) {
-        isInitialLoadGate.current = true;
-        setAnimatingCount(0);
-        isTransitioningRef.current = true;
-        const timer = setTimeout(() => {
-            isTransitioningRef.current = false;
-        }, 1500); 
-        return () => clearTimeout(timer);
-    } else {
-        // If chat was already opened once, we don't treat it as initial load
-        isInitialLoadGate.current = false;
-    }
+    isInitialLoadRef.current = true;
   }, [item.id]);
 
-  // Check if variable should be "deleted" (gated) after animations finish
-  useEffect(() => {
-    if (isInitialLoadGate.current && animatingCount === 0 && !isTransitioningRef.current) {
-        // All initial animations finished, remove the gate
-        const timer = setTimeout(() => {
-            isInitialLoadGate.current = false;
-        }, 500);
-        return () => clearTimeout(timer);
-    }
-  }, [animatingCount]);
-
   const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current || isInitialLoadGate.current) {
+    if (isAtBottomRef.current) {
         scrollToBottom();
     }
   }, [scrollToBottom]);
@@ -823,27 +776,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         const { scrollTop, scrollHeight, clientHeight } = container;
         lastScrollHeightRef.current = scrollHeight;
-
-        // Keep track of bottom status
         isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
 
         const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
-        
         let currentStickyDate: string | null = null;
-        
         if (dateSeparators.length > 0) {
-            const firstSeparator = dateSeparators[0];
-            if (firstSeparator && scrollTop < firstSeparator.offsetTop) {
-                currentStickyDate = null;
-            } else {
-                for (let i = 0; i < dateSeparators.length; i++) {
-                    const separator = dateSeparators[i];
-                    if (separator && separator.offsetTop <= scrollTop + 5) {
-                        currentStickyDate = separator.dataset.dateSeparator || null;
-                    } else {
-                        break;
-                    }
-                }
+            for (let i = 0; i < dateSeparators.length; i++) {
+                const separator = dateSeparators[i];
+                if (separator && separator.offsetTop <= scrollTop + 5) {
+                    currentStickyDate = separator.dataset.dateSeparator || null;
+                } else break;
             }
         }
         setStickyDate(currentStickyDate);
@@ -851,7 +793,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (scrollTop < 100 && hasMore && !messagesLoading) {
             setMessageLimit(prev => prev + 50);
         }
-
     }, [hasMore, messagesLoading]);
 
   const handleSendMessageToUser = async (targetUser: User) => {
@@ -2214,8 +2155,6 @@ const handleForward = async (targetChatId: string) => {
                 className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col"
               >
                   <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
-                  
-                  {/* Push content down */}
                   <div className="flex-1" />
 
                   {isLoading && messageLimit === 50 ? (
@@ -2281,12 +2220,7 @@ const handleForward = async (targetChatId: string) => {
                               return (
                                   <React.Fragment key={message.id}>
                                       {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                      <div 
-                                        className="message-stagger-item" 
-                                        style={{ animationDelay: `${(index % 10) * 0.05}s` }}
-                                        onAnimationStart={() => isInitialLoadGate.current && setAnimatingCount(prev => prev + 1)}
-                                        onAnimationEnd={() => isInitialLoadGate.current && setAnimatingCount(prev => prev - 1)}
-                                      >
+                                      <div className="message-stagger-item">
                                           <ChatMessage 
                                               message={message} 
                                               sender={sender}
