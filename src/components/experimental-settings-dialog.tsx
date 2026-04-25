@@ -59,7 +59,7 @@ import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
-import { clearCacheDB } from '@/lib/cache-utils';
+import { clearCacheDB, calculateCacheSize as getRealCacheSize } from '@/lib/cache-utils';
 import { format } from 'date-fns';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide';
@@ -179,17 +179,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       }
     }
     
-    // IndexedDB estimate
-    if (navigator.storage && navigator.storage.estimate) {
-        try {
-            const estimate = await navigator.storage.estimate();
-            if (estimate.usage) {
-                // The estimate includes overhead and other origins potentially, 
-                // but usually usage is a good indicator of app-specific storage.
-                total += estimate.usage;
-            }
-        } catch (e) {}
-    }
+    // Accurate IndexedDB size
+    const dbSize = await getRealCacheSize();
+    total += dbSize;
     
     setCurrentCacheSize(formatSize(total));
   };

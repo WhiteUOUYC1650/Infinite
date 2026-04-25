@@ -108,3 +108,36 @@ export async function clearCacheDB(): Promise<void> {
     console.error('IndexedDB Clear error:', e);
   }
 }
+
+/**
+ * Calculates the total size of the media cache store.
+ */
+export async function calculateCacheSize(): Promise<number> {
+  try {
+    const db = await openCacheDB();
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    let total = 0;
+
+    return new Promise((resolve) => {
+      const cursorRequest = store.openCursor();
+      cursorRequest.onsuccess = (event: any) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          const value = cursor.value;
+          if (value instanceof Blob) {
+            total += value.size;
+          } else if (typeof value === 'string') {
+            total += value.length;
+          }
+          cursor.continue();
+        } else {
+          resolve(total);
+        }
+      };
+      cursorRequest.onerror = () => resolve(total);
+    });
+  } catch (e) {
+    return 0;
+  }
+}
