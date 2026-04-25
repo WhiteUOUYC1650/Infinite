@@ -109,7 +109,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const showNotification = async (chat: Chat, message: any) => {
     const senderName = message.senderName || 'User';
     
-    // Group/Channel title is chat name, DM title is sender name
+    // Group/Channel title is chat name, DM title is sender nickname
     const title = chat.type === 'dm' 
       ? senderName
       : (chat.name || 'Chat');

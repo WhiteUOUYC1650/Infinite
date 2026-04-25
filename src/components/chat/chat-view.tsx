@@ -1059,11 +1059,12 @@ const handleSendCircle = async (payload: {file: File, previewUrl: string}, conte
 const handleSendTextOrImage = async (imageUrl: string | null | undefined, content: string, replyTo: Message | null) => {
     if (!db) return;
     try {
-        const contentForPreview = imageUrl ? t('image_attachment_placeholder') : content.split('\n')[0];
+        const trimmedContent = content.trim();
+        const contentForPreview = trimmedContent || (imageUrl ? t('image_attachment_placeholder') : '');
         const timestamp = Timestamp.now();
         const messageData: { [key: string]: any } = {
             senderId: currentUser.uid,
-            content: content,
+            content: trimmedContent,
             timestamp,
             type: 'user',
             readBy: [],
@@ -1130,9 +1131,10 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
     setLocalMediaCache(prev => ({ ...prev, [messageRef.id]: previewUrl }));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
+    const trimmedContent = content.trim();
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
-        content: content,
+        content: trimmedContent,
         timestamp,
         videoMimeType: videoFile.type,
         videoStatus: 'uploading',
@@ -1150,7 +1152,7 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
         batch.set(messageRef, messageData);
         const lastMessageData = {
             id: messageRef.id,
-            content: content || t('video_attachment_placeholder'),
+            content: trimmedContent || t('video_attachment_placeholder'),
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username,
             timestamp,
@@ -1223,9 +1225,10 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
     setLocalMediaCache(prev => ({ ...prev, [messageRef.id]: previewUrl }));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
+    const trimmedContent = content.trim();
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
-        content: content,
+        content: trimmedContent,
         timestamp,
         fileName: musicFile.name,
         musicMimeType: musicFile.type,
@@ -1244,7 +1247,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         batch.set(messageRef, messageData);
         const lastMessageData = {
             id: messageRef.id,
-            content: content || t('music_attachment_placeholder'),
+            content: trimmedContent || t('music_attachment_placeholder'),
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username,
             timestamp,
@@ -1317,9 +1320,10 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const chatRef = doc(db, 'chats', item.id);
     const timestamp = Timestamp.now();
+    const trimmedContent = content.trim();
     const messageData: Omit<Message, 'id'> = {
         senderId: currentUser.uid,
-        content: content,
+        content: trimmedContent,
         timestamp,
         fileName: file.name,
         fileMimeType: file.type || 'application/octet-stream',
@@ -1339,7 +1343,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         batch.set(messageRef, messageData);
         const lastMessageData = {
             id: messageRef.id,
-            content: content || t('file_attachment_placeholder'),
+            content: trimmedContent || t('file_attachment_placeholder'),
             senderId: currentUser.uid,
             senderName: currentUser.name || currentUser.username,
             timestamp,
@@ -1720,8 +1724,10 @@ const handleForward = async (targetChatId: string) => {
             recordingTimerRef.current = null;
         }
         // Force stop tracks just in case onstop hasn't fired yet or we are in error state
-        recordingStreamRef.current?.getTracks().forEach(t => t.stop());
-        recordingStreamRef.current = null;
+        if (recordingStreamRef.current) {
+            recordingStreamRef.current.getTracks().forEach(t => t.stop());
+            recordingStreamRef.current = null;
+        }
     }
   };
 
@@ -1802,8 +1808,10 @@ const handleForward = async (targetChatId: string) => {
             recordingTimerRef.current = null;
         }
         // Force stop tracks just in case
-        recordingStreamRef.current?.getTracks().forEach(t => t.stop());
-        recordingStreamRef.current = null;
+        if (recordingStreamRef.current) {
+            recordingStreamRef.current.getTracks().forEach(t => t.stop());
+            recordingStreamRef.current = null;
+        }
     }
   };
 
