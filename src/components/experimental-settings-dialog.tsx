@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -38,7 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu, Check, MousePointer2 } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -170,20 +169,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   };
 
   const calculateCacheSize = async () => {
-    let total = 0;
-    // LocalStorage
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && !SETTINGS_KEYS.includes(key)) {
-        total += (localStorage.getItem(key) || '').length * 2;
-      }
-    }
-    
-    // Accurate IndexedDB size
     const dbSize = await getRealCacheSize();
-    total += dbSize;
-    
-    setCurrentCacheSize(formatSize(total));
+    setCurrentCacheSize(formatSize(dbSize));
   };
 
   useEffect(() => {
@@ -957,17 +944,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <p className="text-muted-foreground max-sm">{t('prem_description')}</p>
         </div>
         <div className="w-full space-y-4 pt-4">
-            <div className="flex flex-col gap-2 text-sm text-left">
-                <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <div className="flex flex-col gap-3 text-xs font-bold text-left bg-primary/5 p-6 rounded-[2rem] border border-primary/10">
+                <div className="flex items-center gap-3">
+                    <div className="bg-green-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>
                     <span>{t('prem_benefit_1')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <div className="flex items-center gap-3">
+                    <div className="bg-green-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>
                     <span>{t('prem_benefit_2')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <div className="flex items-center gap-3">
+                    <div className="bg-green-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>
                     <span>{t('prem_benefit_3')}</span>
                 </div>
             </div>
@@ -1011,12 +998,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_bot_studio_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_bot_studio_desc')}</p>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><ImageIcon className="h-4 w-4 text-primary" /> {t('whats_new_media_captions_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_media_captions_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><FileCheck className="h-4 w-4 text-primary" /> {t('whats_new_save_fix_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_save_fix_desc')}</p>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_bot_studio_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_bot_studio_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
           <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('whats_new_minor_title')}</h3>
@@ -1162,7 +1149,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Cloud Password Dialog */}
       <Dialog open={showCloudPasswordDialog} onOpenChange={setShowCloudPasswordDialog}>
         <DialogContent className="max-w-sm">
             <DialogHeader>
@@ -1199,7 +1185,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         </DialogContent>
       </Dialog>
 
-      {/* Recovery Code Dialog */}
       <Dialog open={!!recoveryCodeToShow} onOpenChange={(open) => !open && setRecoveryCodeToShow(null)}>
         <DialogContent className="max-w-sm">
             <DialogHeader>

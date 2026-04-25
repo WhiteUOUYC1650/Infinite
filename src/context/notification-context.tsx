@@ -108,9 +108,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const showNotification = async (chat: Chat, message: any) => {
     const senderName = message.senderName || 'User';
+    
+    // Group/Channel title is chat name, DM title is sender name
     const title = chat.type === 'dm' 
-      ? t('new_message_from', { name: senderName })
-      : `${chat.name || 'Chat'}`;
+      ? senderName
+      : (chat.name || 'Chat');
     
     let body = chat.type === 'dm' 
       ? (message.content || t('image_attachment_placeholder'))
@@ -128,7 +130,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
               extra: { chatId: chat.id },
-              smallIcon: "ic_stat_notification", // Using custom Android resource
+              smallIcon: "ic_stat_notification",
             }
           ]
         });
@@ -139,7 +141,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       try {
         const n = new window.Notification(title || "New Message", {
           body: body || "",
-          icon: '/notification-icon.png', // Path to custom web icon in public/
+          icon: '/notification-icon.png',
         });
         n.onclick = () => {
           window.focus();
@@ -166,7 +168,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               schedule: { at: new Date(Date.now() + 100) },
               extra: { chatId, isCall: true },
               ongoing: true,
-              smallIcon: "ic_stat_notification", // Using custom Android resource
+              smallIcon: "ic_stat_notification",
             }
           ]
         });
@@ -181,7 +183,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         try {
           const n = new window.Notification(title || "Incoming Call", { 
             body, 
-            icon: '/notification-icon.png', // Path to custom web icon in public/
+            icon: '/notification-icon.png',
             tag: 'incoming-call' 
           });
           n.onclick = () => {

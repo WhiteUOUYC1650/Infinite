@@ -747,8 +747,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      // Scroll to bottom ONLY if user was already at bottom. 
-      // This prevents jumps when menus open if user is reading history.
       if (isAtBottomRef.current) {
         scrollToBottom('auto');
       }
@@ -1503,7 +1501,8 @@ const handleForward = async (targetChatId: string) => {
   };
 
   const handleSetEditingMessage = (message: Message | null) => {
-    if (message?.poll) return; // Prevent editing polls
+    // Disable editing for polls, voice messages, and video circles
+    if (!message || message.poll || message.voiceStatus || message.circleStatus) return;
     setEditingMessage(message);
     if (message !== null) {
         setReplyToMessage(null);
@@ -1682,12 +1681,14 @@ const handleForward = async (targetChatId: string) => {
             const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
             const previewUrl = URL.createObjectURL(blob);
-            await handleSendVoice({ file, previewUrl }, '', null, durationSeconds);
             
+            // Immediately stop tracks to turn off the microphone light
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach(t => t.stop());
                 recordingStreamRef.current = null;
             }
+
+            await handleSendVoice({ file, previewUrl }, '', null, durationSeconds);
         };
 
         mediaRecorderRef.current = recorder;
@@ -1718,6 +1719,9 @@ const handleForward = async (targetChatId: string) => {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
         }
+        // Force stop tracks just in case onstop hasn't fired yet or we are in error state
+        recordingStreamRef.current?.getTracks().forEach(t => t.stop());
+        recordingStreamRef.current = null;
     }
   };
 
@@ -1759,12 +1763,14 @@ const handleForward = async (targetChatId: string) => {
             const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
             const file = new File([blob], 'circle.webm', { type: 'video/webm' });
             const previewUrl = URL.createObjectURL(blob);
-            await handleSendCircle({ file, previewUrl }, '', null, durationSeconds);
-            
+
+            // Immediately stop tracks to turn off the camera/microphone lights
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach(t => t.stop());
                 recordingStreamRef.current = null;
             }
+
+            await handleSendCircle({ file, previewUrl }, '', null, durationSeconds);
         };
 
         mediaRecorderRef.current = recorder;
@@ -1787,8 +1793,6 @@ const handleForward = async (targetChatId: string) => {
         if (cancel) isRecordingCancelledRef.current = true;
         if (mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
-        } else {
-            recordingStreamRef.current?.getTracks().forEach(t => t.stop());
         }
         setIsRecordingCircle(false);
         setIsRecordingLocked(false);
@@ -1797,6 +1801,9 @@ const handleForward = async (targetChatId: string) => {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
         }
+        // Force stop tracks just in case
+        recordingStreamRef.current?.getTracks().forEach(t => t.stop());
+        recordingStreamRef.current = null;
     }
   };
 
@@ -2694,13 +2701,27 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     </button>
                 )}
                 <div className="overflow-hidden">
-                    {message.voiceStatus === 'complete' ? <CustomAudioPlayer src={voiceUrl || null} hideTime={true} /> :
-                     message.circleStatus === 'complete' ? <div className="rounded-full overflow-hidden w-48 h-48 bg-black">{circleUrl && <video ref={circleVideoRef} src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}</div> :
-                     message.videoMimeType ? <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={fetchAndCacheVideo}>{videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}</div> :
-                     message.musicMimeType ? <CustomAudioPlayer src={musicUrl || null} isMusic={true} fileName={message.fileName} /> :
-                     message.imageUrl ? <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
-                     message.poll ? <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} /> :
-                     <div className="text-sm break-words whitespace-pre-wrap"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>}
+                    {message.voiceStatus === 'complete' && <CustomAudioPlayer src={voiceUrl || null} hideTime={true} />}
+                    {message.circleStatus === 'complete' && (
+                        <div className="rounded-full overflow-hidden w-48 h-48 bg-black">
+                            {circleUrl && <video ref={circleVideoRef} src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}
+                        </div>
+                    )}
+                    {message.videoMimeType && !isCircle && (
+                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={fetchAndCacheVideo}>
+                            {videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}
+                        </div>
+                    )}
+                    {message.musicMimeType && <CustomAudioPlayer src={musicUrl || null} isMusic={true} fileName={message.fileName} />}
+                    {message.imageUrl && <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
+                    {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
+                    
+                    {/* Render content (captions) for all message types except polls and empty content */}
+                    {message.content && !message.poll && (
+                        <div className={cn("text-sm break-words whitespace-pre-wrap", (message.imageUrl || message.videoMimeType || message.musicMimeType || message.circleStatus || message.voiceStatus) && "mt-2")}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                        </div>
+                    )}
                 </div>
                 <div className={cn("flex items-center gap-1.5 mt-0.5 text-[9px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
                     <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
@@ -2715,7 +2736,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>
-                        {isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus && <DropdownMenuItem onSelect={() => handleSetEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
                         {(isCurrentUser || chat.ownerId === currentUser.uid) && <DropdownMenuItem onSelect={handleDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
