@@ -104,14 +104,14 @@ service cloud.firestore {
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy', 'videoStatus', 'videoChunkIds']));
-      allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == request.resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy', 'videoStatus', 'videoChunkIds']));
+      allow delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin());
 
       match /comments/{commentId} {
         allow get, list: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
         allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
-        allow delete: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
+        allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       }
     }
     
