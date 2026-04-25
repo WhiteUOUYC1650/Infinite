@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -37,7 +38,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu, Check, MousePointer2, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu, Check, MousePointer2, Image as ImageIcon, Globe } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -998,19 +999,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><ImageIcon className="h-4 w-4 text-primary" /> {t('whats_new_media_captions_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_media_captions_desc')}</p>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> {t('whats_new_offline_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_offline_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_bot_studio_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_bot_studio_desc')}</p>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><HardDrive className="h-4 w-4 text-primary" /> {t('whats_new_cache_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_cache_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('whats_new_minor_title')}</h3>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_minor_title')}</h3>
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_minor_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><X className="h-4 w-4 text-primary" /> {t('whats_new_bug_fix_title')}</h3>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> {t('whats_new_bug_fix_title')}</h3>
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_bug_fix_desc')}</p>
         </div>
       </div>
