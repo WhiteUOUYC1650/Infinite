@@ -459,6 +459,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   // Animation scroll logic
   const [animatingCount, setAnimatingCount] = useState(0);
   const isTransitioningRef = useRef(false);
+  const isInitialLoadGate = useRef(true); // Gating initial load animations
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxFileSizeText = isPrem ? '4GB' : '1GB';
@@ -727,20 +728,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
-  const initialLoadRef = useRef<Record<string, boolean>>({});
+  const initialLoadMapRef = useRef<Record<string, boolean>>({});
 
   // Scroll Anchoring and Staggered Loading
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !messages) return;
 
-    const isFirstLoad = !initialLoadRef.current[item.id];
+    const isFirstLoad = !initialLoadMapRef.current[item.id];
     
     if (isFirstLoad) {
-        initialLoadRef.current[item.id] = true;
+        initialLoadMapRef.current[item.id] = true;
         scrollToBottom('auto');
     } else if (lastScrollHeightRef.current > 0) {
-        // We loaded older messages, adjust scroll position to stay on same message
+        // Anchoring logic for older messages
         const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
         if (heightDiff > 0) {
             container.scrollTop += heightDiff;
@@ -756,14 +757,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      // If we are already near bottom or currently animating/transitioning, keep sticking to bottom
-      const isNearBottom = scrollContainerRef.current ? (scrollContainerRef.current.scrollHeight - scrollContainerRef.current.scrollTop - scrollContainerRef.current.clientHeight < 150) : false;
-      if (isNearBottom || animatingCount > 0 || isTransitioningRef.current) {
+      // Force scroll only during initial load animations OR if the user is already at the bottom
+      if ((isInitialLoadGate.current && animatingCount > 0) || isAtBottomRef.current) {
         scrollToBottom('auto');
       }
     });
 
-    // Observe the list container to detect when items resize (e.g. images finish loading)
     const list = container.querySelector('.flex.flex-col');
     if (list) {
       resizeObserver.observe(list);
@@ -772,10 +771,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return () => resizeObserver.disconnect();
   }, [animatingCount, scrollToBottom]);
 
-  // "Eternal scroll" cycle based on animation counter
+  // "Eternal scroll" cycle for smooth message appearance
   useEffect(() => {
     const interval = setInterval(() => {
-        if (animatingCount > 0 || isTransitioningRef.current) {
+        if ((isInitialLoadGate.current && animatingCount > 0) || isTransitioningRef.current || isAtBottomRef.current) {
             scrollToBottom('auto');
         }
     }, 50);
@@ -783,29 +782,38 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return () => clearInterval(interval);
   }, [animatingCount, scrollToBottom]);
   
-  // Set transitioning buffer on chat or message count change
+  // Set transitioning buffer and handle the "Gated Variable" deletion
   useEffect(() => {
-    const isNewChat = !initialLoadRef.current[item.id];
-    const isNearBottom = isAtBottomRef.current;
-
-    // Only force-scroll if it's a new chat OR user was already at the bottom
-    if (isNewChat || isNearBottom) {
+    const isNewChat = !initialLoadMapRef.current[item.id];
+    
+    if (isNewChat) {
+        isInitialLoadGate.current = true;
         setAnimatingCount(0);
         isTransitioningRef.current = true;
         const timer = setTimeout(() => {
             isTransitioningRef.current = false;
-        }, 1000); 
+        }, 1500); 
+        return () => clearTimeout(timer);
+    } else {
+        // If chat was already opened once, we don't treat it as initial load
+        isInitialLoadGate.current = false;
+    }
+  }, [item.id]);
+
+  // Check if variable should be "deleted" (gated) after animations finish
+  useEffect(() => {
+    if (isInitialLoadGate.current && animatingCount === 0 && !isTransitioningRef.current) {
+        // All initial animations finished, remove the gate
+        const timer = setTimeout(() => {
+            isInitialLoadGate.current = false;
+        }, 500);
         return () => clearTimeout(timer);
     }
-  }, [item.id, messages?.length]);
+  }, [animatingCount]);
 
   const handleMediaLoad = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (container) {
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
-        if (isNearBottom) {
-            scrollToBottom();
-        }
+    if (isAtBottomRef.current || isInitialLoadGate.current) {
+        scrollToBottom();
     }
   }, [scrollToBottom]);
 
@@ -840,7 +848,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
         setStickyDate(currentStickyDate);
 
-        // Infinite Scroll logic: increase limit when reaching the top
         if (scrollTop < 100 && hasMore && !messagesLoading) {
             setMessageLimit(prev => prev + 50);
         }
@@ -2277,8 +2284,8 @@ const handleForward = async (targetChatId: string) => {
                                       <div 
                                         className="message-stagger-item" 
                                         style={{ animationDelay: `${(index % 10) * 0.05}s` }}
-                                        onAnimationStart={() => setAnimatingCount(prev => prev + 1)}
-                                        onAnimationEnd={() => setAnimatingCount(prev => prev - 1)}
+                                        onAnimationStart={() => isInitialLoadGate.current && setAnimatingCount(prev => prev + 1)}
+                                        onAnimationEnd={() => isInitialLoadGate.current && setAnimatingCount(prev => prev - 1)}
                                       >
                                           <ChatMessage 
                                               message={message} 
@@ -2498,9 +2505,7 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
     const filteredChats = useMemo(() => {
         if (!chats) return [];
         return chats.filter(c => {
-            // Cannot forward to other's channels
             if (c.type === 'channel' && c.ownerId !== currentUser.uid) return false;
-
             if (c.id === currentUser.uid) return true;
             if (c.name && c.name.toLowerCase().includes(search.toLowerCase())) return true;
             if (c.type === 'dm') return true; 
