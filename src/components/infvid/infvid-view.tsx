@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { Capacitor } from '@capacitor/core';
 import { useTheme } from '@/context/theme-context';
+import { getCachedFile, cacheFile } from '@/lib/cache-utils';
 
 const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -189,6 +190,9 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             videoChunkIds: chunkIds,
         });
 
+        // Also cache it locally immediately
+        await cacheFile(videoDocRef.id, file);
+
         toast({ title: t('dm_success'), description: t('infvid_upload_success') });
         setIsUploadOpen(false);
     } catch (error) {
@@ -355,14 +359,25 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
     const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
     useEffect(() => {
-        if (!db || !video.videoChunkIds || video.videoStatus !== 'complete') {
-            if (video.videoStatus === 'uploading') {
-                setIsLoading(true);
-            }
-            return;
-        }
+        if (!db) return;
         
         const load = async () => {
+            const cached = await getCachedFile(video.id);
+            if (cached) {
+                setVideoUrl(cached);
+                setIsLoading(false);
+                if (!viewIncremented.current) {
+                    viewIncremented.current = true;
+                    updateDoc(doc(db, 'videos', video.id), { views: increment(1) });
+                }
+                return;
+            }
+
+            if (video.videoStatus !== 'complete') {
+                if (video.videoStatus === 'uploading') setIsLoading(true);
+                return;
+            }
+
             setIsLoading(true);
             try {
                 const chunkSnaps = await Promise.all(
@@ -371,12 +386,14 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                 const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string });
                 chunksData.sort((a, b) => a.part - b.part);
                 const assembledBase64 = chunksData.map(c => c.data).join('');
-                setVideoUrl(`data:${video.videoMimeType};base64,${assembledBase64}`);
+                const dataUrl = `data:${video.videoMimeType};base64,${assembledBase64}`;
+                
+                await cacheFile(video.id, dataUrl);
+                setVideoUrl(await getCachedFile(video.id));
                 
                 if (!viewIncremented.current) {
                     viewIncremented.current = true;
-                    const videoRef = doc(db, 'videos', video.id);
-                    updateDoc(videoRef, { views: increment(1) });
+                    updateDoc(doc(db, 'videos', video.id), { views: increment(1) });
                 }
             } catch (e) {
                 console.error(e);

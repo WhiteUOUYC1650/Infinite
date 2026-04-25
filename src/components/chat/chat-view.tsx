@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -56,7 +55,7 @@ import { VerifiedBadge } from '../ui/verified-badge';
 import { PremBadge } from '../ui/prem-badge';
 import { BetaBadge } from '../ui/beta-badge';
 import { useTheme } from '@/context/theme-context';
-import { getCachedFile, cacheFile } from '@/lib/cache-utils';
+import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -1004,6 +1003,9 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
             await new Promise(res => setTimeout(res, 0));
         }
         await updateDoc(messageRef, { voiceStatus: 'complete', voiceChunkIds: chunkIds });
+        
+        // Cache the file immediately
+        await cacheFile(messageRef.id, file);
     } catch (e) { console.error(e); }
 };
 
@@ -1050,6 +1052,9 @@ const handleSendCircle = async (payload: {file: File, previewUrl: string}, conte
             await new Promise(res => setTimeout(res, 0));
         }
         await updateDoc(messageRef, { circleStatus: 'complete', circleChunkIds: chunkIds });
+
+        // Cache the file immediately
+        await cacheFile(messageRef.id, file);
     } catch (e) { console.error(e); }
 };
 
@@ -1110,6 +1115,10 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
 
         batch.update(chatRef, updateData);
         await batch.commit();
+
+        if (imageUrl) {
+            await fetchAndCacheImage(messageRef.id, imageUrl);
+        }
     } catch (error) {
         console.error("Error sending text/image message:", error);
         throw error;
@@ -1194,6 +1203,10 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
             await new Promise(res => setTimeout(res, 50));
         }
         await updateDoc(messageRef, { videoStatus: 'complete', videoChunkIds: chunkIds });
+        
+        // Cache the assembled video
+        await cacheFile(messageRef.id, videoFile);
+
         const chatDoc = await getDoc(chatRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, { 'lastMessage.videoStatus': 'complete' });
@@ -1285,6 +1298,10 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
             await new Promise(res => setTimeout(res, 0));
         }
         await updateDoc(messageRef, { musicStatus: 'complete', musicChunkIds: chunkIds });
+        
+        // Cache the file
+        await cacheFile(messageRef.id, musicFile);
+
         const chatDoc = await getDoc(chatRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, { 'lastMessage.musicStatus': 'complete' });
@@ -1374,7 +1391,11 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
             chunkIds.push(chunkDocRef.id);
             await new Promise(res => setTimeout(res, 0));
         }
-        await updateDoc(messageRef, { fileStatus: 'complete' });
+        await updateDoc(messageRef, { fileStatus: 'complete', fileChunkIds: chunkIds });
+
+        // Cache the file
+        await cacheFile(messageRef.id, file);
+
         const chatDoc = await getDoc(chatDocRef);
         if (chatDoc.data()?.lastMessage?.id === messageRef.id) {
             await updateDoc(chatRef, { 'lastMessage.fileStatus': 'complete' });
@@ -1990,7 +2011,7 @@ const handleForward = async (targetChatId: string) => {
                         >
                             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessagesChat} />
                             <div className="ml-3 min-w-0 overflow-hidden flex flex-col justify-center h-full">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-0">
                                     <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                     {!isSavedMessagesChat && (
                                         <>
@@ -2032,7 +2053,7 @@ const handleForward = async (targetChatId: string) => {
                             )}
                         </Avatar>
                         <div className="min-w-0 overflow-hidden flex flex-col justify-center h-full">
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2 min-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                             </div>
@@ -2492,6 +2513,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const [circleUrl, setCircleUrl] = useState<string | null>(null);
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [isLoadingFile, setIsLoadingFile] = useState(false);
+    const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(null);
+    
     const messageRef = useRef<HTMLDivElement>(null);
     const circleVideoRef = useRef<HTMLVideoElement>(null);
     const isMentionAll = useMemo(() => message.content?.toLowerCase().includes('@all'), [message.content]);
@@ -2505,9 +2528,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 else if (message.fileName && !message.imageUrl) setFileUrl(cached);
                 else if (message.voiceStatus === 'complete') setVoiceUrl(cached);
                 else if (message.circleStatus === 'complete') setCircleUrl(cached);
+                else if (message.imageUrl) setCachedImageUrl(cached);
             } else if (localMediaUrl) {
                 if (message.videoMimeType) setVideoUrl(localMediaUrl);
                 else if (message.musicMimeType) setMusicUrl(localMediaUrl);
+                else if (message.imageUrl) setCachedImageUrl(localMediaUrl);
             }
         };
         checkCache();
@@ -2522,12 +2547,19 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 if (message.fileStatus === 'complete' && !fileUrl && !isLoadingFile) fetchAndCacheFile();
                 if (message.voiceStatus === 'complete' && !voiceUrl) fetchAndCacheVoice();
                 if (message.circleStatus === 'complete' && !circleUrl) fetchAndCacheCircle();
+                if (message.imageUrl && !cachedImageUrl) cacheImage();
                 observer.disconnect();
             }
         }, { threshold: 0.1 });
         observer.observe(messageRef.current);
         return () => observer.disconnect();
-    }, [videoUrl, musicUrl, fileUrl, voiceUrl, circleUrl, message.videoStatus, message.musicStatus, message.fileStatus, message.voiceStatus, message.circleStatus]);
+    }, [videoUrl, musicUrl, fileUrl, voiceUrl, circleUrl, cachedImageUrl, message.videoStatus, message.musicStatus, message.fileStatus, message.voiceStatus, message.circleStatus]);
+
+    const cacheImage = async () => {
+        if (!message.imageUrl || cachedImageUrl) return;
+        const url = await fetchAndCacheImage(message.id, message.imageUrl);
+        if (url) setCachedImageUrl(url);
+    };
 
     const fetchAndCacheVideo = async () => {
         if (!db || !message.videoChunkIds || videoUrl || isLoadingVideo) return;
@@ -2535,7 +2567,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         try {
             const chunkSnaps = await Promise.all(message.videoChunkIds.map(id => getDoc(doc(db, 'videoChunks', id))));
             const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
-            const dataUrl = `data:${message.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            const assembledBase64 = chunksData.map(c => c.data).join('');
+            const dataUrl = `data:${message.videoMimeType};base64,${assembledBase64}`;
             await cacheFile(message.id, dataUrl);
             setVideoUrl(await getCachedFile(message.id));
             onMediaLoad();
@@ -2548,7 +2581,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         try {
             const chunkSnaps = await Promise.all(message.musicChunkIds.map(id => getDoc(doc(db, 'musicChunks', id))));
             const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
-            const dataUrl = `data:${message.musicMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            const assembledBase64 = chunksData.map(c => c.data).join('');
+            const dataUrl = `data:${message.musicMimeType};base64,${assembledBase64}`;
             await cacheFile(message.id, dataUrl);
             setMusicUrl(await getCachedFile(message.id));
             onMediaLoad();
@@ -2560,7 +2594,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         try {
             const chunkSnaps = await Promise.all(message.voiceChunkIds.map(id => getDoc(doc(db, 'voiceChunks', id))));
             const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
-            const dataUrl = `data:${message.voiceMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            const assembledBase64 = chunksData.map(c => c.data).join('');
+            const dataUrl = `data:${message.voiceMimeType};base64,${assembledBase64}`;
             await cacheFile(message.id, dataUrl);
             setVoiceUrl(await getCachedFile(message.id));
             onMediaLoad();
@@ -2572,7 +2607,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         try {
             const chunkSnaps = await Promise.all(message.circleChunkIds.map(id => getDoc(doc(db, 'circleChunks', id))));
             const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
-            const dataUrl = `data:${message.circleMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            const assembledBase64 = chunksData.map(c => c.data).join('');
+            const dataUrl = `data:${message.circleMimeType};base64,${assembledBase64}`;
             await cacheFile(message.id, dataUrl);
             setCircleUrl(await getCachedFile(message.id));
             onMediaLoad();
@@ -2585,7 +2621,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         try {
             const chunkSnaps = await Promise.all(message.fileChunkIds.map(id => getDoc(doc(db, 'fileChunks', id))));
             const chunksData = chunkSnaps.map(s => s.data() as any).sort((a,b) => a.part - b.part);
-            const dataUrl = `data:${message.fileMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+            const assembledBase64 = chunksData.map(c => c.data).join('');
+            const dataUrl = `data:${message.fileMimeType};base64,${assembledBase64}`;
             await cacheFile(message.id, dataUrl);
             setFileUrl(await getCachedFile(message.id));
             onMediaLoad();
@@ -2661,7 +2698,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                      message.circleStatus === 'complete' ? <div className="rounded-full overflow-hidden w-48 h-48 bg-black">{circleUrl && <video ref={circleVideoRef} src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}</div> :
                      message.videoMimeType ? <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={fetchAndCacheVideo}>{videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}</div> :
                      message.musicMimeType ? <CustomAudioPlayer src={musicUrl || null} isMusic={true} fileName={message.fileName} /> :
-                     message.imageUrl ? <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
+                     message.imageUrl ? <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /> :
                      message.poll ? <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} /> :
                      <div className="text-sm break-words whitespace-pre-wrap"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>}
                 </div>

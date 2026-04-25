@@ -24,8 +24,9 @@ export async function openCacheDB(): Promise<IDBDatabase> {
  * Converts a base64 data URI to a Blob.
  */
 function dataURItoBlob(dataURI: string): Blob {
-  const byteString = atob(dataURI.split(',')[1]);
-  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+  const parts = dataURI.split(',');
+  const byteString = atob(parts[1]);
+  const mimeString = parts[0].split(':')[1].split(';')[0];
   const ab = new ArrayBuffer(byteString.length);
   const ia = new Uint8Array(ab);
   for (let i = 0; i < byteString.length; i++) {
@@ -55,10 +56,10 @@ export async function getCachedFile(id: string): Promise<string | null> {
   }
 }
 
-export async function cacheFile(id: string, dataUrl: string): Promise<void> {
+export async function cacheFile(id: string, data: string | Blob): Promise<void> {
   try {
     const db = await openCacheDB();
-    const blob = dataURItoBlob(dataUrl);
+    const blob = typeof data === 'string' ? dataURItoBlob(data) : data;
     
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -69,6 +70,27 @@ export async function cacheFile(id: string, dataUrl: string): Promise<void> {
     });
   } catch (e) {
     console.error('IndexedDB Put error:', e);
+  }
+}
+
+export async function fetchAndCacheImage(id: string, url: string): Promise<string | null> {
+  const cached = await getCachedFile(id);
+  if (cached) return cached;
+
+  try {
+    // Avoid re-fetching base64 images
+    if (url.startsWith('data:')) {
+        await cacheFile(id, url);
+        return await getCachedFile(id);
+    }
+
+    const response = await fetch(url);
+    const blob = await response.blob();
+    await cacheFile(id, blob);
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.error('Fetch and cache error:', e);
+    return null;
   }
 }
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -17,7 +18,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Badge } from '../ui/badge';
 import { useTheme } from '@/context/theme-context';
-import { cacheFile, getCachedFile } from '@/lib/cache-utils';
+import { cacheFile, getCachedFile, fetchAndCacheImage } from '@/lib/cache-utils';
 
 const iconMap = {
     Users,
@@ -165,11 +166,22 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (message.imageUrl) {
-      setMediaUrl(message.imageUrl);
-    } else if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete') {
-        getCachedFile(message.id).then(url => setMediaUrl(url));
-    }
+    const load = async () => {
+        const cached = await getCachedFile(message.id);
+        if (cached) {
+            setMediaUrl(cached);
+            return;
+        }
+
+        if (message.imageUrl) {
+            const cachedUrl = await fetchAndCacheImage(message.id, message.imageUrl);
+            setMediaUrl(cachedUrl || message.imageUrl);
+        } else if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete') {
+            const url = await getCachedFile(message.id);
+            setMediaUrl(url);
+        }
+    };
+    load();
   }, [message]);
 
   const timestamp = format(new Date(message.timestamp.toMillis()), 'HH:mm');
@@ -194,9 +206,9 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
         </Button>
       </div>
 
-      {message.imageUrl && (
+      {mediaUrl && message.imageUrl && (
         <div className="aspect-video relative overflow-hidden bg-zinc-900 border-b">
-          <img src={message.imageUrl} alt="Attachment" className="w-full h-full object-cover" />
+          <img src={mediaUrl} alt="Attachment" className="w-full h-full object-cover" />
         </div>
       )}
 

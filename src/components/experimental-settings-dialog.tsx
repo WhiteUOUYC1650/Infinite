@@ -161,25 +161,42 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         .slice(0, 30);
   }, [sentTransfers, receivedTransfers]);
 
-  const calculateCacheSize = () => {
-    if (typeof window === 'undefined') return '0 B';
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const calculateCacheSize = async () => {
     let total = 0;
+    // LocalStorage
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && !SETTINGS_KEYS.includes(key)) {
         total += (localStorage.getItem(key) || '').length * 2;
       }
     }
-    if (total === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(total) / Math.log(k));
-    return parseFloat((total / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    
+    // IndexedDB estimate
+    if (navigator.storage && navigator.storage.estimate) {
+        try {
+            const estimate = await navigator.storage.estimate();
+            if (estimate.usage) {
+                // The estimate includes overhead and other origins potentially, 
+                // but usually usage is a good indicator of app-specific storage.
+                total += estimate.usage;
+            }
+        } catch (e) {}
+    }
+    
+    setCurrentCacheSize(formatSize(total));
   };
 
   useEffect(() => {
     if (open) {
-        setCurrentCacheSize(calculateCacheSize());
+        calculateCacheSize();
     }
   }, [open, page]);
 
@@ -410,7 +427,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         await clearCacheDB();
 
         toast({ title: t('dm_success'), description: t('cache_cleared_success') });
-        setCurrentCacheSize(calculateCacheSize());
+        await calculateCacheSize();
     } catch (e) {
         console.error("Clear cache failed", e);
     }
