@@ -2727,11 +2727,44 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     {/* Render content (captions) for all message types except polls and empty content */}
                     {message.content && !message.poll && (
                         <div className={cn("text-sm break-words whitespace-pre-wrap", (message.imageUrl || message.videoMimeType || message.musicMimeType || message.circleStatus || message.voiceStatus) && "mt-2")}>
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                            <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    a: ({node, ...props}) => {
+                                        const isInternal = props.href?.startsWith('@') || props.href?.startsWith('/') || props.href?.toLowerCase().startsWith('infinite://');
+                                        const handleClick = (e: React.MouseEvent) => {
+                                            if (isInternal) {
+                                                e.preventDefault();
+                                                onInternalLinkClick(props.href!);
+                                            }
+                                        };
+                                        
+                                        return (
+                                            <a 
+                                                href={props.href}
+                                                onClick={handleClick} 
+                                                className={cn(
+                                                    "underline font-bold",
+                                                    (alignRight && chatType !== 'channel') ? "text-white" : "text-primary"
+                                                )}
+                                                target={isInternal ? undefined : "_blank"}
+                                                rel={isInternal ? undefined : "noopener noreferrer"}
+                                            >
+                                                {props.children}
+                                            </a>
+                                        );
+                                    }
+                                }}
+                            >
+                                {message.content}
+                            </ReactMarkdown>
                         </div>
                     )}
                 </div>
                 <div className={cn("flex items-center gap-1.5 mt-0.5 text-[9px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
+                    {message.editedAt && (
+                        <span className="font-bold">{t('edited')},</span>
+                    )}
                     <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
                     {isCurrentUser && !isCircle && (isRead ? <CheckCheck className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />)}
                 </div>

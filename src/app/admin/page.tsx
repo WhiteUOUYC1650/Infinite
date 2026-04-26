@@ -497,7 +497,7 @@ function AdminPage() {
                         
                         <svg width="64" height="64" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
                             {/* This SVG exactly mimics the launcher foreground scale and paths */}
-                            <g transform="translate(16.2, 16.2) scale(0.7)">
+                            <g transform="translate(4, 4)">
                               <path
                                   d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
                                   fill="none"
@@ -526,7 +526,7 @@ function AdminPage() {
                       </div>
                       
                       <p className="text-[11px] text-muted-foreground text-center font-medium max-w-[200px]">
-                        This is how your app icon looks on Android. Scaled to 70% within the safe zone on #FF8C00.
+                        This is how your app icon looks on Android. Logo at 100% scale on #FF8C00.
                       </p>
                   </div>
               </div>
@@ -607,7 +607,7 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta }: { user: User; onBa
         <div className="font-semibold flex items-center gap-2">
             {displayName} 
             {isProtectedUser && !user.isDeleted && <VerifiedBadge />}
-            {user.subscriptionTier === 'prem' && user.showPremBadge && !user.isDeleted && <PremBadge />}
+            {user.subscriptionTier === 'prem' && user.showPremBadge && !user.isDeleted && <VerifiedBadge className="bg-purple-500" />}
             {user.isBetaTester && !isProtectedUser && !user.isDeleted && <BetaBadge />}
         </div>
         <p className="text-sm text-muted-foreground">{displayUsername}</p>
