@@ -4,7 +4,7 @@
     android:height="24dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
-    <!-- Петля бесконечности -->
+    <!-- Основная петля бесконечности (точно по координатам Splash Screen) -->
     <path
         android:pathData="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
         android:strokeColor="#FFFFFF"
