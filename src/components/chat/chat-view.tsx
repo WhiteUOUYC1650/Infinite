@@ -2258,17 +2258,17 @@ const handleForward = async (targetChatId: string) => {
           <div 
             ref={scrollContainerRef} 
             onScroll={handleScroll} 
-            className="flex-1 overflow-y-auto px-2 md:px-4 flex flex-col relative min-h-0"
+            className="flex-1 overflow-y-auto px-2 md:px-4 flex flex-col relative min-h-0 overscroll-behavior-y-contain"
           >
               <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
-              <div className="flex-1" />
+              <div className="flex-1 min-h-0" />
 
               {isLoading && messageLimit === 50 ? (
                   <div className="flex h-full items-center justify-center">
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   </div>
               ) : isMember && messages && messages.length > 0 ? (
-                  <div className="messages-list-inner space-y-2 py-4 flex flex-col relative">
+                  <div className="messages-list-inner space-y-2 py-4 flex flex-col relative flex-grow min-h-0">
                       {messages.map((message, index) => {
                           const sender = memberDetails[message.senderId];
                           const messageDate = getSafeDate(message.timestamp);
@@ -2798,7 +2798,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>
-                        {isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus && <DropdownMenuItem onSelect={() => handleSetEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
                         {(isCurrentUser || chat.ownerId === currentUser.uid) && <DropdownMenuItem onSelect={handleDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
