@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -374,17 +373,17 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </Dialog>
 
       <Dialog open={!!imageToCrop} onOpenChange={(open) => !open && setImageToCrop('')}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl overflow-hidden p-6">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] sm:max-w-md rounded-3xl overflow-hidden p-6 flex flex-col">
             <DialogHeader>
                 <DialogTitle>Crop Bot Avatar</DialogTitle>
                 <DialogDescription>Adjust the frame to set your bot's look.</DialogDescription>
             </DialogHeader>
-            <div className="flex justify-center my-4 overflow-hidden">
+            <div className="flex-1 flex justify-center my-4 overflow-hidden min-h-0">
                 <ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={1}>
                     <img ref={imgRef} src={imageToCrop} alt="Crop" onLoad={onImageLoad} className="max-h-[50vh] object-contain" />
                 </ReactCrop>
             </div>
-            <DialogFooter className="gap-2">
+            <DialogFooter className="gap-2 pt-4">
                 <Button variant="ghost" onClick={() => setImageToCrop('')} className="rounded-xl">{t('cancel')}</Button>
                 <Button onClick={handleCropConfirm} disabled={isCropping} className="rounded-xl font-bold">
                     {isCropping && <Clock className="mr-2 h-4 w-4 animate-spin" />} Set Avatar

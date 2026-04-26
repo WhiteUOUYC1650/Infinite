@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -211,7 +210,7 @@ export const translations = {
       'faq_edit_profile_q': "How do I change my nickname or status?",
       'faq_edit_profile_a': "You can edit your profile by clicking on your avatar at the bottom of the sidebar, which opens your profile card. From there, click the 'Edit Profile' button. You can also access settings by clicking the gear icon and selecting 'Profile'.",
       'faq_bot_q': "What is the 'Infinite' bot?",
-      'faq_bot_a': "The 'Infinite' bot is an official assistant. It welcomes you when you sign up and greets you when you log in. It also sends important announcements, for example about new app updates.",
+      'faq_bot_a': "The 'Infinite' bot is an official assistant. It can send you important announcements, for example about new app updates or system maintenance.",
       'faq_calls_q': "How do I make a call?",
       'faq_calls_a': "You can make one-on-one audio calls in any direct message chat. Simply open the chat and click the phone icon in the header. Please note that this is an experimental feature.",
       'faq_media_q': "How can I send photos, videos, or music?",
@@ -771,7 +770,7 @@ export const translations = {
       'faq_edit_profile_q': "Как изменить свой псевдоним или статус?",
       'faq_edit_profile_a': "Вы можете отредактировать свой профиль, нажав на свой аватар в нижней части боковой панели, что откроет вашу карточку профиля. Оттуда нажмите кнопку 'Редактировать профиль'. Вы также можете получить доступ к настройкам, нажав значок шестеренки и выбрав 'Профиль'.",
       'faq_bot_q': "Что такое бот 'Infinite'?",
-      'faq_bot_a': "Бот 'Infinite' — это официальный помощник. Он приветствует вас при регистрации и входе в систему, а также рассылает важные оповещения, например, о новых обновлениях приложения.",
+      'faq_bot_a': "Бот 'Infinite' — это официальный помощник. Он может рассылать вам важные оповещения, например, о новых обновлениях приложения или технических работах.",
       'faq_calls_q': "Как мне позвонить?",
       'faq_calls_a': "Вы можете совершать аудиозвонки один на один в любом личном чате. Просто откройте чат и нажмите на иконку телефона в заголовке. Обратите внимание, что это экспериментальная функция.",
       'faq_media_q': "Как я могу отправить фото, видео или музыку?",
@@ -1093,7 +1092,7 @@ export const translations = {
       'bot_guide_logic': 'Logic',
       'bot_guide_logic_if': '**Если**: Проверка условия (например, если сообщение содержит определенное слово).',
       'bot_guide_logic_wait': '**Wait**: Пауза в выполнении скрипта на несколько секунд.',
-      'bot_guide_vars': 'Память (Переменные)',
+      'bot_guide_vars': 'Memory (Переменные)',
       'bot_guide_var_intro': 'Используйте фигурные скобки, чтобы вставлять динамические данные в сообщения:',
       'bot_guide_var_user': '- `{user_name}`: Имя пользователя, который общается с ботов.',
       'bot_guide_var_msg': '- `{msg_text}`: Текст полученного сообщения.',

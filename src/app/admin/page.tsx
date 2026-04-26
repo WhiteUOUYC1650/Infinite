@@ -3,11 +3,11 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp, getDocs, Timestamp, addDoc } from 'firebase/firestore';
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2, Send, MessageSquare } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2, Send, MessageSquare, Image as ImageIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -113,7 +113,7 @@ function AdminPage() {
     try {
       await deleteDoc(chatRef);
       toast({
-        title: t('admin_toast_success_title'),
+        title: t('dm_success'),
         description: t('admin_toast_chat_deleted_desc', { chatId }),
       });
     } catch (error: any) {
@@ -359,12 +359,13 @@ function AdminPage() {
       </header>
       <main className="flex-1 overflow-hidden pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         <Tabs defaultValue="users" className="flex h-full flex-col">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6 h-auto flex-wrap">
             <TabsTrigger value="users">{t('admin_users_tab')}</TabsTrigger>
             <TabsTrigger value="groups">{t('admin_groups_tab')}</TabsTrigger>
             <TabsTrigger value="channels">{t('admin_channels_tab')}</TabsTrigger>
             <TabsTrigger value="broadcast">{t('admin_broadcast_tab')}</TabsTrigger>
             <TabsTrigger value="update">Update</TabsTrigger>
+            <TabsTrigger value="resources">XML Check</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="flex-1 overflow-auto mt-4">
             <ItemList
@@ -474,6 +475,48 @@ function AdminPage() {
                       <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || !newVersion.trim() || isUploadingApk}>
                           {isUploadingApk ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Publish Update"}
                       </Button>
+                  </div>
+              </div>
+          </TabsContent>
+          <TabsContent value="resources" className="flex-1 overflow-auto mt-4">
+              <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                  <div className="text-center space-y-2">
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <ImageIcon className="h-8 w-8 text-primary" />
+                      </div>
+                      <h2 className="text-2xl font-bold font-headline">Android XML Preview</h2>
+                      <p className="text-sm text-muted-foreground">Visual check of ic_stat_notification.xml paths.</p>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-6 p-8 bg-black rounded-2xl border border-white/10">
+                      <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">Notification Icon Rendering</div>
+                      <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-lg">
+                          {/* This SVG exactly mimics the pathData from the XML resource */}
+                          <path
+                              d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="6"
+                              strokeLinecap="round"
+                          />
+                          <path
+                              d="M 20 78 L 10 90 L 25 78"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                          />
+                          <path
+                              d="M 80 22 L 90 10 L 75 22"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                          />
+                      </svg>
+                      <p className="text-xs text-white/60 text-center italic">This is what users will see in their Android status bar. The XML uses identical Bezier curves.</p>
                   </div>
               </div>
           </TabsContent>

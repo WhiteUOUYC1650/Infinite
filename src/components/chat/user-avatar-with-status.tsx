@@ -1,11 +1,10 @@
-
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { Bookmark, Ghost, User as UserIcon } from "lucide-react";
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useLayoutEffect } from "react";
 import { fetchAndCacheImage, getCachedFile } from "@/lib/cache-utils";
 
 interface UserAvatarWithStatusProps {
@@ -28,13 +27,14 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
   useLayoutEffect(() => {
     if (!user?.avatar || isSavedMessages) {
         setImgSrc(null);
+        setIsReady(false);
         return;
     }
 
     let isMounted = true;
 
     const loadAvatar = async () => {
-      // 1. Check cache
+      // 1. Check cache first for instant load
       const cached = await getCachedFile(`avatar-${user.id}`);
       if (cached && isMounted) {
         setImgSrc(cached);
@@ -109,7 +109,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
             />
         )}
         <AvatarFallback className={cn(
-            "transition-opacity duration-300 absolute inset-0 flex items-center justify-center",
+            "transition-opacity duration-300 flex items-center justify-center absolute inset-0",
             isSelected && "bg-sidebar-primary text-sidebar-primary-foreground",
             isReady ? "opacity-0" : "opacity-100"
         )}>
