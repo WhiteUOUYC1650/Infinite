@@ -268,7 +268,6 @@ function AdminPage() {
             await updateDoc(chatRef, { lastMessage: { ...message, id: msgRef.id } });
             sentCount++;
             
-            // Minor throttle to avoid heavy bursts
             if (sentCount % 5 === 0) await new Promise(r => setTimeout(r, 100));
         }
 
@@ -312,7 +311,6 @@ function AdminPage() {
         });
 
         if (notifyUpdate) {
-            const updateMsgEn = `Update ${newVersion.trim()} is out! We recommend updating to get access to the latest features!`;
             const updateMsgRu = `Вышло обновление ${newVersion.trim()}! Советуем обновиться, чтобы получить доступ к последним функциям!`;
             await sendBotBroadcast(updateMsgRu);
         }
@@ -492,10 +490,9 @@ function AdminPage() {
                       <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Icon Mockup</div>
                       
                       <div className="w-24 h-24 bg-[#FF8C00] rounded-[1.75rem] shadow-xl flex items-center justify-center border-2 border-white/10 relative overflow-hidden">
-                        {/* Shadow mask simulation */}
                         <div className="absolute inset-0 bg-black/5" />
                         
-                        <svg width="64" height="64" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
+                        <svg width="72" height="72" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
                             <g transform="translate(4, 4)">
                               <path
                                   d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"

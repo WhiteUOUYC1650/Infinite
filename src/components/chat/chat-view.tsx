@@ -733,7 +733,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         scrollToBottom('auto');
     } else if (lastScrollHeightRef.current > 0) {
         const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
-        // Only anchor if we prepended messages (Infinite Scroll Up)
         if (heightDiff > 0 && container.scrollTop < 200) {
             container.scrollTop += heightDiff;
         }
@@ -752,7 +751,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
     });
 
-    const list = container.querySelector('.flex.flex-col');
+    const list = container.querySelector('.messages-list-inner');
     if (list) resizeObserver.observe(list);
     return () => resizeObserver.disconnect();
   }, [scrollToBottom]);
@@ -1505,7 +1504,6 @@ const handleForward = async (targetChatId: string) => {
   };
 
   const handleSetEditingMessage = (message: Message | null) => {
-    // Disable editing for polls, voice messages, and video circles
     if (!message || message.poll || message.voiceStatus || message.circleStatus) return;
     setEditingMessage(message);
     if (message !== null) {
@@ -1686,7 +1684,6 @@ const handleForward = async (targetChatId: string) => {
             const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
             const previewUrl = URL.createObjectURL(blob);
             
-            // Immediately stop tracks to turn off the microphone light
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach(t => t.stop());
                 recordingStreamRef.current = null;
@@ -1723,7 +1720,6 @@ const handleForward = async (targetChatId: string) => {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
         }
-        // Force stop tracks just in case onstop hasn't fired yet or we are in error state
         if (recordingStreamRef.current) {
             recordingStreamRef.current.getTracks().forEach(t => t.stop());
             recordingStreamRef.current = null;
@@ -1770,7 +1766,6 @@ const handleForward = async (targetChatId: string) => {
             const file = new File([blob], 'circle.webm', { type: 'video/webm' });
             const previewUrl = URL.createObjectURL(blob);
 
-            // Immediately stop tracks to turn off the camera/microphone lights
             if (recordingStreamRef.current) {
                 recordingStreamRef.current.getTracks().forEach(t => t.stop());
                 recordingStreamRef.current = null;
@@ -1807,7 +1802,6 @@ const handleForward = async (targetChatId: string) => {
             clearInterval(recordingTimerRef.current);
             recordingTimerRef.current = null;
         }
-        // Force stop tracks just in case
         if (recordingStreamRef.current) {
             recordingStreamRef.current.getTracks().forEach(t => t.stop());
             recordingStreamRef.current = null;
@@ -2011,7 +2005,7 @@ const handleForward = async (targetChatId: string) => {
           "flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30",
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
       )}>
-        <div className="flex items-center p-2">
+        <div className="flex items-center p-2 h-14">
             <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0">
                 <X className="h-5 w-5" />
             </Button>
@@ -2167,8 +2161,8 @@ const handleForward = async (targetChatId: string) => {
         )}
       </header>
 
-      <div className="relative flex-1 min-h-0 bg-background">
-          <div className="absolute inset-0 flex flex-col">
+      <div className="relative flex-1 min-h-0 bg-background overflow-hidden">
+          <div className="absolute inset-0 flex flex-col overflow-hidden">
               {activeGroupCall && (
                 <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300">
                   <div className="flex items-center gap-3">
@@ -2188,7 +2182,7 @@ const handleForward = async (targetChatId: string) => {
               <div 
                 ref={scrollContainerRef} 
                 onScroll={handleScroll} 
-                className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col"
+                className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col relative"
               >
                   <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
                   <div className="flex-1" />
@@ -2198,7 +2192,7 @@ const handleForward = async (targetChatId: string) => {
                           <Loader2 className="h-10 w-10 animate-spin text-primary" />
                       </div>
                   ) : isMember && messages && messages.length > 0 ? (
-                      <div className="space-y-2 py-4 flex flex-col">
+                      <div className="messages-list-inner space-y-2 py-4 flex flex-col relative">
                           {messages.map((message, index) => {
                               const sender = memberDetails[message.senderId];
                               const messageDate = getSafeDate(message.timestamp);
@@ -2461,61 +2455,6 @@ const handleForward = async (targetChatId: string) => {
   );
 }
 
-function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, onForward: (chatId: string) => Promise<void>, currentUser: AuthenticatedUser }) {
-    const db = useFirestore();
-    const { t } = useLanguage();
-    const chatsQuery = useMemoFirebase(() => {
-        if (!db) return null;
-        return query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
-    }, [db, currentUser.uid]);
-    const { data: chats, loading } = useCollection<Chat>(chatsQuery);
-    const [search, setSearch] = useState('');
-    const [isForwarding, setIsForwarding] = useState(false);
-    
-    const filteredChats = useMemo(() => {
-        if (!chats) return [];
-        return chats.filter(c => {
-            if (c.type === 'channel' && c.ownerId !== currentUser.uid) return false;
-            if (c.id === currentUser.uid) return true;
-            if (c.name && c.name.toLowerCase().includes(search.toLowerCase())) return true;
-            if (c.type === 'dm') return true; 
-            return false;
-        }).sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0));
-    }, [chats, search, currentUser.uid]);
-
-    const allOtherUserIds = useMemo(() => {
-        if (!chats) return [];
-        return chats.filter(c => c.type === 'dm' && c.id !== currentUser.uid).map(c => c.members.find(m => m !== currentUser.uid)).filter(Boolean) as string[];
-    }, [chats, currentUser.uid]);
-    const { users: dmPartners } = useBatchUsers(allOtherUserIds);
-    const handleSelect = async (chatId: string) => {
-        setIsForwarding(true);
-        await onForward(chatId);
-        setIsForwarding(false);
-        onOpenChange(false);
-    };
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-sm rounded-3xl p-0 overflow-hidden flex flex-col h-[70vh]">
-                <DialogHeader className="p-6 pb-2 border-b bg-muted/30"><DialogTitle className="text-xl font-bold font-headline">{t('forward_to')}</DialogTitle></DialogHeader>
-                <div className="p-4 border-b"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-10 rounded-xl bg-muted/50 border-none" /></div></div>
-                <ScrollArea className="flex-1">{loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary" /></div> : <div className="p-2 space-y-1">{filteredChats.map(chat => {
-                    const isSaved = chat.id === currentUser.uid;
-                    const otherId = chat.type === 'dm' ? chat.members.find(m => m !== currentUser.uid) : null;
-                    const partner = otherId ? dmPartners[otherId] : null;
-                    const name = isSaved ? t('saved_messages') : chat.type === 'dm' ? (partner?.name || '...') : (chat.name || 'Chat');
-                    return (
-                        <button key={chat.id} onClick={() => handleSelect(chat.id)} disabled={isForwarding} className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted transition-colors text-left disabled:opacity-50">
-                            <Avatar className="h-10 w-10 shrink-0">{isSaved ? <AvatarFallback className="bg-secondary"><Bookmark className="h-5 w-5" /></AvatarFallback> : <><AvatarImage src={chat.type === 'dm' ? partner?.avatar : chat.avatar} /><AvatarFallback>{chat.type === 'dm' ? <UserIcon className="h-5 w-5" /> : <Users className="h-5 w-5" />}</AvatarFallback></>}</Avatar>
-                            <div className="flex-1 min-w-0"><p className="font-bold truncate">{name}</p><p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{isSaved ? 'CLOUD' : t(chat.type as any)}</p></div>
-                        </button>
-                    );
-                })}</div>}</ScrollArea>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, localMediaUrl, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void, localMediaUrl?: string; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const db = useFirestore();
     const { t } = useLanguage();
@@ -2724,7 +2663,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     {message.imageUrl && <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
                     {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                     
-                    {/* Render content (captions) for all message types except polls and empty content */}
                     {message.content && !message.poll && (
                         <div className={cn("text-sm break-words whitespace-pre-wrap", (message.imageUrl || message.videoMimeType || message.musicMimeType || message.circleStatus || message.voiceStatus) && "mt-2")}>
                             <ReactMarkdown 
@@ -2786,3 +2724,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
