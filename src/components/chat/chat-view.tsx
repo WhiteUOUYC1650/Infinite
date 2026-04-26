@@ -2069,7 +2069,7 @@ const handleForward = async (targetChatId: string) => {
                                 </AvatarFallback>
                             )}
                         </Avatar>
-                        <div className="min-w-0 overflow-hidden flex flex-col justify-center h-full">
+                        <div className="min-0 overflow-hidden flex flex-col justify-center h-full">
                             <div className="flex items-center gap-2 min-0">
                                 <h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>
                                 {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
@@ -2189,7 +2189,7 @@ const handleForward = async (targetChatId: string) => {
           <div 
             ref={scrollContainerRef} 
             onScroll={handleScroll} 
-            className="flex-1 overflow-y-auto px-2 md:px-4 flex flex-col relative"
+            className="flex-1 overflow-y-auto px-2 md:px-4 flex flex-col relative min-h-0"
           >
               <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
               <div className="flex-1" />

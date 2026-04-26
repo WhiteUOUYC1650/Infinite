@@ -738,7 +738,12 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                         )}
                         {AttachmentIcon}
                         <div className="truncate flex-1">
-                            <ReactMarkdown components={{ p: ({children}) => <span className="inline">{children}</span> }}>
+                            <ReactMarkdown 
+                              components={{ 
+                                p: ({children}) => <span className="inline">{children}</span>,
+                                a: ({children}) => <span>{children}</span> 
+                              }}
+                            >
                                 {displayContent}
                             </ReactMarkdown>
                         </div>
@@ -822,7 +827,12 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
                 ) : null}
                 {AttachmentIcon}
                 <div className="truncate flex-1">
-                    <ReactMarkdown components={{ p: ({children}) => <span className="inline">{senderPrefix}{children}</span> }}>
+                    <ReactMarkdown 
+                      components={{ 
+                        p: ({children}) => <span className="inline">{senderPrefix}{children}</span>,
+                        a: ({children}) => <span>{children}</span> 
+                      }}
+                    >
                         {displayContent}
                     </ReactMarkdown>
                 </div>
