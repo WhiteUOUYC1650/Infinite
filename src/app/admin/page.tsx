@@ -484,39 +484,41 @@ function AdminPage() {
                       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                           <ImageIcon className="h-8 w-8 text-primary" />
                       </div>
-                      <h2 className="text-2xl font-bold font-headline">Android XML Preview</h2>
-                      <p className="text-sm text-muted-foreground">Visual check of ic_stat_notification.xml paths.</p>
+                      <h2 className="text-2xl font-bold font-headline">Android App Icon Preview</h2>
+                      <p className="text-sm text-muted-foreground">Visual check of ic_launcher (Infinite logo on orange).</p>
                   </div>
 
-                  <div className="flex flex-col items-center gap-6 p-8 bg-black rounded-2xl border border-white/10">
-                      <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">Notification Icon Rendering</div>
-                      <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-lg">
-                          {/* This SVG exactly mimics the pathData from the XML resource */}
-                          <path
-                              d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="6"
-                              strokeLinecap="round"
-                          />
-                          <path
-                              d="M 20 78 L 10 90 L 25 78"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                          />
-                          <path
-                              d="M 80 22 L 90 10 L 75 22"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                          />
+                  <div className="flex flex-col items-center gap-6 p-12 bg-[#FF8C00] rounded-[2.5rem] border border-white/20 shadow-2xl">
+                      <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-2">Adaptive Icon Foreground</div>
+                      <svg width="140" height="140" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+                          {/* This SVG exactly mimics the launcher foreground scale and paths */}
+                          <g transform="translate(16.2, 16.2) scale(0.7)">
+                            <path
+                                d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="6"
+                                strokeLinecap="round"
+                            />
+                            <path
+                                d="M 20 78 L 10 90 L 25 78"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                            <path
+                                d="M 80 22 L 90 10 L 75 22"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                          </g>
                       </svg>
-                      <p className="text-xs text-white/60 text-center italic">This is what users will see in their Android status bar. The XML uses identical Bezier curves.</p>
+                      <p className="text-[11px] text-white/80 text-center font-medium max-w-[200px]">This is how your app icon looks on Android. Scaled to 70% for a clean look.</p>
                   </div>
               </div>
           </TabsContent>
