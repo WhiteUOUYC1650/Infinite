@@ -732,6 +732,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
         scrollToBottom('auto');
+    } else if (isAtBottomRef.current) {
+        scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     } else if (lastScrollHeightRef.current > 0) {
         const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
         if (heightDiff > 0 && container.scrollTop < 200) {
@@ -740,7 +742,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     
     lastScrollHeightRef.current = container.scrollHeight;
-  }, [messages, item.id, scrollToBottom]);
+  }, [messages, item.id, scrollToBottom, smoothScroll]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -2162,7 +2164,7 @@ const handleForward = async (targetChatId: string) => {
         )}
       </header>
 
-      <div className="relative flex-1 bg-background overflow-hidden">
+      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           {activeGroupCall && (
             <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300 z-10 relative">
               <div className="flex items-center gap-3">
