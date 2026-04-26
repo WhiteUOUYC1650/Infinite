@@ -742,7 +742,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     
     lastScrollHeightRef.current = container.scrollHeight;
-  }, [messages, item.id, scrollToBottom, smoothScroll]);
+  }, [messages, item.id, scrollToBottom, smoothScroll, canSendMessage]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -761,7 +761,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   useEffect(() => {
     isInitialLoadRef.current = true;
-  }, [item.id]);
+    // Delayed scroll fallback for first load
+    const timer = setTimeout(() => {
+        if (isAtBottomRef.current) scrollToBottom('auto');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [item.id, scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     if (isAtBottomRef.current) {
@@ -2164,7 +2169,7 @@ const handleForward = async (targetChatId: string) => {
         )}
       </header>
 
-      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
+      <div className="relative flex-1 bg-background overflow-hidden min-h-0 flex flex-col">
           {activeGroupCall && (
             <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300 z-10 relative">
               <div className="flex items-center gap-3">
@@ -2184,7 +2189,7 @@ const handleForward = async (targetChatId: string) => {
           <div 
             ref={scrollContainerRef} 
             onScroll={handleScroll} 
-            className="h-full overflow-y-auto px-2 md:px-4 flex flex-col relative"
+            className="flex-1 overflow-y-auto px-2 md:px-4 flex flex-col relative"
           >
               <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
               <div className="flex-1" />
@@ -2429,6 +2434,13 @@ const handleForward = async (targetChatId: string) => {
         <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader>
             <AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDeleteChat} disabled={isProcessingAction} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">{isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : t('delete')}</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+            <AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleLeaveChat} disabled={isProcessingAction} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">{isProcessingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : t('leave')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -2685,7 +2697,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                                 onClick={handleClick} 
                                                 className={cn(
                                                     "underline font-bold transition-colors cursor-pointer",
-                                                    alignRight ? "text-white" : "text-primary"
+                                                    (alignRight && chatType !== 'channel') ? "text-white" : "text-primary"
                                                 )}
                                                 target={isInternal ? undefined : "_blank"}
                                                 rel={isInternal ? undefined : "noopener noreferrer"}
