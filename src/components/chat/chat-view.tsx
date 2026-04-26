@@ -398,6 +398,75 @@ function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpen
     );
 }
 
+function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { open: boolean, onOpenChange: (v: boolean) => void, onForward: (id: string) => void, currentUser: AuthenticatedUser }) {
+    const { t } = useLanguage();
+    const db = useFirestore();
+    const [search, setSearch] = useState('');
+    
+    const chatsQuery = useMemoFirebase(() => {
+        if (!db || !currentUser.uid) return null;
+        return query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
+    }, [db, currentUser.uid]);
+    
+    const { data: chats, loading } = useCollection<Chat>(chatsQuery);
+    
+    const filteredChats = useMemo(() => {
+        if (!chats) return [];
+        return chats.filter(c => {
+            if (c.id === 'GENERAL_CHAT') return true;
+            if (c.type === 'dm') return true;
+            return c.name?.toLowerCase().includes(search.toLowerCase());
+        });
+    }, [chats, search]);
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-2xl flex flex-col h-[70vh]">
+                <DialogHeader>
+                    <DialogTitle>{t('forward_to')}</DialogTitle>
+                    <DialogDescription>{t('select_target_chat')}</DialogDescription>
+                </DialogHeader>
+                <div className="px-1 py-2">
+                    <Input 
+                        placeholder={t('search_placeholder')} 
+                        value={search} 
+                        onChange={e => setSearch(e.target.value)}
+                        className="rounded-xl bg-muted/50 border-none"
+                    />
+                </div>
+                <ScrollArea className="flex-1 pr-2">
+                    <div className="space-y-1">
+                        {loading ? (
+                            <div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
+                        ) : filteredChats.length > 0 ? (
+                            filteredChats.map(chat => (
+                                <button 
+                                    key={chat.id} 
+                                    onClick={() => { onForward(chat.id); onOpenChange(false); }}
+                                    className="w-full flex items-center gap-3 p-2 hover:bg-muted rounded-xl transition-colors text-left"
+                                >
+                                    <Avatar className="h-10 w-10 shrink-0">
+                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback>{chat.type === 'dm' ? <UserIcon className="h-5 w-5" /> : <Users className="h-5 w-5" />}</AvatarFallback>}
+                                    </Avatar>
+                                    <div className="flex-1 truncate">
+                                        <p className="font-bold text-sm truncate">{chat.id === 'GENERAL_CHAT' ? t('general_chat') : (chat.name || chat.id)}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{t(chat.type as any || 'direct_message_tab')}</p>
+                                    </div>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="p-8 text-center text-sm text-muted-foreground">{t('no_results_found')}</div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full rounded-xl">{t('cancel')}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
   const { t } = useLanguage();
@@ -2735,74 +2804,5 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 </DropdownMenu>
             </div>
         </div>
-    );
-}
-
-function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { open: boolean, onOpenChange: (v: boolean) => void, onForward: (id: string) => void, currentUser: AuthenticatedUser }) {
-    const { t } = useLanguage();
-    const db = useFirestore();
-    const [search, setSearch] = useState('');
-    
-    const chatsQuery = useMemoFirebase(() => {
-        if (!db || !currentUser.uid) return null;
-        return query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
-    }, [db, currentUser.uid]);
-    
-    const { data: chats, loading } = useCollection<Chat>(chatsQuery);
-    
-    const filteredChats = useMemo(() => {
-        if (!chats) return [];
-        return chats.filter(c => {
-            if (c.id === 'GENERAL_CHAT') return true;
-            if (c.type === 'dm') return true;
-            return c.name?.toLowerCase().includes(search.toLowerCase());
-        });
-    }, [chats, search]);
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md rounded-2xl flex flex-col h-[70vh]">
-                <DialogHeader>
-                    <DialogTitle>{t('forward_to')}</DialogTitle>
-                    <DialogDescription>{t('select_target_chat')}</DialogDescription>
-                </DialogHeader>
-                <div className="px-1 py-2">
-                    <Input 
-                        placeholder={t('search_placeholder')} 
-                        value={search} 
-                        onChange={e => setSearch(e.target.value)}
-                        className="rounded-xl bg-muted/50 border-none"
-                    />
-                </div>
-                <ScrollArea className="flex-1 pr-2">
-                    <div className="space-y-1">
-                        {loading ? (
-                            <div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
-                        ) : filteredChats.length > 0 ? (
-                            filteredChats.map(chat => (
-                                <button 
-                                    key={chat.id} 
-                                    onClick={() => { onForward(chat.id); onOpenChange(false); }}
-                                    className="w-full flex items-center gap-3 p-2 hover:bg-muted rounded-xl transition-colors text-left"
-                                >
-                                    <Avatar className="h-10 w-10 shrink-0">
-                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback>{chat.type === 'dm' ? <UserIcon className="h-5 w-5" /> : <Users className="h-5 w-5" />}</AvatarFallback>}
-                                    </Avatar>
-                                    <div className="flex-1 truncate">
-                                        <p className="font-bold text-sm truncate">{chat.id === 'GENERAL_CHAT' ? t('general_chat') : (chat.name || chat.id)}</p>
-                                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{t(chat.type as any || 'direct_message_tab')}</p>
-                                    </div>
-                                </button>
-                            ))
-                        ) : (
-                            <div className="p-8 text-center text-sm text-muted-foreground">{t('no_results_found')}</div>
-                        )}
-                    </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full rounded-xl">{t('cancel')}</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 }
