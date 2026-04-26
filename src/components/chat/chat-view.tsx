@@ -42,6 +42,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -2161,131 +2162,129 @@ const handleForward = async (targetChatId: string) => {
         )}
       </header>
 
-      <div className="relative flex-1 min-h-0 bg-background overflow-hidden">
-          <div className="absolute inset-0 flex flex-col overflow-hidden">
-              {activeGroupCall && (
-                <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-widest">{activeGroupCall.callType === 'broadcast' ? t('broadcast_live') : t('video_chat_live')}</span>
-                  </div>
-                  <Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>
-                    {t('join_call')}
-                  </Button>
-                </div>
-              )}
-              {stickyDate && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex-shrink-0 flex justify-center py-2 pointer-events-none">
-                      <Badge variant="secondary">{stickyDate}</Badge>
-                  </div>
-              )}
-              <div 
-                ref={scrollContainerRef} 
-                onScroll={handleScroll} 
-                className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 flex flex-col relative"
-              >
-                  <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
-                  <div className="flex-1" />
-
-                  {isLoading && messageLimit === 50 ? (
-                      <div className="flex h-full items-center justify-center">
-                          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                      </div>
-                  ) : isMember && messages && messages.length > 0 ? (
-                      <div className="messages-list-inner space-y-2 py-4 flex flex-col relative">
-                          {messages.map((message, index) => {
-                              const sender = memberDetails[message.senderId];
-                              const messageDate = getSafeDate(message.timestamp);
-                              const prevMessage = index > 0 ? messages[index - 1] : null;
-                              const prevMessageDate = prevMessage ? getSafeDate(prevMessage.timestamp) : null;
-                              const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
-
-                              const handleToggleMessageReaction = async (emoji: string) => {
-                                if (!db) return;
-                                const messageRef = doc(db, 'chats', item.id, 'messages', message.id);
-                                const currentReactions = message.reactions || {};
-                                let alreadyMatchedEmoji: string | null = null;
-                                Object.entries(currentReactions).forEach(([key, voters]) => {
-                                    if (Array.isArray(voters) && voters.includes(currentUser.uid)) {
-                                        alreadyMatchedEmoji = key;
-                                    }
-                                });
-                                const updates: Record<string, any> = {};
-                                if (alreadyMatchedEmoji === emoji) {
-                                    updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
-                                } else {
-                                    if (alreadyMatchedEmoji) updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
-                                    updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
-                                }
-                                try { await updateDoc(messageRef, updates); } catch (e) { console.error(e); }
-                              };
-
-                              const handleVoteLocal = async (optionIndex: number) => {
-                                if (!db || !message.poll) return;
-                                const msgRef = doc(db, 'chats', item.id, 'messages', message.id);
-                                try {
-                                    await runTransaction(db, async (transaction) => {
-                                        const snap = await transaction.get(msgRef);
-                                        if (!snap.exists()) return;
-                                        const currentPoll = snap.data().poll as Poll;
-                                        const newOptions = [...currentPoll.options];
-                                        const userId = currentUser.uid;
-                                        if (currentPoll.isMultipleChoice) {
-                                            const isVoted = newOptions[optionIndex].votes.includes(userId);
-                                            if (isVoted) newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
-                                            else newOptions[optionIndex].votes.push(userId);
-                                        } else {
-                                            const alreadyVotedIndex = newOptions.findIndex(o => o.votes.includes(userId));
-                                            if (alreadyVotedIndex === optionIndex) newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
-                                            else {
-                                                if (alreadyVotedIndex !== -1) newOptions[alreadyVotedIndex].votes = newOptions[alreadyVotedIndex].votes.filter(id => id !== userId);
-                                                newOptions[optionIndex].votes.push(userId);
-                                            }
-                                        }
-                                        transaction.update(msgRef, { poll: { ...currentPoll, options: newOptions } });
-                                    });
-                                } catch (e) { console.error(e); }
-                              };
-
-                              return (
-                                  <React.Fragment key={message.id}>
-                                      {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
-                                      <div className="message-stagger-item">
-                                          <ChatMessage 
-                                              message={message} 
-                                              sender={sender}
-                                              isCurrentUser={message.senderId === currentUser.uid} 
-                                              chatType={item.type} 
-                                              onAvatarClick={setProfileDialogUser}
-                                              chat={item}
-                                              currentUser={currentUser}
-                                              onInternalLinkClick={handleInternalLinkClick}
-                                              onReply={handleReply}
-                                              setEditingMessage={handleSetEditingMessage}
-                                              onMediaLoad={handleMediaLoad}
-                                              localMediaUrl={localMediaCache[message.id]}
-                                              onPreviewImage={setPreviewImage}
-                                              memberDetails={memberDetails}
-                                              onSelectChat={onSelectChat}
-                                              onForward={(m) => setForwardingMessage(m)}
-                                              onVote={handleVoteLocal}
-                                              onToggleReaction={handleToggleMessageReaction}
-                                              isMobile={isMobile}
-                                              isActiveOnMobile={activeMessageId === message.id}
-                                              onToggleActiveOnMobile={() => setActiveMessageId(prev => prev === message.id ? null : message.id)}
-                                          />
-                                      </div>
-                                  </React.Fragment>
-                              );
-                          })}
-                          <div ref={messagesEndRef} className="h-px shrink-0" />
-                      </div>
-                  ) : (
-                      <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">
-                          {isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 text-muted-foreground/50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}
-                      </div>
-                  )}
+      <div className="relative flex-1 bg-background overflow-hidden">
+          {activeGroupCall && (
+            <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300 z-10 relative">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-widest">{activeGroupCall.callType === 'broadcast' ? t('broadcast_live') : t('video_chat_live')}</span>
               </div>
+              <Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>
+                {t('join_call')}
+              </Button>
+            </div>
+          )}
+          {stickyDate && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
+                  <Badge variant="secondary">{stickyDate}</Badge>
+              </div>
+          )}
+          <div 
+            ref={scrollContainerRef} 
+            onScroll={handleScroll} 
+            className="h-full overflow-y-auto px-2 md:px-4 flex flex-col relative"
+          >
+              <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
+              <div className="flex-1" />
+
+              {isLoading && messageLimit === 50 ? (
+                  <div className="flex h-full items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  </div>
+              ) : isMember && messages && messages.length > 0 ? (
+                  <div className="messages-list-inner space-y-2 py-4 flex flex-col relative">
+                      {messages.map((message, index) => {
+                          const sender = memberDetails[message.senderId];
+                          const messageDate = getSafeDate(message.timestamp);
+                          const prevMessage = index > 0 ? messages[index - 1] : null;
+                          const prevMessageDate = prevMessage ? getSafeDate(prevMessage.timestamp) : null;
+                          const showDateSeparator = !prevMessageDate || !isSameDay(messageDate, prevMessageDate);
+
+                          const handleToggleMessageReaction = async (emoji: string) => {
+                            if (!db) return;
+                            const messageRef = doc(db, 'chats', item.id, 'messages', message.id);
+                            const currentReactions = message.reactions || {};
+                            let alreadyMatchedEmoji: string | null = null;
+                            Object.entries(currentReactions).forEach(([key, voters]) => {
+                                if (Array.isArray(voters) && voters.includes(currentUser.uid)) {
+                                    alreadyMatchedEmoji = key;
+                                }
+                            });
+                            const updates: Record<string, any> = {};
+                            if (alreadyMatchedEmoji === emoji) {
+                                updates[`reactions.${emoji}`] = arrayRemove(currentUser.uid);
+                            } else {
+                                if (alreadyMatchedEmoji) updates[`reactions.${alreadyMatchedEmoji}`] = arrayRemove(currentUser.uid);
+                                updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
+                            }
+                            try { await updateDoc(messageRef, updates); } catch (e) { console.error(e); }
+                          };
+
+                          const handleVoteLocal = async (optionIndex: number) => {
+                            if (!db || !message.poll) return;
+                            const msgRef = doc(db, 'chats', item.id, 'messages', message.id);
+                            try {
+                                await runTransaction(db, async (transaction) => {
+                                    const snap = await transaction.get(msgRef);
+                                    if (!snap.exists()) return;
+                                    const currentPoll = snap.data().poll as Poll;
+                                    const newOptions = [...currentPoll.options];
+                                    const userId = currentUser.uid;
+                                    if (currentPoll.isMultipleChoice) {
+                                        const isVoted = newOptions[optionIndex].votes.includes(userId);
+                                        if (isVoted) newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
+                                        else newOptions[optionIndex].votes.push(userId);
+                                    } else {
+                                        const alreadyVotedIndex = newOptions.findIndex(o => o.votes.includes(userId));
+                                        if (alreadyVotedIndex === optionIndex) newOptions[optionIndex].votes = newOptions[optionIndex].votes.filter(id => id !== userId);
+                                        else {
+                                            if (alreadyVotedIndex !== -1) newOptions[alreadyVotedIndex].votes = newOptions[alreadyVotedIndex].votes.filter(id => id !== userId);
+                                            newOptions[optionIndex].votes.push(userId);
+                                        }
+                                    }
+                                    transaction.update(msgRef, { poll: { ...currentPoll, options: newOptions } });
+                                });
+                            } catch (e) { console.error(e); }
+                          };
+
+                          return (
+                              <React.Fragment key={message.id}>
+                                  {showDateSeparator && <DateSeparator date={format(messageDate, 'dd.MM.yyyy')} />}
+                                  <div className="message-stagger-item">
+                                      <ChatMessage 
+                                          message={message} 
+                                          sender={sender}
+                                          isCurrentUser={message.senderId === currentUser.uid} 
+                                          chatType={item.type} 
+                                          onAvatarClick={setProfileDialogUser}
+                                          chat={item}
+                                          currentUser={currentUser}
+                                          onInternalLinkClick={handleInternalLinkClick}
+                                          onReply={handleReply}
+                                          setEditingMessage={handleSetEditingMessage}
+                                          onMediaLoad={handleMediaLoad}
+                                          localMediaUrl={localMediaCache[message.id]}
+                                          onPreviewImage={setPreviewImage}
+                                          memberDetails={memberDetails}
+                                          onSelectChat={onSelectChat}
+                                          onForward={(m) => setForwardingMessage(m)}
+                                          onVote={handleVoteLocal}
+                                          onToggleReaction={handleToggleMessageReaction}
+                                          isMobile={isMobile}
+                                          isActiveOnMobile={activeMessageId === message.id}
+                                          onToggleActiveOnMobile={() => setActiveMessageId(prev => prev === message.id ? null : message.id)}
+                                      />
+                                  </div>
+                              </React.Fragment>
+                          );
+                      })}
+                      <div ref={messagesEndRef} className="h-px shrink-0" />
+                  </div>
+              ) : (
+                  <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">
+                      {isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 text-muted-foreground/50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}
+                  </div>
+              )}
           </div>
       </div>
 
@@ -2680,10 +2679,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                         
                                         return (
                                             <a 
-                                                href={props.href}
+                                                href={isInternal ? undefined : props.href}
                                                 onClick={handleClick} 
                                                 className={cn(
-                                                    "underline font-bold transition-colors",
+                                                    "underline font-bold transition-colors cursor-pointer",
                                                     alignRight ? "text-white" : "text-primary"
                                                 )}
                                                 target={isInternal ? undefined : "_blank"}
@@ -2725,3 +2724,71 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     );
 }
 
+function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { open: boolean, onOpenChange: (v: boolean) => void, onForward: (id: string) => void, currentUser: AuthenticatedUser }) {
+    const { t } = useLanguage();
+    const db = useFirestore();
+    const [search, setSearch] = useState('');
+    
+    const chatsQuery = useMemoFirebase(() => {
+        if (!db || !currentUser.uid) return null;
+        return query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid));
+    }, [db, currentUser.uid]);
+    
+    const { data: chats, loading } = useCollection<Chat>(chatsQuery);
+    
+    const filteredChats = useMemo(() => {
+        if (!chats) return [];
+        return chats.filter(c => {
+            if (c.id === 'GENERAL_CHAT') return true;
+            if (c.type === 'dm') return true;
+            return c.name?.toLowerCase().includes(search.toLowerCase());
+        });
+    }, [chats, search]);
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-2xl flex flex-col h-[70vh]">
+                <DialogHeader>
+                    <DialogTitle>{t('forward_to')}</DialogTitle>
+                    <DialogDescription>{t('select_target_chat')}</DialogDescription>
+                </DialogHeader>
+                <div className="px-1 py-2">
+                    <Input 
+                        placeholder={t('search_placeholder')} 
+                        value={search} 
+                        onChange={e => setSearch(e.target.value)}
+                        className="rounded-xl bg-muted/50 border-none"
+                    />
+                </div>
+                <ScrollArea className="flex-1 pr-2">
+                    <div className="space-y-1">
+                        {loading ? (
+                            <div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
+                        ) : filteredChats.length > 0 ? (
+                            filteredChats.map(chat => (
+                                <button 
+                                    key={chat.id} 
+                                    onClick={() => { onForward(chat.id); onOpenChange(false); }}
+                                    className="w-full flex items-center gap-3 p-2 hover:bg-muted rounded-xl transition-colors text-left"
+                                >
+                                    <Avatar className="h-10 w-10 shrink-0">
+                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback>{chat.type === 'dm' ? <UserIcon className="h-5 w-5" /> : <Users className="h-5 w-5" />}</AvatarFallback>}
+                                    </Avatar>
+                                    <div className="flex-1 truncate">
+                                        <p className="font-bold text-sm truncate">{chat.id === 'GENERAL_CHAT' ? t('general_chat') : (chat.name || chat.id)}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{t(chat.type as any || 'direct_message_tab')}</p>
+                                    </div>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="p-8 text-center text-sm text-muted-foreground">{t('no_results_found')}</div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full rounded-xl">{t('cancel')}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
