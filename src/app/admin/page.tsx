@@ -488,37 +488,46 @@ function AdminPage() {
                       <p className="text-sm text-muted-foreground">Visual check of ic_launcher (Infinite logo on orange).</p>
                   </div>
 
-                  <div className="flex flex-col items-center gap-6 p-12 bg-[#FF8C00] rounded-[2.5rem] border border-white/20 shadow-2xl">
-                      <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-2">Adaptive Icon Foreground</div>
-                      <svg width="140" height="140" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
-                          {/* This SVG exactly mimics the launcher foreground scale and paths */}
-                          <g transform="translate(16.2, 16.2) scale(0.7)">
-                            <path
-                                d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="6"
-                                strokeLinecap="round"
-                            />
-                            <path
-                                d="M 20 78 L 10 90 L 25 78"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                            <path
-                                d="M 80 22 L 90 10 L 75 22"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                          </g>
-                      </svg>
-                      <p className="text-[11px] text-white/80 text-center font-medium max-w-[200px]">This is how your app icon looks on Android. Scaled to 70% for a clean look.</p>
+                  <div className="flex flex-col items-center gap-6 p-10 bg-muted/20 rounded-[2.5rem] border">
+                      <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Icon Mockup</div>
+                      
+                      <div className="w-24 h-24 bg-[#FF8C00] rounded-[1.75rem] shadow-xl flex items-center justify-center border-2 border-white/10 relative overflow-hidden">
+                        {/* Shadow mask simulation */}
+                        <div className="absolute inset-0 bg-black/5" />
+                        
+                        <svg width="64" height="64" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
+                            {/* This SVG exactly mimics the launcher foreground scale and paths */}
+                            <g transform="translate(16.2, 16.2) scale(0.7)">
+                              <path
+                                  d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="6"
+                                  strokeLinecap="round"
+                              />
+                              <path
+                                  d="M 20 78 L 10 90 L 25 78"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="6"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                              />
+                              <path
+                                  d="M 80 22 L 90 10 L 75 22"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="6"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                              />
+                            </g>
+                        </svg>
+                      </div>
+                      
+                      <p className="text-[11px] text-muted-foreground text-center font-medium max-w-[200px]">
+                        This is how your app icon looks on Android. Scaled to 70% within the safe zone on #FF8C00.
+                      </p>
                   </div>
               </div>
           </TabsContent>
