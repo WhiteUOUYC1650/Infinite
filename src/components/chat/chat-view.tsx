@@ -2735,6 +2735,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                         const handleClick = (e: React.MouseEvent) => {
                                             if (isInternal) {
                                                 e.preventDefault();
+                                                e.stopPropagation();
                                                 onInternalLinkClick(props.href!);
                                             }
                                         };
@@ -2744,8 +2745,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                                 href={props.href}
                                                 onClick={handleClick} 
                                                 className={cn(
-                                                    "underline font-bold",
-                                                    (alignRight && chatType !== 'channel') ? "text-white" : "text-primary"
+                                                    "underline font-bold transition-colors",
+                                                    alignRight ? "text-white" : "text-primary"
                                                 )}
                                                 target={isInternal ? undefined : "_blank"}
                                                 rel={isInternal ? undefined : "noopener noreferrer"}
@@ -2763,7 +2764,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 </div>
                 <div className={cn("flex items-center gap-1.5 mt-0.5 text-[9px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
                     {message.editedAt && (
-                        <span className="font-bold">{t('edited')},</span>
+                        <span className="font-bold">{t('edited')}</span>
                     )}
                     <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
                     {isCurrentUser && !isCircle && (isRead ? <CheckCheck className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />)}

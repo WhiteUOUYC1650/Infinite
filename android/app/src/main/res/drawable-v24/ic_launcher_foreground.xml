@@ -6,7 +6,7 @@
     <group 
         android:translateX="4"
         android:translateY="4">
-        <!-- Основная петля бесконечности -->
+        <!-- Основная петля бесконечности - 100% масштаб -->
         <path
             android:pathData="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
             android:strokeColor="#FFFFFF"

@@ -496,7 +496,6 @@ function AdminPage() {
                         <div className="absolute inset-0 bg-black/5" />
                         
                         <svg width="64" height="64" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
-                            {/* This SVG exactly mimics the launcher foreground scale and paths */}
                             <g transform="translate(4, 4)">
                               <path
                                   d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
