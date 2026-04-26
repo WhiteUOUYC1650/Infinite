@@ -4,7 +4,24 @@
     android:height="24dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
+    <!-- Петля бесконечности -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z" />
+        android:pathData="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"/>
+    <!-- Левый нижний хвостик -->
+    <path
+        android:pathData="M 20 78 L 10 90 L 25 78"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+    <!-- Правый верхний хвостик -->
+    <path
+        android:pathData="M 80 22 L 90 10 L 75 22"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
 </vector>
