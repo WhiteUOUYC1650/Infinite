@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -561,6 +560,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isOwner = item.ownerId === currentUser.uid;
   const isNotMyChannel = useMemo(() => item.type === 'channel' && !isOwner, [item, isOwner]);
 
+  const canSendMessage = useMemo(() => {
+    if (!isMember) return false;
+    if (item.type === 'channel' && !isOwner) {
+        return false;
+    }
+    return true;
+  }, [isMember, item, isOwner]);
+
   useEffect(() => {
     const handleFullscreenChange = async () => {
       const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
@@ -774,15 +781,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     
     return t('offline');
   }
-
-  const canSendMessage = useMemo(() => {
-    if (!isMember) return false;
-    if (otherUser?.isDeleted) return false;
-    if (item.type === 'channel' && item.ownerId !== currentUser.uid) {
-        return false;
-    }
-    return true;
-  }, [isMember, item, currentUser.uid, otherUser]);
 
   const isBirthdayToday = useMemo(() => {
     if (item.type !== 'dm' || !otherUser?.birthday || dismissedBirthdays.has(item.id)) return false;
