@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -246,7 +247,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
     return (
         <div className={cn(
             "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all shadow-sm", 
-            isMusic ? "w-full max-w-[400px]" : "w-full max-w-[380px] min-w-[240px]",
+            isMusic ? "w-full max-w-[400px] min-w-[280px]" : "w-full max-w-[380px] min-w-[240px]",
             uiClass
         )}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
@@ -800,9 +801,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
-  // Enhanced auto-scroll and height monitoring
+  // Enhanced auto-scroll and height monitoring with ResizeObserver
   useEffect(() => {
-    if (!listInnerRef.current) return;
+    const container = scrollContainerRef.current;
+    const inner = listInnerRef.current;
+    if (!container || !inner) return;
     
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
@@ -810,7 +813,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
     });
 
-    observer.observe(listInnerRef.current);
+    observer.observe(inner);
     return () => observer.disconnect();
   }, [scrollToBottom]);
 
@@ -2363,7 +2366,7 @@ const handleForward = async (targetChatId: string) => {
             "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
-          <div className="max-w-3xl mx-auto w-full">
+          <div className="max-w-3xl mx-auto w-full h-full flex items-center">
             {canSendMessage ? (
               isEmptyBotChat ? (
                   <div className="flex flex-col items-center gap-4 py-8 animate-in fade-in zoom-in duration-500">
@@ -2379,7 +2382,7 @@ const handleForward = async (targetChatId: string) => {
                       </Button>
                   </div>
               ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 w-full">
                   {replyToMessage && (
                       <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
                           <div className="flex items-center gap-2 min-0">
@@ -2423,7 +2426,7 @@ const handleForward = async (targetChatId: string) => {
                       </div>
                   )}
                   
-                  <form onSubmit={handleSubmit} className="flex items-end gap-2 relative">
+                  <form onSubmit={handleSubmit} className="flex items-end gap-2 relative w-full">
                       <div className="relative flex-1">
                           <Textarea
                               placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')}
@@ -2813,3 +2816,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
