@@ -286,7 +286,9 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                 </div>
                 {isMusic && !hideTime && (
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80">
-                        <span>{formatTime(currentTime)} / {formatTime(maxTime)}</span>
+                        <span>{formatTime(currentTime)}</span>
+                        <span className="mx-1">/</span>
+                        <span>{formatTime(maxTime)}</span>
                     </div>
                 )}
             </div>
@@ -492,6 +494,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const listInnerRef = useRef<HTMLDivElement>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScrollHeightRef = useRef<number>(0);
@@ -796,6 +799,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
+  // Enhanced auto-scroll and height monitoring
+  useEffect(() => {
+    if (!listInnerRef.current) return;
+    
+    const observer = new ResizeObserver(() => {
+        if (isAtBottomRef.current) {
+            scrollToBottom('auto');
+        }
+    });
+
+    observer.observe(listInnerRef.current);
+    return () => observer.disconnect();
+  }, [scrollToBottom]);
+
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !messages) return;
@@ -816,23 +833,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [messages, item.id, scrollToBottom, smoothScroll, canSendMessage, isNotMyChannel]);
 
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (isAtBottomRef.current) {
-        scrollToBottom('auto');
-      }
-    });
-
-    const list = container.querySelector('.messages-list-inner');
-    if (list) resizeObserver.observe(list);
-    return () => resizeObserver.disconnect();
-  }, [scrollToBottom]);
-
-  useEffect(() => {
     isInitialLoadRef.current = true;
-    // Delayed scroll fallback for first load
     const timer = setTimeout(() => {
         if (isAtBottomRef.current) scrollToBottom('auto');
     }, 100);
@@ -1080,7 +1081,6 @@ const handleSendVoice = async (payload: {file: File, previewUrl: string}, conten
         }
         await updateDoc(messageRef, { voiceStatus: 'complete', voiceChunkIds: chunkIds });
         
-        // Cache the file immediately
         await cacheFile(messageRef.id, file);
     } catch (e) { console.error(e); }
 };
@@ -1129,7 +1129,6 @@ const handleSendCircle = async (payload: {file: File, previewUrl: string}, conte
         }
         await updateDoc(messageRef, { circleStatus: 'complete', circleChunkIds: chunkIds });
 
-        // Cache the file immediately
         await cacheFile(messageRef.id, file);
     } catch (e) { console.error(e); }
 };
@@ -1282,7 +1281,6 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
         }
         await updateDoc(messageRef, { videoStatus: 'complete', videoChunkIds: chunkIds });
         
-        // Cache the assembled video
         await cacheFile(messageRef.id, videoFile);
 
         const chatDoc = await getDoc(chatRef);
@@ -1378,7 +1376,6 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
         }
         await updateDoc(messageRef, { musicStatus: 'complete', musicChunkIds: chunkIds });
         
-        // Cache the file
         await cacheFile(messageRef.id, musicFile);
 
         const chatDoc = await getDoc(chatRef);
@@ -1473,7 +1470,6 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
         }
         await updateDoc(messageRef, { fileStatus: 'complete', fileChunkIds: chunkIds });
 
-        // Cache the file
         await cacheFile(messageRef.id, file);
 
         const chatDoc = await getDoc(chatDocRef);
@@ -2158,18 +2154,12 @@ const handleForward = async (targetChatId: string) => {
             <div className="flex items-center gap-1 ml-2 shrink-0">
                 {item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && (
                     <>
-                        <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(false)}>
-                            <Phone className="h-5 w-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleInitiateCall(true)}>
-                            <Video className="h-5 w-5" />
-                        </Button>
+                        <Phone className="h-5 w-5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleInitiateCall(false)} />
+                        <Video className="h-5 w-5 cursor-pointer hover:text-primary transition-colors ml-2" onClick={() => handleInitiateCall(true)} />
                     </>
                 )}
                 {item.type !== 'dm' && isOwner && !activeGroupCall && (
-                <Button variant="ghost" size="icon" onClick={handleStartGroupCall}>
-                    <Radio className="h-5 w-5" />
-                </Button>
+                    <Radio className="h-5 w-5 cursor-pointer hover:text-primary transition-colors" onClick={handleStartGroupCall} />
                 )}
                 
                 {item.id !== 'GENERAL_CHAT' && (
@@ -2270,7 +2260,7 @@ const handleForward = async (targetChatId: string) => {
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   </div>
               ) : isMember && messages && messages.length > 0 ? (
-                  <div className="messages-list-inner space-y-2 py-4 flex flex-col relative flex-grow min-h-0">
+                  <div ref={listInnerRef} className="messages-list-inner space-y-2 py-4 flex flex-col relative flex-grow min-h-0">
                       {messages.map((message, index) => {
                           const sender = memberDetails[message.senderId];
                           const messageDate = getSafeDate(message.timestamp);
@@ -2821,3 +2811,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
