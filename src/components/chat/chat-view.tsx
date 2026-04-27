@@ -2491,7 +2491,7 @@ const handleForward = async (targetChatId: string) => {
               </>
               )
             ) : (
-              <div className="max-w-3xl mx-auto py-1">
+              <div className="max-w-3xl mx-auto flex items-center justify-center min-h-[38px]">
                   <Button 
                     variant="ghost" 
                     className="w-full h-11 rounded-xl font-bold gap-2 text-primary hover:bg-primary/10 transition-colors"
