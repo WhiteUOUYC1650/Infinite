@@ -799,7 +799,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
-  // Enhanced auto-scroll and height monitoring with ResizeObserver
   useEffect(() => {
     const inner = listInnerRef.current;
     if (!inner) return;
@@ -2261,7 +2260,7 @@ const handleForward = async (targetChatId: string) => {
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   </div>
               ) : isMember && messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="messages-list-inner space-y-2 py-4 flex flex-col relative flex-grow min-h-0">
+                  <div ref={listInnerRef} className="messages-list-inner space-y-2 py-4 flex flex-col relative min-h-0">
                       {messages.map((message, index) => {
                           const sender = memberDetails[message.senderId];
                           const messageDate = getSafeDate(message.timestamp);
