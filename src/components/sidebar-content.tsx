@@ -582,8 +582,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <Separator />
 
-      <SidebarFooter className={cn("p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]", experimentalDesign && "bg-muted/30 rounded-t-2xl border-t")}>
-        <div className="flex items-center gap-2">
+      <SidebarFooter className={cn("p-2 h-[54px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))]", experimentalDesign && "bg-muted/30 rounded-t-2xl")}>
+        <div className="flex items-center gap-2 w-full h-full">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
                 <button className={cn(
@@ -609,12 +609,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9", experimentalDesign && "rounded-xl bg-background/50")}>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9 shrink-0", experimentalDesign && "rounded-xl bg-background/50")}>
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9", experimentalDesign && "rounded-xl bg-background/50")}>
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9 shrink-0", experimentalDesign && "rounded-xl bg-background/50")}>
               <div className="relative">
                 <Cog className="h-4 w-4" />
                 {isUpdateAvailable && (

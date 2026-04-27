@@ -554,6 +554,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [item?.members, currentUser.uid]);
 
   const isOwner = item.ownerId === currentUser.uid;
+  const isNotMyChannel = useMemo(() => item.type === 'channel' && !isOwner, [item, isOwner]);
 
   useEffect(() => {
     const handleFullscreenChange = async () => {
@@ -812,7 +813,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     
     lastScrollHeightRef.current = container.scrollHeight;
-  }, [messages, item.id, scrollToBottom, smoothScroll, canSendMessage]);
+  }, [messages, item.id, scrollToBottom, smoothScroll, canSendMessage, isNotMyChannel]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -2367,11 +2368,11 @@ const handleForward = async (targetChatId: string) => {
 
       {isMember && (
         <footer className={cn(
-            "flex-shrink-0 p-2 md:p-3 border-t bg-background",
+            "flex-shrink-0 p-2 md:p-3 border-t bg-background h-[54px] flex items-center",
             "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
-          <div className="max-w-3xl mx-auto flex flex-col gap-2">
+          <div className="max-w-3xl mx-auto w-full">
             {canSendMessage ? (
               isEmptyBotChat ? (
                   <div className="flex flex-col items-center gap-4 py-8 animate-in fade-in zoom-in duration-500">
@@ -2387,7 +2388,7 @@ const handleForward = async (targetChatId: string) => {
                       </Button>
                   </div>
               ) : (
-              <>
+              <div className="flex flex-col gap-2">
                   {replyToMessage && (
                       <div className="flex items-center justify-between bg-muted p-2 rounded-md animate-in slide-in-from-bottom-2 duration-200">
                           <div className="flex items-center gap-2 min-0">
@@ -2488,10 +2489,10 @@ const handleForward = async (targetChatId: string) => {
                           )}
                       </div>
                   </form>
-              </>
+              </div>
               )
             ) : (
-              <div className="max-w-3xl mx-auto flex items-center justify-center min-h-[38px]">
+              <div className="flex items-center justify-center w-full">
                   <Button 
                     variant="ghost" 
                     className="w-full h-11 rounded-xl font-bold gap-2 text-primary hover:bg-primary/10 transition-colors"
