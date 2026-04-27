@@ -801,9 +801,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // Enhanced auto-scroll and height monitoring with ResizeObserver
   useEffect(() => {
-    const container = scrollContainerRef.current;
     const inner = listInnerRef.current;
-    if (!container || !inner) return;
+    if (!inner) return;
     
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
@@ -965,7 +964,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) {
             const normalizedLink = (lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3);
             
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent(normalizedLink));
+            const linkRef = doc(db, linkWithPrefix === '/G/' ? 'chatLinks' : 'chatLinks', encodeURIComponent(normalizedLink));
             const linkSnap = await getDoc(linkRef);
             if (linkSnap.exists()) {
                 const chatId = linkSnap.data().chatId;
