@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -287,8 +286,10 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                 {isMusic && !hideTime && (
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80">
                         <span>{formatTime(currentTime)}</span>
-                        <span className="mx-1">/</span>
-                        <span>{formatTime(maxTime)}</span>
+                        <div className="flex items-center gap-1">
+                             <span className="opacity-50">/</span>
+                             <span>{formatTime(maxTime)}</span>
+                        </div>
                     </div>
                 )}
             </div>
@@ -2358,7 +2359,7 @@ const handleForward = async (targetChatId: string) => {
 
       {isMember && (
         <footer className={cn(
-            "flex-shrink-0 p-2 md:p-3 border-t bg-background h-[54px] flex items-center",
+            "flex-shrink-0 p-2 md:p-3 border-t bg-background h-[54px] flex items-center shrink-0",
             "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
             colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background'
         )}>
@@ -2482,10 +2483,10 @@ const handleForward = async (targetChatId: string) => {
               </div>
               )
             ) : (
-              <div className="flex items-center justify-center w-full">
+              <div className="flex items-center justify-center w-full h-full">
                   <Button 
                     variant="ghost" 
-                    className="w-full h-11 rounded-xl font-bold gap-2 text-primary hover:bg-primary/10 transition-colors"
+                    className="w-full h-full rounded-xl font-bold gap-2 text-primary hover:bg-primary/10 transition-colors"
                     onClick={() => setIsMutedLocal(!isMutedLocal)}
                   >
                     {isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
@@ -2757,6 +2758,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                 components={{
                                     a: ({node, ...props}) => {
                                         const isInternal = props.href?.startsWith('@') || props.href?.startsWith('/') || props.href?.toLowerCase().startsWith('infinite://');
+                                        const isOutgoing = alignRight && chatType !== 'channel';
                                         const handleClick = (e: React.MouseEvent) => {
                                             if (isInternal) {
                                                 e.preventDefault();
@@ -2771,7 +2773,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                                 onClick={handleClick} 
                                                 className={cn(
                                                     "underline font-bold transition-colors cursor-pointer",
-                                                    (alignRight && chatType !== 'channel') ? "text-white" : "text-primary"
+                                                    isOutgoing ? "text-white" : "text-primary"
                                                 )}
                                                 target={isInternal ? undefined : "_blank"}
                                                 rel={isInternal ? undefined : "noopener noreferrer"}
@@ -2811,4 +2813,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
-

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -274,7 +273,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             const statusKey = block.type === 'action_send_video' ? 'videoStatus' : block.type === 'action_send_music' ? 'musicStatus' : 'fileStatus';
             const idKey = block.type === 'action_send_video' ? 'videoChunkIds' : block.type === 'action_send_music' ? 'musicChunkIds' : 'fileChunkIds';
 
-            for (let j = 0; i < base64.length; j += CHUNK_SIZE) {
+            for (let j = 0; j < base64.length; j += CHUNK_SIZE) {
                 const chunkRef = doc(collection(db, colName));
                 await setDoc(chunkRef, { data: base64.substring(j, j + CHUNK_SIZE), part: j/CHUNK_SIZE, senderId: bot.id });
                 chunkIds.push(chunkRef.id);
