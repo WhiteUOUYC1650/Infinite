@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -716,9 +717,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
             <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} className="h-9 w-9" />
             <div className="flex-1 w-0 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-2">
-                    <div className={cn("font-semibold truncate text-sm", isSelected && "text-sidebar-accent-foreground")}>
-                        {displayName}
-                    </div>
+                    <div className={cn("font-semibold truncate text-sm", isSelected && "text-sidebar-accent-foreground")}>{displayName}</div>
                     {!isSavedMessages && (
                         <>
                             {isVerified && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
@@ -811,9 +810,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
         </Avatar>
         <div className="flex-1 w-0 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            <div className={cn("font-semibold truncate text-sm", isSelected ? "text-sidebar-accent-foreground" : "")}>
-                {item.name}
-            </div>
+            <div className={cn("font-semibold truncate text-sm", isSelected ? "text-sidebar-accent-foreground" : "")}>{item.name}</div>
             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
           </div>
           {displayContent && (

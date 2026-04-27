@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -285,8 +286,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                 </div>
                 {isMusic && !hideTime && (
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(maxTime)}</span>
+                        <span>{formatTime(currentTime)} / {formatTime(maxTime)}</span>
                     </div>
                 )}
             </div>
