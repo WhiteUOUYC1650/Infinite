@@ -450,7 +450,7 @@ function AdminPage() {
                             )}
                             onClick={() => apkInputRef.current?.click()}
                           >
-                              <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                              <input type="file" token={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
                               {apkFile ? (
                                   <div className="flex items-center gap-3">
                                       <FileJson className="h-8 w-8 text-primary" />
