@@ -2261,7 +2261,6 @@ const handleForward = async (targetChatId: string) => {
                   </div>
               ) : isMember && messages && messages.length > 0 ? (
                   <div ref={listInnerRef} className="messages-list-inner space-y-2 py-4 flex flex-col relative min-h-0">
-                      {/* Vertical spacer pushes messages down if they don't fill height */}
                       <div className="flex-1 min-h-0" />
                       {messages.map((message, index) => {
                           const sender = memberDetails[message.senderId];
