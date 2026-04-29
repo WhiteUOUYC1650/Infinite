@@ -799,7 +799,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
-  // NEW: Robust scrolling using ResizeObserver to catch height changes after load
   useEffect(() => {
     const inner = listInnerRef.current;
     if (!inner) return;
@@ -2260,7 +2259,7 @@ const handleForward = async (targetChatId: string) => {
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   </div>
               ) : isMember && messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="messages-list-inner space-y-2 py-4 flex flex-col relative min-h-0">
+                  <div ref={listInnerRef} className="messages-list-inner space-y-1.5 py-4 flex flex-col relative min-h-0">
                       <div className="flex-1 min-h-0" />
                       {messages.map((message, index) => {
                           const sender = memberDetails[message.senderId];
@@ -2722,7 +2721,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg p-2 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg p-2 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg px-3 py-1.5 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-3 py-1.5 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircle && (
                     <div className="font-semibold text-sm mb-0.5 flex items-center gap-2">
                         <span className="truncate">{displayName}</span>
@@ -2748,7 +2747,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         </div>
                     )}
                     {message.musicMimeType && <CustomAudioPlayer src={musicUrl || null} isMusic={true} fileName={message.fileName} />}
-                    {message.imageUrl && <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[450px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
+                    {message.imageUrl && <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
                     {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                     
                     {message.content && !message.poll && (
