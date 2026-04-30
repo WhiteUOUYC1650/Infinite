@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -316,7 +317,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         const chatDoc = await getDoc(doc(db, 'chats', chatId));
         if (chatDoc.exists()) {
           const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
-          const iconName = chatData.icon === 'Drum' ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
+          const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite') ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
           handleSelect({ ...chatData, id: chatDoc.id, iconComponent: iconName ? iconMap[iconName] : undefined } as PopulatedChat);
         }
       } catch (e) { console.error(e); }
@@ -333,7 +334,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         const chatData = chatDoc.data() as Chat;
         const otherId = chatData.members.find(m => m !== currentUser.uid) || currentUser.uid;
         const otherUserDoc = await getDoc(doc(db, 'users', otherId));
-        const iconName = chatData.icon === 'Drum' ? 'Bot' : chatData.icon as any;
+        const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite') ? 'Bot' : chatData.icon as any;
         const populatedChat = { ...chatData, id: chatDoc.id, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat;
         setActiveCall({ chat: populatedChat, otherUser: otherUserDoc.exists() ? { id: otherUserDoc.id, ...otherUserDoc.data() } as User : null, isVideo: !!callData.isVideo, isCaller: false });
         setShowCallDialog(true);
@@ -390,7 +391,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     <>
       {!isMobile && (
         <Sidebar>
-          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedItem : selectedItem?.id} currentUser={populatedUser} />}
+          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedId : selectedItem?.id} currentUser={populatedUser} />}
         </Sidebar>
       )}
       <SidebarInset className="min-h-0">

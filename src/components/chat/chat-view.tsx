@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -901,7 +902,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
 
       if (onSelectChat) {
-        const iconName = chatData.icon === 'Drum' ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
+        const iconName = (chatData.icon === 'Drum' || chatData.username === '@InfiniteBot') ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
         const populatedChat: PopulatedChat = {
             ...chatData,
             iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -979,7 +980,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
 
         if (targetChat) {
-            const iconName = targetChat.icon === 'Drum' ? 'Bot' : targetChat.icon as keyof typeof iconMap | undefined;
+            const iconName = (targetChat.icon === 'Drum' || targetChat.name === 'Infinite') ? 'Bot' : targetChat.icon as keyof typeof iconMap | undefined;
             const populatedChat: PopulatedChat = {
                 ...targetChat,
                 iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -1594,7 +1595,7 @@ const handleForward = async (targetChatId: string) => {
         const chatSnap = await getDoc(chatRef);
         if (chatSnap.exists()) {
             const targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-            const iconName = targetChat.icon === 'Drum' ? 'Bot' : targetChat.icon as keyof typeof iconMap | undefined;
+            const iconName = (targetChat.icon === 'Drum' || targetChat.name === 'Infinite') ? 'Bot' : targetChat.icon as keyof typeof iconMap | undefined;
             const populatedChat: PopulatedChat = { ...targetChat, id: chatSnap.id, iconComponent: iconName ? iconMap[iconName] : undefined };
             onSelectChat(populatedChat);
         } else {
@@ -2132,7 +2133,7 @@ const handleForward = async (targetChatId: string) => {
                                 <AvatarImage src={item.avatar} alt={item.name} />
                             ) : (
                                 <AvatarFallback>
-                                    {item.iconComponent && <item.iconComponent className="h-5 w-5" />}
+                                    {(item.iconComponent || (item.name === 'Infinite' || item.icon === 'Drum')) ? <Bot className="h-5 w-5" /> : null}
                                 </AvatarFallback>
                             )}
                         </Avatar>
@@ -2230,27 +2231,11 @@ const handleForward = async (targetChatId: string) => {
         )}
       </header>
 
-      <div className="relative flex-1 bg-background overflow-hidden min-h-0 flex flex-col">
-          {activeGroupCall && (
-            <div className="bg-primary/10 border-b flex items-center justify-between px-4 py-2 shrink-0 animate-in slide-in-from-top duration-300 z-10 relative">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest">{activeGroupCall.callType === 'broadcast' ? t('broadcast_live') : t('video_chat_live')}</span>
-              </div>
-              <Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>
-                {t('join_call')}
-              </Button>
-            </div>
-          )}
-          {stickyDate && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 flex justify-center py-2 pointer-events-none">
-                  <Badge variant="secondary">{stickyDate}</Badge>
-              </div>
-          )}
+      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div 
             ref={scrollContainerRef} 
             onScroll={handleScroll} 
-            className="flex-1 overflow-y-auto px-2 md:px-4 flex flex-col relative min-h-0 overscroll-behavior-y-contain"
+            className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain"
           >
               <div ref={loadMoreSentinelRef} className="h-1 flex-shrink-0" />
               
@@ -2259,8 +2244,8 @@ const handleForward = async (targetChatId: string) => {
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   </div>
               ) : isMember && messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="messages-list-inner space-y-1.5 py-4 flex flex-col relative min-h-0">
-                      <div className="flex-1 min-h-0" />
+                  <div ref={listInnerRef} className="messages-list-inner space-y-1.5 py-4 flex flex-col min-h-full">
+                      <div className="flex-1" />
                       {messages.map((message, index) => {
                           const sender = memberDetails[message.senderId];
                           const messageDate = getSafeDate(message.timestamp);
@@ -2354,6 +2339,22 @@ const handleForward = async (targetChatId: string) => {
                   </div>
               )}
           </div>
+          {activeGroupCall && (
+            <div className="absolute top-0 left-0 right-0 bg-primary/10 border-b flex items-center justify-between px-4 py-2 animate-in slide-in-from-top duration-300 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-widest">{activeGroupCall.callType === 'broadcast' ? t('broadcast_live') : t('video_chat_live')}</span>
+              </div>
+              <Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>
+                {t('join_call')}
+              </Button>
+            </div>
+          )}
+          {stickyDate && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex justify-center pointer-events-none">
+                  <Badge variant="secondary" className="opacity-90">{stickyDate}</Badge>
+              </div>
+          )}
       </div>
 
       {isMember && (

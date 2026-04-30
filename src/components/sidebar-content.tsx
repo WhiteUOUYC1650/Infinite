@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -220,7 +221,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const channels = useMemo(() => sortedChats.filter((chat) => chat.type === 'channel' || (chat as any).type === 'broadcast'), [sortedChats]);
 
   const handleSelect = (item: Chat) => {
-    const iconName = item.icon === 'Drum' ? 'Bot' : item.icon as keyof typeof iconMap | undefined;
+    const iconName = (item.icon === 'Drum' || item.name === 'Infinite') ? 'Bot' : item.icon as keyof typeof iconMap | undefined;
     const populatedItem: PopulatedChat = {
         ...item,
         iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -761,7 +762,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
 function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
   const { t } = useLanguage();
   const lastMessage = item.lastMessage;
-  const Icon = item.icon === 'Drum' ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : null);
+  const Icon = (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : null);
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
