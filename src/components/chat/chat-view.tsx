@@ -287,10 +287,8 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                 {isMusic && !hideTime && (
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80">
                         <span>{formatTime(currentTime)}</span>
-                        <div className="flex items-center gap-1">
-                             <span className="opacity-50">/</span>
-                             <span>{formatTime(maxTime)}</span>
-                        </div>
+                        <div className="flex items-center gap-1 mx-1 opacity-50">/</div>
+                        <span>{formatTime(maxTime)}</span>
                     </div>
                 )}
             </div>
@@ -1183,7 +1181,7 @@ const handleSendTextOrImage = async (imageUrl: string | null | undefined, conten
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: item.avatar || 'is_channel_message',
+                senderAvatar: item.avatar || null,
                 fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
@@ -1253,7 +1251,7 @@ const handleSendVideo = async (videoPayload: {file: File, previewUrl: string}, c
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: item.avatar || 'is_channel_message',
+                senderAvatar: item.avatar || null,
                 fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
@@ -1347,7 +1345,7 @@ const handleSendMusic = async (musicPayload: {file: File, previewUrl: string}, c
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: item.avatar || 'is_channel_message',
+                senderAvatar: item.avatar || null,
                 fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
@@ -1442,7 +1440,7 @@ const handleSendGenericFile = async (filePayload: {file: File, previewUrl: strin
                 ...messageData,
                 type: 'announcement',
                 senderName: item.name,
-                senderAvatar: item.avatar || 'is_channel_message',
+                senderAvatar: item.avatar || null,
                 fromChannelId: item.id
             };
             batch.set(discMsgRef, forwardedMsg);
@@ -2022,7 +2020,7 @@ const handleForward = async (targetChatId: string) => {
   const isEmptyBotChat = isBotChat && !isLoading && (!messages || messages.length === 0);
 
   const getChatIcon = () => {
-    if (item.name === 'Infinite' || item.icon === 'Drum' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT') return <Bot className="h-5 w-5" />;
+    if (item.name === 'Infinite' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT') return <Bot className="h-5 w-5" />;
     if (item.type === 'channel') return <Megaphone className="h-5 w-5" />;
     if (item.type === 'group') return <Users className="h-5 w-5" />;
     return <UserIcon className="h-5 w-5" />;
@@ -2726,7 +2724,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             {showSenderAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     <button onClick={handleAvatarClick} disabled={isCurrentUser || (message.type === 'announcement' && !message.fromChannelId) || (sender && !!sender.isDeleted)}>
-                        {message.senderAvatar === 'is_channel_message' ? <Avatar className="h-10 w-10"><AvatarFallback className="bg-secondary"><Megaphone className="h-5 w-5" /></AvatarFallback></Avatar> : <UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} />}
+                        {message.senderAvatar ? (
+                           <UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} />
+                        ) : (
+                           <Avatar className="h-10 w-10"><AvatarFallback className="bg-secondary">{message.type === 'announcement' ? <Megaphone className="h-5 w-5" /> : <UserIcon className="h-5 w-5" />}</AvatarFallback></Avatar>
+                        )}
                     </button>
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
