@@ -53,17 +53,6 @@ const iconMap = {
     Bot,
 };
 
-const InfVidIcon = ({ className }: { className?: string }) => (
-  <div className={cn("relative flex items-center justify-center", className)}>
-    <svg viewBox="0 0 24 24" fill="#FF8C00" className="absolute w-full h-full">
-      <path d="M5 3l14 9-14 9V3z" />
-    </svg>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative w-3/5 h-3/5">
-      <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4zm0 0c2 2.67 4 4 6 4a4 4 0 1 0 0-8c-2 0-4 1.33-6 4z" />
-    </svg>
-  </div>
-);
-
 function HolidayBanner() {
   const { t } = useLanguage();
   const today = new Date();
@@ -231,7 +220,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const channels = useMemo(() => sortedChats.filter((chat) => chat.type === 'channel' || (chat as any).type === 'broadcast'), [sortedChats]);
 
   const handleSelect = (item: Chat) => {
-    const iconName = item.icon as keyof typeof iconMap | undefined;
+    const iconName = item.icon === 'Drum' ? 'Bot' : item.icon as keyof typeof iconMap | undefined;
     const populatedItem: PopulatedChat = {
         ...item,
         iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -357,6 +346,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     }
   };
 
+  const InfVidIcon = ({ className }: { className?: string }) => (
+    <div className={cn("relative flex items-center justify-center", className)}>
+      <svg viewBox="0 0 24 24" fill="#FF8C00" className="absolute w-full h-full">
+        <path d="M5 3l14 9-14 9V3z" />
+      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative w-3/5 h-3/5">
+        <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4zm0 0c2 2.67 4 4 6 4a4 4 0 1 0 0-8c-2 0-4 1.33-6 4z" />
+      </svg>
+    </div>
+  );
 
   return (
     <>
@@ -762,7 +761,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
 function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
   const { t } = useLanguage();
   const lastMessage = item.lastMessage;
-  const Icon = item.icon ? iconMap[item.icon as keyof typeof iconMap] : null;
+  const Icon = item.icon === 'Drum' ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : null);
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;

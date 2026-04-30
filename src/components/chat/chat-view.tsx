@@ -901,7 +901,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
 
       if (onSelectChat) {
-        const iconName = chatData.icon as keyof typeof iconMap | undefined;
+        const iconName = chatData.icon === 'Drum' ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
         const populatedChat: PopulatedChat = {
             ...chatData,
             iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -979,7 +979,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
 
         if (targetChat) {
-            const iconName = targetChat.icon as keyof typeof iconMap | undefined;
+            const iconName = targetChat.icon === 'Drum' ? 'Bot' : targetChat.icon as keyof typeof iconMap | undefined;
             const populatedChat: PopulatedChat = {
                 ...targetChat,
                 iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -1594,7 +1594,7 @@ const handleForward = async (targetChatId: string) => {
         const chatSnap = await getDoc(chatRef);
         if (chatSnap.exists()) {
             const targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-            const iconName = targetChat.icon as keyof typeof iconMap | undefined;
+            const iconName = targetChat.icon === 'Drum' ? 'Bot' : targetChat.icon as keyof typeof iconMap | undefined;
             const populatedChat: PopulatedChat = { ...targetChat, id: chatSnap.id, iconComponent: iconName ? iconMap[iconName] : undefined };
             onSelectChat(populatedChat);
         } else {
@@ -2021,7 +2021,7 @@ const handleForward = async (targetChatId: string) => {
   const isEmptyBotChat = isBotChat && !isLoading && (!messages || messages.length === 0);
 
   return (
-    <div className={cn("relative flex flex-col h-svh bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+    <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       
       {(isRecordingVoice || isRecordingCircle) && (
         <div className={cn(
@@ -2365,7 +2365,7 @@ const handleForward = async (targetChatId: string) => {
           <div className="max-w-3xl mx-auto w-full h-full flex items-center">
             {canSendMessage ? (
               isEmptyBotChat ? (
-                  <div className="flex flex-col items-center gap-4 py-8 animate-in fade-in zoom-in duration-500">
+                  <div className="flex flex-col items-center gap-4 py-8 animate-in fade-in zoom-in duration-500 w-full">
                       <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                           <Bot className="h-10 w-10" />
                       </div>
@@ -2721,11 +2721,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg px-3 py-1.5 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-3 py-1.5 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2.5 py-1.5 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-2.5 py-1.5 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircle && (
                     <div className="font-semibold text-sm mb-0.5 flex items-center gap-2">
                         <span className="truncate">{displayName}</span>
-                        {sender?.username === '@InfiniteBot' && <VerifiedBadge className='shrink-0' />}
+                        {sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}
                     </div>
                 )}
                 {message.replyTo && !isCircle && (
@@ -2788,7 +2788,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         </div>
                     )}
                 </div>
-                <div className={cn("flex items-center gap-1.5 mt-0.5 text-[9px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end", isCircle ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>
                     {message.editedAt && (
                         <span className="font-bold">{t('edited')}</span>
                     )}
