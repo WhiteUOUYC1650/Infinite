@@ -800,7 +800,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
-  // NEW: ResizeObserver specifically for desktop stability when dynamic content loads
   useEffect(() => {
     const inner = listInnerRef.current;
     if (!inner) return;
@@ -2022,6 +2021,13 @@ const handleForward = async (targetChatId: string) => {
   const isBotChat = item.type === 'dm' && otherUser?.isBot;
   const isEmptyBotChat = isBotChat && !isLoading && (!messages || messages.length === 0);
 
+  const getChatIcon = () => {
+    if (item.name === 'Infinite' || item.icon === 'Drum' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT') return <Bot className="h-5 w-5" />;
+    if (item.type === 'channel') return <Megaphone className="h-5 w-5" />;
+    if (item.type === 'group') return <Users className="h-5 w-5" />;
+    return <UserIcon className="h-5 w-5" />;
+  };
+
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       
@@ -2134,9 +2140,7 @@ const handleForward = async (targetChatId: string) => {
                                 <AvatarImage src={item.avatar} alt={item.name} />
                             ) : (
                                 <AvatarFallback>
-                                    {(item.name === 'Infinite' || item.icon === 'Drum' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT') 
-                                        ? <Bot className="h-5 w-5" /> 
-                                        : (item.type === 'channel' ? <Megaphone className="h-5 w-5" /> : <Users className="h-5 w-5" />)}
+                                    {getChatIcon()}
                                 </AvatarFallback>
                             )}
                         </Avatar>
@@ -2715,8 +2719,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const isCircle = message.circleStatus === 'complete';
     const displayName = message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name);
 
-    // NEW: Remove sender avatar in channels for cleaner look
-    const showSenderAvatar = ((chatType === 'group' && !isCurrentUser) || message.type === 'announcement');
+    const showSenderAvatar = (chatType !== 'channel' && ((chatType === 'group' && !isCurrentUser) || message.type === 'announcement'));
 
     return (
         <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
