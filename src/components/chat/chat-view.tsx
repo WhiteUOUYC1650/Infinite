@@ -800,6 +800,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, []);
 
+  // NEW: ResizeObserver specifically for desktop stability when dynamic content loads
   useEffect(() => {
     const inner = listInnerRef.current;
     if (!inner) return;
@@ -902,7 +903,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       }
 
       if (onSelectChat) {
-        const iconName = (chatData.icon === 'Drum' || chatData.username === '@InfiniteBot') ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
+        const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite' || chatData.id === 'GENERAL_CHAT') ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
         const populatedChat: PopulatedChat = {
             ...chatData,
             iconComponent: iconName ? iconMap[iconName] : undefined,
@@ -2133,7 +2134,9 @@ const handleForward = async (targetChatId: string) => {
                                 <AvatarImage src={item.avatar} alt={item.name} />
                             ) : (
                                 <AvatarFallback>
-                                    {(item.iconComponent || (item.name === 'Infinite' || item.icon === 'Drum')) ? <Bot className="h-5 w-5" /> : null}
+                                    {(item.name === 'Infinite' || item.icon === 'Drum' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT') 
+                                        ? <Bot className="h-5 w-5" /> 
+                                        : (item.type === 'channel' ? <Megaphone className="h-5 w-5" /> : <Users className="h-5 w-5" />)}
                                 </AvatarFallback>
                             )}
                         </Avatar>
@@ -2166,7 +2169,7 @@ const handleForward = async (targetChatId: string) => {
                 {item.id !== 'GENERAL_CHAT' && (
                     <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9"><MoreVertical className="h-5 w-5" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             {item.id !== currentUser.uid && (
@@ -2712,9 +2715,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const isCircle = message.circleStatus === 'complete';
     const displayName = message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name);
 
+    // NEW: Remove sender avatar in channels for cleaner look
+    const showSenderAvatar = ((chatType === 'group' && !isCurrentUser) || message.type === 'announcement');
+
     return (
         <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
-            {((chatType === 'group' && !isCurrentUser) || message.type === 'announcement') ? (
+            {showSenderAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     <button onClick={handleAvatarClick} disabled={isCurrentUser || (message.type === 'announcement' && !message.fromChannelId) || (sender && !!sender.isDeleted)}>
                         {message.senderAvatar === 'is_channel_message' ? <Avatar className="h-10 w-10"><AvatarFallback className="bg-secondary"><Megaphone className="h-5 w-5" /></AvatarFallback></Avatar> : <UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} />}
@@ -2722,9 +2728,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  </div>
             ) : chatType === 'group' && !alignRight ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2.5 py-1.5 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-2.5 py-1.5 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircle ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 py-1 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-2 py-1 rounded-bl-none max-w-[75%] md:max-w-[60%]"), isMentionAll && !isCurrentUser && !isCircle && "ring-2 ring-amber-400")}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircle && (
-                    <div className="font-semibold text-sm mb-0.5 flex items-center gap-2">
+                    <div className="font-semibold text-[13px] mb-0.5 flex items-center gap-2">
                         <span className="truncate">{displayName}</span>
                         {sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}
                     </div>
@@ -2752,7 +2758,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                     
                     {message.content && !message.poll && (
-                        <div className={cn("text-sm break-words whitespace-pre-wrap", (message.imageUrl || message.videoMimeType || message.musicMimeType || message.circleStatus || message.voiceStatus) && "mt-2")}>
+                        <div className={cn("text-sm break-words whitespace-pre-wrap", (message.imageUrl || message.videoMimeType || message.musicMimeType || message.circleStatus || message.voiceStatus) && "mt-1")}>
                             <ReactMarkdown 
                                 remarkPlugins={[remarkGfm]}
                                 components={{
