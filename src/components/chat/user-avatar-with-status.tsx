@@ -85,8 +85,8 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
   if (!user && !isSavedMessages) {
     return (
       <Avatar className={cn("h-10 w-10 shrink-0", className)}>
-        <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
-            <InfiniteLogo />
+        <AvatarFallback className={cn("bg-muted text-foreground font-bold", isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
+            ?
         </AvatarFallback>
       </Avatar>
     );
@@ -135,11 +135,11 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
             />
         )}
         <AvatarFallback className={cn(
-            "transition-opacity duration-300 flex items-center justify-center absolute inset-0",
+            "transition-opacity duration-300 flex items-center justify-center absolute inset-0 font-bold bg-muted text-foreground",
             isSelected && "bg-sidebar-primary text-sidebar-primary-foreground",
             isReady ? "opacity-0" : "opacity-100"
         )}>
-            <InfiniteLogo />
+            {user?.name?.charAt(0).toUpperCase() || user?.username?.charAt(1)?.toUpperCase() || '?'}
         </AvatarFallback>
       </Avatar>
       {user?.status && !user.isBot && !isSavedMessages && (

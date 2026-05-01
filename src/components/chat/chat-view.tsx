@@ -1137,7 +1137,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
-                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-0.5 pb-1 rounded-bl-none")
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-bl-none")
             )}>
                 {/* Reply UI */}
                 {message.replyTo && (
@@ -1181,7 +1181,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 
                 {message.circleStatus === 'complete' && mediaUrl && (
-                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-56 h-56" : "w-40 h-40 mt-1")} onClick={handleCircleClick}>
+                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}>
                         <video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
                     </div>
                 )}
