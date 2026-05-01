@@ -20,6 +20,34 @@ const statusColors = {
   offline: "bg-gray-400",
 };
 
+// Standard Infinite Logo for Fallbacks
+export const InfiniteLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className={cn("w-full h-full p-1.5 opacity-90", className)}>
+    <path
+        d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="8"
+    />
+    <path
+        d="M 20 78 L 10 90 L 25 78"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    />
+     <path
+        d="M 80 22 L 90 10 L 75 22"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelected }: UserAvatarWithStatusProps) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -34,14 +62,12 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     let isMounted = true;
 
     const loadAvatar = async () => {
-      // 1. Check cache first for instant load
       const cached = await getCachedFile(`avatar-${user.id}`);
       if (cached && isMounted) {
         setImgSrc(cached);
         return;
       }
 
-      // 2. Fetch and cache if not found
       if (user.avatar && isMounted) {
         const url = await fetchAndCacheImage(`avatar-${user.id}`, user.avatar);
         if (url && isMounted) {
@@ -60,7 +86,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     return (
       <Avatar className={cn("h-10 w-10 shrink-0", className)}>
         <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
-            <UserIcon className="h-5 w-5 opacity-20" />
+            <InfiniteLogo />
         </AvatarFallback>
       </Avatar>
     );
@@ -113,7 +139,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
             isSelected && "bg-sidebar-primary text-sidebar-primary-foreground",
             isReady ? "opacity-0" : "opacity-100"
         )}>
-            {user?.name?.charAt(0) || '?'}
+            <InfiniteLogo />
         </AvatarFallback>
       </Avatar>
       {user?.status && !user.isBot && !isSavedMessages && (

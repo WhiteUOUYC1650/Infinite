@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -19,7 +18,7 @@ import {
 } from '@/components/ui/sidebar';
 
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
-import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
+import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
 import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -806,7 +805,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
                 <AvatarImage src={item.avatar} alt={item.name} />
             ) : (
                 <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
-                    {Icon && <Icon className="h-4 w-4" />}
+                    {Icon ? <Icon className="h-4 w-4" /> : <InfiniteLogo />}
                 </AvatarFallback>
             )}
         </Avatar>

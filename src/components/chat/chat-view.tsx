@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, Poll } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search, PlayCircle, Cake, Gift, Coins, Check, Bell, BellOff } from 'lucide-react';
-import { UserAvatarWithStatus } from './user-avatar-with-status';
+import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit, arrayRemove, query, deleteField, getDocs, runTransaction, where } from 'firebase/firestore';
@@ -347,7 +346,7 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
                                     className="w-full flex items-center gap-3 p-2 hover:bg-muted rounded-xl transition-colors text-left"
                                 >
                                     <Avatar className="h-10 w-10 shrink-0">
-                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback>{chat.type === 'dm' ? <UserIcon className="h-5 w-5" /> : <Users className="h-5 w-5" />}</AvatarFallback>}
+                                        {chat.avatar ? <AvatarImage src={chat.avatar} /> : <AvatarFallback><InfiniteLogo /></AvatarFallback>}
                                     </Avatar>
                                     <div className="flex-1 truncate">
                                         <p className="font-bold text-sm truncate">{chat.id === 'GENERAL_CHAT' ? t('general_chat') : (chat.name || chat.id)}</p>
@@ -505,9 +504,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [hasMore]);
 
   const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) {
-        scrollToBottom();
-    }
+    // Small delay to ensure browser layout update
+    setTimeout(() => {
+        if (isAtBottomRef.current) {
+            scrollToBottom();
+        }
+    }, 50);
   }, [scrollToBottom]);
 
   const messagesQuery = useMemoFirebase(() => {
@@ -569,7 +571,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
   const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
   const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
-  const isOwner = item.ownerId === currentUser.uid;
 
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
@@ -664,7 +665,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
+    const data = { 
+        senderId: currentUser.uid, 
+        content: c, 
+        timestamp: ts, 
+        voiceMimeType: p.file.type, 
+        voiceStatus: 'uploading', 
+        voiceDuration: d, 
+        readBy: [], 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+    };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -684,7 +694,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
+    const data = { 
+        senderId: currentUser.uid, 
+        content: c, 
+        timestamp: ts, 
+        circleMimeType: p.file.type, 
+        circleStatus: 'uploading', 
+        circleDuration: d, 
+        readBy: [], 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+    };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -704,7 +723,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const ts = Timestamp.now();
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
+    const data = { 
+        senderId: currentUser.uid, 
+        content: c.trim(), 
+        timestamp: ts, 
+        type: 'user', 
+        readBy: [], 
+        ...(i && { imageUrl: i }), 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+    };
     const batch = writeBatch(db);
     batch.set(mref, data);
     const update: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } };
@@ -718,7 +745,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
+    const data = { 
+        senderId: currentUser.uid, 
+        content: c, 
+        timestamp: ts, 
+        videoMimeType: p.file.type, 
+        videoStatus: 'uploading', 
+        readBy: [], 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+    };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -738,7 +773,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
+    const data = { 
+        senderId: currentUser.uid, 
+        content: c, 
+        timestamp: ts, 
+        fileName: p.file.name, 
+        musicMimeType: p.file.type, 
+        musicStatus: 'uploading', 
+        readBy: [], 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+    };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -758,7 +802,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
+    const data = { 
+        senderId: currentUser.uid, 
+        content: c, 
+        timestamp: ts, 
+        fileName: p.file.name, 
+        fileMimeType: p.file.type, 
+        fileSize: p.file.size, 
+        fileStatus: 'uploading', 
+        readBy: [], 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+    };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -917,8 +971,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </div>
                 </button>
             </div>
-            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && isOwner && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => {}} />}
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{isOwner || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu></div>
+            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && item.ownerId === currentUser.uid && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => {}} />}
+                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu></div>
         </div>
       </header>
 
@@ -939,8 +993,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </div>
 
       {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background min-h-[54px] h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
-            {(item.type === 'channel' && !isOwner) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
-                  {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || replyToMessage.sender?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+            {(item.type === 'channel' && item.ownerId !== currentUser.uid) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
+                  {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || memberDetails[replyToMessage.senderId]?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
                   <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-48 rounded-xl">
@@ -1085,6 +1139,27 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
                 !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-0.5 pb-1 rounded-bl-none")
             )}>
+                {/* Reply UI */}
+                {message.replyTo && (
+                    <div 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }}
+                        className={cn(
+                            "mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden",
+                            alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10"
+                        )}
+                    >
+                        <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>
+                            {message.replyTo.senderName}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate line-clamp-1 opacity-80 italic">
+                            {message.replyTo.content}
+                        </p>
+                    </div>
+                )}
+
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
                     <div className="font-semibold text-[13px] flex items-center gap-2 mb-0"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
                 )}
@@ -1106,7 +1181,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 
                 {message.circleStatus === 'complete' && mediaUrl && (
-                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-64 h-64" : "w-48 h-48 mt-1")} onClick={handleCircleClick}>
+                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-56 h-56" : "w-40 h-40 mt-1")} onClick={handleCircleClick}>
                         <video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
                     </div>
                 )}
@@ -1136,4 +1211,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
-
