@@ -379,14 +379,13 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
   const renderMainView = () => {
     if (!populatedUser) return <div className="flex h-svh items-center justify-center">Loading...</div>;
-    const selectedId = currentSelectedId;
 
     if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null as any)} onSelectChat={handleSelect} />;
     if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null as any)} />;
     if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null as any)} initialVideoId={infVidInitialVideoId || undefined} />;
     if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null as any)} />;
     if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null as any)} currentUser={populatedUser} onSelectChat={handleSelect} />;
-    if (isMobile) return <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground"><SidebarContent onSelect={handleSelect} selectedId={selectedId} currentUser={populatedUser} /></div>;
+    if (isMobile) return <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground"><SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} /></div>;
     return <div className="relative flex h-full flex-col items-center justify-center bg-background p-4"><div className="flex flex-col items-center text-center"><MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} /><h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2></div></div>;
   };
 
