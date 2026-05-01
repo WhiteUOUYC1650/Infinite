@@ -116,7 +116,7 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
             {user?.name?.charAt(0) || '?'}
         </AvatarFallback>
       </Avatar>
-      {user?.status && !user.isBot && (
+      {user?.status && !user.isBot && !isSavedMessages && (
         <span
             className={cn(
             "absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-background z-10",

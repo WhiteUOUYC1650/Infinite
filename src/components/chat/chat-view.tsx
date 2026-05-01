@@ -764,11 +764,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const getChatIcon = () => {
-    if (item.name === 'Infinite' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT' || item.link === '/B/Infinite') return <Bot className="h-5 w-5" />;
+    if (item.id === 'GENERAL_CHAT') return <Globe className="h-5 w-5" />;
+    if (item.name === 'Infinite' || item.icon === 'Bot' || item.link === '/B/Infinite') return <Bot className="h-5 w-5" />;
     if (item.type === 'channel') return <Megaphone className="h-5 w-5" />;
     if (item.type === 'group') return <Users className="h-5 w-5" />;
     return <UserIcon className="h-5 w-5" />;
   };
+
+  const isSavedMessages = item.type === 'dm' && item.id === currentUser.uid;
 
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -778,7 +781,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 <div className="relative"><div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" /><div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">{isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}</div></div>
                 <div className="text-center space-y-2"><div className="text-4xl font-black font-mono tracking-tighter text-primary">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</div><p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{isRecordingCircle ? t('video') : t('voice_message')}</p></div>
                 {isRecordingCircle && <div className="w-full aspect-square max-w-[200px] rounded-full overflow-hidden border-4 border-primary/20 bg-black relative"><video ref={recordingVideoRef} autoPlay muted playsInline className="w-full h-full object-cover -scale-x-100" /></div>}
-                <div className="w-full space-y-3 pt-4">{isRecordingLocked ? <div className="flex gap-2 w-full"><Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => stopRecording(true)}><Trash className="mr-2 h-4 w-4" /> {t('cancel')}</Button><Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => stopRecording()}><Send className="mr-2 h-4 w-4" /> {t('start_chat')}</Button></div> : <div className="text-center text-primary animate-bounce"><Lock className="h-4 w-4 mx-auto" /></div>}</div>
+                <div className="w-full space-y-3 pt-4">{isRecordingLocked ? <div className="flex gap-2 w-full"><Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => {}}><Trash className="mr-2 h-4 w-4" /> {t('cancel')}</Button><Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => {}}><Send className="mr-2 h-4 w-4" /> {t('start_chat')}</Button></div> : <div className="text-center text-primary animate-bounce"><Lock className="h-4 w-4 mx-auto" /></div>}</div>
             </div>
         </div>
       )}
@@ -787,10 +790,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         <div className="flex items-center p-2 h-14">
             <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
             <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
-                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)} disabled={item.id === 'GENERAL_CHAT'}>
+                <button 
+                  className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full" 
+                  onClick={() => !isSavedMessages && (item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true))} 
+                  disabled={item.id === 'GENERAL_CHAT' || isSavedMessages}
+                >
                     <div className='shrink-0 h-10 w-10'>
                       {item.type === 'dm' ? (
-                        <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} />
+                        <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
                       ) : (
                         <Avatar className="h-10 w-10">
                           {item.avatar ? (
@@ -804,14 +811,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       )}
                     </div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{item.type === 'dm' ? (otherUser?.id === currentUser.uid ? t('saved_messages') : otherUser?.name || t('direct_message_tab')) : item.name}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
+                        <div className="flex items-center gap-2 min-0">
+                          <h2 className="text-lg font-semibold font-headline truncate leading-none">
+                            {isSavedMessages ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? (otherUser?.name || t('direct_message_tab')) : item.name))}
+                          </h2>
+                          {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
+                        </div>
                         <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
-                            {item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline')))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}
+                            {isSavedMessages ? '' : (item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline')))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })))}
                         </div>
                     </div>
                 </button>
             </div>
-            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && isOwner && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => {}} />}
+            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && isOwner && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => {}} />}
                 <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{isOwner || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu></div>
         </div>
       </header>
@@ -823,7 +835,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} localMediaUrl={localMediaCache[m.id]} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onToggleReaction={() => {}} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onToggleReaction={() => {}} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
                       })}
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
@@ -851,11 +863,44 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, localMediaUrl, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void, localMediaUrl?: string; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
     const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
+
+    const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadMedia = async () => {
+            const cached = await getCachedFile(message.id);
+            if (cached) {
+                setMediaUrl(cached);
+                return;
+            }
+
+            if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') {
+                const db = useFirestore();
+                if (!db) return;
+                try {
+                    const colName = message.videoStatus === 'complete' ? 'videoChunks' :
+                                    message.musicStatus === 'complete' ? 'musicChunks' :
+                                    message.voiceStatus === 'complete' ? 'voiceChunks' :
+                                    message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks';
+                    const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || [];
+                    const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, colName, id))));
+                    const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string });
+                    chunksData.sort((a, b) => a.part - b.part);
+                    const assembledBase64 = chunksData.map(c => c.data).join('');
+                    const mimeType = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream';
+                    const dataUrl = `data:${mimeType};base64,${assembledBase64}`;
+                    await cacheFile(message.id, dataUrl);
+                    setMediaUrl(await getCachedFile(message.id));
+                } catch (e) { console.error("Media assembly failed", e); }
+            }
+        };
+        loadMedia();
+    }, [message]);
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
@@ -872,6 +917,21 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     <div className="font-semibold text-[13px] mb-0.5 flex items-center gap-2"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
                 )}
                 {message.imageUrl && <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
+                
+                {message.videoStatus === 'complete' && mediaUrl && (
+                    <video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} />
+                )}
+                
+                {message.circleStatus === 'complete' && mediaUrl && (
+                    <div className="w-48 h-48 rounded-full overflow-hidden border-2 border-primary/20 bg-black">
+                        <video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
+                    </div>
+                )}
+                
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (
+                    <CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} />
+                )}
+
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
                 <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span></div>
