@@ -503,11 +503,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [hasMore]);
 
   const handleMediaLoad = useCallback(() => {
+    // Add small delay to ensure ResizeObserver has processed the new layout
     setTimeout(() => {
         if (isAtBottomRef.current) {
             scrollToBottom();
         }
-    }, 50);
+    }, 60);
   }, [scrollToBottom]);
 
   const messagesQuery = useMemoFirebase(() => {
@@ -537,7 +538,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
-            scrollToBottom('auto');
+            // Small delay helps with smooth height calculations on desktop browsers
+            setTimeout(() => scrollToBottom('auto'), 10);
         }
     });
 
@@ -972,7 +974,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
               {messagesLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="space-y-0.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
+                  <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
@@ -1056,7 +1058,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
-                setTimeout(() => onMediaLoad(), 100);
+                setTimeout(() => onMediaLoad(), 80);
                 return;
             }
 
@@ -1076,8 +1078,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const mimeType = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream';
                     const dataUrl = `data:${mimeType};base64,${assembledBase64}`;
                     await cacheFile(message.id, dataUrl);
-                    setMediaUrl(await getCachedFile(message.id));
-                    setTimeout(() => onMediaLoad(), 100);
+                    const finalUrl = await getCachedFile(message.id);
+                    if (finalUrl) {
+                        setMediaUrl(finalUrl);
+                        setTimeout(() => onMediaLoad(), 80);
+                    }
                 } catch (e) { console.error("Media assembly failed", e); }
             }
         };
@@ -1125,6 +1130,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     };
 
     const isCircleOnly = message.circleStatus === 'complete' && !message.content;
+    const canCopy = message.content && !message.poll;
+    const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus;
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
@@ -1137,7 +1144,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
-                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-1 pb-1 rounded-bl-none")
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none"),
+                !isCircleOnly && (alignRight ? "pt-1.5" : "pt-1.5")
             )}>
                 {/* Reply UI */}
                 {message.replyTo && (
@@ -1175,7 +1183,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 
                 {message.videoStatus === 'complete' && mediaUrl && (
-                    <div className="pt-1.5">
+                    <div className="pt-1">
                         <video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} />
                     </div>
                 )}
@@ -1187,7 +1195,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (
-                    <div className="pt-1.5">
+                    <div className="pt-1">
                         <CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} />
                     </div>
                 )}
@@ -1206,7 +1214,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>{message.content && !message.poll && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>{canCopy && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );
