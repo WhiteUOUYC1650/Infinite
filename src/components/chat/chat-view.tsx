@@ -519,6 +519,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading]);
 
+  const allUserIdsToFetch = useMemo(() => {
+    const ids = new Set<string>(item.members || []);
+    messages?.forEach(m => {
+        ids.add(m.senderId);
+        if (m.reactions) {
+            Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string));
+        }
+    });
+    return Array.from(ids);
+  }, [item.members, messages]);
+
+  const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
+
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -531,7 +544,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     observer.observe(listElement);
     return () => observer.disconnect();
-  }, [scrollToBottom]);
+  }, [scrollToBottom, memberDetails]); // Added memberDetails to trigger layout check on nickname loads
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -547,25 +560,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     
     lastScrollHeightRef.current = container.scrollHeight;
-  }, [messages, item.id, scrollToBottom, smoothScroll]);
+  }, [messages, item.id, scrollToBottom, smoothScroll, memberDetails]); // Added memberDetails for hydration scrolling
 
   useEffect(() => {
     const timer = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
-
-  const allUserIdsToFetch = useMemo(() => {
-    const ids = new Set<string>(item.members || []);
-    messages?.forEach(m => {
-        ids.add(m.senderId);
-        if (m.reactions) {
-            Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string));
-        }
-    });
-    return Array.from(ids);
-  }, [item.members, messages]);
-
-  const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
 
   const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
   const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
@@ -633,7 +633,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMessage = async (customContent?: string) => {
     if ((isRecordingVoice || isRecordingCircle) && !isRecordingLocked) {
         stopRecording();
-        // The onstop callback will set fileToSend, we wait for next render or handle manually
         return;
     }
 
@@ -994,6 +993,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const [mediaUrl, setMediaUrl] = useState<string | null>(null);
     const circleVideoRef = useRef<HTMLVideoElement>(null);
     const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
+    const [isUserActive, setIsUserActive] = useState(false);
 
     useEffect(() => {
         const loadMedia = async () => {
@@ -1026,10 +1026,22 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         loadMedia();
     }, [message, db]);
 
+    // Handle playback of circle specifically to avoid auto-play on pagination
+    useEffect(() => {
+        if (circleVideoRef.current && mediaUrl && message.circleStatus === 'complete') {
+            if (!isUserActive) {
+                // Initial preview state: loop, muted, but only play if user didn't pause before
+                circleVideoRef.current.muted = true;
+                circleVideoRef.current.play().catch(() => {});
+            }
+        }
+    }, [mediaUrl, message.circleStatus, isUserActive]);
+
     useEffect(() => {
         const handleStop = (e: any) => {
             if (e.detail?.id !== message.id && circleVideoRef.current && !circleVideoRef.current.paused) {
                 circleVideoRef.current.pause();
+                // Ensure we don't accidentally "resume with sound" when list updates
             }
         };
         window.addEventListener('stop-media', handleStop);
@@ -1041,6 +1053,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         if (circleVideoRef.current) {
             window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } }));
             circleVideoRef.current.currentTime = 0;
+            setIsUserActive(true);
             if (!hasUnmutedCircle) {
                 circleVideoRef.current.muted = false;
                 setHasUnmutedCircle(true);
@@ -1079,25 +1092,25 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 
                 {message.videoStatus === 'complete' && mediaUrl && (
-                    <div className="pt-2">
+                    <div className="pt-1.5">
                         <video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} />
                     </div>
                 )}
                 
                 {message.circleStatus === 'complete' && mediaUrl && (
                     <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-64 h-64" : "w-48 h-48 mt-1")} onClick={handleCircleClick}>
-                        <video ref={circleVideoRef} src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
+                        <video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
                     </div>
                 )}
                 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (
-                    <div className="pt-2">
+                    <div className="pt-1.5">
                         <CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} />
                     </div>
                 )}
 
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
+                {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-1.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
                 <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span></div>
             </div>
 
