@@ -994,10 +994,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     const whatsNewPageContent = (
     <div className='p-6 space-y-6'>
       <div className="text-center">
-        <h2 className="text-2xl font-bold font-headline">{t('whats_new_title')}</h2>
+        <h2 className="text-2xl font-bold font-headline">{t('whats_new_title', { version: t('beta_badge') })}</h2>
         <p className="text-muted-foreground">{t('whats_new_desc')}</p>
       </div>
       <div className="space-y-4 text-sm">
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Paintbrush className="h-4 w-4 text-primary" /> {t('whats_new_ui_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_ui_desc')}</p>
+        </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
           <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> {t('whats_new_offline_title')}</h3>
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_offline_desc')}</p>

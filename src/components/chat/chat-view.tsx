@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -448,11 +449,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [isRecordingLocked, setIsRecordingLocked] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const videoStreamRef = useRef<MediaStream | null>(null);
   
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxSizeText = isPrem ? '4GB' : '1GB';
@@ -504,7 +503,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [hasMore]);
 
   const handleMediaLoad = useCallback(() => {
-    // Small delay to ensure browser layout update
     setTimeout(() => {
         if (isAtBottomRef.current) {
             scrollToBottom();
@@ -572,11 +570,35 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
   const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
 
+  const handleSendMessage = async (customContent?: string, immediateFile?: {file: File, type: 'voice' | 'circle', duration: number}) => {
+    const finalContent = customContent !== undefined ? customContent : messageContent;
+    const finalFile = immediateFile || fileToSend;
+    if ((!finalContent.trim() && !finalFile) || !db) return;
+    
+    setIsSending(true);
+    const originalContent = finalContent;
+    const originalReplyTo = replyToMessage;
+    setMessageContent('');
+    setFileToSend(null);
+    setReplyToMessage(null);
+    
+    try {
+        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo);
+        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration);
+        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration);
+        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo);
+        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo);
+        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo);
+    } catch (error) {
+        console.error(error);
+        setMessageContent(originalContent);
+        setReplyToMessage(originalReplyTo);
+    } finally { setIsSending(false); }
+  };
+
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'circle' });
-        if (type === 'circle') videoStreamRef.current = stream;
-        
         const recorder = new MediaRecorder(stream);
         mediaRecorderRef.current = recorder;
         chunksRef.current = [];
@@ -588,11 +610,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         recorder.onstop = () => {
             const blob = new Blob(chunksRef.current, { type: type === 'voice' ? 'audio/webm' : 'video/webm' });
             const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type });
-            const url = URL.createObjectURL(blob);
-            setFileToSend({ file, previewUrl: url, type });
             
+            // Release hardware immediately
             stream.getTracks().forEach(t => t.stop());
-            if (videoStreamRef.current) videoStreamRef.current = null;
+            
+            // Auto send immediate
+            handleSendMessage('', { file, type, duration: recordingDuration });
         };
 
         recorder.start();
@@ -607,58 +630,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   };
 
-  const stopRecording = (cancel = false) => {
+  const stopRecording = () => {
     if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
     }
-    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        if (cancel) {
-            mediaRecorderRef.current.onstop = () => {
-                const stream = mediaRecorderRef.current?.stream;
-                stream?.getTracks().forEach(t => t.stop());
-                setIsRecordingVoice(false);
-                setIsRecordingCircle(false);
-            };
-        }
         mediaRecorderRef.current.stop();
     }
-    
-    if (!cancel) {
-        setIsRecordingVoice(false);
-        setIsRecordingCircle(false);
-    }
+    setIsRecordingVoice(false);
+    setIsRecordingCircle(false);
   };
 
-  const handleSendMessage = async (customContent?: string) => {
-    if ((isRecordingVoice || isRecordingCircle) && !isRecordingLocked) {
-        stopRecording();
-        return;
-    }
-
-    const finalContent = customContent !== undefined ? customContent : messageContent;
-    if ((!finalContent.trim() && !fileToSend) || !db) return;
-    setIsSending(true);
-    const originalContent = finalContent;
-    const originalFile = fileToSend;
-    const originalReplyTo = replyToMessage;
-    setMessageContent('');
-    setFileToSend(null);
-    setReplyToMessage(null);
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!db) return;
     try {
-        if (originalFile?.type === 'video') await handleSendVideo(originalFile, originalContent, originalReplyTo);
-        else if (originalFile?.type === 'voice') await handleSendVoice(originalFile, originalContent, originalReplyTo, recordingDuration);
-        else if (originalFile?.type === 'circle') await handleSendCircle(originalFile, originalContent, originalReplyTo, recordingDuration);
-        else if (originalFile?.type === 'music') await handleSendMusic(originalFile, originalContent, originalReplyTo);
-        else if (originalFile?.type === 'file') await handleSendGenericFile(originalFile, originalContent, originalReplyTo);
-        else await handleSendTextOrImage(originalFile?.previewUrl, originalContent, originalReplyTo);
-    } catch (error) {
-        console.error(error);
-        setMessageContent(originalContent);
-        setFileToSend(originalFile);
-        setReplyToMessage(originalReplyTo);
-    } finally { setIsSending(false); }
+        await deleteDoc(doc(db, 'chats', item.id, 'messages', messageId));
+        toast({ title: t('dm_success') });
+    } catch (e) {
+        console.error("Delete failed", e);
+    }
   };
 
   const handleSendVoice = async (p: any, c: string, r: any, d: number) => {
@@ -673,11 +664,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         voiceStatus: 'uploading', 
         voiceDuration: d, 
         readBy: [], 
+        senderName: currentUser.name || currentUser.username,
         ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
     };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -702,11 +694,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         circleStatus: 'uploading', 
         circleDuration: d, 
         readBy: [], 
+        senderName: currentUser.name || currentUser.username,
         ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
     };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -729,6 +722,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         timestamp: ts, 
         type: 'user', 
         readBy: [], 
+        senderName: currentUser.name || currentUser.username,
         ...(i && { imageUrl: i }), 
         ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
     };
@@ -752,11 +746,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         videoMimeType: p.file.type, 
         videoStatus: 'uploading', 
         readBy: [], 
+        senderName: currentUser.name || currentUser.username,
         ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -781,11 +776,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         musicMimeType: p.file.type, 
         musicStatus: 'uploading', 
         readBy: [], 
+        senderName: currentUser.name || currentUser.username,
         ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -811,11 +807,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         fileSize: p.file.size, 
         fileStatus: 'uploading', 
         readBy: [], 
+        senderName: currentUser.name || currentUser.username,
         ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -895,8 +892,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       {(isRecordingVoice || isRecordingCircle) && (
-        <div className={cn("absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300", isRecordingLocked ? "pointer-events-auto" : "pointer-events-none")}>
-            <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full pointer-events-auto">
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300 pointer-events-none">
+            <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full">
                 <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
                     <div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">
@@ -908,25 +905,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                     </div>
                     <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                        {isRecordingCircle ? t('video') : t('voice_message')}
+                        {t('is_recording_locked_placeholder')}
                     </p>
-                </div>
-                <div className="w-full space-y-3 pt-4">
-                    {isRecordingLocked ? (
-                        <div className="flex gap-2 w-full">
-                            <Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => stopRecording(true)}>
-                                <Trash className="mr-2 h-4 w-4" /> {t('cancel')}
-                            </Button>
-                            <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => handleSendMessage()}>
-                                <Send className="mr-2 h-4 w-4" /> {t('start_chat')}
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="text-center text-primary animate-bounce">
-                            <Lock className="h-4 w-4 mx-auto" />
-                            <p className="text-[10px] font-bold mt-2">{t('is_recording_locked_placeholder')}</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -979,11 +959,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
               {messagesLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="space-y-0.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
+                  <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onToggleReaction={() => {}} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onDelete={handleDeleteMessage} onToggleReaction={() => {}} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
                       })}
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
@@ -992,7 +972,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           {stickyDate && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"><Badge variant="secondary" className="opacity-90">{stickyDate}</Badge></div>}
       </div>
 
-      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background min-h-[54px] h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
+      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
             {(item.type === 'channel' && item.ownerId !== currentUser.uid) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
                   {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || memberDetails[replyToMessage.senderId]?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
@@ -1037,7 +1017,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
     const db = useFirestore(); 
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
@@ -1154,7 +1134,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>
                             {message.replyTo.senderName}
                         </p>
-                        <p className="text-[11px] text-muted-foreground truncate line-clamp-1 opacity-80 italic">
+                        <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>
                             {message.replyTo.content}
                         </p>
                     </div>
@@ -1206,7 +1186,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );

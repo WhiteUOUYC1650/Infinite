@@ -334,7 +334,7 @@ export const translations = {
       'subscribe_yearly': '5000 InfGold / year',
       'yearly_discount_note': 'Save 1000 InfGold!',
       'whats_new': "What's New",
-      'whats_new_title': "What's New in 0.4.2 Beta",
+      'whats_new_title': "What's New in {version}",
       'whats_new_desc': "A technical update focused on autonomy and local storage.",
       'whats_new_offline_title': 'Offline Interface',
       'whats_new_offline_desc': 'The app interface can now open even without an internet connection.',
@@ -344,6 +344,8 @@ export const translations = {
       'whats_new_minor_desc': 'Minor changes in Bot Studio and other app modules.',
       'whats_new_bug_fix_title': 'Bug Fixes',
       'whats_new_bug_fix_desc': 'Fixed various errors for better stability.',
+      'whats_new_ui_title': 'UI Improvements',
+      'whats_new_ui_desc': 'Smoother scrolling and improved message layouts.',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Upload Video',
       'infvid_video_title_placeholder': 'Enter video title',
@@ -563,6 +565,7 @@ export const translations = {
       'action_send_file': 'Send File',
       'choose_file': 'Choose File',
       'file_selected': 'File selected',
+      'is_recording_locked_placeholder': 'Recording is active...',
     },
     ru: {
       'settings': 'Настройки',
@@ -896,7 +899,7 @@ export const translations = {
       'subscribe_yearly': '5000 InfGold / год',
       'yearly_discount_note': 'Экономия 1000 InfGold!',
       'whats_new': "Что нового",
-      'whats_new_title': "What's New in 0.4.2 Beta",
+      'whats_new_title': "Что нового в {version}",
       'whats_new_desc': "Техническое обновление: автономность и локальное хранилище.",
       'whats_new_offline_title': 'Офлайн-интерфейс',
       'whats_new_offline_desc': 'Возможность открытия интерфейса приложения даже без интернет-соединения.',
@@ -906,6 +909,8 @@ export const translations = {
       'whats_new_minor_desc': 'Мелкие изменения в Bot Studio и других модулях приложения.',
       'whats_new_bug_fix_title': 'Исправления',
       'whats_new_bug_fix_desc': 'Исправлены различные ошибки для стабильной работы.',
+      'whats_new_ui_title': 'Улучшение интерфейса',
+      'whats_new_ui_desc': 'Более плавная прокрутка и улучшенные макеты сообщений.',
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Загрузить видео',
       'infvid_video_title_placeholder': 'Введите название видео',
@@ -1125,6 +1130,7 @@ export const translations = {
       'action_send_file': 'Отправить файл',
       'choose_file': 'Выбрать файл',
       'file_selected': 'Файл выбран',
+      'is_recording_locked_placeholder': 'Идет запись...',
     }
   };
 
