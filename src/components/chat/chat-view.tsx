@@ -504,11 +504,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const handleMediaLoad = useCallback(() => {
     // Add small delay to ensure ResizeObserver has processed the new layout
-    setTimeout(() => {
-        if (isAtBottomRef.current) {
+    requestAnimationFrame(() => {
+        if (isAtBottomRef.current || lastScrollHeightRef.current === 0) {
             scrollToBottom();
         }
-    }, 60);
+    });
   }, [scrollToBottom]);
 
   const messagesQuery = useMemoFirebase(() => {
@@ -1058,7 +1058,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
-                setTimeout(() => onMediaLoad(), 80);
+                requestAnimationFrame(() => onMediaLoad());
                 return;
             }
 
@@ -1081,13 +1081,13 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const finalUrl = await getCachedFile(message.id);
                     if (finalUrl) {
                         setMediaUrl(finalUrl);
-                        setTimeout(() => onMediaLoad(), 80);
+                        requestAnimationFrame(() => onMediaLoad());
                     }
                 } catch (e) { console.error("Media assembly failed", e); }
             }
         };
         loadMedia();
-    }, [message, db, onMediaLoad]);
+    }, [message.id, db, onMediaLoad, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.videoChunkIds, message.musicChunkIds, message.voiceChunkIds, message.circleChunkIds, message.fileChunkIds, message.videoMimeType, message.musicMimeType, message.voiceMimeType, message.circleMimeType, message.fileMimeType]);
 
     useEffect(() => {
         if (circleVideoRef.current && mediaUrl && message.circleStatus === 'complete') {
@@ -1219,3 +1219,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
