@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -363,6 +362,10 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     return { ...currentUser, ...userData, isAdmin: userData.username === '@Infinite' };
   }, [currentUser, userData]);
 
+  const currentSelectedId = useMemo(() => {
+      return typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
+  }, [selectedItem]);
+
   const handleDeclineCall = () => {
     if (!db || !incomingCall) return;
     updateDoc(doc(db, 'calls', incomingCall.id), { status: 'ended' });
@@ -376,7 +379,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
   const renderMainView = () => {
     if (!populatedUser) return <div className="flex h-svh items-center justify-center">Loading...</div>;
-    const selectedId = typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
+    const selectedId = currentSelectedId;
 
     if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null as any)} onSelectChat={handleSelect} />;
     if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null as any)} />;
@@ -391,7 +394,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     <>
       {!isMobile && (
         <Sidebar>
-          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={typeof selectedItem === 'string' ? selectedId : selectedItem?.id} currentUser={populatedUser} />}
+          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} />}
         </Sidebar>
       )}
       <SidebarInset className="min-h-0">

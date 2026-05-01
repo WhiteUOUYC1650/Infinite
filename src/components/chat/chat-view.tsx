@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -2138,7 +2137,7 @@ const handleForward = async (targetChatId: string) => {
                                 <AvatarImage src={item.avatar} alt={item.name} />
                             ) : (
                                 <AvatarFallback>
-                                    {getChatIcon()}
+                                    {item.type === 'channel' ? <Megaphone className="h-5 w-5" /> : <Users className="h-5 w-5" />}
                                 </AvatarFallback>
                             )}
                         </Avatar>
