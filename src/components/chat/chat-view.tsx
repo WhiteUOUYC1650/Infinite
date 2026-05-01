@@ -452,6 +452,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeStreamRef = useRef<MediaStream | null>(null);
   
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxSizeText = isPrem ? '4GB' : '1GB';
@@ -503,7 +504,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [hasMore]);
 
   const handleMediaLoad = useCallback(() => {
-    // Add small delay to ensure ResizeObserver has processed the new layout
     requestAnimationFrame(() => {
         if (isAtBottomRef.current || lastScrollHeightRef.current === 0) {
             scrollToBottom();
@@ -538,7 +538,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
-            // Small delay helps with smooth height calculations on desktop browsers
             setTimeout(() => scrollToBottom('auto'), 10);
         }
     });
@@ -600,8 +599,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'circle' });
-        const recorder = new MediaRecorder(stream);
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: true, 
+            video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false 
+        });
+        activeStreamRef.current = stream;
+        
+        const options = { mimeType: type === 'voice' ? 'audio/webm' : 'video/webm;codecs=vp8,opus' };
+        const recorder = new MediaRecorder(stream, options);
         mediaRecorderRef.current = recorder;
         chunksRef.current = [];
 
@@ -609,15 +614,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             if (e.data.size > 0) chunksRef.current.push(e.data);
         };
 
-        recorder.onstop = () => {
-            const blob = new Blob(chunksRef.current, { type: type === 'voice' ? 'audio/webm' : 'video/webm' });
-            const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type });
+        recorder.onstop = async () => {
+            if (chunksRef.current.length > 0) {
+                const blob = new Blob(chunksRef.current, { type: options.mimeType });
+                const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type });
+                
+                // Complete current timer reading
+                const finalDuration = recordingDuration;
+                
+                // Auto send immediate
+                handleSendMessage('', { file, type, duration: finalDuration });
+            }
             
-            // Release hardware immediately
-            stream.getTracks().forEach(t => t.stop());
-            
-            // Auto send immediate
-            handleSendMessage('', { file, type, duration: recordingDuration });
+            // Release hardware
+            if (activeStreamRef.current) {
+                activeStreamRef.current.getTracks().forEach(t => t.stop());
+                activeStreamRef.current = null;
+            }
         };
 
         recorder.start();
@@ -983,7 +996,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
           </div>
-          {activeGroupCall && <div className="absolute top-0 left-0 right-0 bg-primary/10 border-b flex items-center justify-between px-4 py-2 z-10"><div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /><span className="text-xs font-bold uppercase">{t('video_chat_live')}</span></div><Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => {}}>{t('join_call')}</Button></div>}
           {stickyDate && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"><Badge variant="secondary" className="opacity-90">{stickyDate}</Badge></div>}
       </div>
 
@@ -1013,10 +1025,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <ListTodo className="mr-2 h-4 w-4 text-teal-500" /> {t('poll')}
                     </DropdownMenuItem>
                   </DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1">
-                    <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full", isRecordingVoice && "text-primary animate-pulse")} onPointerDown={() => startRecording('voice')} onPointerUp={() => stopRecording()}>
+                    <Button 
+                        type="button" 
+                        size="icon" 
+                        variant="ghost" 
+                        className={cn("h-9 w-9 rounded-full touch-none", isRecordingVoice && "text-primary animate-pulse")} 
+                        onPointerDown={() => startRecording('voice')} 
+                        onPointerUp={stopRecording}
+                        onPointerLeave={stopRecording}
+                    >
                       <Mic className="h-5 w-5" />
                     </Button>
-                    <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full", isRecordingCircle && "text-primary animate-pulse")} onPointerDown={() => startRecording('circle')} onPointerUp={() => stopRecording()}>
+                    <Button 
+                        type="button" 
+                        size="icon" 
+                        variant="ghost" 
+                        className={cn("h-9 w-9 rounded-full touch-none", isRecordingCircle && "text-primary animate-pulse")} 
+                        onPointerDown={() => startRecording('circle')} 
+                        onPointerUp={stopRecording}
+                        onPointerLeave={stopRecording}
+                    >
                       <Camera className="h-5 w-5" />
                     </Button>
                   </div>}</div></form></div>}
@@ -1144,8 +1172,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
-                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none"),
-                !isCircleOnly && (alignRight ? "pt-1.5" : "pt-1.5")
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5")
             )}>
                 {/* Reply UI */}
                 {message.replyTo && (
@@ -1219,4 +1246,3 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
-
