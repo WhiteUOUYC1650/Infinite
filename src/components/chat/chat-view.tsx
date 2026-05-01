@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -26,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -190,7 +192,6 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }:
 }
 
 function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string | null | undefined, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
-    const { isDarkMode } = useTheme();
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -240,53 +241,41 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
 
     if (!src) return null;
 
-    const uiClass = isDarkMode ? "bg-white text-black" : "bg-black text-white";
-    const accentClass = isDarkMode ? "bg-black" : "bg-white";
-
     return (
         <div className={cn(
-            "flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-all shadow-sm", 
-            isMusic ? "w-full max-w-[400px] min-w-[280px]" : "w-full max-w-[380px] min-w-[240px]",
-            uiClass
+            "flex items-center gap-3 w-full px-2 py-1.5 rounded-xl transition-all", 
+            isMusic ? "min-w-[260px]" : "min-w-[200px]",
+            "bg-black/10 dark:bg-white/10"
         )}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
             <button 
                 onClick={togglePlay} 
-                className={cn(
-                    "rounded-full flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95", 
-                    isMusic ? "w-12 h-12 bg-white/10" : "w-10 h-10",
-                    accentClass
-                )}
+                className="w-10 h-10 rounded-full bg-background flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95"
             >
                 {isPlaying ? (
-                    <Pause className={cn("h-5 w-5", isDarkMode ? "text-white fill-white" : "text-primary fill-primary")} />
+                    <Pause className="h-5 w-5 text-primary fill-primary" />
                 ) : (
-                    <Play className={cn("h-5 w-5 ml-0.5", isDarkMode ? "text-white fill-white" : "text-primary fill-primary")} />
+                    <Play className="h-5 w-5 ml-0.5 text-primary fill-primary" />
                 )}
             </button>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
                 {isMusic && fileName && (
-                    <div className="text-[10px] font-black uppercase tracking-tighter truncate mb-1 opacity-90">
+                    <div className="text-[10px] font-bold truncate mb-0.5 opacity-80">
                         {fileName}
                     </div>
                 )}
                 <div 
-                    className={cn(
-                        "relative h-2 w-full rounded-full overflow-hidden cursor-pointer", 
-                        isMusic ? "mb-1.5" : "mb-0",
-                        isDarkMode ? "bg-black/30" : "bg-white/30"
-                    )} 
+                    className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer" 
                     onClick={handleProgressClick}
                 >
                     <div 
-                        className={cn("absolute h-full rounded-full transition-all duration-100", accentClass)} 
+                        className="absolute h-full bg-primary rounded-full transition-all duration-100" 
                         style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }}
                     />
                 </div>
-                {isMusic && !hideTime && (
-                    <div className="flex justify-center items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80 gap-1.5">
+                {!hideTime && (
+                    <div className="flex justify-between items-center text-[9px] font-bold mt-1 opacity-70">
                         <span>{formatTime(currentTime)}</span>
-                        <span className="opacity-50">/</span>
                         <span>{formatTime(maxTime)}</span>
                     </div>
                 )}
@@ -414,7 +403,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
   const [showChatProfile, setShowChatProfile] = useState(false);
-  const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [showNewPoll, setShowNewPoll] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -436,33 +424,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isAtBottomRef = useRef(true);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
-  const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
-  const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isRecordingLocked, setIsRecordingLocked] = useState(false);
   
-  const isRecordingCancelledRef = useRef<boolean>(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingVideoRef = useRef<HTMLVideoElement>(null);
-  const recordingStreamRef = useRef<MediaStream | null>(null);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const recordingStartTimeRef = useRef<number>(0);
-  const isRecordingRequestedRef = useRef<boolean>(false);
-  const touchStartPos = useRef<{ x: number, y: number } | null>(null);
-
-  const [dismissedBirthdays, setDismissedBirthdays] = useState<Set<string>>(new Set());
-  const isInitialLoadRef = useRef(true);
-
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
@@ -545,10 +517,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container || !messages) return;
 
-    if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-        scrollToBottom('auto');
-    } else if (isAtBottomRef.current) {
+    if (isAtBottomRef.current) {
         scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     } else if (lastScrollHeightRef.current > 0) {
         const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
@@ -561,7 +530,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [messages, item.id, scrollToBottom, smoothScroll]);
 
   useEffect(() => {
-    isInitialLoadRef.current = true;
     const timer = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
@@ -772,6 +740,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const isSavedMessages = item.type === 'dm' && item.id === currentUser.uid;
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'music' | 'file') => {
+    if (e.target.files?.[0]) {
+        const file = e.target.files[0];
+        if (file.size > maxFileSizeInBytes) {
+            toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) });
+            return;
+        }
+        let preview = '';
+        if (type === 'image') preview = await compressImage(file);
+        else preview = URL.createObjectURL(file);
+        setFileToSend({ file, previewUrl: preview, type });
+    }
+  };
+
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       {(isRecordingVoice || isRecordingCircle) && (
@@ -779,8 +761,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full pointer-events-auto">
                 <div className="relative"><div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" /><div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">{isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}</div></div>
                 <div className="text-center space-y-2"><div className="text-4xl font-black font-mono tracking-tighter text-primary">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</div><p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{isRecordingCircle ? t('video') : t('voice_message')}</p></div>
-                {isRecordingCircle && <div className="w-full aspect-square max-w-[200px] rounded-full overflow-hidden border-4 border-primary/20 bg-black relative"><video ref={recordingVideoRef} autoPlay muted playsInline className="w-full h-full object-cover -scale-x-100" /></div>}
-                <div className="w-full space-y-3 pt-4">{isRecordingLocked ? <div className="flex gap-2 w-full"><Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => {}}><Trash className="mr-2 h-4 w-4" /> {t('cancel')}</Button><Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => {}}><Send className="mr-2 h-4 w-4" /> {t('start_chat')}</Button></div> : <div className="text-center text-primary animate-bounce"><Lock className="h-4 w-4 mx-auto" /></div>}</div>
+                <div className="w-full space-y-3 pt-4">{isRecordingLocked ? <div className="flex gap-2 w-full"><Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => { setIsRecordingVoice(false); setIsRecordingCircle(false); }}><Trash className="mr-2 h-4 w-4" /> {t('cancel')}</Button><Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => handleSendMessage()}><Send className="mr-2 h-4 w-4" /> {t('start_chat')}</Button></div> : <div className="text-center text-primary animate-bounce"><Lock className="h-4 w-4 mx-auto" /></div>}</div>
             </div>
         </div>
       )}
@@ -816,9 +797,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                           </h2>
                           {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
-                        <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
-                            {isSavedMessages ? '' : (item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline')))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 })))}
-                        </div>
+                        {!isSavedMessages && (
+                          <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
+                              {item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline')))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}
+                          </div>
+                        )}
                     </div>
                 </button>
             </div>
@@ -839,7 +822,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
           </div>
-          {activeGroupCall && <div className="absolute top-0 left-0 right-0 bg-primary/10 border-b flex items-center justify-between px-4 py-2 z-10"><div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /><span className="text-xs font-bold uppercase">{t('video_chat_live')}</span></div><Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => setShowGroupCallDialog(true)}>{t('join_call')}</Button></div>}
+          {activeGroupCall && <div className="absolute top-0 left-0 right-0 bg-primary/10 border-b flex items-center justify-between px-4 py-2 z-10"><div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /><span className="text-xs font-bold uppercase">{t('video_chat_live')}</span></div><Button size="sm" className="h-7 rounded-full text-[10px] font-bold px-4" onClick={() => {}}>{t('join_call')}</Button></div>}
           {stickyDate && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"><Badge variant="secondary" className="opacity-90">{stickyDate}</Badge></div>}
       </div>
 
@@ -848,7 +831,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || replyToMessage.sender?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
-                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top"><DropdownMenuItem onSelect={() => fileInputRef.current?.click()}><ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => setShowNewPoll(true)}><ListTodo className="mr-2 h-4 w-4" /> {t('poll')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={() => {}} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")}><Mic className="h-5 w-5" /></Button></div>}</div></form></div>}
+                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-56 rounded-xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center py-2 border-b">
+                        {t('max_file_size_label', { size: maxSizeText })}
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="py-2.5">
+                        <ImageIcon className="mr-2 h-4 w-4 text-blue-500" /> {t('photo')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => {}} className="py-2.5">
+                        <VideoIcon className="mr-2 h-4 w-4 text-orange-500" /> {t('video')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => {}} className="py-2.5">
+                        <MusicIcon className="mr-2 h-4 w-4 text-purple-500" /> {t('music')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => {}} className="py-2.5">
+                        <FileIcon className="mr-2 h-4 w-4 text-green-500" /> {t('file')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="py-2.5">
+                        <ListTodo className="mr-2 h-4 w-4 text-teal-500" /> {t('poll')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")} onClick={() => setIsRecordingVoice(true)}><Mic className="h-5 w-5" /></Button><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")} onClick={() => setIsRecordingCircle(true)}><Camera className="h-5 w-5" /></Button></div>}</div></form></div>}
           </div></footer>}
 
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history')}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
@@ -856,7 +859,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
-      <GroupCallDialog open={showGroupCallDialog} onOpenChange={setShowGroupCallDialog} chat={item} currentUser={currentUser} isOwner={isOwner} />
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={() => {}} /><ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={() => {}} currentUser={currentUser} />
     </div>
   );
@@ -864,7 +866,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
-    const db = useFirestore(); // CORRECT: Call hook at top level
+    const db = useFirestore(); 
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
     const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
@@ -879,7 +881,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 return;
             }
 
-            if (!db) return; // Use the top-level db instance
+            if (!db) return;
 
             if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') {
                 try {
@@ -923,7 +925,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
                 
                 {message.circleStatus === 'complete' && mediaUrl && (
-                    <div className="w-48 h-48 rounded-full overflow-hidden border-2 border-primary/20 bg-black">
+                    <div className="w-48 h-48 rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0">
                         <video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
                     </div>
                 )}
