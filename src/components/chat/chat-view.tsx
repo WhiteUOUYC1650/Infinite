@@ -364,6 +364,46 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
     );
 }
 
+function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpenChange: (v: boolean) => void, onSubmit: (poll: Poll) => void }) {
+    const { t } = useLanguage();
+    const [question, setQuestion] = useState('');
+    const [options, setOptions] = useState(['', '']);
+    const [isAnonymous, setIsAnonymous] = useState(true);
+    const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+
+    const handleAddOption = () => { if (options.length < 10) setOptions([...options, '']); };
+    const handleRemoveOption = (index: number) => { if (options.length > 2) setOptions(options.filter((_, i) => i !== index)); };
+    const handleOptionChange = (index: number, value: string) => { const newOptions = [...options]; newOptions[index] = value; setOptions(newOptions); };
+
+    const handleCreate = () => {
+        if (!question.trim() || options.some(opt => !opt.trim())) return;
+        onSubmit({ question: question.trim(), options: options.map(opt => ({ text: opt.trim(), votes: [] })), isAnonymous, isMultipleChoice });
+        onOpenChange(false);
+        setQuestion('');
+        setOptions(['', '']);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-2xl">
+                <DialogHeader><DialogTitle>{t('create_poll')}</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2"><Label>{t('poll_question_label')}</Label><Input placeholder={t('poll_question_placeholder')} value={question} onChange={e => setQuestion(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none" /></div>
+                    <div className="space-y-2"><Label>{t('poll')}</Label><div className="space-y-2">{options.map((opt, i) => (
+                        <div key={i} className="flex gap-2">
+                            <Input placeholder={t('poll_option_placeholder')} value={opt} onChange={e => handleOptionChange(i, e.target.value)} className="rounded-xl h-11 bg-muted/50 border-none" />
+                            {options.length > 2 && <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(i)} className="h-11 w-11 rounded-xl text-destructive"><Trash2 className="h-4 w-4" /></Button>}
+                        </div>
+                    ))}</div>{options.length < 10 && <Button variant="ghost" className="w-full text-primary font-bold text-xs" onClick={handleAddOption}><Plus className="mr-2 h-3 w-3" /> {t('poll_add_option')}</Button>}</div>
+                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl"><Label>{t('poll_anonymous_label')}</Label><Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} /></div>
+                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl"><Label>{t('poll_multiple_choice_label')}</Label><Switch checked={isMultipleChoice} onCheckedChange={setIsMultipleChoice} /></div>
+                </div>
+                <DialogFooter className="gap-2"><Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl flex-1">{t('cancel')}</Button><Button onClick={handleCreate} disabled={!question.trim() || options.some(opt => !opt.trim())} className="rounded-xl flex-[2] font-bold">{t('create_poll')}</Button></DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore();
   const { t } = useLanguage();
@@ -425,7 +465,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isInitialLoadRef = useRef(true);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
-  const maxFileSizeText = isPrem ? '4GB' : '1GB';
+  const maxSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
 
   const chatDocRef = useMemoFirebase(() => {
@@ -460,10 +500,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     return true;
   }, [isMember, item, isOwner]);
 
-  // DESKTOP SCROLL FIX: ResizeObserver
+  // SMART SCROLL: ResizeObserver logic for Desktop and Mobile stability
   useEffect(() => {
     const listElement = listInnerRef.current;
-    if (!listElement || isMobile) return;
+    if (!listElement) return;
 
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
@@ -473,7 +513,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     observer.observe(listElement);
     return () => observer.disconnect();
-  }, [isMobile]);
+  }, [scrollToBottom]);
 
   useEffect(() => {
     if (!db || !isMember || !messageContent.trim()) {
@@ -616,6 +656,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (user.status === 'online' || user.status === 'away') return t(user.status);
     return t('offline');
   }
+
+  const otherUserAge = useMemo(() => {
+    if (!otherUser?.birthday?.year) return null;
+    const now = new Date();
+    let age = now.getFullYear() - otherUser.birthday.year;
+    if (now.getMonth() + 1 < otherUser.birthday.month || (now.getMonth() + 1 === otherUser.birthday.month && now.getDate() < otherUser.birthday.day)) age--;
+    return age;
+  }, [otherUser?.birthday]);
 
   const isBirthdayToday = useMemo(() => {
     if (item.type !== 'dm' || !otherUser?.birthday || dismissedBirthdays.has(item.id)) return false;
@@ -888,6 +936,90 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await cacheFile(mref.id, p.file);
   };
 
+  const handleClearHistory = async () => {
+    if (!db) return;
+    setIsProcessingAction(true);
+    try {
+        const msgsRef = collection(db, 'chats', item.id, 'messages');
+        const sn = await getDocs(msgsRef);
+        const batch = writeBatch(db);
+        sn.docs.forEach(d => batch.delete(d.ref));
+        batch.update(doc(db, 'chats', item.id), { lastMessage: deleteField(), [`unreadCounts.${currentUser.uid}`]: 0 });
+        await batch.commit();
+        toast({ title: t('dm_success') });
+    } catch (e) { console.error(e); }
+    finally { setIsProcessingAction(false); setShowClearConfirm(false); }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!db) return;
+    setIsProcessingAction(true);
+    try {
+        if (item.link) await deleteDoc(doc(db, 'chatLinks', encodeURIComponent(item.link)));
+        await deleteDoc(doc(db, 'chats', item.id));
+        toast({ title: t('dm_success') });
+        onClose();
+    } catch (e) { console.error(e); }
+    finally { setIsProcessingAction(false); setShowDeleteConfirm(false); }
+  };
+
+  const handleLeaveChat = async () => {
+    if (!db) return;
+    setIsProcessingAction(true);
+    try {
+        await updateDoc(doc(db, 'chats', item.id), { members: arrayRemove(currentUser.uid) });
+        toast({ title: t('dm_success') });
+        onClose();
+    } catch (e) { console.error(e); }
+    finally { setIsProcessingAction(false); setShowLeaveConfirm(false); }
+  };
+
+  const handleAttachmentClick = (type: string) => {
+    if (fileInputRef.current) {
+        const accept = type === 'image' ? 'image/*' : type === 'video' ? 'video/*' : type === 'music' ? 'audio/*' : '*/*';
+        fileInputRef.current.accept = accept;
+        fileInputRef.current.click();
+    }
+  };
+
+  const handleSendPoll = async (poll: Poll) => {
+      if (!db) return;
+      const ts = Timestamp.now();
+      const mref = doc(collection(db, 'chats', item.id, 'messages'));
+      const data = { senderId: currentUser.uid, content: '', timestamp: ts, poll, readBy: [] };
+      await setDoc(mref, data);
+      await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('poll'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+  };
+
+  const handleForward = async (targetChatId: string) => {
+      if (!db || !forwardingMessage) return;
+      const ts = Timestamp.now();
+      const mref = doc(collection(db, 'chats', targetChatId, 'messages'));
+      const { id, sender, ...msgData } = forwardingMessage;
+      const data = { ...msgData, senderId: currentUser.uid, timestamp: ts, readBy: [] };
+      await setDoc(mref, data);
+      await updateDoc(doc(db, 'chats', targetChatId), { lastMessage: { id: mref.id, content: data.content || t('forward_message'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
+      toast({ title: t('message_forwarded_success') });
+      setForwardingMessage(null);
+  };
+
+  const handleStartGroupCall = async () => {
+    if (!db || !isOwner) return;
+    const callRef = doc(db, 'calls', item.id);
+    await setDoc(callRef, {
+        callerId: currentUser.uid,
+        status: 'active',
+        isVideo: true,
+        participants: [],
+        timestamp: serverTimestamp()
+    });
+    setShowGroupCallDialog(true);
+  };
+
+  const handleJoinDiscussion = (id: string) => {
+      onSelectChat({ id, type: 'group', members: [] } as any);
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (editingMessage) {
@@ -973,11 +1105,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handlePointerMove = (e: any) => { if (!touchStartPos.current || isRecordingLocked) return; const dx = e.clientX - touchStartPos.current.x; const dy = e.clientY - touchStartPos.current.y; if (dx < -100) stopRecording(true); else if (dy < -100) setIsRecordingLocked(true); };
 
   const getChatIcon = () => {
-    if (item.name === 'Infinite' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT') return <Bot className="h-5 w-5" />;
+    if (item.name === 'Infinite' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT' || item.link === '/B/Infinite') return <Bot className="h-5 w-5" />;
     if (item.type === 'channel') return <Megaphone className="h-5 w-5" />;
     if (item.type === 'group') return <Users className="h-5 w-5" />;
     return <UserIcon className="h-5 w-5" />;
   };
+
+  const isEmptyBotChat = item.type === 'dm' && otherUser?.isBot && (!messages || messages.length === 0);
 
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -997,7 +1131,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
             <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
                 <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)} disabled={item.id === 'GENERAL_CHAT'}>
-                    <div className='shrink-0 h-10 w-10'>{item.type === 'dm' ? <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} /> : <Avatar className="h-10 w-10">{item.avatar ? <AvatarImage src={item.avatar} /> : <AvatarFallback>{item.type === 'channel' ? <Megaphone className="h-5 w-5" /> : <Users className="h-5 w-5" />}</AvatarFallback>}</Avatar>}</div>
+                    <div className='shrink-0 h-10 w-10'>
+                      {item.type === 'dm' ? (
+                        <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} />
+                      ) : (
+                        <Avatar className="h-10 w-10">
+                          {item.avatar ? (
+                            <AvatarImage src={item.avatar} />
+                          ) : (
+                            <AvatarFallback>
+                              {getChatIcon()}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                      )}
+                    </div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
                         <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">{item.type === 'dm' ? getStatusText(otherUser) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}</div>
@@ -1012,7 +1160,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
-              {isLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
+              {messagesLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
                   <div ref={listInnerRef} className="space-y-1.5 py-4 flex flex-col min-h-full"><div className="flex-1" />
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
@@ -1086,7 +1234,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
     
-    // Logic for hiding avatars: hide in channels AND hide in official bot chat (/B/Infinite)
+    // SMART AVATAR LOGIC:
+    // 1. Never show for channels
+    // 2. Never show for official bot chat (/B/Infinite)
+    // 3. Show in groups for other users
+    // 4. Show announcements if not DM
     const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
 
