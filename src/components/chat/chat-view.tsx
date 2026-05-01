@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -663,7 +664,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -683,7 +684,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: messageRef.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -703,7 +704,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const ts = Timestamp.now();
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name } }) };
+    const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     const update: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } };
@@ -717,7 +718,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -737,7 +738,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -757,7 +758,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || r.sender?.name || 'User' } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
@@ -937,7 +938,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           {stickyDate && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"><Badge variant="secondary" className="opacity-90">{stickyDate}</Badge></div>}
       </div>
 
-      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background h-[54px] flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
+      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background min-h-[54px] h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
             {(item.type === 'channel' && !isOwner) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
                   {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || replyToMessage.sender?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
@@ -1008,6 +1009,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
+                setTimeout(() => onMediaLoad(), 100);
                 return;
             }
 
@@ -1028,6 +1030,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const dataUrl = `data:${mimeType};base64,${assembledBase64}`;
                     await cacheFile(message.id, dataUrl);
                     setMediaUrl(await getCachedFile(message.id));
+                    setTimeout(() => onMediaLoad(), 100);
                 } catch (e) { console.error("Media assembly failed", e); }
             }
         };
@@ -1133,3 +1136,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+
