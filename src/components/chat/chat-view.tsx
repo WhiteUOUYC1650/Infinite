@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -656,6 +655,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
+    const resolvedSenderName = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { 
         senderId: currentUser.uid, 
         content: c, 
@@ -665,7 +665,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         voiceDuration: d, 
         readBy: [], 
         senderName: currentUser.name || currentUser.username,
-        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: resolvedSenderName } }) 
     };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
@@ -686,6 +686,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const messageRef = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
+    const resolvedSenderName = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { 
         senderId: currentUser.uid, 
         content: c, 
@@ -695,7 +696,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         circleDuration: d, 
         readBy: [], 
         senderName: currentUser.name || currentUser.username,
-        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: resolvedSenderName } }) 
     };
     const batch = writeBatch(db);
     batch.set(messageRef, data);
@@ -716,6 +717,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const ts = Timestamp.now();
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
+    const resolvedSenderName = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { 
         senderId: currentUser.uid, 
         content: c.trim(), 
@@ -724,7 +726,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         readBy: [], 
         senderName: currentUser.name || currentUser.username,
         ...(i && { imageUrl: i }), 
-        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: resolvedSenderName } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -739,6 +741,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
+    const resolvedSenderName = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { 
         senderId: currentUser.uid, 
         content: c, 
@@ -747,7 +750,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         videoStatus: 'uploading', 
         readBy: [], 
         senderName: currentUser.name || currentUser.username,
-        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: resolvedSenderName } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -768,6 +771,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
+    const resolvedSenderName = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { 
         senderId: currentUser.uid, 
         content: c, 
@@ -777,7 +781,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         musicStatus: 'uploading', 
         readBy: [], 
         senderName: currentUser.name || currentUser.username,
-        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: resolvedSenderName } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -798,6 +802,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
+    const resolvedSenderName = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { 
         senderId: currentUser.uid, 
         content: c, 
@@ -808,7 +813,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         fileStatus: 'uploading', 
         readBy: [], 
         senderName: currentUser.name || currentUser.username,
-        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: r.senderName || memberDetails[r.senderId]?.name || 'User' } }) 
+        ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: resolvedSenderName } }) 
     };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -917,9 +922,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
             <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
                 <button 
-                  className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full" 
-                  onClick={() => !isSavedMessages && (item.id === 'GENERAL_CHAT' ? setShowChatProfile(true) : (item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)))} 
-                  disabled={isSavedMessages}
+                  className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full disabled:cursor-default" 
+                  onClick={() => {
+                    if (isSavedMessages || item.id === 'GENERAL_CHAT') return;
+                    if (item.type === 'dm') setProfileDialogUser(otherUser);
+                    else setShowChatProfile(true);
+                  }} 
+                  disabled={isSavedMessages || item.id === 'GENERAL_CHAT'}
                 >
                     <div className='shrink-0 h-10 w-10'>
                       {item.type === 'dm' ? (
@@ -952,7 +961,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </button>
             </div>
             <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && item.ownerId === currentUser.uid && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => {}} />}
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu></div>
+                {item.id !== 'GENERAL_CHAT' && (
+                    <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
+                )}
+            </div>
         </div>
       </header>
 
@@ -974,7 +986,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
             {(item.type === 'channel' && item.ownerId !== currentUser.uid) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
-                  {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || memberDetails[replyToMessage.senderId]?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+                  {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || memberDetails[replyToMessage.senderId]?.name || 'User'}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
                   <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-48 rounded-xl">

@@ -346,13 +346,21 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
       setShowCallDialog(true);
     };
 
+    const handleOpenInfVid = (event: any) => {
+        const videoId = event.detail.videoId;
+        setInfVidInitialVideoId(videoId);
+        handleSelect('infvid');
+    };
+
     window.addEventListener('open-chat', handleOpenChat);
     window.addEventListener('answer-call', handleAnswerCall);
     window.addEventListener('initiate-call', handleInitiateCallEvent);
+    window.addEventListener('open-infvid', handleOpenInfVid);
     return () => {
         window.removeEventListener('open-chat', handleOpenChat);
         window.removeEventListener('answer-call', handleAnswerCall);
         window.removeEventListener('initiate-call', handleInitiateCallEvent);
+        window.removeEventListener('open-infvid', handleOpenInfVid);
     };
   }, [db, handleSelect, currentUser.uid]);
 
