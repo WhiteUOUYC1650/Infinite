@@ -190,9 +190,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             videoChunkIds: chunkIds,
         });
 
-        // Also cache it locally immediately
         await cacheFile(videoDocRef.id, file);
-
         toast({ title: t('dm_success'), description: t('infvid_upload_success') });
         setIsUploadOpen(false);
     } catch (error) {
@@ -205,8 +203,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   const selectedVideo = useMemo(() => {
       if (!selectedVideoId) return null;
-      const baseVideo = videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null);
-      return baseVideo;
+      return videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null);
   }, [selectedVideoId, videos, fetchedExternalVideo]);
 
   return (
@@ -343,6 +340,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
     const { toast } = useToast();
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [assemblyProgress, setAssemblyProgress] = useState(0);
     const [commentText, setAddCommentText] = useState('');
     const [comments, setComments] = useState<VideoComment[]>([]);
     const [video, setVideo] = useState<SharedVideo>(initialVideo);
@@ -373,17 +371,25 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                 return;
             }
 
-            if (video.videoStatus !== 'complete') {
+            if (video.videoStatus !== 'complete' || !video.videoChunkIds) {
                 if (video.videoStatus === 'uploading') setIsLoading(true);
                 return;
             }
 
             setIsLoading(true);
             try {
-                const chunkSnaps = await Promise.all(
-                    video.videoChunkIds!.map(id => getDoc(doc(db, 'videoChunks', id)))
-                );
-                const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string });
+                const totalChunks = video.videoChunkIds.length;
+                const chunksData: { part: number, data: string }[] = [];
+                
+                // Progressive chunk fetching
+                for (let i = 0; i < totalChunks; i++) {
+                    const chunkSnap = await getDoc(doc(db, 'videoChunks', video.videoChunkIds[i]));
+                    if (chunkSnap.exists()) {
+                        chunksData.push(chunkSnap.data() as any);
+                        setAssemblyProgress(Math.round(((i + 1) / totalChunks) * 100));
+                    }
+                }
+                
                 chunksData.sort((a, b) => a.part - b.part);
                 const assembledBase64 = chunksData.map(c => c.data).join('');
                 const dataUrl = `data:${video.videoMimeType};base64,${assembledBase64}`;
@@ -559,9 +565,12 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                         {isLoading ? (
                             <div className="text-center space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-                                <p className="text-white/60 text-sm font-medium animate-pulse">
-                                    {video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...
-                                </p>
+                                <div className="space-y-2">
+                                    <p className="text-white/60 text-sm font-medium animate-pulse">
+                                        {video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...
+                                    </p>
+                                    <p className="text-primary text-xs font-black">{assemblyProgress}%</p>
+                                </div>
                             </div>
                         ) : videoUrl ? (
                             <video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />
@@ -985,3 +994,4 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
         </Dialog>
     );
 }
+

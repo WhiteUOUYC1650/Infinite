@@ -133,7 +133,7 @@ const compressImage = (file: File, quality = 0.85, maxDimension = 1920): Promise
         ctx.drawImage(img, 0, 0, width, height);
 
         const dataUrl = canvas.toDataURL(file.type, file.type === 'image/jpeg' ? quality : undefined);
-        resolve(dataUrl);
+        resolve(canvas.toDataURL(file.type, 0.85));
       };
       img.onerror = (error) => reject(error);
     };
@@ -203,7 +203,6 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
         }
     }, [src]);
 
-    // Mutually exclusive playback
     useEffect(() => {
         const handleStop = (e: any) => {
             if (e.detail?.id !== messageId && isPlaying) {
@@ -446,10 +445,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
+  // Recording State
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isRecordingLocked, setIsRecordingLocked] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxSizeText = isPrem ? '4GB' : '1GB';
@@ -567,7 +571,72 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
   const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
 
+  const startRecording = async (type: 'voice' | 'circle') => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'circle' });
+        if (type === 'circle') videoStreamRef.current = stream;
+        
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+        chunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = () => {
+            const blob = new Blob(chunksRef.current, { type: type === 'voice' ? 'audio/webm' : 'video/webm' });
+            const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type });
+            const url = URL.createObjectURL(blob);
+            setFileToSend({ file, previewUrl: url, type });
+            
+            stream.getTracks().forEach(t => t.stop());
+            if (videoStreamRef.current) videoStreamRef.current = null;
+        };
+
+        recorder.start();
+        if (type === 'voice') setIsRecordingVoice(true);
+        else setIsRecordingCircle(true);
+        
+        setRecordingDuration(0);
+        timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+    } catch (e) {
+        console.error("Recording start failed", e);
+        toast({ variant: 'destructive', title: 'Error', description: t('microphone_error_desc') });
+    }
+  };
+
+  const stopRecording = (cancel = false) => {
+    if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+    }
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        if (cancel) {
+            mediaRecorderRef.current.onstop = () => {
+                const stream = mediaRecorderRef.current?.stream;
+                stream?.getTracks().forEach(t => t.stop());
+                setIsRecordingVoice(false);
+                setIsRecordingCircle(false);
+            };
+        }
+        mediaRecorderRef.current.stop();
+    }
+    
+    if (!cancel) {
+        setIsRecordingVoice(false);
+        setIsRecordingCircle(false);
+    }
+  };
+
   const handleSendMessage = async (customContent?: string) => {
+    if ((isRecordingVoice || isRecordingCircle) && !isRecordingLocked) {
+        stopRecording();
+        // The onstop callback will set fileToSend, we wait for next render or handle manually
+        return;
+    }
+
     const finalContent = customContent !== undefined ? customContent : messageContent;
     if ((!finalContent.trim() && !fileToSend) || !db) return;
     setIsSending(true);
@@ -775,9 +844,37 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {(isRecordingVoice || isRecordingCircle) && (
         <div className={cn("absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300", isRecordingLocked ? "pointer-events-auto" : "pointer-events-none")}>
             <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full pointer-events-auto">
-                <div className="relative"><div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" /><div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">{isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}</div></div>
-                <div className="text-center space-y-2"><div className="text-4xl font-black font-mono tracking-tighter text-primary">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</div><p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{isRecordingCircle ? t('video') : t('voice_message')}</p></div>
-                <div className="w-full space-y-3 pt-4">{isRecordingLocked ? <div className="flex gap-2 w-full"><Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => { setIsRecordingVoice(false); setIsRecordingCircle(false); }}><Trash className="mr-2 h-4 w-4" /> {t('cancel')}</Button><Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => handleSendMessage()}><Send className="mr-2 h-4 w-4" /> {t('start_chat')}</Button></div> : <div className="text-center text-primary animate-bounce"><Lock className="h-4 w-4 mx-auto" /></div>}</div>
+                <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+                    <div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">
+                        {isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}
+                    </div>
+                </div>
+                <div className="text-center space-y-2">
+                    <div className="text-4xl font-black font-mono tracking-tighter text-primary">
+                        {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                    </div>
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                        {isRecordingCircle ? t('video') : t('voice_message')}
+                    </p>
+                </div>
+                <div className="w-full space-y-3 pt-4">
+                    {isRecordingLocked ? (
+                        <div className="flex gap-2 w-full">
+                            <Button variant="destructive" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => stopRecording(true)}>
+                                <Trash className="mr-2 h-4 w-4" /> {t('cancel')}
+                            </Button>
+                            <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => handleSendMessage()}>
+                                <Send className="mr-2 h-4 w-4" /> {t('start_chat')}
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center text-primary animate-bounce">
+                            <Lock className="h-4 w-4 mx-auto" />
+                            <p className="text-[10px] font-bold mt-2">{t('is_recording_locked_placeholder')}</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
       )}
@@ -867,7 +964,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="py-2">
                         <ListTodo className="mr-2 h-4 w-4 text-teal-500" /> {t('poll')}
                     </DropdownMenuItem>
-                  </DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")} onClick={() => setIsRecordingVoice(true)}><Mic className="h-5 w-5" /></Button><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")} onClick={() => setIsRecordingCircle(true)}><Camera className="h-5 w-5" /></Button></div>}</div></form></div>}
+                  </DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1">
+                    <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full", isRecordingVoice && "text-primary animate-pulse")} onPointerDown={() => startRecording('voice')} onPointerUp={() => stopRecording()}>
+                      <Mic className="h-5 w-5" />
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full", isRecordingCircle && "text-primary animate-pulse")} onPointerDown={() => startRecording('circle')} onPointerUp={() => stopRecording()}>
+                      <Camera className="h-5 w-5" />
+                    </Button>
+                  </div>}</div></form></div>}
           </div></footer>}
 
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history')}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
@@ -922,7 +1026,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         loadMedia();
     }, [message, db]);
 
-    // Handle stop-media for circle video
     useEffect(() => {
         const handleStop = (e: any) => {
             if (e.detail?.id !== message.id && circleVideoRef.current && !circleVideoRef.current.paused) {
@@ -959,27 +1062,36 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
-                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 py-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 py-1 rounded-bl-none")
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-bl-none")
             )}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
                     <div className="font-semibold text-[13px] mb-0.5 flex items-center gap-2"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
                 )}
-                {message.imageUrl && <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
+                {message.imageUrl && (
+                    <div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}>
+                        <img 
+                            src={message.imageUrl} 
+                            onClick={() => onPreviewImage(message.imageUrl!)} 
+                            className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" 
+                            onLoad={onMediaLoad} 
+                        />
+                    </div>
+                )}
                 
                 {message.videoStatus === 'complete' && mediaUrl && (
-                    <div className="pt-3">
+                    <div className="pt-2">
                         <video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} />
                     </div>
                 )}
                 
                 {message.circleStatus === 'complete' && mediaUrl && (
-                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-64 h-64" : "w-48 h-48 mt-2")} onClick={handleCircleClick}>
+                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-64 h-64" : "w-48 h-48 mt-1")} onClick={handleCircleClick}>
                         <video ref={circleVideoRef} src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
                     </div>
                 )}
                 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (
-                    <div className="pt-3">
+                    <div className="pt-2">
                         <CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} />
                     </div>
                 )}
