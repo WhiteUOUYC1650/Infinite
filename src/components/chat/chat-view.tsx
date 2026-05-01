@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -1081,7 +1082,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             }
         };
         loadMedia();
-    }, [message, db]);
+    }, [message, db, onMediaLoad]);
 
     useEffect(() => {
         if (circleVideoRef.current && mediaUrl && message.circleStatus === 'complete') {
@@ -1113,6 +1114,13 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 setHasUnmutedCircle(true);
             }
             circleVideoRef.current.play();
+        }
+    };
+
+    const handleCopy = () => {
+        if (message.content) {
+            navigator.clipboard.writeText(message.content);
+            toast({ title: t('copy_success_toast') });
         }
     };
 
@@ -1198,7 +1206,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );
