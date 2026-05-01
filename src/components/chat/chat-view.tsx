@@ -972,7 +972,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
               {messagesLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
+                  <div ref={listInnerRef} className="space-y-0.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
@@ -1137,7 +1137,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
-                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-bl-none")
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-1 pb-1 rounded-bl-none")
             )}>
                 {/* Reply UI */}
                 {message.replyTo && (
@@ -1206,7 +1206,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>{message.content && !message.poll && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );
