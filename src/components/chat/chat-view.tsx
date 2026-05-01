@@ -191,7 +191,7 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight, memberDetails }:
     );
 }
 
-function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false }: { src: string | null | undefined, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean }) {
+function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false, messageId }: { src: string | null | undefined, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean, messageId: string }) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -203,12 +203,29 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
         }
     }, [src]);
 
+    // Mutually exclusive playback
+    useEffect(() => {
+        const handleStop = (e: any) => {
+            if (e.detail?.id !== messageId && isPlaying) {
+                audioRef.current?.pause();
+                setIsPlaying(false);
+            }
+        };
+        window.addEventListener('stop-media', handleStop);
+        return () => window.removeEventListener('stop-media', handleStop);
+    }, [isPlaying, messageId]);
+
     const togglePlay = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (audioRef.current && src) {
-            if (isPlaying) audioRef.current.pause();
-            else audioRef.current.play();
-            setIsPlaying(!isPlaying);
+            if (isPlaying) {
+                audioRef.current.pause();
+                setIsPlaying(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: messageId } }));
+                audioRef.current.play();
+                setIsPlaying(true);
+            }
         }
     };
 
@@ -244,7 +261,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
     return (
         <div className={cn(
             "flex items-center gap-3 w-full px-2 py-1.5 rounded-xl transition-all", 
-            isMusic ? "min-w-[260px]" : "min-w-[200px]",
+            isMusic ? "max-w-[400px]" : "min-w-[200px]",
             "bg-black/10 dark:bg-white/10"
         )}>
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
@@ -275,8 +292,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                 </div>
                 {!hideTime && (
                     <div className="flex justify-between items-center text-[9px] font-bold mt-1 opacity-70">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(maxTime)}</span>
+                        <span>{formatTime(currentTime)} / {formatTime(maxTime)}</span>
                     </div>
                 )}
             </div>
@@ -831,24 +847,24 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || replyToMessage.sender?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
-                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-56 rounded-xl">
+                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-48 rounded-xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center py-2 border-b">
                         {t('max_file_size_label', { size: maxSizeText })}
                     </DropdownMenuLabel>
-                    <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="py-2.5">
+                    <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="py-2">
                         <ImageIcon className="mr-2 h-4 w-4 text-blue-500" /> {t('photo')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => {}} className="py-2.5">
+                    <DropdownMenuItem onSelect={() => {}} className="py-2">
                         <VideoIcon className="mr-2 h-4 w-4 text-orange-500" /> {t('video')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => {}} className="py-2.5">
+                    <DropdownMenuItem onSelect={() => {}} className="py-2">
                         <MusicIcon className="mr-2 h-4 w-4 text-purple-500" /> {t('music')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => {}} className="py-2.5">
+                    <DropdownMenuItem onSelect={() => {}} className="py-2">
                         <FileIcon className="mr-2 h-4 w-4 text-green-500" /> {t('file')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="py-2.5">
+                    <DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="py-2">
                         <ListTodo className="mr-2 h-4 w-4 text-teal-500" /> {t('poll')}
                     </DropdownMenuItem>
                   </DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={(e) => handleFileChange(e, 'image')} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")} onClick={() => setIsRecordingVoice(true)}><Mic className="h-5 w-5" /></Button><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")} onClick={() => setIsRecordingCircle(true)}><Camera className="h-5 w-5" /></Button></div>}</div></form></div>}
@@ -872,6 +888,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
 
     const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+    const circleVideoRef = useRef<HTMLVideoElement>(null);
+    const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
 
     useEffect(() => {
         const loadMedia = async () => {
@@ -904,6 +922,32 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         loadMedia();
     }, [message, db]);
 
+    // Handle stop-media for circle video
+    useEffect(() => {
+        const handleStop = (e: any) => {
+            if (e.detail?.id !== message.id && circleVideoRef.current && !circleVideoRef.current.paused) {
+                circleVideoRef.current.pause();
+            }
+        };
+        window.addEventListener('stop-media', handleStop);
+        return () => window.removeEventListener('stop-media', handleStop);
+    }, [message.id]);
+
+    const handleCircleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (circleVideoRef.current) {
+            window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } }));
+            circleVideoRef.current.currentTime = 0;
+            if (!hasUnmutedCircle) {
+                circleVideoRef.current.muted = false;
+                setHasUnmutedCircle(true);
+            }
+            circleVideoRef.current.play();
+        }
+    };
+
+    const isCircleOnly = message.circleStatus === 'complete' && !message.content;
+
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
@@ -914,29 +958,35 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  </div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 py-1 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-2 py-1 rounded-bl-none max-w-[75%] md:max-w-[60%]")}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 py-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 py-1 rounded-bl-none")
+            )}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
                     <div className="font-semibold text-[13px] mb-0.5 flex items-center gap-2"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
                 )}
                 {message.imageUrl && <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
                 
                 {message.videoStatus === 'complete' && mediaUrl && (
-                    <video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} />
+                    <div className="pt-3">
+                        <video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} />
+                    </div>
                 )}
                 
                 {message.circleStatus === 'complete' && mediaUrl && (
-                    <div className="w-48 h-48 rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0">
-                        <video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
+                    <div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-64 h-64" : "w-48 h-48 mt-2")} onClick={handleCircleClick}>
+                        <video ref={circleVideoRef} src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} />
                     </div>
                 )}
                 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (
-                    <CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} />
+                    <div className="pt-3">
+                        <CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} />
+                    </div>
                 )}
 
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span></div>
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span></div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
