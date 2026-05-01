@@ -17,12 +17,11 @@ import type { PopulatedChat } from '@/types';
 import { MessageCircle, Users, Megaphone, Bookmark, Globe, Bot, PhoneOff, Video, Phone, X, Bell, Newspaper } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, query, collection, where, updateDoc, arrayUnion, addDoc, Timestamp, setDoc, serverTimestamp, increment } from 'firebase/firestore';
 import type { User, AuthenticatedUser, Chat, Call, CustomBot, BotBlock } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { useNotifications } from '@/context/notification-context';
 import { CallDialog } from './chat/call-dialog';
-import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -283,7 +282,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     };
 
     return () => unsubscribe();
-  }, [db, currentUser, userData, sessionId]);
+  }, [db, currentUser, userData, sessionId, t]);
 
   // Global Call Listener
   useEffect(() => {
@@ -305,7 +304,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
       }
     });
     return () => unsubscribe();
-  }, [db, currentUser, incomingCall, showCallNotification]);
+  }, [db, currentUser, incomingCall, showCallNotification, t]);
 
   // Global Events
   useEffect(() => {

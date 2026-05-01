@@ -527,7 +527,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading]);
 
-  // SMART SCROLL: Observer for dynamic content (desktop fix)
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -792,8 +791,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
                 <button 
                   className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full" 
-                  onClick={() => !isSavedMessages && (item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true))} 
-                  disabled={item.id === 'GENERAL_CHAT' || isSavedMessages}
+                  onClick={() => !isSavedMessages && (item.id === 'GENERAL_CHAT' ? setShowChatProfile(true) : (item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)))} 
+                  disabled={isSavedMessages}
                 >
                     <div className='shrink-0 h-10 w-10'>
                       {item.type === 'dm' ? (
@@ -865,6 +864,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
+    const db = useFirestore(); // CORRECT: Call hook at top level
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
     const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
@@ -879,9 +879,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 return;
             }
 
+            if (!db) return; // Use the top-level db instance
+
             if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') {
-                const db = useFirestore();
-                if (!db) return;
                 try {
                     const colName = message.videoStatus === 'complete' ? 'videoChunks' :
                                     message.musicStatus === 'complete' ? 'musicChunks' :
@@ -900,7 +900,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             }
         };
         loadMedia();
-    }, [message]);
+    }, [message, db]);
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
