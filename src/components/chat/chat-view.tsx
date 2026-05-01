@@ -284,9 +284,9 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
                     />
                 </div>
                 {isMusic && !hideTime && (
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80">
+                    <div className="flex justify-center items-center text-[10px] font-bold uppercase tracking-tighter mt-1.5 opacity-80 gap-1.5">
                         <span>{formatTime(currentTime)}</span>
-                        <div className="flex items-center gap-1 mx-1 opacity-50">/</div>
+                        <span className="opacity-50">/</span>
                         <span>{formatTime(maxTime)}</span>
                     </div>
                 )}
@@ -312,7 +312,7 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
         return chats.filter(c => {
             if (c.id === 'GENERAL_CHAT') return true;
             if (c.type === 'dm') return true;
-            return c.name?.toLowerCase().includes(search.toLowerCase());
+            return (c.name || '').toLowerCase().includes(search.toLowerCase());
         });
     }, [chats, search]);
 
@@ -409,6 +409,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { t } = useLanguage();
   const { toast } = useToast();
   const { theme: colorTheme, sendOnEnter, smoothScroll } = useTheme();
+  
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -432,11 +433,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const listInnerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScrollHeightRef = useRef<number>(0);
-  const [stickyDate, setStickyDate] = useState<string | null>(null);
   const isAtBottomRef = useRef(true);
+  const [stickyDate, setStickyDate] = useState<string | null>(null);
 
   const [localMediaCache, setLocalMediaCache] = useState<Record<string, string>>({});
-
   const [showGroupCallDialog, setShowGroupCallDialog] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<Call | null>(null);
 
@@ -461,46 +461,73 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const touchStartPos = useRef<{ x: number, y: number } | null>(null);
 
   const [dismissedBirthdays, setDismissedBirthdays] = useState<Set<string>>(new Set());
-  
   const isInitialLoadRef = useRef(true);
 
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
 
-  const chatDocRef = useMemoFirebase(() => {
-    if (!db) return null;
-    return doc(db, 'chats', initialItem.id);
-  }, [db, initialItem.id]);
-
-  const { data: liveChatData, loading: chatLoading } = useDoc<Chat>(chatDocRef);
+  const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
+  const { data: liveChatData } = useDoc<Chat>(chatDocRef);
 
   const item = useMemo(() => {
     if (!liveChatData) return initialItem;
     const newChatData = { ...initialItem, ...liveChatData };
-     if (newChatData.type === 'dm' && newChatData.id === currentUser.uid) {
+    if (newChatData.type === 'dm' && newChatData.id === currentUser.uid) {
       newChatData.icon = 'Bookmark';
     }
     return newChatData;
   }, [initialItem, liveChatData, currentUser.uid]);
 
-  const isMember = useMemo(() => {
-    if (!item?.members || !Array.isArray(item.members)) return false;
-    return item.members.includes(currentUser.uid);
-  }, [item?.members, currentUser.uid]);
-
+  const isMember = useMemo(() => item?.members?.includes(currentUser.uid) ?? false, [item?.members, currentUser.uid]);
   const isOwner = item.ownerId === currentUser.uid;
-  const isNotMyChannel = useMemo(() => item.type === 'channel' && !isOwner, [item, isOwner]);
 
-  const canSendMessage = useMemo(() => {
-    if (!isMember) return false;
-    if (item.type === 'channel' && !isOwner) {
-        return false;
+  const messagesQuery = useMemoFirebase(() => {
+    if (!db || !isMember) return null;
+    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
+  }, [db, item.id, isMember, messageLimit]);
+
+  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
+  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior });
     }
-    return true;
-  }, [isMember, item, isOwner]);
+  }, []);
 
-  // SMART SCROLL: ResizeObserver logic for Desktop and Mobile stability
+  const handleMediaLoad = useCallback(() => {
+    if (isAtBottomRef.current) {
+        scrollToBottom();
+    }
+  }, [scrollToBottom]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    lastScrollHeightRef.current = scrollHeight;
+    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
+
+    const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
+    let currentStickyDate: string | null = null;
+    if (dateSeparators.length > 0) {
+        for (let i = 0; i < dateSeparators.length; i++) {
+            const separator = dateSeparators[i];
+            if (separator && separator.offsetTop <= scrollTop + 5) {
+                currentStickyDate = separator.dataset.dateSeparator || null;
+            } else break;
+        }
+    }
+    setStickyDate(currentStickyDate);
+
+    if (scrollTop < 100 && hasMore && !messagesLoading) {
+        setMessageLimit(prev => prev + 50);
+    }
+  }, [hasMore, messagesLoading]);
+
+  // SMART SCROLL: Observer for dynamic content (desktop fix)
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -514,168 +541,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     observer.observe(listElement);
     return () => observer.disconnect();
   }, [scrollToBottom]);
-
-  useEffect(() => {
-    if (!db || !isMember || !messageContent.trim()) {
-        if (db && isMember) {
-            updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
-        }
-        return;
-    }
-    
-    updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: true });
-
-    const timeout = setTimeout(() => {
-        updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false });
-    }, 3000);
-
-    return () => {
-        clearTimeout(timeout);
-        updateDoc(doc(db, 'chats', item.id), { [`typingStatus.${currentUser.uid}`]: false }).catch(() => {});
-    };
-  }, [messageContent, db, isMember, item.id, currentUser.uid]);
-
-  useEffect(() => {
-    if (!db || item.type === 'dm' || !isMember) return;
-    const callRef = doc(db, 'calls', item.id);
-    const unsubscribe = onSnapshot(callRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data() as Call;
-        if (data.status === 'active') {
-          setActiveGroupCall(data);
-        } else {
-          setActiveGroupCall(null);
-        }
-      } else {
-        setActiveGroupCall(null);
-      }
-    });
-    return () => unsubscribe();
-  }, [db, item.id, item.type, isMember]);
-
-  const messagesQuery = useMemoFirebase(() => {
-    if (!db || !isMember) return null;
-    return query(
-        collection(db, 'chats', item.id, 'messages'), 
-        orderBy('timestamp', 'desc'), 
-        limit(messageLimit)
-    );
-  }, [db, item.id, isMember, messageLimit]);
-
-  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
-  
-  const messages = useMemo(() => {
-    if (!rawMessages) return null;
-    return [...rawMessages].reverse();
-  }, [rawMessages]);
-
-  useEffect(() => {
-    if (rawMessages) {
-        setHasMore(rawMessages.length === messageLimit);
-    }
-  }, [rawMessages, messageLimit]);
-
-  const allUserIdsToFetch = useMemo(() => {
-    const ids = new Set<string>(item.members || []);
-    messages?.forEach(m => {
-        ids.add(m.senderId);
-        if (m.reactions) {
-            Object.values(m.reactions).flat().forEach(uid => {
-              if (typeof uid === 'string') ids.add(uid);
-            });
-        }
-    });
-    return Array.from(ids);
-  }, [item.members, messages]);
-
-  const { users: memberDetails, loading: membersLoading } = useBatchUsers(allUserIdsToFetch);
-
-  useEffect(() => {
-    if (!db || !isMember || !messages || messages.length === 0) return;
-
-    const markMessagesAsRead = async () => {
-      const batch = writeBatch(db);
-      let updatesMade = 0;
-
-      messages.forEach(message => {
-        if (message.senderId !== currentUser.uid && !message.readBy?.includes(currentUser.uid)) {
-          const messageRef = doc(db, 'chats', item.id, 'messages', message.id);
-          batch.update(messageRef, {
-            readBy: arrayUnion(currentUser.uid)
-          });
-          updatesMade++;
-        }
-      });
-
-      if (updatesMade > 0) {
-        try {
-          await batch.commit();
-        } catch (error) {
-          console.error("Error marking messages as read:", error);
-        }
-      }
-    };
-
-    markMessagesAsRead();
-
-  }, [db, isMember, messages, currentUser.uid, item.id]);
-
-  const otherUserId = useMemo(() => {
-    if (item.type !== 'dm' || !Array.isArray(item.members)) return null;
-    return item.members.find((id) => id !== currentUser.uid) || currentUser.uid;
-  }, [item, currentUser.uid]);
-
-  const otherUser = useMemo(() => {
-    if (!otherUserId || !memberDetails) return null;
-    return memberDetails[otherUserId] || null;
-  }, [otherUserId, memberDetails]);
-
-  const isOtherUserTyping = useMemo(() => {
-    if (item.type !== 'dm' || !otherUserId) return false;
-    return item.typingStatus?.[otherUserId] === true;
-  }, [item.typingStatus, otherUserId, item.type]);
-
-
-  const getChatName = () => {
-    if (item.type === 'dm') {
-      if (otherUser?.isDeleted) return t('deleted_account');
-      if (otherUser?.id === currentUser.uid) return t('saved_messages');
-      return otherUser?.name || t('direct_message_tab');
-    }
-    return item.name;
-  };
-  
-  const getStatusText = (user: User | null | undefined) => {
-    if (!user || user.isDeleted) return null;
-    if (isOtherUserTyping) return <span className="text-primary font-bold animate-pulse">{t('searching')}</span>;
-    if (user.isBot) return t('bot_status');
-    if (user.status === 'offline' && user.lastSeen) {
-      const lastSeenDate = getSafeDate(user.lastSeen);
-      return `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
-    }
-    if (user.status === 'online' || user.status === 'away') return t(user.status);
-    return t('offline');
-  }
-
-  const otherUserAge = useMemo(() => {
-    if (!otherUser?.birthday?.year) return null;
-    const now = new Date();
-    let age = now.getFullYear() - otherUser.birthday.year;
-    if (now.getMonth() + 1 < otherUser.birthday.month || (now.getMonth() + 1 === otherUser.birthday.month && now.getDate() < otherUser.birthday.day)) age--;
-    return age;
-  }, [otherUser?.birthday]);
-
-  const isBirthdayToday = useMemo(() => {
-    if (item.type !== 'dm' || !otherUser?.birthday || dismissedBirthdays.has(item.id)) return false;
-    const now = new Date();
-    return otherUser.birthday.day === now.getDate() && otherUser.birthday.month === (now.getMonth() + 1);
-  }, [item.type, item.id, otherUser?.birthday, dismissedBirthdays]);
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior });
-    }
-  }, []);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -698,104 +563,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   useEffect(() => {
     isInitialLoadRef.current = true;
-    const timer = setTimeout(() => {
-        scrollToBottom('auto');
-    }, 100);
+    const timer = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
 
-  const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) {
-        scrollToBottom();
-    }
-  }, [scrollToBottom]);
-
-    const handleScroll = useCallback(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        lastScrollHeightRef.current = scrollHeight;
-        isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
-
-        const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
-        let currentStickyDate: string | null = null;
-        if (dateSeparators.length > 0) {
-            for (let i = 0; i < dateSeparators.length; i++) {
-                const separator = dateSeparators[i];
-                if (separator && separator.offsetTop <= scrollTop + 5) {
-                    currentStickyDate = separator.dataset.dateSeparator || null;
-                } else break;
-            }
+  const allUserIdsToFetch = useMemo(() => {
+    const ids = new Set<string>(item.members || []);
+    messages?.forEach(m => {
+        ids.add(m.senderId);
+        if (m.reactions) {
+            Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string));
         }
-        setStickyDate(currentStickyDate);
+    });
+    return Array.from(ids);
+  }, [item.members, messages]);
 
-        if (scrollTop < 100 && hasMore && !messagesLoading) {
-            setMessageLimit(prev => prev + 50);
-        }
-    }, [hasMore, messagesLoading]);
+  const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
 
-  const handleSendMessageToUser = async (targetUser: User) => {
-    if (!db || !currentUser || targetUser.isDeleted) return;
-    setProfileDialogUser(null);
-    const members = [currentUser.uid, targetUser.id].sort();
-    const chatId = members.join('_');
-    const chatRef = doc(db, 'chats', chatId);
-    try {
-      const chatSnap = await getDoc(chatRef);
-      let chatData: Chat;
-      if (!chatSnap.exists()) {
-        chatData = { id: chatId, type: 'dm', members: members };
-        await setDoc(chatRef, { type: 'dm', members: members, unreadCounts: members.reduce((acc, mid) => ({ ...acc, [mid]: 0 }), {}) });
-      } else {
-        chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-      }
-      if (onSelectChat) {
-        const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite' || chatData.id === 'GENERAL_CHAT') ? 'Bot' : chatData.icon as any;
-        onSelectChat({ ...chatData, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
-      }
-    } catch (e) { console.error(e); }
-  };
-
-  const handleInternalLinkClick = async (href: string) => {
-    if (!db || !currentUser) return;
-    try {
-        const lowerHref = href.toLowerCase();
-        if (lowerHref.startsWith('/iv/v/')) {
-            const videoId = href.substring(6);
-            if (videoId) window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId } }));
-            return;
-        }
-        let targetChat: Chat | null = null;
-        if (href.startsWith('@')) {
-            const usernameRef = doc(db, 'usernames', href);
-            const usernameSnap = await getDoc(usernameRef);
-            if (usernameSnap.exists()) {
-                const targetUserId = usernameSnap.data().uid;
-                const members = [currentUser.uid, targetUserId].sort();
-                const chatId = targetUserId === currentUser.uid ? currentUser.uid : members.join('_');
-                const chatRef = doc(db, 'chats', chatId);
-                const chatSnap = await getDoc(chatRef);
-                if (chatSnap.exists()) targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-                else {
-                    await setDoc(chatRef, { type: 'dm', members: members, icon: targetUserId === currentUser.uid ? 'Bookmark' : null });
-                    targetChat = { id: chatId, type: 'dm', members: members, icon: targetUserId === currentUser.uid ? 'Bookmark' : null };
-                }
-            }
-        } else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent((lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3)));
-            const linkSnap = await getDoc(linkRef);
-            if (linkSnap.exists()) {
-                const chatSnap = await getDoc(doc(db, 'chats', linkSnap.data().chatId));
-                if (chatSnap.exists()) targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-            }
-        }
-        if (targetChat) {
-            const iconName = (targetChat.icon === 'Drum' || targetChat.name === 'Infinite') ? 'Bot' : targetChat.icon as any;
-            onSelectChat({ ...targetChat, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
-        }
-    } catch (e) { console.error(e); }
-  };
+  const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
+  const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
+  const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
 
   const handleSendMessage = async (customContent?: string) => {
     const finalContent = customContent !== undefined ? customContent : messageContent;
@@ -936,173 +723,45 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await cacheFile(mref.id, p.file);
   };
 
-  const handleClearHistory = async () => {
-    if (!db) return;
-    setIsProcessingAction(true);
+  const handleInternalLinkClick = async (href: string) => {
+    if (!db || !currentUser) return;
     try {
-        const msgsRef = collection(db, 'chats', item.id, 'messages');
-        const sn = await getDocs(msgsRef);
-        const batch = writeBatch(db);
-        sn.docs.forEach(d => batch.delete(d.ref));
-        batch.update(doc(db, 'chats', item.id), { lastMessage: deleteField(), [`unreadCounts.${currentUser.uid}`]: 0 });
-        await batch.commit();
-        toast({ title: t('dm_success') });
-    } catch (e) { console.error(e); }
-    finally { setIsProcessingAction(false); setShowClearConfirm(false); }
-  };
-
-  const handleDeleteChat = async () => {
-    if (!db) return;
-    setIsProcessingAction(true);
-    try {
-        if (item.link) await deleteDoc(doc(db, 'chatLinks', encodeURIComponent(item.link)));
-        await deleteDoc(doc(db, 'chats', item.id));
-        toast({ title: t('dm_success') });
-        onClose();
-    } catch (e) { console.error(e); }
-    finally { setIsProcessingAction(false); setShowDeleteConfirm(false); }
-  };
-
-  const handleLeaveChat = async () => {
-    if (!db) return;
-    setIsProcessingAction(true);
-    try {
-        await updateDoc(doc(db, 'chats', item.id), { members: arrayRemove(currentUser.uid) });
-        toast({ title: t('dm_success') });
-        onClose();
-    } catch (e) { console.error(e); }
-    finally { setIsProcessingAction(false); setShowLeaveConfirm(false); }
-  };
-
-  const handleAttachmentClick = (type: string) => {
-    if (fileInputRef.current) {
-        const accept = type === 'image' ? 'image/*' : type === 'video' ? 'video/*' : type === 'music' ? 'audio/*' : '*/*';
-        fileInputRef.current.accept = accept;
-        fileInputRef.current.click();
-    }
-  };
-
-  const handleSendPoll = async (poll: Poll) => {
-      if (!db) return;
-      const ts = Timestamp.now();
-      const mref = doc(collection(db, 'chats', item.id, 'messages'));
-      const data = { senderId: currentUser.uid, content: '', timestamp: ts, poll, readBy: [] };
-      await setDoc(mref, data);
-      await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('poll'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
-  };
-
-  const handleForward = async (targetChatId: string) => {
-      if (!db || !forwardingMessage) return;
-      const ts = Timestamp.now();
-      const mref = doc(collection(db, 'chats', targetChatId, 'messages'));
-      const { id, sender, ...msgData } = forwardingMessage;
-      const data = { ...msgData, senderId: currentUser.uid, timestamp: ts, readBy: [] };
-      await setDoc(mref, data);
-      await updateDoc(doc(db, 'chats', targetChatId), { lastMessage: { id: mref.id, content: data.content || t('forward_message'), senderId: currentUser.uid, senderName: currentUser.name, timestamp: ts } });
-      toast({ title: t('message_forwarded_success') });
-      setForwardingMessage(null);
-  };
-
-  const handleStartGroupCall = async () => {
-    if (!db || !isOwner) return;
-    const callRef = doc(db, 'calls', item.id);
-    await setDoc(callRef, {
-        callerId: currentUser.uid,
-        status: 'active',
-        isVideo: true,
-        participants: [],
-        timestamp: serverTimestamp()
-    });
-    setShowGroupCallDialog(true);
-  };
-
-  const handleJoinDiscussion = (id: string) => {
-      onSelectChat({ id, type: 'group', members: [] } as any);
-  };
-
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    if (editingMessage) {
-        const messageRef = doc(db!, 'chats', item.id, 'messages', editingMessage.id);
-        await updateDoc(messageRef, { content: messageContent, editedAt: serverTimestamp() });
-        setEditingMessage(null);
-    } else await handleSendMessage();
-  };
-
-  const handleFileSelect = async (e: any) => {
-    if (e.target.files?.[0]) {
-      const file = e.target.files[0];
-      if (file.size > maxFileSizeInBytes) { toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) }); return; }
-      if (file.type.startsWith('video/')) setFileToSend({ file, previewUrl: URL.createObjectURL(file), type: 'video' });
-      else if (file.type.startsWith('image/')) setFileToSend({ file, previewUrl: await compressImage(file), type: 'image' });
-      else if (file.type.startsWith('audio/')) setFileToSend({ file, previewUrl: URL.createObjectURL(file), type: 'music' });
-      else setFileToSend({ file, previewUrl: '', type: 'file' });
-    }
-  };
-
-  const startVoiceRecording = async () => {
-    isRecordingRequestedRef.current = true;
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        if (!isRecordingRequestedRef.current) return;
-        recordingStreamRef.current = stream;
-        const recorder = new MediaRecorder(stream);
-        audioChunksRef.current = [];
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-        recorder.onstop = async () => {
-            if (isRecordingCancelledRef.current) return;
-            const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            await handleSendVoice({ file: new File([blob], 'voice.webm', { type: 'audio/webm' }), previewUrl: URL.createObjectURL(blob) }, '', null, recordingDuration);
-        };
-        mediaRecorderRef.current = recorder;
-        recordingStartTimeRef.current = performance.now();
-        recorder.start();
-        setIsRecordingVoice(true);
-        setRecordingDuration(0);
-        recordingTimerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+        const lowerHref = href.toLowerCase();
+        if (lowerHref.startsWith('/iv/v/')) {
+            const videoId = href.substring(6);
+            if (videoId) window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId } }));
+            return;
+        }
+        let targetChat: Chat | null = null;
+        if (href.startsWith('@')) {
+            const usernameRef = doc(db, 'usernames', href);
+            const usernameSnap = await getDoc(usernameRef);
+            if (usernameSnap.exists()) {
+                const targetUserId = usernameSnap.data().uid;
+                const members = [currentUser.uid, targetUserId].sort();
+                const chatId = targetUserId === currentUser.uid ? currentUser.uid : members.join('_');
+                const chatRef = doc(db, 'chats', chatId);
+                const chatSnap = await getDoc(chatRef);
+                if (chatSnap.exists()) targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+                else {
+                    await setDoc(chatRef, { type: 'dm', members: members, icon: targetUserId === currentUser.uid ? 'Bookmark' : null });
+                    targetChat = { id: chatId, type: 'dm', members: members, icon: targetUserId === currentUser.uid ? 'Bookmark' : null };
+                }
+            }
+        } else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) {
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent((lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3)));
+            const linkSnap = await getDoc(linkRef);
+            if (linkSnap.exists()) {
+                const chatSnap = await getDoc(doc(db, 'chats', linkSnap.data().chatId));
+                if (chatSnap.exists()) targetChat = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+            }
+        }
+        if (targetChat) {
+            const iconName = (targetChat.icon === 'Drum' || targetChat.name === 'Infinite') ? 'Bot' : targetChat.icon as any;
+            onSelectChat({ ...targetChat, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
+        }
     } catch (e) { console.error(e); }
   };
-
-  const startCircleRecording = async () => {
-    isRecordingRequestedRef.current = true;
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: 480, height: 480 } });
-        if (!isRecordingRequestedRef.current) return;
-        recordingStreamRef.current = stream;
-        if (recordingVideoRef.current) recordingVideoRef.current.srcObject = stream;
-        const recorder = new MediaRecorder(stream);
-        audioChunksRef.current = [];
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-        recorder.onstop = async () => {
-            if (isRecordingCancelledRef.current) return;
-            const blob = new Blob(audioChunksRef.current, { type: 'video/webm' });
-            await handleSendCircle({ file: new File([blob], 'circle.webm', { type: 'video/webm' }), previewUrl: URL.createObjectURL(blob) }, '', null, recordingDuration);
-        };
-        mediaRecorderRef.current = recorder;
-        recordingStartTimeRef.current = performance.now();
-        recorder.start();
-        setIsRecordingCircle(true);
-        setRecordingDuration(0);
-        recordingTimerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
-    } catch (e) { console.error(e); }
-  };
-
-  const stopRecording = (cancel = false) => {
-    isRecordingRequestedRef.current = false;
-    if (mediaRecorderRef.current) {
-        if (cancel) isRecordingCancelledRef.current = true;
-        mediaRecorderRef.current.stop();
-        setIsRecordingVoice(false);
-        setIsRecordingCircle(false);
-        setIsRecordingLocked(false);
-        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-        if (recordingStreamRef.current) recordingStreamRef.current.getTracks().forEach(t => t.stop());
-    }
-  };
-
-  const handlePointerDown = (e: any, type: 'voice' | 'circle') => { e.preventDefault(); touchStartPos.current = { x: e.clientX, y: e.clientY }; if (type === 'voice') startVoiceRecording(); else startCircleRecording(); };
-  const handlePointerUp = () => { if (!isRecordingLocked) stopRecording(); };
-  const handlePointerMove = (e: any) => { if (!touchStartPos.current || isRecordingLocked) return; const dx = e.clientX - touchStartPos.current.x; const dy = e.clientY - touchStartPos.current.y; if (dx < -100) stopRecording(true); else if (dy < -100) setIsRecordingLocked(true); };
 
   const getChatIcon = () => {
     if (item.name === 'Infinite' || item.icon === 'Bot' || item.id === 'GENERAL_CHAT' || item.link === '/B/Infinite') return <Bot className="h-5 w-5" />;
@@ -1110,8 +769,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (item.type === 'group') return <Users className="h-5 w-5" />;
     return <UserIcon className="h-5 w-5" />;
   };
-
-  const isEmptyBotChat = item.type === 'dm' && otherUser?.isBot && (!messages || messages.length === 0);
 
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -1147,15 +804,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       )}
                     </div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{getChatName()}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
-                        <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">{item.type === 'dm' ? getStatusText(otherUser) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}</div>
+                        <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{item.type === 'dm' ? (otherUser?.id === currentUser.uid ? t('saved_messages') : otherUser?.name || t('direct_message_tab')) : item.name}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
+                        <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">
+                            {item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline')))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}
+                        </div>
                     </div>
                 </button>
             </div>
-            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && isOwner && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={handleStartGroupCall} />}
+            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && item.id !== currentUser.uid && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.type !== 'dm' && isOwner && !activeGroupCall && <Radio className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => {}} />}
                 <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{isOwner || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu></div>
         </div>
-        {isBirthdayToday && <div className="px-4 py-3 bg-gradient-to-r from-orange-400/20 to-rose-400/20 flex items-center justify-between border-t animate-in slide-in-from-top"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center"><Cake className="h-6 w-6 text-orange-600 animate-bounce" /></div><div><p className="font-bold text-sm">{otherUserAge ? t('birthday_banner_age', { name: otherUser?.name, age: otherUserAge }) : t('birthday_banner_today', { name: otherUser?.name })}</p><button className="text-[10px] font-black uppercase text-orange-700 flex items-center gap-1" onClick={() => setProfileDialogUser(otherUser)}><Gift className="h-3 w-3" />{t('send_gold')}</button></div></div><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setDismissedBirthdays(p => new Set(p).add(item.id))}><X className="h-4 w-4" /></Button></div>}
       </header>
 
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
@@ -1165,7 +823,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} localMediaUrl={localMediaCache[m.id]} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={async (oid) => { if (!db || !m.poll) return; await runTransaction(db, async (t) => { const s = await t.get(doc(db, 'chats', item.id, 'messages', m.id)); if (!s.exists()) return; const p = s.data().poll as Poll; const opts = [...p.options]; if (p.isMultipleChoice) { if (opts[oid].votes.includes(currentUser.uid)) opts[oid].votes = opts[oid].votes.filter(id => id !== currentUser.uid); else opts[oid].votes.push(currentUser.uid); } else { const aid = opts.findIndex(o => o.votes.includes(currentUser.uid)); if (aid === oid) opts[oid].votes = opts[oid].votes.filter(id => id !== currentUser.uid); else { if (aid !== -1) opts[aid].votes = opts[aid].votes.filter(id => id !== currentUser.uid); opts[oid].votes.push(currentUser.uid); } } t.update(s.ref, { poll: { ...p, options: opts } }); }); }} onToggleReaction={async (e) => { if (!db) return; const ref = doc(db, 'chats', item.id, 'messages', m.id); let me = null; Object.entries(m.reactions || {}).forEach(([k, v]) => { if (v.includes(currentUser.uid)) me = k; }); if (me === e) await updateDoc(ref, { [`reactions.${e}`]: arrayRemove(currentUser.uid) }); else { if (me) await updateDoc(ref, { [`reactions.${me}`]: arrayRemove(currentUser.uid) }); await updateDoc(ref, { [`reactions.${e}`]: arrayUnion(currentUser.uid) }); } }} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} localMediaUrl={localMediaCache[m.id]} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onToggleReaction={() => {}} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
                       })}
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
@@ -1175,75 +833,32 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </div>
 
       {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background h-[54px] flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
-            {canSendMessage ? (isEmptyBotChat ? <div className="flex flex-col items-center gap-4 py-8 w-full"><div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary"><Bot className="h-10 w-10" /></div><div className="text-center"><h3 className="font-bold text-lg">{t('bot_studio_title')}</h3><p className="text-xs text-muted-foreground">{otherUser?.statusMessage || t('bot_studio_desc')}</p></div><Button onClick={() => handleSendMessage('/start')} className="w-full max-w-[200px] h-14 rounded-full text-xl font-black shadow-xl">{t('start_button')}</Button></div> : <div className="flex flex-col gap-2 w-full">
+            {(item.type === 'channel' && !isOwner) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
                   {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || replyToMessage.sender?.name}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
                   {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
-                  <form onSubmit={handleSubmit} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top"><DropdownMenuItem onSelect={() => handleAttachmentClick('image')}><ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentClick('video')}><VideoIcon className="mr-2 h-4 w-4" /> {t('video')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentClick('music')}><MusicIcon className="mr-2 h-4 w-4" /> {t('music')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentClick('file')}><FileIcon className="mr-2 h-4 w-4" /> {t('file')}</DropdownMenuItem><DropdownMenuItem onSelect={() => setShowNewPoll(true)}><ListTodo className="mr-2 h-4 w-4" /> {t('poll')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full", isRecordingCircle && "text-primary scale-125")} onPointerDown={(e) => handlePointerDown(e, 'circle')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}><Camera className="h-5 w-5" /></Button><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full", isRecordingVoice && "text-primary scale-125")} onPointerDown={(e) => handlePointerDown(e, 'voice')} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}><Mic className="h-5 w-5" /></Button></div>}</div></form></div>) : <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div>}
+                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top"><DropdownMenuItem onSelect={() => fileInputRef.current?.click()}><ImageIcon className="mr-2 h-4 w-4" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => setShowNewPoll(true)}><ListTodo className="mr-2 h-4 w-4" /> {t('poll')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={() => {}} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full")}><Mic className="h-5 w-5" /></Button></div>}</div></form></div>}
           </div></footer>}
 
-      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history')}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleClearHistory} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDeleteChat} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleLeaveChat} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={handleSendMessageToUser} />}
-      {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(u => item.members.includes(u.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={handleJoinDiscussion} />}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history')}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
+      {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
       <GroupCallDialog open={showGroupCallDialog} onOpenChange={setShowGroupCallDialog} chat={item} currentUser={currentUser} isOwner={isOwner} />
-      {previewImage && <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}><DialogContent className="max-w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none bg-black/95 flex flex-col"><div className="absolute top-4 right-4 z-50"><Button variant="ghost" size="icon" onClick={() => setPreviewImage(null)} className="rounded-full bg-white/10"><X className="h-6 w-6" /></Button></div><div className="flex-1 flex items-center justify-center p-4"><img src={previewImage} alt="Preview" className="max-w-full max-h-full object-contain" /></div></DialogContent></Dialog>}
-      <FaqDialog open={showFaqDialog} onOpenChange={setShowFaqDialog} /><NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={handleSendPoll} /><ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={handleForward} currentUser={currentUser} />
+      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={() => {}} /><ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={() => {}} currentUser={currentUser} />
     </div>
   );
 }
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, localMediaUrl, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void, localMediaUrl?: string; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
-    const db = useFirestore();
     const { t } = useLanguage();
-    const { toast } = useToast();
-    const [videoUrl, setVideoUrl] = useState<string | null>(null);
-    const [musicUrl, setMusicUrl] = useState<string | null>(null);
-    const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
-    const [circleUrl, setCircleUrl] = useState<string | null>(null);
-    const [fileUrl, setFileUrl] = useState<string | null>(null);
-    const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(null);
-    const messageRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const check = async () => {
-            const cached = await getCachedFile(message.id);
-            if (cached) {
-                if (message.videoMimeType) setVideoUrl(cached);
-                else if (message.musicMimeType) setMusicUrl(cached);
-                else if (message.fileName && !message.imageUrl) setFileUrl(cached);
-                else if (message.voiceStatus === 'complete') setVoiceUrl(cached);
-                else if (message.circleStatus === 'complete') setCircleUrl(cached);
-                else if (message.imageUrl) setCachedImageUrl(cached);
-            } else if (localMediaUrl) {
-                if (message.videoMimeType) setVideoUrl(localMediaUrl);
-                else if (message.musicMimeType) setMusicUrl(localMediaUrl);
-                else if (message.imageUrl) setCachedImageUrl(localMediaUrl);
-            }
-        };
-        check();
-    }, [message, localMediaUrl]);
-
-    const isRead = useMemo(() => {
-        if (!isCurrentUser || !message.readBy) return false;
-        const otherId = chat.members.find(id => id !== currentUser.uid);
-        if (chat.type === 'dm') return otherId ? message.readBy.includes(otherId) : false;
-        return message.readBy.some(id => id !== currentUser.uid);
-    }, [message.readBy, chat, isCurrentUser]);
-
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
-    
-    // SMART AVATAR LOGIC:
-    // 1. Never show for channels
-    // 2. Never show for official bot chat (/B/Infinite)
-    // 3. Show in groups for other users
-    // 4. Show announcements if not DM
     const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
 
     return (
-        <div ref={messageRef} id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
+        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0">
                     <button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}>
@@ -1252,27 +867,18 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  </div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", message.circleStatus === 'complete' ? "p-0" : (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 py-1 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-2 py-1 rounded-bl-none max-w-[75%] md:max-w-[60%]"))}>
-                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && message.circleStatus !== 'complete' && (
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 py-1 rounded-br-none max-w-[75%] md:max-w-[60%]" : "bg-card text-card-foreground rounded-lg px-2 py-1 rounded-bl-none max-w-[75%] md:max-w-[60%]")}>
+                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
                     <div className="font-semibold text-[13px] mb-0.5 flex items-center gap-2"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
                 )}
-                {message.replyTo && message.circleStatus !== 'complete' && (
-                    <button onClick={() => document.getElementById(`message-${message.replyTo?.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className={cn("mb-1.5 p-1.5 rounded-md w-full text-left truncate", alignRight ? "bg-black/10" : "bg-muted")}><div className="text-[10px] font-bold opacity-70">{message.replyTo.senderName}</div><div className="text-[11px] truncate">{message.replyTo.content}</div></button>
-                )}
-                <div className="overflow-hidden">
-                    {message.voiceStatus === 'complete' && <CustomAudioPlayer src={voiceUrl} hideTime />}
-                    {message.circleStatus === 'complete' && <div className="rounded-full overflow-hidden w-48 h-48 bg-black">{circleUrl && <video src={circleUrl} autoPlay muted loop playsInline className="w-full h-full object-cover rounded-full" />}</div>}
-                    {message.videoMimeType && message.circleStatus !== 'complete' && <div className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer" onClick={async () => { const sn = await Promise.all(message.videoChunkIds!.map(id => getDoc(doc(db!, 'videoChunks', id)))); const data = sn.map(s => s.data() as any).sort((a,b) => a.part - b.part).map(c => c.data).join(''); setVideoUrl(`data:${message.videoMimeType};base64,${data}`); }}>{videoUrl ? <video src={videoUrl} controls className="max-w-full rounded-lg" /> : <Play className="h-10 w-10 opacity-30" />}</div>}
-                    {message.musicMimeType && <CustomAudioPlayer src={musicUrl} isMusic fileName={message.fileName} />}
-                    {message.imageUrl && <img src={cachedImageUrl || message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
-                    {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                    {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap", (message.imageUrl || message.videoMimeType || message.musicMimeType || message.circleStatus || message.voiceStatus) && "mt-1")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
-                </div>
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end", message.circleStatus === 'complete' ? "absolute bottom-0 right-0 bg-black/50 px-1 rounded" : "opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && message.circleStatus !== 'complete' && (isRead ? <CheckCheck className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />)}</div>
+                {message.imageUrl && <img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} />}
+                {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
+                {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span></div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{(isCurrentUser || chat.ownerId === currentUser.uid) && <DropdownMenuItem onSelect={async () => await deleteDoc(doc(db!, 'chats', chat.id, 'messages', message.id))} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem><DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{isCurrentUser && !message.poll && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
             </div>
         </div>
     );
