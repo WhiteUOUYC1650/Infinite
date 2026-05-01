@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -472,27 +471,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [initialItem, liveChatData, currentUser.uid]);
 
   const isMember = useMemo(() => item?.members?.includes(currentUser.uid) ?? false, [item?.members, currentUser.uid]);
-  const isOwner = item.ownerId === currentUser.uid;
-
-  const messagesQuery = useMemoFirebase(() => {
-    if (!db || !isMember) return null;
-    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
-  }, [db, item.id, isMember, messageLimit]);
-
-  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
-  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior });
     }
   }, []);
-
-  const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) {
-        scrollToBottom();
-    }
-  }, [scrollToBottom]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -514,10 +498,24 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     setStickyDate(currentStickyDate);
 
-    if (scrollTop < 100 && hasMore && !messagesLoading) {
+    if (scrollTop < 100 && hasMore) {
         setMessageLimit(prev => prev + 50);
     }
-  }, [hasMore, messagesLoading]);
+  }, [hasMore]);
+
+  const handleMediaLoad = useCallback(() => {
+    if (isAtBottomRef.current) {
+        scrollToBottom();
+    }
+  }, [scrollToBottom]);
+
+  const messagesQuery = useMemoFirebase(() => {
+    if (!db || !isMember) return null;
+    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
+  }, [db, item.id, isMember, messageLimit]);
+
+  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
+  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
 
   const allUserIdsToFetch = useMemo(() => {
     const ids = new Set<string>(item.members || []);
@@ -544,7 +542,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     observer.observe(listElement);
     return () => observer.disconnect();
-  }, [scrollToBottom, memberDetails]); // Added memberDetails to trigger layout check on nickname loads
+  }, [scrollToBottom, memberDetails]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
@@ -560,7 +558,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     
     lastScrollHeightRef.current = container.scrollHeight;
-  }, [messages, item.id, scrollToBottom, smoothScroll, memberDetails]); // Added memberDetails for hydration scrolling
+  }, [messages, item.id, scrollToBottom, smoothScroll, memberDetails]);
 
   useEffect(() => {
     const timer = setTimeout(() => scrollToBottom('auto'), 100);
@@ -570,6 +568,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
   const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
   const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
+  const isOwner = item.ownerId === currentUser.uid;
 
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
@@ -889,7 +888,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 >
                     <div className='shrink-0 h-10 w-10'>
                       {item.type === 'dm' ? (
-                        <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} />
+                        <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />
                       ) : (
                         <Avatar className="h-10 w-10">
                           {item.avatar ? (
@@ -925,7 +924,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
               {messagesLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="space-y-1.5 py-4 flex flex-col min-h-full"><div className="flex-1" />
+                  <div ref={listInnerRef} className="space-y-0.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
@@ -995,6 +994,15 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
     const [isUserActive, setIsUserActive] = useState(false);
 
+    const isRead = useMemo(() => {
+        if (!isCurrentUser || !message.readBy) return false;
+        if (chatType === 'dm') {
+            const otherId = chat.members.find(id => id !== currentUser.uid);
+            return otherId ? message.readBy.includes(otherId) : false;
+        }
+        return message.readBy.some(id => id !== currentUser.uid);
+    }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
+
     useEffect(() => {
         const loadMedia = async () => {
             const cached = await getCachedFile(message.id);
@@ -1026,11 +1034,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         loadMedia();
     }, [message, db]);
 
-    // Handle playback of circle specifically to avoid auto-play on pagination
     useEffect(() => {
         if (circleVideoRef.current && mediaUrl && message.circleStatus === 'complete') {
             if (!isUserActive) {
-                // Initial preview state: loop, muted, but only play if user didn't pause before
                 circleVideoRef.current.muted = true;
                 circleVideoRef.current.play().catch(() => {});
             }
@@ -1041,7 +1047,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         const handleStop = (e: any) => {
             if (e.detail?.id !== message.id && circleVideoRef.current && !circleVideoRef.current.paused) {
                 circleVideoRef.current.pause();
-                // Ensure we don't accidentally "resume with sound" when list updates
             }
         };
         window.addEventListener('stop-media', handleStop);
@@ -1075,10 +1080,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", 
-                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-1.5 pb-1 rounded-bl-none")
+                !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pt-0.5 pb-1 rounded-br-none" : "bg-card text-card-foreground rounded-lg px-2 pt-0.5 pb-1 rounded-bl-none")
             )}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
-                    <div className="font-semibold text-[13px] mb-0.5 flex items-center gap-2"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
+                    <div className="font-semibold text-[13px] flex items-center gap-2 mb-0"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>
                 )}
                 {message.imageUrl && (
                     <div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}>
@@ -1110,8 +1115,16 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 )}
 
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-1.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span></div>
+                {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>
+                    {message.editedAt && <span className="font-bold">{t('edited')}</span>}
+                    <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
+                    {isCurrentUser && (
+                        <span className="ml-0.5">
+                            {isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
