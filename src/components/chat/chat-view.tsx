@@ -284,7 +284,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const db = useFirestore();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { theme: colorTheme, sendOnEnter, smoothScroll } = useTheme();
+  const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme();
   
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -693,7 +693,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
-      {showChatProfile && <ChatProfileDialog chat={item} members={membersWithDetails} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
+      {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(m => item.members.includes(m.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: Timestamp.now(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} /><ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { if (!db || !forwardingMessage) return; addDoc(collection(db, 'chats', cid, 'messages'), { ...forwardingMessage, id: undefined, senderId: currentUser.uid, timestamp: Timestamp.now(), readBy: [] }); toast({ title: t('message_forwarded_success') }); }} currentUser={currentUser} />
     </div>
   );
@@ -702,6 +702,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
     const db = useFirestore(); 
+    const { experimentalDesign } = useTheme();
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
     const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
     const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm'));
@@ -722,7 +723,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
-                requestAnimationFrame(() => { requestAnimationFrame(() => onMediaLoad()); });
+                requestAnimationFrame(() => { onMediaLoad(); });
                 return;
             }
             if (!db) return;
@@ -738,7 +739,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const dataUrl = `data:${mime};base64,${assembled}`;
                     await cacheFile(message.id, dataUrl);
                     const finalUrl = await getCachedFile(message.id);
-                    if (finalUrl) { setMediaUrl(finalUrl); requestAnimationFrame(() => { requestAnimationFrame(() => onMediaLoad()); }); }
+                    if (finalUrl) { setMediaUrl(finalUrl); requestAnimationFrame(() => { onMediaLoad(); }); }
                 } catch (e) { console.error("Media failed", e); }
             }
         };
@@ -793,18 +794,18 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-56 rounded-2xl p-1 shadow-2xl border-none">
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className={cn("w-56 p-1 shadow-2xl border-none", experimentalDesign ? "rounded-2xl" : "rounded-lg")}>
                         <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className="rounded-xl h-11"><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
+                            <DropdownMenuSubTrigger className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
-                                <DropdownMenuSubContent className="p-2 w-64 rounded-2xl border-none shadow-2xl"><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-11 w-11 flex items-center justify-center rounded-xl text-xl transition-all active:scale-125 hover:bg-primary/10", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
+                                <DropdownMenuSubContent className={cn("p-2 w-64 border-none shadow-2xl", experimentalDesign ? "rounded-2xl" : "rounded-lg")}><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-11 w-11 flex items-center justify-center transition-all active:scale-125 hover:bg-primary/10", experimentalDesign ? "rounded-xl" : "rounded-md", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
-                        <DropdownMenuItem onSelect={() => onReply(message)} className="rounded-xl h-11"><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
-                        {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="rounded-xl h-11"><Copy className="mr-3 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                        <DropdownMenuItem onSelect={() => onForward(message)} className="rounded-xl h-11"><Forward className="mr-3 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
-                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="rounded-xl h-11"><Edit className="mr-3 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                        {isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-xl h-11"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                        <DropdownMenuItem onSelect={() => onReply(message)} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
+                        {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Copy className="mr-3 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                        <DropdownMenuItem onSelect={() => onForward(message)} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Forward className="mr-3 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
+                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Edit className="mr-3 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className={cn("text-destructive focus:text-destructive focus:bg-destructive/10 h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
