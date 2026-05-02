@@ -284,7 +284,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { t } = useLanguage();
   const { toast } = useToast();
   const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme();
+  const isMobile = useIsMobile();
   
+  // --- All hooks and state at the top ---
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -295,7 +297,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null); 
-  const isMobile = useIsMobile();
 
   const [messageLimit, setMessageLimit] = useState(50);
   const [hasMore, setHasMore] = useState(true);
@@ -343,41 +344,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
   const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
 
-  const isPrem = currentUser.subscriptionTier === 'prem';
-  const maxSizeText = isPrem ? '4GB' : '1GB';
-  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
-    
-    const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
-    let currentStickyDate: string | null = null;
-    if (dateSeparators.length > 0) {
-        for (let i = 0; i < dateSeparators.length; i++) {
-            const separator = dateSeparators[i];
-            if (separator && separator.offsetTop <= scrollTop + 5) { currentStickyDate = separator.dataset.dateSeparator || null; } else break;
-        }
-    }
-    setStickyDate(currentStickyDate);
-    if (scrollTop < 100 && hasMore && !messagesLoading) { 
-        prevScrollHeightRef.current = scrollHeight;
-        setMessageLimit(prev => prev + 50); 
-    }
-  }, [hasMore, messagesLoading]);
-
-  const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) {
-        requestAnimationFrame(() => scrollToBottom('auto'));
-    }
-  }, [scrollToBottom]);
-
   const allUserIdsToFetch = useMemo(() => {
     const ids = new Set<string>(item.members || []);
     messages?.forEach(m => {
@@ -389,69 +355,84 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
 
-  // Mark messages as read and clear unread count
+  // --- End of hooks, start of logic ---
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    
+    // Check if near bottom
+    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
+    
+    // Sticky date logic
+    const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
+    let currentStickyDate: string | null = null;
+    if (dateSeparators.length > 0) {
+        for (let i = 0; i < dateSeparators.length; i++) {
+            const separator = dateSeparators[i];
+            if (separator && separator.offsetTop <= scrollTop + 5) { currentStickyDate = separator.dataset.dateSeparator || null; } else break;
+        }
+    }
+    setStickyDate(currentStickyDate);
+
+    // Infinite scroll (History load)
+    if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
+        prevScrollHeightRef.current = scrollHeight;
+        setMessageLimit(prev => prev + 50); 
+    }
+  }, [hasMore, messagesLoading, messages, messageLimit]);
+
+  const handleMediaLoad = useCallback(() => {
+    if (isAtBottomRef.current) {
+        requestAnimationFrame(() => scrollToBottom('auto'));
+    }
+  }, [scrollToBottom]);
+
+  // Mark as read effect
   useEffect(() => {
     if (!db || !currentUser.uid || !item.id || !messages) return;
-
     const markAsRead = async () => {
         try {
-            // 1. Clear unread count for current user in the chat document
             if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) {
-                await updateDoc(doc(db, 'chats', item.id), {
-                    [`unreadCounts.${currentUser.uid}`]: 0
-                });
+                await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 });
             }
-
-            // 2. Mark individual messages as read (the ones currently visible/loaded)
-            const unreadMessages = messages.filter(m => 
-                m.senderId !== currentUser.uid && 
-                (!m.readBy || !m.readBy.includes(currentUser.uid))
-            );
-
+            const unreadMessages = messages.filter(m => m.senderId !== currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid)));
             if (unreadMessages.length > 0) {
                 const batch = writeBatch(db);
-                unreadMessages.forEach(m => {
-                    const mref = doc(db, 'chats', item.id, 'messages', m.id);
-                    batch.update(mref, { readBy: arrayUnion(currentUser.uid) });
-                });
+                unreadMessages.forEach(m => { batch.update(doc(db, 'chats', item.id, 'messages', m.id), { readBy: arrayUnion(currentUser.uid) }); });
                 await batch.commit();
             }
-        } catch (e) {
-            console.error("Mark read failed:", e);
-        }
+        } catch (e) { console.error("Mark read failed:", e); }
     };
-
     markAsRead();
   }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
 
-  useEffect(() => {
-    const listElement = listInnerRef.current;
-    if (!listElement) return;
-    const observer = new ResizeObserver(() => {
-        if (isAtBottomRef.current) {
-            requestAnimationFrame(() => scrollToBottom('auto'));
-        }
-    });
-    observer.observe(listElement);
-    return () => observer.disconnect();
-  }, [scrollToBottom]);
-
+  // Auto-scroll logic for new messages vs history
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     if (prevScrollHeightRef.current > 0) {
-        // Restore scroll position after loading more messages
-        const newHeight = container.scrollHeight;
-        container.scrollTop = newHeight - prevScrollHeightRef.current;
+        // Just loaded history: maintain position
+        container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
         prevScrollHeightRef.current = 0;
     } else if (isAtBottomRef.current) {
+        // New messages or initial load: snap to bottom
         scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
 
+  // Initial load scroll
   useEffect(() => {
-    const timer = setTimeout(() => scrollToBottom('auto'), 150);
+    const timer = setTimeout(() => {
+        isAtBottomRef.current = true;
+        scrollToBottom('auto');
+    }, 150);
     return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
 
@@ -480,6 +461,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
         else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
         else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName);
+        isAtBottomRef.current = true;
+        scrollToBottom('auto');
     } catch (error) { console.error(error); setMessageContent(originalContent); setReplyToMessage(originalReplyTo); }
     finally { setIsSending(false); }
   };
@@ -703,7 +686,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
           <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
-              {messagesLoading && messageLimit === 50 ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
+              {messagesLoading && !messages ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
                   <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
