@@ -23,13 +23,14 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video } from 'lucide-react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, runTransaction, increment, getDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
+import { Capacitor } from '@capacitor/core';
 
 interface UserProfileDialogProps {
   user: User;
@@ -53,6 +54,32 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const [isSendingGold, setIsSendingGold] = useState(false);
 
   useEffect(() => { if (open) { setShowCompactHeader(false); setShowSendGold(false); setSendAmount('10'); } }, [open]);
+
+  // --- System Back Button Support ---
+  useEffect(() => {
+    if (!open) return;
+
+    const handleSystemBack = () => {
+      if (showSendGold) {
+        setShowSendGold(false);
+      } else {
+        onOpenChange(false);
+      }
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [open, showSendGold, onOpenChange]);
 
   const getStatusText = (user: User) => {
     if (user.isBot || user.isDeleted || !user.status) return '';
@@ -110,6 +137,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
             <ScrollArea className="flex-1" onScroll={e => setShowCompactHeader(e.currentTarget.scrollTop > 100)}>
                 <div className={cn(experimentalDesign ? "bg-gradient-to-b from-primary/10 to-background pt-8 pb-6 px-6" : "pt-8 pb-4 px-6")}>
                     <DialogHeader className="p-0 relative">
+                        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
                         <div className='relative mx-auto flex justify-center'><UserAvatarWithStatus user={user} className="w-28 h-28 text-4xl shadow-xl border-4 border-background rounded-full" /></div>
                     </DialogHeader>
@@ -136,12 +164,34 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
             {!experimentalDesign && (<div className='shrink-0 p-6 border-t flex justify-center bg-background'><Button onClick={handleStartMessage} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8 w-full h-12 font-bold">{t('message')}</Button></div>)}
         </div>
         <Dialog open={showSendGold} onOpenChange={setShowSendGold}>
-            <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl"><DialogHeader className="items-center text-center space-y-4"><div className="w-20 h-20 rounded-3xl bg-amber-500/10 flex items-center justify-center"><InfGoldIcon className="h-10 w-10 text-amber-600 animate-bounce" /></div><div className="space-y-2"><DialogTitle className="text-2xl font-bold font-headline">{t('send_gold')}</DialogTitle><DialogDescription>{t('send_gold_desc', { name: user.name })}</DialogDescription></div></DialogHeader>
-                <div className="space-y-4 py-4"><div className="space-y-2"><Label htmlFor="gold-amount" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('amount_label')}</Label><div className="relative"><Input id="gold-amount" type="number" value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} className="text-center text-2xl font-black h-14 rounded-2xl bg-muted/50 border-none focus-visible:ring-amber-500" autoFocus /><Coins className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 h-6 w-6 opacity-50" /></div></div></div>
-                <DialogFooter className="flex-col gap-2 pt-2"><Button onClick={handleSendGold} disabled={isSendingGold} className="w-full h-14 rounded-2xl font-bold text-lg bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-500/20">{isSendingGold ? <Loader2 className="animate-spin" /> : t('send_button')}</Button><Button variant="ghost" onClick={() => setShowSendGold(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button></DialogFooter></DialogContent>
+            <DialogContent hideCloseButton className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl relative">
+                <Button variant="ghost" size="icon" onClick={() => setShowSendGold(false)} className="absolute left-4 top-4 rounded-full"><ArrowLeft className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setShowSendGold(false)} className="absolute right-4 top-4 rounded-full"><X className="h-5 w-5" /></Button>
+                <DialogHeader className="items-center text-center space-y-4">
+                    <div className="w-20 h-20 rounded-3xl bg-amber-500/10 flex items-center justify-center"><InfGoldIcon className="h-10 w-10 text-amber-600 animate-bounce" /></div>
+                    <div className="space-y-2">
+                        <DialogTitle className="text-2xl font-bold font-headline">{t('send_gold')}</DialogTitle>
+                        <DialogDescription>{t('send_gold_desc', { name: user.name })}</DialogDescription>
+                    </div>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="gold-amount" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('amount_label')}</Label>
+                        <div className="relative">
+                            <Input id="gold-amount" type="number" value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} className="text-center text-2xl font-black h-14 rounded-2xl bg-muted/50 border-none focus-visible:ring-amber-500" autoFocus />
+                            <Coins className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 h-6 w-6 opacity-50" />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter className="flex-col gap-2 pt-2">
+                    <Button onClick={handleSendGold} disabled={isSendingGold} className="w-full h-14 rounded-2xl font-bold text-lg bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-500/20">
+                        {isSendingGold ? <Loader2 className="animate-spin" /> : t('send_button')}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setShowSendGold(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
       </DialogContent>
     </Dialog>
   );
 }
-

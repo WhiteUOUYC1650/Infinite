@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -5,7 +6,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, doc, setDoc, deleteDoc, Timestamp, runTransaction, updateDoc } from 'firebase/firestore';
 import type { AuthenticatedUser, CustomBot } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost } from 'lucide-react';
+import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,7 @@ import { BotEditor } from './bot-editor';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
+import { Capacitor } from '@capacitor/core';
 
 export function BotStudioView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
   const { t } = useLanguage();
@@ -37,10 +39,35 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
 
   const { data: myBots, loading } = useCollection<CustomBot>(botsQuery);
 
+  // --- System Back Button Support ---
+  useEffect(() => {
+    const handleSystemBack = () => {
+      if (selectedBot) {
+        setSelectedBot(null);
+      } else if (isCreateOpen) {
+        setIsCreateOpen(false);
+      } else {
+        onClose();
+      }
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [selectedBot, isCreateOpen, onClose]);
+
   const handleCreateBot = async () => {
     if (!db || !newBotName.trim() || !newBotHandle.trim()) return;
 
-    // English-only letters, numbers, underscores
     const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
     const cleanHandle = newBotHandle.replace('@', '').trim();
 
@@ -203,19 +230,25 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
       </main>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
-              <DialogHeader className="items-center text-center space-y-4">
+          <DialogContent hideCloseButton className="max-w-sm rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden">
+              <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                  <Button variant="ghost" size="icon" onClick={() => setIsCreateOpen(false)} className="absolute left-2 top-1/2 -translate-y-1/2">
+                      <ArrowLeft />
+                  </Button>
+                  <DialogTitle>{t('create_bot')}</DialogTitle>
+                  <Button variant="ghost" size="icon" onClick={() => setIsCreateOpen(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <X />
+                  </Button>
+              </DialogHeader>
+              <div className="p-8 flex flex-col items-center text-center space-y-4">
                   <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
                       <Bot className="h-10 w-10 text-primary" />
                   </div>
-                  <div className="space-y-2">
-                      <DialogTitle className="text-2xl font-bold font-headline">{t('create_bot')}</DialogTitle>
-                      <DialogDescription>
-                          Создайте уникального бота с собственной логикой.
-                      </DialogDescription>
-                  </div>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
+                  <DialogDescription>
+                      Создайте уникального бота с собственной логикой.
+                  </DialogDescription>
+              </div>
+              <div className="px-8 space-y-4 pb-4">
                   <div className="space-y-2">
                       <Label htmlFor="bot-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
                       <Input
@@ -223,7 +256,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                           value={newBotName}
                           onChange={(e) => setNewBotName(e.target.value)}
                           placeholder="Напр. Helper Bot"
-                          className="h-12 rounded-xl bg-muted/50 border-none focus-visible:ring-primary"
+                          className="h-12 rounded-xl bg-muted/50 border-none focus-visible:ring-primary font-bold"
                       />
                   </div>
                   <div className="space-y-2">
@@ -235,12 +268,12 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                               value={newBotHandle}
                               onChange={(e) => setNewBotHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
                               placeholder="helper_bot"
-                              className="h-12 pl-7 rounded-xl bg-muted/50 border-none focus-visible:ring-primary"
+                              className="h-12 pl-7 rounded-xl bg-muted/50 border-none focus-visible:ring-primary font-bold"
                           />
                       </div>
                   </div>
               </div>
-              <DialogFooter className="flex-col gap-2">
+              <DialogFooter className="p-8 pt-0 flex flex-col gap-2">
                   <Button onClick={handleCreateBot} disabled={isCreating || !newBotName.trim() || !newBotHandle.trim()} className="w-full h-12 rounded-xl font-bold">
                       {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                       {t('create_bot')}

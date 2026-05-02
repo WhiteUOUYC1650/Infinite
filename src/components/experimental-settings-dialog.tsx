@@ -45,6 +45,7 @@ import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { deleteUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { Capacitor } from '@capacitor/core';
 
 import { UserProfileCard } from './user-profile-card';
 import { useLanguage } from '@/context/language-context';
@@ -208,8 +209,37 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     if (pageHistory.length > 1) {
         setAnimationDirection('backward');
         setPageHistory(prev => prev.slice(0, -1));
+    } else {
+        onOpenChange(false);
     }
   };
+
+  // --- System Back Button Support ---
+  useEffect(() => {
+    if (!open) return;
+
+    const handleSystemBack = () => {
+      if (pageHistory.length > 1) {
+        setAnimationDirection('backward');
+        setPageHistory(prev => prev.slice(0, -1));
+      } else {
+        onOpenChange(false);
+      }
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [open, pageHistory, onOpenChange]);
 
   const resetState = () => {
     setPageHistory(['main']);
@@ -1103,11 +1133,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
       <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
-          {pageHistory.length > 1 && (
-            <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
-              <ArrowLeft />
-            </Button>
-          )}
+          <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
+            <ArrowLeft />
+          </Button>
           <DialogTitle className="text-lg">{getTitle()}</DialogTitle>
           <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
             <X />
@@ -1226,4 +1254,3 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     </>
   );
 }
-

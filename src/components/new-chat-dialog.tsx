@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -30,7 +31,8 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useState, useEffect, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
-import { Loader2, Dices } from 'lucide-react';
+import { Loader2, Dices, ArrowLeft, X } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 const dmFormSchema = z.object({
   username: z.string()
@@ -107,6 +109,28 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const dmUsernameValue = dmForm.watch('username');
   const groupLinkValue = groupForm.watch('link');
   const channelLinkValue = channelForm.watch('link');
+
+  // --- System Back Button Support ---
+  useEffect(() => {
+    if (!open) return;
+
+    const handleSystemBack = () => {
+      onOpenChange(false);
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [open, onOpenChange]);
 
   const handleGenerateGroupLink = async () => {
     if (!db) return;
@@ -393,7 +417,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         } else if (error.name === 'FirestorePermissionError') {
              errorEmitter.emit('permission-error', error);
         } else {
-            toast({ variant: 'destructive', title: 'Error', description: t('channel_error') });
+            toast({ variant: 'destructive', title: 'Error', description: error.message || t('channel_error') });
         }
     } finally {
         setIsCreating(false);
@@ -403,17 +427,23 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex flex-col max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>{t('new_conversation')}</DialogTitle>
-          <DialogDescription>{t('new_conversation_desc')}</DialogDescription>
+      <DialogContent hideCloseButton className="flex flex-col max-h-[90vh] p-0 overflow-hidden">
+        <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute left-2 top-1/2 -translate-y-1/2">
+                <ArrowLeft />
+            </Button>
+            <DialogTitle>{t('new_conversation')}</DialogTitle>
+            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
+                <X />
+            </Button>
         </DialogHeader>
-        <div className="-mx-6 flex-1 overflow-y-auto px-6">
+        <div className="p-6 flex-1 overflow-y-auto">
+            <DialogDescription className="mb-4">{t('new_conversation_desc')}</DialogDescription>
             <Tabs defaultValue="dm" className="w-full pt-2">
-                <TabsList className="flex flex-wrap h-auto justify-center">
-                    <TabsTrigger value="dm">{t('direct_message_tab')}</TabsTrigger>
-                    <TabsTrigger value="group">{t('new_group_tab')}</TabsTrigger>
-                    <TabsTrigger value="channel">{t('new_channel_tab')}</TabsTrigger>
+                <TabsList className="flex flex-wrap h-auto justify-center bg-muted/50 p-1 rounded-xl">
+                    <TabsTrigger value="dm" className="rounded-lg">{t('direct_message_tab')}</TabsTrigger>
+                    <TabsTrigger value="group" className="rounded-lg">{t('new_group_tab')}</TabsTrigger>
+                    <TabsTrigger value="channel" className="rounded-lg">{t('new_channel_tab')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="dm">
                     <Form {...dmForm}>
@@ -432,7 +462,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             )}
                             />
                             <div className='flex justify-end'>
-                                <Button type="submit" disabled={isCreating || isCheckingUsername || !usernameExists}>
+                                <Button type="submit" disabled={isCreating || isCheckingUsername || !usernameExists} className="rounded-xl px-8 h-12 font-bold">
                                     {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
                                     isCheckingUsername ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
                                     t('start_chat')}
@@ -472,7 +502,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                                                     <Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} />
                                                 </FormControl>
                                             </div>
-                                            <Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink}>
+                                            <Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink} className="rounded-lg h-10 w-10">
                                                 {isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
                                             </Button>
                                         </div>
@@ -481,7 +511,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                                 )}
                             />
                             <div className='flex justify-end'>
-                                <Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid}>
+                                <Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid} className="rounded-xl px-8 h-12 font-bold">
                                     {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
                                     isCheckingGroupLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> : 
                                     t('create_group')}
@@ -513,7 +543,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                                 <FormItem>
                                 <FormLabel>{t('description_label')}</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder={t('description_placeholder')} {...field} />
+                                    <Textarea placeholder={t('description_placeholder')} {...field} className="rounded-xl bg-muted/50 border-none min-h-[100px]" />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -538,7 +568,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                             )}
                             />
                             <div className='flex justify-end'>
-                                <Button type="submit" disabled={isCreating || isCheckingChannelLink || !channelForm.formState.isValid}>
+                                <Button type="submit" disabled={isCreating || isCheckingChannelLink || !channelForm.formState.isValid} className="rounded-xl px-8 h-12 font-bold">
                                     {isCreating ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('creating')} </> : 
                                     isCheckingChannelLink ? <> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('checking')} </> :
                                     t('create_channel')}

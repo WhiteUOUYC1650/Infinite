@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, Phone } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, Phone, ArrowLeft } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -50,6 +50,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
 import { COMMON_EMOJIS } from './chat-view';
+import { Capacitor } from '@capacitor/core';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -148,6 +149,34 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         setAvatarPreview(chat.avatar); setImageToCrop(''); setIsEditing(false); setShowCompactHeader(false);
     }
   }, [chat, form, open]);
+
+  // --- System Back Button Support ---
+  useEffect(() => {
+    if (!open) return;
+
+    const handleSystemBack = () => {
+      if (imageToCrop) {
+        setImageToCrop('');
+      } else if (isEditing) {
+        setIsEditing(false);
+      } else {
+        onOpenChange(false);
+      }
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [open, imageToCrop, isEditing, onOpenChange]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.[0]) {
@@ -199,15 +228,31 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
       <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] max-h-[85vh]", experimentalDesign && !isEditing ? "rounded-[2rem] border-none shadow-2xl" : "rounded-lg")}>
         {imageToCrop ? (
             <div className="p-6 h-full flex flex-col">
-                <DialogHeader><DialogTitle>Crop your new avatar</DialogTitle></DialogHeader>
+                <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                    <Button variant="ghost" size="icon" onClick={() => setImageToCrop('')} className="absolute left-2 top-1/2 -translate-y-1/2">
+                        <ArrowLeft />
+                    </Button>
+                    <DialogTitle>Crop your new avatar</DialogTitle>
+                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <X />
+                    </Button>
+                </DialogHeader>
                 <div className="flex-1 flex items-center justify-center my-4 overflow-hidden"><ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={1} minWidth={100}><img ref={imgRef} src={imageToCrop} onLoad={e => setCrop(centerAspectCrop(e.currentTarget.width, e.currentTarget.height, 1))} className="max-h-full max-w-full" /></ReactCrop></div>
                 <DialogFooter className="gap-2"><Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button><Button onClick={handleCropConfirm} disabled={isCropping}>{isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Set Avatar</Button></DialogFooter>
             </div>
         ) : isEditing ? (
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
-                    <DialogHeader className="shrink-0"><DialogTitle>{t('edit_chat_title')}</DialogTitle></DialogHeader>
-                    <div className="flex-1 overflow-y-auto py-4 -mx-2 px-2"><div className="space-y-6">
+                <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden">
+                    <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)} className="absolute left-2 top-1/2 -translate-y-1/2">
+                            <ArrowLeft />
+                        </Button>
+                        <DialogTitle>{t('edit_chat_title')}</DialogTitle>
+                        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
+                            <X />
+                        </Button>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto p-6"><div className="space-y-6">
                             <div className="flex justify-center"><div className="relative">
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-full overflow-hidden"><Avatar className="h-24 w-24"><AvatarImage src={avatarPreview || undefined} /><AvatarFallback><Icon className="h-12 w-12" /></AvatarFallback></Avatar></button>
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"><Pencil className="h-4 w-4" /></button>
@@ -218,7 +263,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                             {chat.type === 'channel' && (<FormField control={form.control} name="discussionChatId" render={({ field }) => (<FormItem><FormLabel>{t('discussion_chat_label')}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger disabled={isLoadingGroups}><SelectValue placeholder={t('select_discussion_chat_placeholder')} /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">{t('none_label')}</SelectItem>{ownedGroups.map(g => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />)}
                             <div className="space-y-3"><div className="flex items-center gap-2"><SmilePlus className="h-4 w-4 text-muted-foreground" /><FormLabel>{t('manage_reactions_label')}</FormLabel></div><div className="grid grid-cols-5 gap-2 p-3 bg-muted/30 rounded-xl border">{COMMON_EMOJIS.map(emoji => (<FormField key={emoji} control={form.control} name="allowedReactions" render={({ field }) => (<FormItem className="flex flex-col items-center gap-1 space-y-0"><FormControl><button type="button" onClick={() => { const cur = field.value || []; if (cur.includes(emoji)) { field.onChange(cur.filter(e => e !== emoji)); } else { field.onChange([...cur, emoji]); } }} className={cn("w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all", field.value?.includes(emoji) ? "bg-primary/20 border-primary" : "bg-background border border-border opacity-50 grayscale hover:opacity-100 hover:grayscale-0")}>{emoji}</button></FormControl></FormItem>)} />))}</div></div>
                     </div></div>
-                    <DialogFooter className="shrink-0 mt-auto pt-4 border-t gap-2"><Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button><Button type="submit" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t('save')}</Button></DialogFooter>
+                    <DialogFooter className="shrink-0 mt-auto p-6 border-t gap-2"><Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button><Button type="submit" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t('save')}</Button></DialogFooter>
                 </form>
             </Form>
         ) : (
@@ -229,7 +274,9 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                 </div>
                 <ScrollArea className="flex-1" onScroll={e => setShowCompactHeader(e.currentTarget.scrollTop > 100)}>
                     <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
-                        <DialogHeader className="p-0 relative"><Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
+                        <DialogHeader className="p-0 relative">
+                            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
                             <DialogTitle className="sr-only">{chat.name}</DialogTitle>
                             <div className='relative mx-auto flex justify-center'><Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background rounded-full">{chat.avatar ? (<AvatarImage src={chat.avatar} />) : (<AvatarFallback><Icon className="h-16 w-16" /></AvatarFallback>)}</Avatar></div>
                         </DialogHeader>
@@ -260,4 +307,3 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     </Dialog>
   );
 }
-

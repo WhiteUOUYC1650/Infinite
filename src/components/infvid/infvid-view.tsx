@@ -102,6 +102,33 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   
   const { users: senders } = useBatchUsers(senderIds);
 
+  // --- System Back Button Support ---
+  useEffect(() => {
+    const handleSystemBack = () => {
+      if (selectedVideoId) {
+        setSelectedVideoId(null);
+        setFetchedExternalVideo(null);
+      } else if (isUploadOpen) {
+        setIsUploadOpen(false);
+      } else {
+        onClose();
+      }
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [selectedVideoId, isUploadOpen, onClose]);
+
   useEffect(() => {
     if (!initialVideoId || !db) return;
 
@@ -553,10 +580,13 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <div className="ml-4 flex items-center gap-2 overflow-hidden">
+                <div className="ml-4 flex items-center gap-2 overflow-hidden flex-1">
                     <InfVidIcon className="h-6 w-6 shrink-0" />
                     <span className="font-bold font-headline truncate">{video.title}</span>
                 </div>
+                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2">
+                    <X className="h-5 w-5" />
+                </Button>
             </header>
 
             <div className="flex-1 overflow-y-auto">
@@ -904,89 +934,97 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl relative">
-                {isUploading && (
-                    <div className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
-                        <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                        </div>
-                        <h3 className="text-2xl font-bold font-headline mb-4">{t('infvid_upload_warning_title')}</h3>
-                        <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto mb-6">
-                            {t('infvid_upload_warning_desc')}
-                        </p>
-                        <div className="flex items-center gap-2 text-primary font-bold animate-pulse uppercase tracking-widest text-xs">
-                           <AlertCircle className="h-4 w-4" />
-                           {t('processing_video')}
-                        </div>
-                    </div>
-                )}
-                
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-bold font-headline">{t('infvid_upload_title')}</DialogTitle>
+            <DialogContent hideCloseButton className="sm:max-w-[550px] max-h-[90vh] overflow-hidden rounded-2xl relative p-0 flex flex-col">
+                <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute left-2 top-1/2 -translate-y-1/2">
+                        <ArrowLeft />
+                    </Button>
+                    <DialogTitle>{t('infvid_upload_title')}</DialogTitle>
+                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <X />
+                    </Button>
                 </DialogHeader>
-                
-                <div className="space-y-6 py-4">
-                    <div 
-                        className={cn(
-                            "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
-                            file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30"
-                        )}
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />
-                        {file ? (
-                            <div className="text-center">
-                                <PlayCircle className="h-12 w-12 text-primary mx-auto mb-2" />
-                                <p className="font-bold truncate max-w-[300px] text-sm">{file.name}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                <Upload className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
-                                <p className="font-bold text-muted-foreground">{t('video')}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{t('infvid_video_limits', { size: maxSizeText })}</p>
-                            </div>
-                        )}
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_thumbnail_label')}</label>
-                            <div 
-                                className={cn(
-                                    "aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-muted/20 relative",
-                                    thumbnailPreview ? "border-solid border-primary" : "hover:border-primary/50"
-                                )}
-                                onClick={() => thumbnailInputRef.current?.click()}
-                            >
-                                <input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />
-                                {thumbnailPreview ? (
-                                    <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="text-center">
-                                        <ImageIcon className="h-8 w-8 text-muted-foreground/40 mx-auto mb-1" />
-                                        <p className="text-[10px] font-bold text-muted-foreground">{t('infvid_select_thumbnail')}</p>
-                                    </div>
-                                )}
+                <ScrollArea className="flex-1">
+                    {isUploading && (
+                        <div className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+                            <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                            </div>
+                            <h3 className="text-2xl font-bold font-headline mb-4">{t('infvid_upload_warning_title')}</h3>
+                            <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto mb-6">
+                                {t('infvid_upload_warning_desc')}
+                            </p>
+                            <div className="flex items-center gap-2 text-primary font-bold animate-pulse uppercase tracking-widest text-xs">
+                            <AlertCircle className="h-4 w-4" />
+                            {t('processing_video')}
                             </div>
                         </div>
+                    )}
+                    
+                    <div className="space-y-6 p-6">
+                        <div 
+                            className={cn(
+                                "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
+                                file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30"
+                            )}
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />
+                            {file ? (
+                                <div className="text-center">
+                                    <PlayCircle className="h-12 w-12 text-primary mx-auto mb-2" />
+                                    <p className="font-bold truncate max-w-[300px] text-sm">{file.name}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                </div>
+                            ) : (
+                                <div className="text-center">
+                                    <Upload className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
+                                    <p className="font-bold text-muted-foreground">{t('video')}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{t('infvid_video_limits', { size: maxSizeText })}</p>
+                                </div>
+                            )}
+                        </div>
 
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_title_label')}</label>
-                                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('infvid_video_title_placeholder')} disabled={isUploading} className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary" />
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_thumbnail_label')}</label>
+                                <div 
+                                    className={cn(
+                                        "aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-muted/20 relative",
+                                        thumbnailPreview ? "border-solid border-primary" : "hover:border-primary/50"
+                                    )}
+                                    onClick={() => thumbnailInputRef.current?.click()}
+                                >
+                                    <input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />
+                                    {thumbnailPreview ? (
+                                        <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="text-center">
+                                            <ImageIcon className="h-8 w-8 text-muted-foreground/40 mx-auto mb-1" />
+                                            <p className="text-[10px] font-bold text-muted-foreground">{t('infvid_select_thumbnail')}</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_desc_label')}</label>
-                                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('infvid_video_desc_placeholder')} className="resize-none rounded-xl bg-muted/30 border-none focus-visible:ring-primary min-h-[100px]" rows={3} disabled={isUploading} />
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_title_label')}</label>
+                                    <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('infvid_video_title_placeholder')} disabled={isUploading} className="rounded-xl h-11 bg-muted/30 border-none focus-visible:ring-primary" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('infvid_video_desc_label')}</label>
+                                    <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('infvid_video_desc_placeholder')} className="resize-none rounded-xl bg-muted/30 border-none focus-visible:ring-primary min-h-[100px]" rows={3} disabled={isUploading} />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </ScrollArea>
 
-                <DialogFooter className="gap-2">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUploading} className="rounded-full">{t('cancel')}</Button>
-                    <Button onClick={handleSubmit} disabled={!file || !title.trim() || isUploading} className="rounded-full px-8 font-bold">
+                <DialogFooter className="p-6 border-t gap-2 bg-muted/5">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUploading} className="rounded-xl flex-1">{t('cancel')}</Button>
+                    <Button onClick={handleSubmit} disabled={!file || !title.trim() || isUploading} className="rounded-xl flex-[2] font-bold h-12 shadow-lg shadow-primary/20">
                         {isUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('loading')}... </> : t('save')}
                     </Button>
                 </DialogFooter>
@@ -994,4 +1032,3 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
         </Dialog>
     );
 }
-
