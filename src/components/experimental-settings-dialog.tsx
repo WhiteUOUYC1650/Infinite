@@ -1029,20 +1029,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><ArrowLeft className="h-4 w-4 text-primary" /> {t('whats_new_back_button_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_back_button_desc')}</p>
+        </div>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
           <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Paintbrush className="h-4 w-4 text-primary" /> {t('whats_new_ui_title')}</h3>
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_ui_desc')}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> {t('whats_new_offline_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_offline_desc')}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><HardDrive className="h-4 w-4 text-primary" /> {t('whats_new_cache_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_cache_desc')}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_minor_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_minor_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
           <h3 className="font-bold text-base mb-1 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> {t('whats_new_bug_fix_title')}</h3>

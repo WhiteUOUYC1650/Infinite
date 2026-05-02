@@ -831,13 +831,14 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
                     <div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>
                         {Object.entries(message.reactions).map(([emoji, uids]) => { 
+                            if (uids.length === 0) return null;
                             const hasReacted = uids.includes(currentUser.uid); 
                             const isChannel = chatType === 'channel';
                             return (
-                                <button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted")}>
+                                <button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && !isChannel && "text-white border-white/30")}>
                                     <span>{emoji}</span>
                                     {isChannel ? (
-                                        <span>{uids.length}</span>
+                                        <span className={cn(alignRight && "text-white")}>{uids.length}</span>
                                     ) : (
                                         <div className="flex -space-x-1.5 items-center">
                                             {uids.slice(0, 4).map((uid) => {
@@ -849,8 +850,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                                                     </Avatar>
                                                 );
                                             })}
-                                            {uids.length > 4 && <span className="ml-1.5 text-[9px] font-black opacity-80">+{uids.length - 4}</span>}
-                                            {uids.length === 0 && <span>0</span>}
+                                            {uids.length > 4 && <span className={cn("ml-1.5 text-[9px] font-black opacity-80", alignRight && "text-white")}>+{uids.length - 4}</span>}
                                         </div>
                                     )}
                                 </button>
