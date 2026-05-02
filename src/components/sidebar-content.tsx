@@ -332,6 +332,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 type: 'dm',
                 members: [currentUser.uid, bot.id],
                 icon: 'Bot',
+                unreadCounts: { [currentUser.uid]: 0, [bot.id]: 0 },
             });
         } else {
             chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
@@ -475,25 +476,20 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                   {isBotLoading ? (
                       <DMChatItemSkeleton />
                   ) : primaryBots.length > 0 ? (
-                      primaryBots.map(bot => (
-                          <Button
+                      primaryBots.map(bot => {
+                          const botChatId = [currentUser.uid, bot.id].sort().join('_');
+                          const botChat = chats?.find(c => c.id === botChatId);
+                          return (
+                            <DMChatItemComponent
                               key={bot.id}
-                              variant="ghost"
-                              onClick={() => handleSelectBot(bot)}
-                              className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden", selectedId === [currentUser.uid, bot.id].sort().join('_') && 'bg-sidebar-accent')}
-                          >
-                              <div className="flex items-center gap-3 w-full">
-                                  <UserAvatarWithStatus user={bot} isSelected={selectedId === [currentUser.uid, bot.id].sort().join('_')} className="h-9 w-9" />
-                                  <div className="flex-1 w-0 min-w-0 overflow-hidden">
-                                       <div className="flex items-center gap-2">
-                                          <div className={cn("font-semibold truncate text-sm", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
-                                          <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />
-                                      </div>
-                                      <p className="text-[10px] text-primary font-bold">{t('bot_status')}</p>
-                                  </div>
-                              </div>
-                          </Button>
-                      ))
+                              item={botChat || { id: botChatId, type: 'dm', members: [currentUser.uid, bot.id] } as Chat}
+                              otherUser={bot}
+                              onSelect={() => handleSelectBot(bot)}
+                              selectedId={selectedId}
+                              currentUserId={currentUser.uid}
+                            />
+                          );
+                      })
                   ) : (
                       <div className='px-4 text-[10px] text-muted-foreground'>{t('no_bots_found')}</div>
                   )}
@@ -729,9 +725,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                         </>
                     )}
                 </div>
-                {otherUser?.isBot ? (
-                    <p className="text-[10px] text-primary font-bold">{t('bot_status')}</p>
-                ) : displayContent && 
+                {displayContent && 
                     <div className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
                         {lastMessageSenderIsCurrentUser && !isSavedMessages && (
                             (lastMessage.videoStatus === 'uploading' || lastMessage.musicStatus === 'uploading') ? (

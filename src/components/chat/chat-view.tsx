@@ -165,7 +165,7 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight }: { poll: Poll, 
     );
 }
 
-function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false, messageId }: { src: string | null | undefined, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean, messageId: string }) {
+function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime = false, messageId, onMediaLoad }: { src: string | null | undefined, isMusic?: boolean, duration?: number, fileName?: string, hideTime?: boolean, messageId: string, onMediaLoad?: () => void }) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -199,7 +199,7 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
     if (!src) return null;
     return (
         <div className={cn("flex items-center gap-3 w-full px-2 py-1.5 rounded-xl transition-all", isMusic ? "max-w-[400px]" : "min-w-[200px]", "bg-black/10 dark:bg-white/10")}>
-            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={onTimeUpdate} preload="metadata" />
+            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={() => { onTimeUpdate(); onMediaLoad?.(); }} preload="metadata" />
             <button onClick={togglePlay} className="w-10 h-10 rounded-full bg-background flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95">
                 {isPlaying ? <Pause className="h-5 w-5 text-primary fill-primary" /> : <Play className="h-5 w-5 ml-0.5 text-primary fill-primary" />}
             </button>
@@ -348,8 +348,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
-    lastScrollHeightRef.current = scrollHeight;
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
+    
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
     let currentStickyDate: string | null = null;
     if (dateSeparators.length > 0) {
@@ -363,12 +363,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [hasMore]);
 
   const handleMediaLoad = useCallback(() => {
-    requestAnimationFrame(() => {
-        if (isAtBottomRef.current || lastScrollHeightRef.current === 0) {
-            scrollToBottom('auto');
-            requestAnimationFrame(() => scrollToBottom('auto'));
-        }
-    });
+    if (isAtBottomRef.current) {
+        requestAnimationFrame(() => scrollToBottom('auto'));
+    }
   }, [scrollToBottom]);
 
   const messagesQuery = useMemoFirebase(() => {
@@ -395,7 +392,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!listElement) return;
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
-            requestAnimationFrame(() => { requestAnimationFrame(() => { scrollToBottom('auto'); }); });
+            requestAnimationFrame(() => scrollToBottom('auto'));
         }
     });
     observer.observe(listElement);
@@ -403,20 +400,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [scrollToBottom]);
 
   useLayoutEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || !messages) return;
-    if (isAtBottomRef.current) { scrollToBottom(smoothScroll ? 'smooth' : 'auto'); }
-    else if (lastScrollHeightRef.current > 0) {
-        const heightDiff = container.scrollHeight - lastScrollHeightRef.current;
-        if (heightDiff > 0 && container.scrollTop < 200) { container.scrollTop += heightDiff; }
+    if (isAtBottomRef.current) {
+        scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
-    lastScrollHeightRef.current = container.scrollHeight;
-  }, [messages, item.id, scrollToBottom, smoothScroll, memberDetails]);
+  }, [messages, smoothScroll, scrollToBottom]);
 
   useEffect(() => {
     const timer = setTimeout(() => scrollToBottom('auto'), 150);
-    const forceTimer = setTimeout(() => scrollToBottom('auto'), 600);
-    return () => { clearTimeout(timer); clearTimeout(forceTimer); };
+    return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
 
   const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
@@ -431,7 +422,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const originalContent = finalContent;
     const originalReplyTo = replyToMessage;
     
-    // Resolve correct sender name for replies
     let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
     if (originalReplyTo && memberDetails[originalReplyTo.senderId]) {
       resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name;
@@ -810,7 +800,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const canCopy = message.content && !message.poll;
     const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus;
     
-    // PERMISSIONS 0.4.3
     const isAdmin = currentUser.username === '@Infinite';
     const isSender = isCurrentUser;
     const isOwner = chat.ownerId === currentUser.uid;
@@ -836,7 +825,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
-                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} /></div>)}
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={{}} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
@@ -880,7 +869,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                           <DropdownMenuSub>
                               <DropdownMenuSubTrigger className="h-10 rounded-xl"><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
                               <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-1.5 w-52 border-none shadow-2xl rounded-2xl">
+                                  <DropdownMenuSubContent className="p-1.5 w-52 border-none shadow-2xl rounded-2xl max-h-[70svh] overflow-y-auto">
                                       <div className="grid grid-cols-5 gap-0.5">
                                           {COMMON_EMOJIS.map(emoji => { 
                                               const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
@@ -902,7 +891,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                           <DropdownMenuSub>
                               <DropdownMenuSubTrigger><SmilePlus className="mr-2 h-4 w-4" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
                               <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-1 w-52">
+                                  <DropdownMenuSubContent className="p-1 w-52 max-h-[70svh] overflow-y-auto">
                                       <div className="grid grid-cols-5 gap-0.5">
                                           {COMMON_EMOJIS.map(emoji => { 
                                               const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
