@@ -307,7 +307,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listInnerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const lastScrollHeightRef = useRef<number>(0);
+  const prevScrollHeightRef = useRef<number>(0);
   const isAtBottomRef = useRef(true);
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
@@ -359,8 +359,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
     }
     setStickyDate(currentStickyDate);
-    if (scrollTop < 100 && hasMore) { setMessageLimit(prev => prev + 50); }
-  }, [hasMore]);
+    if (scrollTop < 100 && hasMore && !messagesLoading) { 
+        prevScrollHeightRef.current = scrollHeight;
+        setMessageLimit(prev => prev + 50); 
+    }
+  }, [hasMore, messagesLoading]);
 
   const handleMediaLoad = useCallback(() => {
     if (isAtBottomRef.current) {
@@ -400,7 +403,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [scrollToBottom]);
 
   useLayoutEffect(() => {
-    if (isAtBottomRef.current) {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    if (prevScrollHeightRef.current > 0) {
+        // Restore scroll position after loading more messages
+        const newHeight = container.scrollHeight;
+        container.scrollTop = newHeight - prevScrollHeightRef.current;
+        prevScrollHeightRef.current = 0;
+    } else if (isAtBottomRef.current) {
         scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
@@ -826,7 +837,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
-                {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={{}} />}
+                {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
                     <div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>
@@ -887,11 +898,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                           {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 h-10 rounded-xl"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
                       </DropdownMenuContent>
                     ) : (
-                      <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-44 p-1 animate-in fade-in duration-200">
+                      <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-44 p-1 animate-in fade-in duration-200 rounded-lg">
                           <DropdownMenuSub>
                               <DropdownMenuSubTrigger><SmilePlus className="mr-2 h-4 w-4" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
                               <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-1 w-52 max-h-[70svh] overflow-y-auto">
+                                  <DropdownMenuSubContent className="p-1 w-52 max-h-[70svh] overflow-y-auto rounded-lg">
                                       <div className="grid grid-cols-5 gap-0.5">
                                           {COMMON_EMOJIS.map(emoji => { 
                                               const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 

@@ -131,6 +131,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent hideCloseButton className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-lg")}>
+        <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <div className="flex flex-col h-full overflow-hidden relative">
             <div className={cn("absolute top-0 left-0 right-0 z-20 h-14 flex items-center px-4 transition-all duration-300 border-b", showCompactHeader ? "bg-background/95 backdrop-blur-md opacity-100" : "bg-transparent opacity-0 pointer-events-none border-transparent")}>
                 <div className="flex items-center gap-3 min-w-0 flex-1"><UserAvatarWithStatus user={user} className="h-8 w-8" /><span className="font-bold font-headline truncate">{displayName}</span></div>
@@ -150,7 +151,8 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     </div>
                     {!user.isDeleted && !user.isBot && (<div className="flex items-center justify-center gap-2 mb-4"><InfGoldIcon className="h-5 w-5" /><span className="font-bold text-lg">{user.infGoldBalance ?? 0}</span></div>)}
                     {birthdayText && (<div className="flex items-center justify-center gap-2 mb-4 text-xs font-bold text-primary"><Cake className="h-3.5 w-3.5" /><span>{birthdayText}</span></div>)}
-                    {!user.isBot && !user.isDeleted && (
+                    
+                    {!user.isBot && !user.isDeleted && experimentalDesign && (
                         <div className="grid grid-cols-2 gap-3 w-full mt-4 px-2">
                             <button onClick={handleStartMessage} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight">{t('message')}</span></button>
                             <button onClick={() => setShowSendGold(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center"><Coins className="w-5 h-5 text-amber-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-amber-600">{t('send_gold')}</span></button>
@@ -158,9 +160,15 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             <button onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center"><Phone className="w-5 h-5 text-green-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-green-600">{t('audio_call')}</span></button>
                         </div>
                     )}
+
                     <div className="px-2 pt-6 pb-4">
                         {user.statusMessage && !user.isDeleted && (<div className="text-center p-4 bg-muted/50 rounded-2xl mb-4"><p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p></div>)}
-                        {!experimentalDesign && !user.isBot && !user.isDeleted && (<Button variant="outline" className="w-full rounded-xl h-12 mb-4 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>)}
+                        {!experimentalDesign && !user.isBot && !user.isDeleted && (
+                            <div className="space-y-2">
+                                <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>
+                                <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-green-200 text-green-600 bg-green-50/50 hover:bg-green-100" onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }}><Phone className="mr-2 h-5 w-5" />{t('audio_call')}</Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </ScrollArea>
