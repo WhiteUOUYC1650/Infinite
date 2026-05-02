@@ -67,34 +67,31 @@ service cloud.firestore {
     // Чаты (ЛС, Группы, Каналы)
     match /chats/{chatId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow create: if isSignedIn() || isAdmin();
+      allow update: if isSignedIn() || isAdmin();
       allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
         
-        // КРИТИЧЕСКОЕ: Запрещаем отправку в каналы всем, кроме владельца (ownerId)
-        allow create: if isSignedIn() && (
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
-        ) && (
-          get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' ||
-          get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid
+        allow create: if isAdmin() || (
+          isSignedIn() && (
+            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+          ) && (
+            get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' ||
+            get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid
+          )
         );
         
-        allow update: if isSignedIn() && (
-          request.auth.uid == resource.data.senderId ||
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content', 'poll'])
+        allow update: if isAdmin() || (
+          isSignedIn() && (
+            request.auth.uid == resource.data.senderId ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content', 'poll'])
+          )
         );
         
-        // ПРАВИЛА УДАЛЕНИЯ 0.4.3
-        // 1. Админ (@Infinite) может удалять всё.
-        // 2. Никто не может удалить сообщения @Infinite (кроме него самого).
-        // 3. Владельцы чатов могут удалять любые сообщения в своих чатах (кроме сообщений @Infinite).
-        // 4. В DM (личных чатах) пользователи могут удалять сообщения друг друга (кроме сообщений @Infinite).
-        // 5. Любой может удалить свое сообщение.
-        allow delete: if isSignedIn() && (
-          isAdmin() || (
+        allow delete: if isAdmin() || (
+          isSignedIn() && (
             get(/databases/$(database)/documents/users/$(resource.data.senderId)).data.username != '@Infinite' && (
               resource.data.senderId == request.auth.uid || 
               get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid ||
@@ -171,8 +168,8 @@ service cloud.firestore {
     match /botLinks/{linkId} {
       allow get: if true;
       allow list: if isAdmin();
-      allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
     }
   }
 }
