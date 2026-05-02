@@ -324,6 +324,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const activeStreamRef = useRef<MediaStream | null>(null);
 
+  const isPrem = currentUser.subscriptionTier === 'prem';
+  const maxSizeText = isPrem ? '4GB' : '1GB';
+  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
+
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
   const { data: liveChatData } = useDoc<Chat>(chatDocRef);
 
@@ -463,7 +467,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName);
         isAtBottomRef.current = true;
         scrollToBottom('auto');
-    } catch (error) { console.error(error); setMessageContent(originalContent); setReplyToMessage(originalReplyTo); }
+    } catch (error) { console.error(error); setMessageContent(originalContent); setFileToSend(null); setReplyToMessage(originalReplyTo); }
     finally { setIsSending(false); }
   };
 
