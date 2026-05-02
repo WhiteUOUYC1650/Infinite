@@ -59,9 +59,9 @@ service cloud.firestore {
     match /usernames/{username} {
         allow get: if true;
         allow list: if false;
-        allow create: if request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
+        allow create: if isAdmin() || request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
         allow update: if false;
-        allow delete: if resource.data.uid == request.auth.uid || isAdmin() || isBotOwner(resource.data.uid);
+        allow delete: if isAdmin() || resource.data.uid == request.auth.uid || isBotOwner(resource.data.uid);
     }
 
     // Чаты (ЛС, Группы, Каналы)
@@ -104,8 +104,8 @@ service cloud.firestore {
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy', 'videoStatus', 'videoChunkIds']));
-      allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin());
+      allow update: if isSignedIn() && (request.auth.uid == request.resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy', 'videoStatus', 'videoChunkIds']));
+      allow delete: if isSignedIn() && (request.auth.uid == request.resource.data.senderId || isAdmin());
 
       match /comments/{commentId} {
         allow get, list: if isSignedIn();
@@ -151,6 +151,7 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
       allow create: if isSignedIn();
+      allow update, delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.ownerId == request.auth.uid);
     }
 
     match /botLinks/{linkId} {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -7,7 +8,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2, Send, MessageSquare, Image as ImageIcon, Pencil } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,10 +44,10 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { BetaBadge } from '@/components/ui/beta-badge';
-import { PremBadge } from '@/components/ui/prem-badge';
 import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 function AdminPage() {
@@ -412,186 +413,159 @@ function AdminPage() {
   }
 
   return (
-    <div className="flex h-svh flex-col bg-background overflow-hidden">
-      <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b pt-[env(safe-area-inset-top)] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+    <div className="flex h-svh flex-col bg-background overflow-hidden relative">
+      <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b px-4 z-20">
+        <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="shrink-0">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-bold font-headline">{t('admin_panel_title')}</h1>
+        <h1 className="text-xl font-bold font-headline truncate">{t('admin_panel_title')}</h1>
       </header>
-      <main className="flex-1 overflow-hidden pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+      <main className="flex-1 overflow-hidden p-0 relative">
         <Tabs defaultValue="users" className="flex h-full flex-col">
-          <TabsList className="grid w-full grid-cols-6 h-auto flex-wrap">
-            <TabsTrigger value="users">{t('admin_users_tab')}</TabsTrigger>
-            <TabsTrigger value="groups">{t('admin_groups_tab')}</TabsTrigger>
-            <TabsTrigger value="channels">{t('admin_channels_tab')}</TabsTrigger>
-            <TabsTrigger value="broadcast">{t('admin_broadcast_tab')}</TabsTrigger>
-            <TabsTrigger value="update">Update</TabsTrigger>
-            <TabsTrigger value="resources">XML Check</TabsTrigger>
-          </TabsList>
-          <TabsContent value="users" className="flex-1 overflow-auto mt-4">
-            <ItemList
-              items={users}
-              loading={usersLoading}
-              renderItem={(user: User) => (
-                <UserItem 
-                  key={user.id} 
-                  user={user} 
-                  onBan={handleBanUser} 
-                  onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }}
-                  onToggleBeta={handleToggleBetaStatus}
-                  onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }}
-                />
-              )}
-            />
-          </TabsContent>
-          <TabsContent value="groups" className="flex-1 overflow-auto mt-4">
-            <ItemList
-              items={groups}
-              loading={chatsLoading}
-              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'group' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
-            />
-          </TabsContent>
-          <TabsContent value="channels" className="flex-1 overflow-auto mt-4">
-            <ItemList
-              items={channels}
-              loading={chatsLoading}
-              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
-            />
-          </TabsContent>
-          <TabsContent value="broadcast" className="flex-1 overflow-auto mt-4">
-              <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
-                  <div className="text-center space-y-2">
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                          <MessageSquare className="h-8 w-8 text-primary" />
-                      </div>
-                      <h2 className="text-2xl font-bold font-headline">{t('admin_broadcast_title')}</h2>
-                      <p className="text-sm text-muted-foreground">{t('admin_broadcast_desc')}</p>
-                  </div>
-
-                  <div className="space-y-4">
-                      <div className="space-y-2">
-                          <Label>{t('admin_broadcast_label')}</Label>
-                          <Textarea 
-                            value={broadcastText} 
-                            onChange={e => setBroadcastText(e.target.value)} 
-                            placeholder="Type broadcast message..." 
-                            className="min-h-[150px] rounded-xl bg-muted/50 border-none"
-                          />
-                      </div>
-                      <Button 
-                        className="w-full h-12 rounded-xl font-bold gap-2" 
-                        onClick={handleBroadcast} 
-                        disabled={!broadcastText.trim() || isBroadcasting}
-                      >
-                          {isBroadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                          {t('admin_broadcast_button')}
-                      </Button>
-                  </div>
-              </div>
-          </TabsContent>
-          <TabsContent value="update" className="flex-1 overflow-auto mt-4">
-              <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
-                  <div className="text-center space-y-2">
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                          <Upload className="h-8 w-8 text-primary" />
-                      </div>
-                      <h2 className="text-2xl font-bold font-headline">Publish APK Update</h2>
-                      <p className="text-sm text-muted-foreground">Upload a new APK version. Users will be notified every 10 launches.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                      <div className="space-y-2">
-                          <Label>Version Name</Label>
-                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4.3 Beta" />
-                      </div>
-
-                      <div className="space-y-2">
-                          <Label>APK File</Label>
-                          <div 
-                            className={cn(
-                                "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
-                                apkFile ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"
-                            )}
-                            onClick={() => apkInputRef.current?.click()}
-                          >
-                              <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
-                              {apkFile ? (
-                                  <div className="flex items-center gap-3">
-                                      <FileJson className="h-8 w-8 text-primary" />
-                                      <div className="text-left">
-                                          <p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p>
-                                          <p className="text-[10px] text-muted-foreground">{(apkFile.size / (1024 * 1024)).toFixed(2)} MB</p>
-                                      </div>
-                                  </div>
-                              ) : (
-                                  <p className="text-sm text-muted-foreground font-medium">Select APK file</p>
-                              )}
-                          </div>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                          <Label className="cursor-pointer">{t('admin_notify_update_label')}</Label>
-                          <Switch checked={notifyUpdate} onCheckedChange={setNotifyUpdate} />
-                      </div>
-
-                      <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || !newVersion.trim() || isUploadingApk}>
-                          {isUploadingApk ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Publish Update"}
-                      </Button>
-                  </div>
-              </div>
-          </TabsContent>
-          <TabsContent value="resources" className="flex-1 overflow-auto mt-4">
-              <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
-                  <div className="text-center space-y-2">
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                          <ImageIcon className="h-8 w-8 text-primary" />
-                      </div>
-                      <h2 className="text-2xl font-bold font-headline">Android App Icon Preview</h2>
-                      <p className="text-sm text-muted-foreground">Visual check of ic_launcher (Infinite logo on orange).</p>
-                  </div>
-
-                  <div className="flex flex-col items-center gap-6 p-10 bg-muted/20 rounded-[2.5rem] border">
-                      <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Icon Mockup</div>
-                      
-                      <div className="w-24 h-24 bg-[#FF8C00] rounded-[1.75rem] shadow-xl flex items-center justify-center border-2 border-white/10 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-black/5" />
-                        
-                        <svg width="72" height="72" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
-                            <g transform="translate(4, 4)">
-                              <path
-                                  d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
-                                  fill="none"
-                                  stroke="white"
-                                  strokeWidth="6"
-                                  strokeLinecap="round"
-                              />
-                              <path
-                                  d="M 20 78 L 10 90 L 25 78"
-                                  fill="none"
-                                  stroke="white"
-                                  strokeWidth="6"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                              />
-                              <path
-                                  d="M 80 22 L 90 10 L 75 22"
-                                  fill="none"
-                                  stroke="white"
-                                  strokeWidth="6"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                              />
-                            </g>
-                        </svg>
-                      </div>
-                      
-                      <p className="text-[11px] text-muted-foreground text-center font-medium max-w-[200px]">
-                        This is how your app icon looks on Android. Logo at 100% scale on #FF8C00.
-                      </p>
-                  </div>
-              </div>
-          </TabsContent>
+          <div className="px-4 py-2 bg-background border-b shrink-0">
+            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 bg-transparent p-0">
+                <TabsTrigger value="users" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_users_tab')}</TabsTrigger>
+                <TabsTrigger value="groups" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_groups_tab')}</TabsTrigger>
+                <TabsTrigger value="channels" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_channels_tab')}</TabsTrigger>
+                <TabsTrigger value="broadcast" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_broadcast_tab')}</TabsTrigger>
+                <TabsTrigger value="update" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Update</TabsTrigger>
+                <TabsTrigger value="resources" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Icon</TabsTrigger>
+            </TabsList>
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-4 pb-20">
+                <TabsContent value="users" className="mt-0 outline-none">
+                    <ItemList
+                    items={users}
+                    loading={usersLoading}
+                    renderItem={(user: User) => (
+                        <UserItem 
+                        key={user.id} 
+                        user={user} 
+                        onBan={handleBanUser} 
+                        onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }}
+                        onToggleBeta={handleToggleBetaStatus}
+                        onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }}
+                        />
+                    )}
+                    />
+                </TabsContent>
+                <TabsContent value="groups" className="mt-0 outline-none">
+                    <ItemList
+                    items={groups}
+                    loading={chatsLoading}
+                    renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'group' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
+                    />
+                </TabsContent>
+                <TabsContent value="channels" className="mt-0 outline-none">
+                    <ItemList
+                    items={channels}
+                    loading={chatsLoading}
+                    renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
+                    />
+                </TabsContent>
+                <TabsContent value="broadcast" className="mt-0 outline-none">
+                    <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                        <div className="text-center space-y-2">
+                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <MessageSquare className="h-8 w-8 text-primary" />
+                            </div>
+                            <h2 className="text-2xl font-bold font-headline">{t('admin_broadcast_title')}</h2>
+                            <p className="text-sm text-muted-foreground">{t('admin_broadcast_desc')}</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>{t('admin_broadcast_label')}</Label>
+                                <Textarea 
+                                    value={broadcastText} 
+                                    onChange={e => setBroadcastText(e.target.value)} 
+                                    placeholder="Type broadcast message..." 
+                                    className="min-h-[150px] rounded-xl bg-muted/50 border-none"
+                                />
+                            </div>
+                            <Button 
+                                className="w-full h-12 rounded-xl font-bold gap-2" 
+                                onClick={handleBroadcast} 
+                                disabled={!broadcastText.trim() || isBroadcasting}
+                            >
+                                {isBroadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                {t('admin_broadcast_button')}
+                            </Button>
+                        </div>
+                    </div>
+                </TabsContent>
+                <TabsContent value="update" className="mt-0 outline-none">
+                    <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                        <div className="text-center space-y-2">
+                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <Upload className="h-8 w-8 text-primary" />
+                            </div>
+                            <h2 className="text-2xl font-bold font-headline">Publish APK Update</h2>
+                            <p className="text-sm text-muted-foreground">Upload a new APK version. Users will be notified every 10 launches.</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Version Name</Label>
+                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4.3 Beta" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>APK File</Label>
+                                <div 
+                                    className={cn(
+                                        "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
+                                        apkFile ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"
+                                    )}
+                                    onClick={() => apkInputRef.current?.click()}
+                                >
+                                    <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                                    {apkFile ? (
+                                        <div className="flex items-center gap-3">
+                                            <FileJson className="h-8 w-8 text-primary" />
+                                            <div className="text-left">
+                                                <p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">{(apkFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground font-medium">Select APK file</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                                <Label className="cursor-pointer">{t('admin_notify_update_label')}</Label>
+                                <Switch checked={notifyUpdate} onCheckedChange={setNotifyUpdate} />
+                            </div>
+                            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || !newVersion.trim() || isUploadingApk}>
+                                {isUploadingApk ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Publish Update"}
+                            </Button>
+                        </div>
+                    </div>
+                </TabsContent>
+                <TabsContent value="resources" className="mt-0 outline-none">
+                    <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                        <div className="text-center space-y-2">
+                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <ImageIcon className="h-8 w-8 text-primary" />
+                            </div>
+                            <h2 className="text-2xl font-bold font-headline">Android App Icon Preview</h2>
+                        </div>
+                        <div className="flex flex-col items-center gap-6 p-10 bg-muted/20 rounded-[2.5rem] border">
+                            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Icon Mockup</div>
+                            <div className="w-24 h-24 bg-[#FF8C00] rounded-[1.75rem] shadow-xl flex items-center justify-center border-2 border-white/10 relative overflow-hidden">
+                                <div className="absolute inset-0 bg-black/5" />
+                                <svg width="72" height="72" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
+                                    <g transform="translate(4, 4)">
+                                        <path d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" />
+                                        <path d="M 20 78 L 10 90 L 25 78" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M 80 22 L 90 10 L 75 22" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+            </div>
+          </ScrollArea>
         </Tabs>
       </main>
 
@@ -639,31 +613,18 @@ function AdminPage() {
           <DialogHeader>
             <DialogTitle>Grant InfGold</DialogTitle>
             <DialogDescription>
-              Enter the amount of InfGold to grant to {selectedUserForGold?.name}. This will be added to their current balance.
+              Enter the amount of InfGold to grant to {selectedUserForGold?.name}.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="gold-amount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="gold-amount"
-                type="number"
-                value={goldAmount}
-                onChange={(e) => setGoldAmount(e.target.value)}
-                className="col-span-3"
-              />
+              <Label htmlFor="gold-amount" className="text-right">Amount</Label>
+              <Input id="gold-amount" type="number" value={goldAmount} onChange={(e) => setGoldAmount(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGoldDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (selectedUserForGold) {
-                handleGrantGold(selectedUserForGold.id, parseInt(goldAmount) || 0);
-                setGoldDialogOpen(false);
-              }
-            }}>Grant Gold</Button>
+            <Button onClick={() => { if (selectedUserForGold) { handleGrantGold(selectedUserForGold.id, parseInt(goldAmount) || 0); setGoldDialogOpen(false); } }}>Grant Gold</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -679,16 +640,8 @@ interface ItemListProps<T> {
 }
 function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
   const { t } = useLanguage();
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  if (!items || items.length === 0) {
-    return <p className="text-center text-muted-foreground">{t('admin_no_items')}</p>;
-  }
+  if (loading) return <div className="flex h-40 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (!items || items.length === 0) return <p className="text-center text-muted-foreground py-8">{t('admin_no_items')}</p>;
   return <div className="space-y-2">{items.map(renderItem)}</div>;
 }
 
@@ -701,7 +654,7 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: 
   const displayUsername = user.isDeleted ? '' : user.username;
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border p-3">
+    <div className="flex items-center gap-4 rounded-xl border p-3 bg-card/50">
       <UserAvatarWithStatus user={user} />
       <div className="flex-1 truncate">
         <div className="font-semibold flex items-center gap-2">
@@ -714,10 +667,7 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: 
       </div>
       {!user.isDeleted && (
         <div className="flex flex-col items-end gap-1">
-          <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(
-              user.status === 'online' && 'bg-green-500',
-              user.status === 'away' && 'bg-yellow-500',
-          )}>
+          <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(user.status === 'online' && 'bg-green-500', user.status === 'away' && 'bg-yellow-500')}>
               {user.status}
           </Badge>
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold">
@@ -730,31 +680,15 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: 
       <div className="flex items-center gap-2">
         {!user.isDeleted && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl">
               <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => onRename(user)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                <span>Rename Handle</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onGrantGold(user)}>
-                <Coins className="mr-2 h-4 w-4" />
-                <span>Grant InfGold</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}>
-                <Star className="mr-2 h-4 w-4" />
-                <span>{t('admin_toggle_beta')}</span>
-              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onRename(user)}><Pencil className="mr-2 h-4 w-4" /><span>Rename Handle</span></DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onGrantGold(user)}><Coins className="mr-2 h-4 w-4" /><span>Grant InfGold</span></DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}><Star className="mr-2 h-4 w-4" /><span>{t('admin_toggle_beta')}</span></DropdownMenuItem>
               {!isProtectedUser && (
-                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                  <Ban className="mr-2 h-4 w-4" />
-                  <span>{t('admin_ban_user_button')}</span>
-                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Ban className="mr-2 h-4 w-4" /><span>{t('admin_ban_user_button')}</span></DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -762,19 +696,9 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: 
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-            <AlertDialogDescription>
-            {t('admin_ban_user_confirm_desc', { name: user.name, username: user.username })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { onBan(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
-            {t('admin_ban_user_button')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('admin_ban_user_confirm_desc', { name: user.name, username: user.username })}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => { onBan(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }), "rounded-xl")}>{t('admin_ban_user_button')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -788,59 +712,28 @@ function ChatItem({ chat, onDelete, onRename }: { chat: Chat; onDelete: (id: str
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   return (
-    <div className="flex items-center gap-4 rounded-lg border p-3">
-      <Avatar>
-         {chat.avatar ? (
-          <AvatarImage src={chat.avatar} alt={chat.name} />
-        ) : (
-          <AvatarFallback>
-            <Icon className="h-5 w-5 text-muted-foreground" />
-          </AvatarFallback>
-        )}
-      </Avatar>
+    <div className="flex items-center gap-4 rounded-xl border p-3 bg-card/50">
+      <Avatar>{chat.avatar ? <AvatarImage src={chat.avatar} alt={chat.name} /> : <AvatarFallback><Icon className="h-5 w-5 text-muted-foreground" /></AvatarFallback>}</Avatar>
       <div className="flex-1 truncate">
-        <div className="font-semibold flex items-center gap-2">
-          {chat.name}
-          {isVerifiedChat && <VerifiedBadge />}
-        </div>
+        <div className="font-semibold flex items-center gap-2">{chat.name}{isVerifiedChat && <VerifiedBadge />}</div>
         <p className="text-sm text-muted-foreground">{t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: chat.members?.length || 0 })}</p>
         {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
       </div>
       
       {!isVerifiedChat && chat.id !== 'GENERAL_CHAT' && (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => onRename(chat)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    <span>Rename Link</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>{t('delete')}</span>
-                </DropdownMenuItem>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl">
+                <DropdownMenuItem onSelect={() => onRename(chat)}><Pencil className="mr-2 h-4 w-4" /><span>Rename Link</span></DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete')}</span></DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('admin_delete_chat_confirm_desc', { name: chat.name })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {onDelete(chat.id); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }))}>
-              {t('delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('admin_delete_chat_confirm_desc', { name: chat.name })}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {onDelete(chat.id); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }), "rounded-xl")}>{t('delete')}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
