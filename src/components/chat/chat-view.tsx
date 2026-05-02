@@ -340,6 +340,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const isMember = useMemo(() => item?.members?.includes(currentUser.uid) ?? false, [item?.members, currentUser.uid]);
 
+  const messagesQuery = useMemoFirebase(() => {
+    if (!db || !isMember) return null;
+    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
+  }, [db, item.id, isMember, messageLimit]);
+
+  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
+  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
   }, []);
@@ -370,14 +378,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         requestAnimationFrame(() => scrollToBottom('auto'));
     }
   }, [scrollToBottom]);
-
-  const messagesQuery = useMemoFirebase(() => {
-    if (!db || !isMember) return null;
-    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
-  }, [db, item.id, isMember, messageLimit]);
-
-  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
-  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
 
   const allUserIdsToFetch = useMemo(() => {
     const ids = new Set<string>(item.members || []);
