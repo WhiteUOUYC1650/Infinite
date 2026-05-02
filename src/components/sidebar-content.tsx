@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -680,6 +679,10 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isBetaTester = !isSavedMessages && otherUser.isBetaTester;
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
+  // Hide unread badge for the official bot
+  const isOfficialBot = otherUser?.username === '@InfiniteBot' || item.link === '/B/Infinite' || otherUser?.username === '@Infinite';
+  const showBadge = unreadCount > 0 && !isOfficialBot;
+
   const lastMessage = item.lastMessage;
   
   const lastMessageSenderIsCurrentUser = lastMessage?.senderId === currentUserId;
@@ -749,7 +752,7 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                 }
             </div>
         </div>
-        {unreadCount > 0 && (
+        {showBadge && (
             <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary h-4 min-w-4 px-1 text-[9px]">{unreadCount}</Badge>
         )}
     </Button>
@@ -763,6 +766,10 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
+
+  // Hide unread badge for the official bot
+  const isOfficialBot = item.link === '/B/Infinite' || item.name === 'Infinite';
+  const showBadge = unreadCount > 0 && !isOfficialBot;
 
   const isRead = useMemo(() => {
     if (!lastMessage || !senderIsCurrentUser || !lastMessage.readBy) return false;
@@ -836,7 +843,7 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
           )}
         </div>
       </div>
-      {unreadCount > 0 && (
+      {showBadge && (
           <Badge className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary h-4 min-w-4 px-1 text-[9px]">{unreadCount}</Badge>
       )}
     </Button>

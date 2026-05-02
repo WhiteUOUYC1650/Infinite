@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -323,10 +322,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const activeStreamRef = useRef<MediaStream | null>(null);
-  
-  const isPrem = currentUser.subscriptionTier === 'prem';
-  const maxSizeText = isPrem ? '4GB' : '1GB';
-  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
 
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
   const { data: liveChatData } = useDoc<Chat>(chatDocRef);
@@ -347,6 +342,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
   const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
+
+  const isPrem = currentUser.subscriptionTier === 'prem';
+  const maxSizeText = isPrem ? '4GB' : '1GB';
+  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
@@ -389,6 +388,41 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [item.members, messages]);
 
   const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
+
+  // Mark messages as read and clear unread count
+  useEffect(() => {
+    if (!db || !currentUser.uid || !item.id || !messages) return;
+
+    const markAsRead = async () => {
+        try {
+            // 1. Clear unread count for current user in the chat document
+            if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) {
+                await updateDoc(doc(db, 'chats', item.id), {
+                    [`unreadCounts.${currentUser.uid}`]: 0
+                });
+            }
+
+            // 2. Mark individual messages as read (the ones currently visible/loaded)
+            const unreadMessages = messages.filter(m => 
+                m.senderId !== currentUser.uid && 
+                (!m.readBy || !m.readBy.includes(currentUser.uid))
+            );
+
+            if (unreadMessages.length > 0) {
+                const batch = writeBatch(db);
+                unreadMessages.forEach(m => {
+                    const mref = doc(db, 'chats', item.id, 'messages', m.id);
+                    batch.update(mref, { readBy: arrayUnion(currentUser.uid) });
+                });
+                await batch.commit();
+            }
+        } catch (e) {
+            console.error("Mark read failed:", e);
+        }
+    };
+
+    markAsRead();
+  }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
 
   useEffect(() => {
     const listElement = listInnerRef.current;
