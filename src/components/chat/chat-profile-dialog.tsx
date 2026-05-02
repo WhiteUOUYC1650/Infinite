@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, Phone } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +50,6 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
 import { COMMON_EMOJIS } from './chat-view';
-import { Checkbox } from '../ui/checkbox';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -96,17 +96,15 @@ async function getCroppedImg(
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
-  canvas.width = crop.width;
-  canvas.height = crop.height;
+  const pixelRatio = window.devicePixelRatio;
+  canvas.width = crop.width * pixelRatio;
+  canvas.height = crop.height * pixelRatio;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
     throw new Error('No 2d context');
   }
 
-  const pixelRatio = window.devicePixelRatio;
-  canvas.width = crop.width * pixelRatio;
-  canvas.height = crop.height * pixelRatio;
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   ctx.imageSmoothingQuality = 'high';
 
@@ -373,7 +371,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] max-h-[85vh]", experimentalDesign && !isEditing ? "rounded-[2rem] border-none" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] max-h-[85vh]", experimentalDesign && !isEditing ? "rounded-[2rem] border-none shadow-2xl" : "rounded-lg")}>
         {imageToCrop ? cropperContent : isEditing ? (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden p-6">
@@ -490,7 +488,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                                                             className={cn(
                                                                 "w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all",
                                                                 field.value?.includes(emoji) 
-                                                                    ? "bg-primary/20 border-2 border-primary" 
+                                                                    ? "bg-primary/20 border-primary" 
                                                                     : "bg-background border border-border opacity-50 grayscale hover:opacity-100 hover:grayscale-0"
                                                             )}
                                                         >
@@ -570,43 +568,41 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                             <p className="text-muted-foreground font-medium">{chat.link}</p>
                         </div>
 
-                        {experimentalDesign && (
-                            <div className={cn("grid gap-3 w-full mt-6", chat.type === 'channel' ? "grid-cols-3" : "grid-cols-2")}>
-                                {chat.type === 'channel' && (
-                                    <button 
-                                        onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)}
-                                        disabled={!chat.discussionChatId}
-                                        className={cn(
-                                            "flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm transition-all active:scale-95",
-                                            !chat.discussionChatId ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-md"
-                                        )}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
-                                            <MessageSquare className="w-5 h-5 text-blue-500" />
-                                        </div>
-                                        <span className="text-[10px] font-bold uppercase tracking-tight">{t('join_discussion_button')}</span>
-                                    </button>
-                                )}
+                        <div className={cn("grid gap-3 w-full mt-6 px-6", chat.type === 'channel' ? "grid-cols-3" : "grid-cols-2")}>
+                            {chat.type === 'channel' && (
                                 <button 
-                                    onClick={handleCopyLink}
-                                    className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
+                                    onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)}
+                                    disabled={!chat.discussionChatId}
+                                    className={cn(
+                                        "flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm transition-all active:scale-95",
+                                        !chat.discussionChatId ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-md"
+                                    )}
                                 >
-                                    <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
-                                        <Share2 className="w-5 h-5 text-orange-500" />
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
+                                        <MessageSquare className="w-5 h-5 text-blue-500" />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-tight">{t('join_discussion_button')}</span>
                                 </button>
-                                <button 
-                                    onClick={() => setIsMuted(!isMuted)}
-                                    className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
-                                >
-                                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-muted")}>
-                                        {isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="w-5 h-5 text-muted-foreground" />}
-                                    </div>
-                                    <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span>
-                                </button>
-                            </div>
-                        )}
+                            )}
+                            <button 
+                                onClick={handleCopyLink}
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center">
+                                    <Share2 className="w-5 h-5 text-orange-500" />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span>
+                            </button>
+                            <button 
+                                onClick={() => setIsMuted(!isMuted)}
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
+                                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-muted")}>
+                                    {isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="w-5 h-5 text-muted-foreground" />}
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div className={cn("px-6 space-y-6", experimentalDesign ? "pb-8" : "py-4")}>

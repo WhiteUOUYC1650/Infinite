@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -66,7 +67,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.4.2 Beta');
+  const [newVersion, setNewVersion] = useState('0.4.3 Beta');
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
 
@@ -438,7 +439,7 @@ function AdminPage() {
                   <div className="space-y-4">
                       <div className="space-y-2">
                           <Label>Version Name</Label>
-                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4.2 Beta" />
+                          <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4.3 Beta" />
                       </div>
 
                       <div className="space-y-2">
@@ -450,7 +451,7 @@ function AdminPage() {
                             )}
                             onClick={() => apkInputRef.current?.click()}
                           >
-                              <input type="file" token={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                              <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
                               {apkFile ? (
                                   <div className="flex items-center gap-3">
                                       <FileJson className="h-8 w-8 text-primary" />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -22,10 +23,10 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake } from 'lucide-react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { doc, runTransaction, increment, getDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction, increment, getDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
@@ -67,6 +68,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
   const getStatusText = (user: User) => {
     if (user.isBot || user.isDeleted) return '';
+    if (!user.status) return '';
     const statusKey = statusTranslations[user.status] || 'offline';
     let statusText = t(statusKey);
     
@@ -81,6 +83,35 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop;
     setShowCompactHeader(scrollTop > 100);
+  };
+
+  const handleStartMessage = async () => {
+    if (!db || !authUser) return;
+    const members = [authUser.uid, user.id].sort();
+    const chatId = members.join('_');
+    const chatRef = doc(db, 'chats', chatId);
+    const chatSnap = await getDoc(chatRef);
+
+    if (!chatSnap.exists()) {
+        await setDoc(chatRef, {
+            type: 'dm',
+            members: members,
+            unreadCounts: { [authUser.uid]: 0, [user.id]: 0 },
+        });
+    }
+    onSendMessage(user);
+    onOpenChange(false);
+  };
+
+  const handleInitiateCall = (isVideo: boolean) => {
+    window.dispatchEvent(new CustomEvent('initiate-call', { 
+        detail: { 
+            chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, 
+            otherUser: user, 
+            isVideo 
+        } 
+    }));
+    onOpenChange(false);
   };
 
   const handleSendGold = async () => {
@@ -215,10 +246,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         </div>
                     )}
 
-                    {experimentalDesign && !user.isBot && !user.isDeleted && (
+                    {!user.isBot && !user.isDeleted && (
                         <div className="grid grid-cols-2 gap-3 w-full mt-4 px-2">
                             <button 
-                                onClick={() => onSendMessage(user)}
+                                onClick={handleStartMessage}
                                 className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
                             >
                                 <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center">
@@ -244,7 +275,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('mute')}</span>
                             </button>
-                            <button className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95">
+                            <button 
+                                onClick={() => handleInitiateCall(false)}
+                                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"
+                            >
                                 <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
                                     <Phone className="w-5 h-5 text-green-500" />
                                 </div>
@@ -276,7 +310,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
             {!experimentalDesign && (
                 <div className='shrink-0 p-6 border-t flex justify-center bg-background'>
-                    <Button onClick={() => onSendMessage(user)} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8 w-full h-12 font-bold">
+                    <Button onClick={handleStartMessage} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8 w-full h-12 font-bold">
                         {t('message')}
                     </Button>
                 </div>

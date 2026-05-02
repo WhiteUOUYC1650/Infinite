@@ -532,6 +532,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
 
+  // Compute members with details for the profile dialog
+  const membersWithDetails = useMemo(() => {
+    return item.members.map(id => memberDetails[id]).filter(Boolean);
+  }, [item.members, memberDetails]);
+
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -595,6 +600,37 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setMessageContent(originalContent);
         setReplyToMessage(originalReplyTo);
     } finally { setIsSending(false); }
+  };
+
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    if (!db || !currentUser.uid) return;
+    const messageRef = doc(db, 'chats', item.id, 'messages', messageId);
+    
+    try {
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(messageRef);
+        if (!snap.exists()) return;
+        
+        const data = snap.data() as Message;
+        const reactions = data.reactions || {};
+        const currentUids = reactions[emoji] || [];
+        
+        if (currentUids.includes(currentUser.uid)) {
+            // Remove reaction
+            const newUids = currentUids.filter(uid => uid !== currentUser.uid);
+            if (newUids.length === 0) {
+                transaction.update(messageRef, { [`reactions.${emoji}`]: deleteField() });
+            } else {
+                transaction.update(messageRef, { [`reactions.${emoji}`]: newUids });
+            }
+        } else {
+            // Add reaction
+            transaction.update(messageRef, { [`reactions.${emoji}`]: arrayUnion(currentUser.uid) });
+        }
+      });
+    } catch (e) {
+      console.error("Reaction toggle failed", e);
+    }
   };
 
   const startRecording = async (type: 'voice' | 'circle') => {
@@ -991,7 +1027,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onDelete={handleDeleteMessage} onToggleReaction={() => {}} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} memberDetails={memberDetails} onSelectChat={onSelectChat} onForward={setForwardingMessage} onVote={() => {}} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
                       })}
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
@@ -1054,13 +1090,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
-      {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
+      {showChatProfile && <ChatProfileDialog chat={item} members={membersWithDetails} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={() => {}} /><ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={() => {}} currentUser={currentUser} />
     </div>
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, memberDetails, onSelectChat, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; memberDetails: Record<string, User>; onSelectChat: (chat: PopulatedChat) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
     const db = useFirestore(); 
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
@@ -1229,6 +1265,28 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
+                
+                {/* Reactions UI */}
+                {message.reactions && Object.keys(message.reactions).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(message.reactions).map(([emoji, uids]) => (
+                            <button
+                                key={emoji}
+                                onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }}
+                                className={cn(
+                                    "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold border transition-all",
+                                    uids.includes(currentUser.uid) 
+                                        ? "bg-primary/20 border-primary text-primary" 
+                                        : "bg-muted border-transparent text-muted-foreground hover:bg-muted/80"
+                                )}
+                            >
+                                <span>{emoji}</span>
+                                <span>{uids.length}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>
                     {message.editedAt && <span className="font-bold">{t('edited')}</span>}
                     <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
@@ -1241,7 +1299,29 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
-                <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align={alignRight ? 'end' : 'start'}><DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>{canCopy && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>{canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}{isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>
+                <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-56 rounded-xl">
+                        <div className="p-2 border-b">
+                            <div className="grid grid-cols-5 gap-1">
+                                {COMMON_EMOJIS.slice(0, 10).map(emoji => (
+                                    <button
+                                        key={emoji}
+                                        onClick={() => { onToggleReaction(message.id, emoji); }}
+                                        className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg text-lg transition-transform active:scale-125"
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
+                        {canCopy && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                        <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
+                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
     );
