@@ -58,7 +58,7 @@ service cloud.firestore {
     // Реестр имен
     match /usernames/{username} {
         allow get: if true;
-        allow list: if false;
+        allow list: if isAdmin();
         allow create: if isAdmin() || request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
         allow update: if false;
         allow delete: if isAdmin() || resource.data.uid == request.auth.uid || isBotOwner(resource.data.uid);
@@ -149,16 +149,17 @@ service cloud.firestore {
     // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.ownerId == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.ownerId == request.auth.uid);
     }
 
     match /botLinks/{linkId} {
       allow get: if true;
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
     }
   }
 }
