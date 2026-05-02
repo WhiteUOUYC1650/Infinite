@@ -655,7 +655,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <div className='shrink-0 h-10 w-10'>{item.type === 'dm' ? <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} /> : <Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{getChatIcon()}</AvatarFallback></Avatar>}</div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? (otherUser?.name || t('direct_message_tab')) : item.name))}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
-                        {!isSavedMessages && <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">{item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline')))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}</div>}
+                        {!isSavedMessages && <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">{item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.isBot ? <span className="font-bold text-primary">{t('bot_status')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline'))))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}</div>}
                     </div>
                 </button>
             </div>
@@ -673,7 +673,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={() => {}} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} /></React.Fragment>;
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={() => {}} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} /></React.Fragment>;
                       })}
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
@@ -711,7 +711,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
+function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, memberDetails }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; memberDetails: Record<string, User> }) {
     const { t } = useLanguage();
     const { toast } = useToast();
     const db = useFirestore(); 
@@ -839,7 +839,36 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={{}} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
-                {message.reactions && Object.keys(message.reactions).length > 0 && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted")}><span>{emoji}</span><span>{uids.length}</span></button>); })}</div>)}
+                {message.reactions && Object.keys(message.reactions).length > 0 && (
+                    <div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>
+                        {Object.entries(message.reactions).map(([emoji, uids]) => { 
+                            const hasReacted = uids.includes(currentUser.uid); 
+                            const isChannel = chatType === 'channel';
+                            return (
+                                <button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted")}>
+                                    <span>{emoji}</span>
+                                    {isChannel ? (
+                                        <span>{uids.length}</span>
+                                    ) : (
+                                        <div className="flex -space-x-1.5 items-center">
+                                            {uids.slice(0, 4).map((uid) => {
+                                                const reactor = memberDetails[uid];
+                                                return (
+                                                    <Avatar key={uid} className="h-4 w-4 border-2 border-background ring-1 ring-border/20 shrink-0">
+                                                        <AvatarImage src={reactor?.avatar} />
+                                                        <AvatarFallback className="text-[6px] font-black">{reactor?.name?.charAt(0) || '?'}</AvatarFallback>
+                                                    </Avatar>
+                                                );
+                                            })}
+                                            {uids.length > 4 && <span className="ml-1.5 text-[9px] font-black opacity-80">+{uids.length - 4}</span>}
+                                            {uids.length === 0 && <span>0</span>}
+                                        </div>
+                                    )}
+                                </button>
+                            ); 
+                        })}
+                    </div>
+                )}
                 <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}</span>)}</div>
             </div>
 
@@ -851,7 +880,14 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                           <DropdownMenuSub>
                               <DropdownMenuSubTrigger className="h-10 rounded-xl"><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
                               <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-2 w-64 border-none shadow-2xl rounded-2xl"><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-11 w-11 flex items-center justify-center transition-all active:scale-125 hover:bg-primary/10 rounded-xl", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
+                                  <DropdownMenuSubContent className="p-1.5 w-52 border-none shadow-2xl rounded-2xl">
+                                      <div className="grid grid-cols-5 gap-0.5">
+                                          {COMMON_EMOJIS.map(emoji => { 
+                                              const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
+                                              return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-9 w-9 flex items-center justify-center transition-all active:scale-125 hover:bg-primary/10 rounded-lg text-lg", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); 
+                                          })}
+                                      </div>
+                                  </DropdownMenuSubContent>
                               </DropdownMenuPortal>
                           </DropdownMenuSub>
                           <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl"><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
@@ -866,7 +902,14 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                           <DropdownMenuSub>
                               <DropdownMenuSubTrigger><SmilePlus className="mr-2 h-4 w-4" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
                               <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-1 w-64"><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-10 w-10 flex items-center justify-center hover:bg-accent rounded-sm", sel && "bg-accent")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
+                                  <DropdownMenuSubContent className="p-1 w-52">
+                                      <div className="grid grid-cols-5 gap-0.5">
+                                          {COMMON_EMOJIS.map(emoji => { 
+                                              const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
+                                              return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-9 w-9 flex items-center justify-center hover:bg-accent rounded-md text-lg", sel && "bg-accent")}>{emoji}</button>); 
+                                          })}
+                                      </div>
+                                  </DropdownMenuSubContent>
                               </DropdownMenuPortal>
                           </DropdownMenuSub>
                           <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>

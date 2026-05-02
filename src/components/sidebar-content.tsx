@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -488,6 +489,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                           <div className={cn("font-semibold truncate text-sm", selectedId === [currentUser.uid, bot.id].sort().join('_') && "text-sidebar-accent-foreground")}>{bot.name}</div>
                                           <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />
                                       </div>
+                                      <p className="text-[10px] text-primary font-bold">{t('bot_status')}</p>
                                   </div>
                               </div>
                           </Button>
@@ -727,7 +729,9 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
                         </>
                     )}
                 </div>
-                {displayContent && 
+                {otherUser?.isBot ? (
+                    <p className="text-[10px] text-primary font-bold">{t('bot_status')}</p>
+                ) : displayContent && 
                     <div className={cn("text-[11px] truncate flex items-center gap-1", isSelected ? "text-sidebar-accent-foreground/80" : "text-muted-foreground")}>
                         {lastMessageSenderIsCurrentUser && !isSavedMessages && (
                             (lastMessage.videoStatus === 'uploading' || lastMessage.musicStatus === 'uploading') ? (

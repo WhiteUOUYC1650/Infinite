@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -34,7 +35,8 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const { experimentalDesign } = useTheme();
 
   const getStatusText = (user: AuthenticatedUser) => {
-    if (user.isBot || user.isDeleted) return '';
+    if (user.isDeleted) return '';
+    if (user.isBot) return t('bot_status');
     if (!user.status) return '';
     const statusKey = statusTranslations[user.status] || 'offline';
     let statusText = t(statusKey);
@@ -70,7 +72,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
               {user.isBetaTester && <BetaBadge />}
             </h2>
             <p className="text-muted-foreground text-sm font-medium">{displayUsername}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{getStatusText(user)}</p>
+            <p className={cn("text-[10px] uppercase tracking-wider font-black", user.isBot ? "text-primary" : "text-muted-foreground")}>{getStatusText(user)}</p>
           </div>
         </div>
 
@@ -133,7 +135,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                     ) : (
                         <p className="text-muted-foreground text-sm">{displayUsername}</p>
                     )}
-                    <p className="text-xs text-muted-foreground mt-1">{getStatusText(user)}</p>
+                    <p className={cn("text-xs mt-1 font-bold", user.isBot ? "text-primary" : "text-muted-foreground")}>{getStatusText(user)}</p>
 
                     {birthdayText && (
                         <div className="flex items-center justify-center gap-2 mt-2 text-xs font-bold text-primary">

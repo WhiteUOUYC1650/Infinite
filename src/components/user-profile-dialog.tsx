@@ -82,7 +82,9 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   }, [open, showSendGold, onOpenChange]);
 
   const getStatusText = (user: User) => {
-    if (user.isBot || user.isDeleted || !user.status) return '';
+    if (user.isDeleted) return '';
+    if (user.isBot) return t('bot_status');
+    if (!user.status) return '';
     let statusText = t(statusTranslations[user.status] || 'offline');
     if (user.status === 'offline' && user.lastSeen) {
       statusText = `${t('was_online')} ${format(new Date(user.lastSeen.seconds * 1000), 'dd.MM.yyyy, HH:mm')}`;
@@ -143,7 +145,8 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     </DialogHeader>
                     <div className="text-center py-4">
                         <div className="flex items-center justify-center gap-2"><h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{displayName}</h2>{!user.isDeleted && (<>{(user.username === '@Infinite' || user.username === '@InfiniteBot' || user.username === '@VeoBot' || user.username === '@GeminiBot') && <VerifiedBadge />}{user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}{user.isBetaTester && <BetaBadge />}</>)}{!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}</div>
-                        <p className="text-muted-foreground font-medium">{displayUsername}</p><p className="text-sm text-muted-foreground mt-1">{getStatusText(user)}</p>
+                        <p className="text-muted-foreground font-medium">{displayUsername}</p>
+                        <p className={cn("text-sm mt-1 font-black uppercase tracking-widest", user.isBot ? "text-primary" : "text-muted-foreground")}>{getStatusText(user)}</p>
                     </div>
                     {!user.isDeleted && !user.isBot && (<div className="flex items-center justify-center gap-2 mb-4"><InfGoldIcon className="h-5 w-5" /><span className="font-bold text-lg">{user.infGoldBalance ?? 0}</span></div>)}
                     {birthdayText && (<div className="flex items-center justify-center gap-2 mb-4 text-xs font-bold text-primary"><Cake className="h-3.5 w-3.5" /><span>{birthdayText}</span></div>)}
