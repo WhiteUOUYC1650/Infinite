@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -28,8 +29,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
   DropdownMenuPortal,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -429,14 +430,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     setIsSending(true);
     const originalContent = finalContent;
     const originalReplyTo = replyToMessage;
+    
+    // Resolve correct sender name for replies
+    let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
+    if (originalReplyTo && memberDetails[originalReplyTo.senderId]) {
+      resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name;
+    }
+
     setMessageContent(''); setFileToSend(null); setReplyToMessage(null);
     try {
-        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo);
-        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration);
-        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration);
-        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo);
-        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo);
-        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo);
+        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
+        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName);
+        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName);
+        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
+        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
+        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName);
     } catch (error) { console.error(error); setMessageContent(originalContent); setReplyToMessage(originalReplyTo); }
     finally { setIsSending(false); }
   };
@@ -497,11 +505,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try { await deleteDoc(doc(db, 'chats', item.id, 'messages', messageId)); toast({ title: t('dm_success') }); } catch (e) { console.error("Delete failed", e); }
   };
 
-  const handleSendVoice = async (p: any, c: string, r: any, d: number) => {
+  const handleSendVoice = async (p: any, c: string, r: any, d: number, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const sname = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -513,11 +520,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await updateDoc(mref, { voiceStatus: 'complete', voiceChunkIds: cids }); await cacheFile(mref.id, p.file);
   };
 
-  const handleSendCircle = async (p: any, c: string, r: any, d: number) => {
+  const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const sname = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -529,11 +535,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await updateDoc(mref, { circleStatus: 'complete', circleChunkIds: cids }); await cacheFile(mref.id, p.file);
   };
 
-  const handleSendTextOrImage = async (i: any, c: string, r: any) => {
+  const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const ts = Timestamp.now();
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const sname = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], senderName: currentUser.name || currentUser.username, ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -543,11 +548,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await batch.commit(); if (i) fetchAndCacheImage(mref.id, i);
   };
 
-  const handleSendVideo = async (p: any, c: string, r: any) => {
+  const handleSendVideo = async (p: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const sname = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -559,11 +563,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await updateDoc(mref, { videoStatus: 'complete', videoChunkIds: cids }); await cacheFile(mref.id, p.file);
   };
 
-  const handleSendMusic = async (p: any, c: string, r: any) => {
+  const handleSendMusic = async (p: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const sname = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -575,11 +578,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await updateDoc(mref, { musicStatus: 'complete', musicChunkIds: cids }); await cacheFile(mref.id, p.file);
   };
 
-  const handleSendGenericFile = async (p: any, c: string, r: any) => {
+  const handleSendGenericFile = async (p: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = Timestamp.now();
-    const sname = r ? (memberDetails[r.senderId]?.name || r.senderName || 'User') : '';
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
@@ -658,7 +660,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </button>
             </div>
             <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.id !== 'GENERAL_CHAT' && (
-                    <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
+                    <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
                 )}
             </div>
         </div>
@@ -695,7 +697,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: Timestamp.now(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} />
       <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { 
           if (!db || !forwardingMessage) return; 
-          const { id: _, ...messageData } = forwardingMessage; // Ensure we don't pass old ID
+          const { id: _, ...messageData } = forwardingMessage; 
           addDoc(collection(db, 'chats', cid, 'messages'), { 
               ...messageData, 
               senderId: currentUser.uid, 
@@ -711,6 +713,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
 function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; }) {
     const { t } = useLanguage();
+    const { toast } = useToast();
     const db = useFirestore(); 
     const { experimentalDesign } = useTheme();
     const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
@@ -773,9 +776,48 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         }
     };
 
+    const handleSaveToDevice = async () => {
+      if (!mediaUrl) return;
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { Filesystem, Directory } = await import('@capacitor/filesystem');
+          const cleanBase64 = mediaUrl.split(',')[1];
+          const ext = message.imageUrl ? 'jpg' : message.videoStatus ? 'mp4' : message.musicStatus ? 'mp3' : 'bin';
+          const fileName = `Infinite_${message.id}.${ext}`;
+          
+          await Filesystem.writeFile({
+            path: fileName,
+            data: cleanBase64,
+            directory: Directory.Documents,
+          });
+          toast({ title: t('dm_success'), description: t('save_to_device') });
+        } catch (e) {
+          console.error(e);
+          toast({ variant: 'destructive', title: 'Error', description: "Failed to save file." });
+        }
+      } else {
+        const link = document.createElement('a');
+        link.href = mediaUrl;
+        link.download = message.fileName || `Infinite_${message.id}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: t('dm_success') });
+      }
+    };
+
     const isCircleOnly = message.circleStatus === 'complete' && !message.content;
     const canCopy = message.content && !message.poll;
     const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus;
+    
+    // PERMISSIONS 0.4.3
+    const isAdmin = currentUser.username === '@Infinite';
+    const isSender = isCurrentUser;
+    const isOwner = chat.ownerId === currentUser.uid;
+    const isTargetAdmin = sender?.username === '@Infinite';
+    const canDelete = isAdmin || (!isTargetAdmin && (isSender || isOwner || chat.type === 'dm'));
+
+    const hasSaveableMedia = (message.imageUrl || message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.fileStatus === 'complete') && !message.voiceStatus && !message.circleStatus;
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
@@ -783,7 +825,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  <div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-primary-foreground rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5"))}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5"))}>
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
@@ -797,26 +839,44 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={{}} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
-                {message.reactions && Object.keys(message.reactions).length > 0 && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-primary/20 border-primary text-primary" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted")}><span>{emoji}</span><span>{uids.length}</span></button>); })}</div>)}
+                {message.reactions && Object.keys(message.reactions).length > 0 && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted")}><span>{emoji}</span><span>{uids.length}</span></button>); })}</div>)}
                 <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}</span>)}</div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className={cn("w-56 p-1 shadow-2xl border-none", experimentalDesign ? "rounded-2xl" : "rounded-lg")}>
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent className={cn("p-2 w-64 border-none shadow-2xl", experimentalDesign ? "rounded-2xl" : "rounded-lg")}><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-11 w-11 flex items-center justify-center transition-all active:scale-125 hover:bg-primary/10", experimentalDesign ? "rounded-xl" : "rounded-md", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                        <DropdownMenuItem onSelect={() => onReply(message)} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
-                        {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Copy className="mr-3 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                        <DropdownMenuItem onSelect={() => onForward(message)} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Forward className="mr-3 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
-                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className={cn("h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Edit className="mr-3 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                        {isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className={cn("text-destructive focus:text-destructive focus:bg-destructive/10 h-11", experimentalDesign ? "rounded-xl" : "rounded-md")}><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
-                    </DropdownMenuContent>
+                    {experimentalDesign ? (
+                      <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-48 p-1 shadow-2xl border-none rounded-2xl animate-in zoom-in-95 duration-200">
+                          <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="h-10 rounded-xl"><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
+                              <DropdownMenuPortal>
+                                  <DropdownMenuSubContent className="p-2 w-64 border-none shadow-2xl rounded-2xl"><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-11 w-11 flex items-center justify-center transition-all active:scale-125 hover:bg-primary/10 rounded-xl", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                          <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl"><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
+                          {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl"><Copy className="mr-3 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                          {hasSaveableMedia && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl"><Save className="mr-3 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
+                          <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl"><Forward className="mr-3 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
+                          {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl"><Edit className="mr-3 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                          {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 h-10 rounded-xl"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                      </DropdownMenuContent>
+                    ) : (
+                      <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-44 p-1 animate-in fade-in duration-200">
+                          <DropdownMenuSub>
+                              <DropdownMenuSubTrigger><SmilePlus className="mr-2 h-4 w-4" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
+                              <DropdownMenuPortal>
+                                  <DropdownMenuSubContent className="p-1 w-64"><div className="grid grid-cols-5 gap-1">{COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-10 w-10 flex items-center justify-center hover:bg-accent rounded-sm", sel && "bg-accent")}>{emoji}</button>); })}</div></DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                          </DropdownMenuSub>
+                          <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
+                          {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                          {hasSaveableMedia && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
+                          <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
+                          {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                          {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                      </DropdownMenuContent>
+                    )}
                 </DropdownMenu>
             </div>
         </div>

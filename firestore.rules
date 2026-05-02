@@ -58,7 +58,7 @@ service cloud.firestore {
     // Реестр имен
     match /usernames/{username} {
         allow get: if true;
-        allow list: if false;
+        allow list: if isAdmin();
         allow create: if isAdmin() || request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
         allow update: if false;
         allow delete: if isAdmin() || resource.data.uid == request.auth.uid || isBotOwner(resource.data.uid);
@@ -87,8 +87,21 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content', 'poll'])
         );
         
-        // Владелец чата может удалять ЛЮБЫЕ сообщения в своем чате
-        allow delete: if (resource.data.senderId == request.auth.uid) || isAdmin() || (get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid);
+        // ПРАВИЛА УДАЛЕНИЯ 0.4.3
+        // 1. Админ (@Infinite) может удалять всё.
+        // 2. Никто не может удалить сообщения @Infinite (кроме него самого).
+        // 3. Владельцы чатов могут удалять любые сообщения в своих чатах (кроме сообщений @Infinite).
+        // 4. В DM (личных чатах) пользователи могут удалять сообщения друг друга (кроме сообщений @Infinite).
+        // 5. Любой может удалить свое сообщение.
+        allow delete: if isSignedIn() && (
+          isAdmin() || (
+            get(/databases/$(database)/documents/users/$(resource.data.senderId)).data.username != '@Infinite' && (
+              resource.data.senderId == request.auth.uid || 
+              get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid ||
+              get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'dm'
+            )
+          )
+        );
       }
     }
     
@@ -149,16 +162,17 @@ service cloud.firestore {
     // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.ownerId == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.ownerId == request.auth.uid);
     }
 
     match /botLinks/{linkId} {
       allow get: if true;
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(resource.data.botId)).data.botOwnerId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.botOwnerId == request.auth.uid);
     }
   }
 }
