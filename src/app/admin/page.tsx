@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -8,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2, Send, MessageSquare, Image as ImageIcon } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, CheckCircle2, Send, MessageSquare, Image as ImageIcon, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +57,12 @@ function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useLanguage();
+
+  // Renaming State
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{ id: string, type: 'user' | 'chat', currentVal: string, chatType?: string } | null>(null);
+  const [newVal, setNewVal] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
 
   // Grant Gold State
   const [goldDialogOpen, setGoldDialogOpen] = useState(false);
@@ -145,6 +150,64 @@ function AdminPage() {
         title: t('admin_toast_error_title'),
         description: error.message || "Could not grant InfGold.",
       });
+    }
+  };
+
+  const handleRename = async () => {
+    if (!db || !renameTarget || !newVal.trim() || isRenaming) return;
+    
+    // Stricter regex for English only (letters, numbers, underscores)
+    const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
+    const cleanVal = newVal.trim().replace(/^@/, '').replace(/^\/G\//, '').replace(/^\/C\//, '');
+    
+    if (!englishOnlyRegex.test(cleanVal)) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Only English letters, numbers and underscores allowed.' });
+        return;
+    }
+
+    setIsRenaming(true);
+    try {
+        if (renameTarget.type === 'user') {
+            const newUsername = '@' + cleanVal;
+            const oldUsername = renameTarget.currentVal;
+            
+            await runTransaction(db, async (tx) => {
+                const newUsernameRef = doc(db, 'usernames', newUsername);
+                const oldUsernameRef = doc(db, 'usernames', oldUsername);
+                const userRef = doc(db, 'users', renameTarget.id);
+
+                const newSnap = await tx.get(newUsernameRef);
+                if (newSnap.exists()) throw new Error(t('username_taken_error'));
+
+                tx.update(userRef, { username: newUsername });
+                tx.delete(oldUsernameRef);
+                tx.set(newUsernameRef, { uid: renameTarget.id });
+            });
+        } else {
+            const prefix = renameTarget.chatType === 'group' ? '/G/' : '/C/';
+            const newLink = prefix + cleanVal;
+            const oldLink = renameTarget.currentVal;
+
+            await runTransaction(db, async (tx) => {
+                const newLinkRef = doc(db, 'chatLinks', encodeURIComponent(newLink));
+                const oldLinkRef = doc(db, 'chatLinks', encodeURIComponent(oldLink));
+                const chatRef = doc(db, 'chats', renameTarget.id);
+
+                const newSnap = await tx.get(newLinkRef);
+                if (newSnap.exists()) throw new Error(t('link_taken'));
+
+                tx.update(chatRef, { link: newLink });
+                tx.delete(oldLinkRef);
+                tx.set(newLinkRef, { chatId: renameTarget.id });
+            });
+        }
+
+        toast({ title: t('dm_success') });
+        setRenameDialogOpen(false);
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsRenaming(false);
     }
   };
 
@@ -377,6 +440,7 @@ function AdminPage() {
                   onBan={handleBanUser} 
                   onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }}
                   onToggleBeta={handleToggleBetaStatus}
+                  onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }}
                 />
               )}
             />
@@ -385,14 +449,14 @@ function AdminPage() {
             <ItemList
               items={groups}
               loading={chatsLoading}
-              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} />}
+              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'group' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
             />
           </TabsContent>
           <TabsContent value="channels" className="flex-1 overflow-auto mt-4">
             <ItemList
               items={channels}
               loading={chatsLoading}
-              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} />}
+              renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
             />
           </TabsContent>
           <TabsContent value="broadcast" className="flex-1 overflow-auto mt-4">
@@ -531,6 +595,45 @@ function AdminPage() {
         </Tabs>
       </main>
 
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent className="max-w-sm rounded-[2rem]">
+            <DialogHeader>
+                <DialogTitle>Rename {renameTarget?.type === 'user' ? 'User' : 'Chat'}</DialogTitle>
+                <DialogDescription>
+                    Enter a new unique identifier. English letters, numbers and underscores only.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label>New Value</Label>
+                    <div className="relative">
+                        {renameTarget?.type === 'user' ? (
+                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">@</span>
+                        ) : (
+                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
+                                {renameTarget?.chatType === 'group' ? '/G/' : '/C/'}
+                            </span>
+                        )}
+                        <Input 
+                            value={newVal.replace(/^@/, '').replace(/^\/G\//, '').replace(/^\/C\//, '')} 
+                            onChange={e => setNewVal(e.target.value)}
+                            className={cn(
+                                "rounded-xl h-12 bg-muted/50 border-none font-bold",
+                                renameTarget?.type === 'user' ? "pl-7" : "pl-9"
+                            )}
+                        />
+                    </div>
+                </div>
+            </div>
+            <DialogFooter className="flex-col gap-2">
+                <Button onClick={handleRename} disabled={isRenaming || !newVal.trim()} className="w-full h-12 rounded-xl font-bold">
+                    {isRenaming ? <Loader2 className="animate-spin" /> : "Save Changes"}
+                </Button>
+                <Button variant="ghost" onClick={() => setRenameDialogOpen(false)} className="w-full h-12 rounded-xl text-muted-foreground">Cancel</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={goldDialogOpen} onOpenChange={setGoldDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -590,7 +693,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
 }
 
 // --- List Item Components ---
-function UserItem({ user, onBan, onGrantGold, onToggleBeta }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; }) {
+function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -635,6 +738,10 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta }: { user: User; onBa
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onRename(user)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>Rename Handle</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => onGrantGold(user)}>
                 <Coins className="mr-2 h-4 w-4" />
                 <span>Grant InfGold</span>
@@ -674,7 +781,7 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta }: { user: User; onBa
   );
 }
 
-function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => void }) {
+function ChatItem({ chat, onDelete, onRename }: { chat: Chat; onDelete: (id: string) => void; onRename: (chat: Chat) => void; }) {
   const Icon = chat.type === 'group' ? Users : Megaphone;
   const { t } = useLanguage();
   const isVerifiedChat = chat.link === '/G/Infinite' || chat.link === '/C/Infinite';
@@ -708,6 +815,10 @@ function ChatItem({ chat, onDelete }: { chat: Chat; onDelete: (id: string) => vo
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => onRename(chat)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    <span>Rename Link</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                     <Trash2 className="mr-2 h-4 w-4" />
                     <span>{t('delete')}</span>

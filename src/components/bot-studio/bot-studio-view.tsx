@@ -40,13 +40,17 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
   const handleCreateBot = async () => {
     if (!db || !newBotName.trim() || !newBotHandle.trim()) return;
 
-    if (/\s/.test(newBotHandle.trim())) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Bot handle cannot contain spaces.' });
+    // English-only letters, numbers, underscores
+    const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
+    const cleanHandle = newBotHandle.replace('@', '').trim();
+
+    if (!englishOnlyRegex.test(cleanHandle)) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Bot handle must contain only English letters, numbers and underscores.' });
         return;
     }
 
     setIsCreating(true);
-    const fullHandle = '@' + newBotHandle.replace('@', '').trim();
+    const fullHandle = '@' + cleanHandle;
 
     try {
         await runTransaction(db, async (transaction) => {
