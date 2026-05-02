@@ -692,7 +692,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(m => item.members.includes(m.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
-      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: Timestamp.now(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} /><ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { if (!db || !forwardingMessage) return; addDoc(collection(db, 'chats', cid, 'messages'), { ...forwardingMessage, id: undefined, senderId: currentUser.uid, timestamp: Timestamp.now(), readBy: [] }); toast({ title: t('message_forwarded_success') }); }} currentUser={currentUser} />
+      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: Timestamp.now(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} />
+      <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { 
+          if (!db || !forwardingMessage) return; 
+          const { id: _, ...messageData } = forwardingMessage; // Ensure we don't pass old ID
+          addDoc(collection(db, 'chats', cid, 'messages'), { 
+              ...messageData, 
+              senderId: currentUser.uid, 
+              timestamp: Timestamp.now(), 
+              readBy: [],
+              senderName: currentUser.name || currentUser.username
+          }); 
+          toast({ title: t('message_forwarded_success') }); 
+      }} currentUser={currentUser} />
     </div>
   );
 }
