@@ -543,7 +543,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
     const observer = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
-            setTimeout(() => scrollToBottom('auto'), 10);
+            // Use multiple frames for video circle rendering
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    scrollToBottom('auto');
+                });
+            });
         }
     });
 
@@ -569,7 +574,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   useEffect(() => {
     const timer = setTimeout(() => scrollToBottom('auto'), 100);
-    return () => clearTimeout(timer);
+    const forceTimer = setTimeout(() => scrollToBottom('auto'), 500); // Robust fix for video circles
+    return () => {
+        clearTimeout(timer);
+        clearTimeout(forceTimer);
+    };
   }, [item.id, scrollToBottom]);
 
   const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
@@ -612,21 +621,38 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (!snap.exists()) return;
         
         const data = snap.data() as Message;
-        const reactions = data.reactions || {};
-        const currentUids = reactions[emoji] || [];
+        const reactions = { ...(data.reactions || {}) };
         
-        if (currentUids.includes(currentUser.uid)) {
-            // Remove reaction
-            const newUids = currentUids.filter(uid => uid !== currentUser.uid);
-            if (newUids.length === 0) {
-                transaction.update(messageRef, { [`reactions.${emoji}`]: deleteField() });
-            } else {
-                transaction.update(messageRef, { [`reactions.${emoji}`]: newUids });
+        // Rule: 1 reaction per user. Find existing reaction if any.
+        let existingEmoji: string | null = null;
+        for (const [key, uids] of Object.entries(reactions)) {
+            if (uids.includes(currentUser.uid)) {
+                existingEmoji = key;
+                break;
             }
-        } else {
-            // Add reaction
-            transaction.update(messageRef, { [`reactions.${emoji}`]: arrayUnion(currentUser.uid) });
         }
+
+        const updates: any = {};
+
+        if (existingEmoji) {
+            // Remove old reaction
+            const newOldUids = (reactions[existingEmoji] || []).filter(uid => uid !== currentUser.uid);
+            if (newOldUids.length === 0) {
+                updates[`reactions.${existingEmoji}`] = deleteField();
+            } else {
+                updates[`reactions.${existingEmoji}`] = newOldUids;
+            }
+            
+            // If they clicked the SAME emoji, we are done (toggle off)
+            if (existingEmoji === emoji) {
+                transaction.update(messageRef, updates);
+                return;
+            }
+        }
+
+        // Add new reaction (clicked a different one or didn't have one)
+        updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
+        transaction.update(messageRef, updates);
       });
     } catch (e) {
       console.error("Reaction toggle failed", e);
@@ -655,14 +681,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 const blob = new Blob(chunksRef.current, { type: options.mimeType });
                 const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type });
                 
-                // Complete current timer reading
                 const finalDuration = recordingDuration;
-                
-                // Auto send immediate
                 handleSendMessage('', { file, type, duration: finalDuration });
             }
             
-            // Release hardware
             if (activeStreamRef.current) {
                 activeStreamRef.current.getTracks().forEach(t => t.stop());
                 activeStreamRef.current = null;
@@ -1122,7 +1144,10 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
-                requestAnimationFrame(() => onMediaLoad());
+                // Video circles take time to render even with local URL
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => onMediaLoad());
+                });
                 return;
             }
 
@@ -1145,7 +1170,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const finalUrl = await getCachedFile(message.id);
                     if (finalUrl) {
                         setMediaUrl(finalUrl);
-                        requestAnimationFrame(() => onMediaLoad());
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => onMediaLoad());
+                        });
                     }
                 } catch (e) { console.error("Media assembly failed", e); }
             }
@@ -1268,22 +1295,25 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 
                 {/* Reactions UI */}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                        {Object.entries(message.reactions).map(([emoji, uids]) => (
-                            <button
-                                key={emoji}
-                                onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }}
-                                className={cn(
-                                    "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold border transition-all",
-                                    uids.includes(currentUser.uid) 
-                                        ? "bg-primary/20 border-primary text-primary" 
-                                        : "bg-muted border-transparent text-muted-foreground hover:bg-muted/80"
-                                )}
-                            >
-                                <span>{emoji}</span>
-                                <span>{uids.length}</span>
-                            </button>
-                        ))}
+                    <div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>
+                        {Object.entries(message.reactions).map(([emoji, uids]) => {
+                            const hasReacted = uids.includes(currentUser.uid);
+                            return (
+                                <button
+                                    key={emoji}
+                                    onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90",
+                                        hasReacted 
+                                            ? "bg-primary/20 border-primary text-primary" 
+                                            : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    <span>{emoji}</span>
+                                    <span>{uids.length}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 
@@ -1301,25 +1331,36 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-56 rounded-xl">
-                        <div className="p-2 border-b">
-                            <div className="grid grid-cols-5 gap-1">
-                                {COMMON_EMOJIS.slice(0, 10).map(emoji => (
-                                    <button
-                                        key={emoji}
-                                        onClick={() => { onToggleReaction(message.id, emoji); }}
-                                        className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg text-lg transition-transform active:scale-125"
-                                    >
-                                        {emoji}
-                                    </button>
-                                ))}
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-64 rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
+                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center py-2 bg-muted/30 border-b">
+                            {t('reactions')}
+                        </DropdownMenuLabel>
+                        <div className="p-3 bg-muted/10">
+                            <div className="grid grid-cols-5 gap-2">
+                                {COMMON_EMOJIS.map(emoji => {
+                                    const isSelected = message.reactions?.[emoji]?.includes(currentUser.uid);
+                                    return (
+                                        <button
+                                            key={emoji}
+                                            onClick={() => onToggleReaction(message.id, emoji)}
+                                            className={cn(
+                                                "h-10 w-10 flex items-center justify-center rounded-xl text-xl transition-all active:scale-125 hover:bg-primary/10",
+                                                isSelected && "bg-primary/20 scale-110 shadow-inner"
+                                            )}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
-                        <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
-                        {canCopy && <DropdownMenuItem onSelect={handleCopy}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                        <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
-                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                        {isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                        <div className="p-1 bg-background border-t">
+                            <DropdownMenuItem onSelect={() => onReply(message)} className="rounded-xl h-11"><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
+                            {canCopy && <DropdownMenuItem onSelect={handleCopy} className="rounded-xl h-11"><Copy className="mr-3 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                            <DropdownMenuItem onSelect={() => onForward(message)} className="rounded-xl h-11"><Forward className="mr-3 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
+                            {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="rounded-xl h-11"><Edit className="mr-3 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                            {isCurrentUser && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-xl h-11"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
