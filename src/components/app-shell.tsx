@@ -148,6 +148,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
+                // FIXED: RefError lastMessage -> lastMsg
                 const msgTime = lastMsg.timestamp?.toMillis() || 0;
                 if (msgTime < engineStartedAt.current - 5000) {
                     processedMsgIds.current.add(lastMsg.id);
@@ -267,8 +268,8 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             msgData.imageUrl = mediaData;
             lastMsgContent = t('image_attachment_placeholder');
         } else if (block.type === 'action_send_video' && mediaData) {
-            msgTime.videoMimeType = mimeType || 'video/mp4';
-            msgTime.videoStatus = 'uploading';
+            msgData.videoMimeType = mimeType || 'video/mp4';
+            msgData.videoStatus = 'uploading';
             lastMsgContent = t('video_attachment_placeholder');
         } else if (block.type === 'action_send_music' && mediaData) {
             msgData.musicMimeType = mimeType || 'audio/mpeg';

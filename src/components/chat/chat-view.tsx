@@ -372,9 +372,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
+    // Increased threshold to 300px for better stability during dynamic shifts
     const atBottom = scrollHeight - scrollTop - clientHeight < 300;
     isAtBottomRef.current = atBottom;
 
+    // Reset guard if user scrolls up significantly
     if (!atBottom && Date.now() - autoScrollGuardRef.current > 500) {
         autoScrollGuardRef.current = 0;
     }
@@ -395,11 +397,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
+  // Observer with strengthened guard (10 seconds)
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
 
     const resizeObserver = new ResizeObserver(() => {
+        // Increased guard to 10 seconds for long loading nicknames/media
         const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000;
         if (isAtBottomRef.current || inGuardPeriod) {
             requestAnimationFrame(() => {
@@ -877,7 +881,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const hasSaveableMedia = (message.imageUrl || message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.fileStatus === 'complete') && !message.voiceStatus && !message.circleStatus;
 
     return (
-        <div className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
+        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
@@ -887,8 +891,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         {!alignRight ? (
                             <>
-                                <p className="text-[10px] font-bold truncate text-primary">{message.replyTo.senderName}</p>
                                 <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-muted-foreground">{message.replyTo.content}</p>
+                                <p className="text-[10px] font-bold truncate text-primary">{message.replyTo.senderName}</p>
                             </>
                         ) : (
                             <>
