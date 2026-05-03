@@ -353,6 +353,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     messages?.forEach(m => {
         ids.add(m.senderId);
         if (m.reactions) { Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string)); }
+        if (m.replyTo?.messageId) {
+            // We can't easily get the author ID of the replied message without storing it in replyTo
+            // But types show ReplyInfo has senderName. If we want to resolve live, we need senderId in ReplyInfo.
+        }
     });
     return Array.from(ids);
   }, [item.members, messages]);
@@ -369,7 +373,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
+    // Increased threshold to 300 to be more lenient with dynamic content shifts
+    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 300;
 
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
     let currentStickyDate: string | null = null;
@@ -406,7 +411,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const handleMediaLoad = useCallback(() => {
     if (isAtBottomRef.current) { 
-        requestAnimationFrame(() => scrollToBottom('auto')); 
+        requestAnimationFrame(() => {
+            scrollToBottom('auto');
+        });
     }
   }, [scrollToBottom]);
 
