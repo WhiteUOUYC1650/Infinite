@@ -327,7 +327,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const activeStreamRef = useRef<MediaStream | null>(null);
 
-  // --- Data Fetching ---
+  // --- Data Fetching (Move to top to avoid ReferenceErrors) ---
+  const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
+  
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
   const { data: liveChatData } = useDoc<Chat>(chatDocRef);
 
@@ -337,8 +339,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (newChatData.type === 'dm' && newChatData.id === currentUser.uid) { newChatData.icon = 'Bookmark'; }
     return newChatData;
   }, [initialItem, liveChatData, currentUser.uid]);
-
-  const isMember = useMemo(() => item?.members?.includes(currentUser.uid) ?? false, [item?.members, currentUser.uid]);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!db || !isMember) return null;
@@ -369,10 +369,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    // Update "at bottom" state
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
 
-    // Sticky date logic
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
     let currentStickyDate: string | null = null;
     if (dateSeparators.length > 0) {
@@ -383,14 +381,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
     setStickyDate(currentStickyDate);
 
-    // Infinite scroll (load more)
     if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
         prevScrollHeightRef.current = scrollHeight;
         setMessageLimit(prev => prev + 50); 
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Robust Height Change Detection (ResizeObserver)
+  // Use ResizeObserver to detect internal height changes (like nicknames appearing)
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
