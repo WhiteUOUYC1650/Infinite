@@ -267,8 +267,8 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             msgData.imageUrl = mediaData;
             lastMsgContent = t('image_attachment_placeholder');
         } else if (block.type === 'action_send_video' && mediaData) {
-            msgData.videoMimeType = mimeType || 'video/mp4';
-            msgData.videoStatus = 'uploading';
+            msgTime.videoMimeType = mimeType || 'video/mp4';
+            msgTime.videoStatus = 'uploading';
             lastMsgContent = t('video_attachment_placeholder');
         } else if (block.type === 'action_send_music' && mediaData) {
             msgData.musicMimeType = mimeType || 'audio/mpeg';

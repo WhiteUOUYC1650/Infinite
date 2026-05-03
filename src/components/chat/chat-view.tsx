@@ -312,7 +312,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const isAtBottomRef = useRef(true);
-  const autoScrollGuardRef = useRef<number>(0); // Timestamp of last scroll-enforcement event
+  const autoScrollGuardRef = useRef<number>(0); 
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -372,11 +372,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    // Threshold to detect if we are at bottom
     const atBottom = scrollHeight - scrollTop - clientHeight < 300;
     isAtBottomRef.current = atBottom;
 
-    // Reset auto-scroll guard if user manually scrolls away from bottom
     if (!atBottom && Date.now() - autoScrollGuardRef.current > 500) {
         autoScrollGuardRef.current = 0;
     }
@@ -397,13 +395,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Unified Observer for layout changes
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
 
     const resizeObserver = new ResizeObserver(() => {
-        const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 5000;
+        const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000;
         if (isAtBottomRef.current || inGuardPeriod) {
             requestAnimationFrame(() => {
                 scrollToBottom('auto');
@@ -419,7 +416,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
-    const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 5000;
+    const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000;
     if (isAtBottomRef.current || inGuardPeriod) { 
         requestAnimationFrame(() => {
             scrollToBottom('auto');
@@ -428,7 +425,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [scrollToBottom]);
 
-  // Read status management
   useEffect(() => {
     if (!db || !currentUser.uid || !item.id || !messages) return;
     const markAsRead = async () => {
@@ -449,7 +445,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     markAsRead();
   }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
 
-  // Restore scroll or snap to bottom on new messages
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -457,7 +452,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
         prevScrollHeightRef.current = 0;
     } else if (isAtBottomRef.current) {
-        autoScrollGuardRef.current = Date.now(); // Enable 5s guard on new message arrival if already at bottom
+        autoScrollGuardRef.current = Date.now(); 
         scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
@@ -495,7 +490,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
     if (originalReplyTo && memberDetails[originalReplyTo.senderId]) { resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; }
     setMessageContent(''); setFileToSend(null); setReplyToMessage(null);
-    autoScrollGuardRef.current = Date.now(); // Enable guard when sending
+    autoScrollGuardRef.current = Date.now(); 
     try {
         if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
         else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName);
@@ -882,7 +877,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const hasSaveableMedia = (message.imageUrl || message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.fileStatus === 'complete') && !message.voiceStatus && !message.circleStatus;
 
     return (
-        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
+        <div className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
                  <div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
@@ -892,8 +887,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         {!alignRight ? (
                             <>
-                                <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-muted-foreground">{message.replyTo.content}</p>
                                 <p className="text-[10px] font-bold truncate text-primary">{message.replyTo.senderName}</p>
+                                <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-muted-foreground">{message.replyTo.content}</p>
                             </>
                         ) : (
                             <>
@@ -907,7 +902,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
-                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} iMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
