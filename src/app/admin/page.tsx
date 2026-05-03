@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -337,7 +338,7 @@ function AdminPage() {
 
         return sentCount;
     } catch (e) {
-        console.error("Broadcast failed:", e);
+        console.error("Bot broadcast failed:", e);
         throw e;
     }
   };

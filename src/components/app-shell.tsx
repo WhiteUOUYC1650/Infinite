@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -106,20 +107,21 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     if (item !== 'infvid') setInfVidInitialVideoId(null);
   }, []);
 
-  // Global System Back Button Support for all items
+  // Global System Back Button Support for all items (Robust implementation)
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
     const handleSystemBack = () => {
+      // If we are in a chat or special view, return to sidebar
       if (selectedItem) {
-        setSelectedItem(null as any);
+        setSelectedItem(null);
       }
     };
 
     let backListener: any;
-    if (Capacitor.isNativePlatform()) {
-      import('@capacitor/app').then(({ App }) => {
-        backListener = App.addListener('backButton', handleSystemBack);
-      });
-    }
+    import('@capacitor/app').then(({ App }) => {
+      backListener = App.addListener('backButton', handleSystemBack);
+    });
 
     return () => {
       if (backListener) {
@@ -147,7 +149,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
-                const msgTime = lastMsg.timestamp?.toMillis() || 0;
+                const msgTime = lastMessage.timestamp?.toMillis() || 0;
                 if (msgTime < engineStartedAt.current - 5000) {
                     processedMsgIds.current.add(lastMsg.id);
                     return;

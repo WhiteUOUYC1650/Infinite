@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -291,7 +292,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const maxSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
 
-  // --- All hooks and state at the top ---
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
@@ -302,11 +302,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null); 
+  const [isMutedLocal, setIsMutedLocal] = useState(false);
 
   const [messageLimit, setMessageLimit] = useState(50);
   const [hasMore, setHasMore] = useState(true);
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -360,8 +360,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
 
-  // --- End of hooks, start of logic ---
-
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
   }, []);
@@ -370,11 +368,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
-    
-    // Check if near bottom
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
-    
-    // Sticky date logic
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
     let currentStickyDate: string | null = null;
     if (dateSeparators.length > 0) {
@@ -384,8 +378,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
     }
     setStickyDate(currentStickyDate);
-
-    // Infinite scroll (History load)
     if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
         prevScrollHeightRef.current = scrollHeight;
         setMessageLimit(prev => prev + 50); 
@@ -393,19 +385,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
   const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) {
-        requestAnimationFrame(() => scrollToBottom('auto'));
-    }
+    if (isAtBottomRef.current) { requestAnimationFrame(() => scrollToBottom('auto')); }
   }, [scrollToBottom]);
 
-  // Mark as read effect
   useEffect(() => {
     if (!db || !currentUser.uid || !item.id || !messages) return;
     const markAsRead = async () => {
         try {
-            if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) {
-                await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 });
-            }
+            if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) { await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); }
             const unreadMessages = messages.filter(m => m.senderId !== currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid)));
             if (unreadMessages.length > 0) {
                 const batch = writeBatch(db);
@@ -415,35 +402,37 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         } catch (e) { console.error("Mark read failed:", e); }
     };
     markAsRead();
-  }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
+  }, [item.id, messages, currentUser.uid, db]);
 
-  // Auto-scroll logic for new messages vs history
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-
     if (prevScrollHeightRef.current > 0) {
-        // Just loaded history: maintain position
         container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
         prevScrollHeightRef.current = 0;
     } else if (isAtBottomRef.current) {
-        // New messages or initial load: snap to bottom
         scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
 
-  // Initial load scroll
   useEffect(() => {
-    const timer = setTimeout(() => {
-        isAtBottomRef.current = true;
-        scrollToBottom('auto');
-    }, 150);
+    const timer = setTimeout(() => { isAtBottomRef.current = true; scrollToBottom('auto'); }, 150);
     return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
 
   const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
   const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
   const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
+
+  const mirrorToDiscussion = async (msgData: any, contentPreview: string) => {
+    if (item.type === 'channel' && item.discussionChatId && db) {
+        const discussionMessagesRef = collection(db, 'chats', item.discussionChatId, 'messages');
+        const discussionChatRef = doc(db, 'chats', item.discussionChatId);
+        const mirroredData = { ...msgData, fromChannelId: item.id, timestamp: serverTimestamp(), readBy: [] };
+        const mRef = await addDoc(discussionMessagesRef, mirroredData);
+        await updateDoc(discussionChatRef, { lastMessage: { ...mirroredData, id: mRef.id, content: contentPreview, timestamp: Timestamp.now() } });
+    }
+  };
 
   const handleSendMessage = async (customContent?: string, immediateFile?: {file: File, type: 'voice' | 'circle', duration: number}) => {
     const finalContent = customContent !== undefined ? customContent : messageContent;
@@ -452,12 +441,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     setIsSending(true);
     const originalContent = finalContent;
     const originalReplyTo = replyToMessage;
-    
     let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
-    if (originalReplyTo && memberDetails[originalReplyTo.senderId]) {
-      resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name;
-    }
-
+    if (originalReplyTo && memberDetails[originalReplyTo.senderId]) { resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; }
     setMessageContent(''); setFileToSend(null); setReplyToMessage(null);
     try {
         if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
@@ -541,6 +526,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const cids: string[] = [];
     for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'voiceChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
     await updateDoc(mref, { voiceStatus: 'complete', voiceChunkIds: cids }); await cacheFile(mref.id, p.file);
+    await mirrorToDiscussion({ ...data, voiceStatus: 'complete', voiceChunkIds: cids }, t('voice_message_short'));
   };
 
   const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string) => {
@@ -556,6 +542,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const cids: string[] = [];
     for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'circleChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
     await updateDoc(mref, { circleStatus: 'complete', circleChunkIds: cids }); await cacheFile(mref.id, p.file);
+    await mirrorToDiscussion({ ...data, circleStatus: 'complete', circleChunkIds: cids }, t('video_attachment_placeholder'));
   };
 
   const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string) => {
@@ -569,6 +556,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (item.type !== 'channel') item.members.forEach(id => { if (id !== currentUser.uid) upd[`unreadCounts.${id}`] = increment(1); });
     batch.update(doc(db, 'chats', item.id), upd);
     await batch.commit(); if (i) fetchAndCacheImage(mref.id, i);
+    await mirrorToDiscussion(data, c.trim() || (i ? t('image_attachment_placeholder') : ''));
   };
 
   const handleSendVideo = async (p: any, c: string, r: any, sname: string) => {
@@ -584,6 +572,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const cids: string[] = [];
     for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'videoChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
     await updateDoc(mref, { videoStatus: 'complete', videoChunkIds: cids }); await cacheFile(mref.id, p.file);
+    await mirrorToDiscussion({ ...data, videoStatus: 'complete', videoChunkIds: cids }, c || t('video_attachment_placeholder'));
   };
 
   const handleSendMusic = async (p: any, c: string, r: any, sname: string) => {
@@ -599,6 +588,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const cids: string[] = [];
     for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'musicChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
     await updateDoc(mref, { musicStatus: 'complete', musicChunkIds: cids }); await cacheFile(mref.id, p.file);
+    await mirrorToDiscussion({ ...data, musicStatus: 'complete', musicChunkIds: cids }, c || t('music_attachment_placeholder'));
   };
 
   const handleSendGenericFile = async (p: any, c: string, r: any, sname: string) => {
@@ -614,6 +604,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const cids: string[] = [];
     for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'fileChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
     await updateDoc(mref, { fileStatus: 'complete', fileChunkIds: cids }); await cacheFile(mref.id, p.file);
+    await mirrorToDiscussion({ ...data, fileStatus: 'complete', fileChunkIds: cids }, c || t('file_attachment_placeholder'));
   };
 
   const handleInternalLinkClick = async (href: string) => {
