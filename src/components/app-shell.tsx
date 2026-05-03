@@ -25,6 +25,7 @@ import { CallDialog } from './chat/call-dialog';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Capacitor } from '@capacitor/core';
 
 const iconMap = {
     Users,
@@ -104,6 +105,28 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     setSelectedItem(item);
     if (item !== 'infvid') setInfVidInitialVideoId(null);
   }, []);
+
+  // Global System Back Button Support for all items
+  useEffect(() => {
+    const handleSystemBack = () => {
+      if (selectedItem) {
+        setSelectedItem(null as any);
+      }
+    };
+
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+
+    return () => {
+      if (backListener) {
+        backListener.then((l: any) => l.remove());
+      }
+    };
+  }, [selectedItem]);
 
   // Global Custom Bot Engine
   useEffect(() => {

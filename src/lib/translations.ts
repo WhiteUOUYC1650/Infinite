@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -137,7 +136,7 @@ export const translations = {
       'you_left_the_channel_desc': 'You will no longer receive updates. You can rejoin using the link.',
       'welcome_title': 'Welcome to Infinite!',
       'welcome_subtitle': 'You are one of the first to experience the future of communication.',
-      'beta_badge': '0.4.3 Beta',
+      'beta_badge': '0.4.4 Beta',
       'welcome_message': 'Thank you for joining the beta test. We are working hard to provide you with the best experience, and your feedback is incredibly valuable to us.',
       'continue_button': 'Continue',
       'thank_you_beta': 'Thank you for participating in the beta test!',
@@ -451,7 +450,7 @@ export const translations = {
       'play': 'Play',
       'game_over': 'Game Over!',
       'your_score': 'Your Score',
-      'claim_gold': 'Claim Gold',
+      'claim_gold': 'Забрать золото',
       'game_gold_clicker': 'InfGold Clicker',
       'game_gold_clicker_desc': 'Click to earn InfGold! Every 100,000 clicks = 1 InfGold.',
       'game_upgrade_click_power': 'Upgrade Click',
@@ -698,7 +697,7 @@ export const translations = {
       'you_left_the_channel_desc': 'Вы больше не будете получать обновления. Вы можете присоединиться снова по ссылке.',
       'welcome_title': 'Добро пожаловать в Infinite!',
       'welcome_subtitle': 'Вы один из первых, кто прикоснулся к будущему общения.',
-      'beta_badge': '0.4.3 Beta',
+      'beta_badge': '0.4.4 Beta',
       'welcome_message': 'Спасибо за участие в бета-тестировании. Мы усердно работаем над улучшениями, и ваш отзыв очень важен для нас.',
       'continue_button': 'Продолжить',
       'thank_you_beta': 'Спасибо за участие в бета-тестировании!',
@@ -1098,7 +1097,7 @@ export const translations = {
       'bot_guide_var_intro': 'Используйте фигурные скобки, чтобы вставлять динамические данные в сообщения:',
       'bot_guide_var_user': '- `{user_name}`: Имя пользователя, который общается с ботов.',
       'bot_guide_var_msg': '- `{msg_text}`: Текст полученного сообщения.',
-      'bot_guide_var_bot': '- `{bot_name}`: Имя вашего бота.',
+      'bot_guide_var_bot': '- `{bot_name}`: Ваш бот.',
       'bot_guide_var_time': '- `{time}`: Текущее время сервера.',
       'bot_guide_var_set': '**Set Variable**: Сохранить данные в память бота. Эти переменные сохраняются для каждого пользователя отдельно.',
       'infvid_upload_warning_title': 'Идет загрузка...',
