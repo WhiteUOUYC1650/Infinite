@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -313,6 +312,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const isAtBottomRef = useRef(true);
+  const autoScrollGuardRef = useRef<number>(0); // Timestamp of last scroll-enforcement event
   const [stickyDate, setStickyDate] = useState<string | null>(null);
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -372,8 +372,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    // Increased threshold to be more forgiving with dynamic nickname loading
-    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 300;
+    // Threshold to detect if we are at bottom
+    const atBottom = scrollHeight - scrollTop - clientHeight < 300;
+    isAtBottomRef.current = atBottom;
+
+    // Reset auto-scroll guard if user manually scrolls away from bottom
+    if (!atBottom && Date.now() - autoScrollGuardRef.current > 500) {
+        autoScrollGuardRef.current = 0;
+    }
 
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
     let currentStickyDate: string | null = null;
@@ -391,18 +397,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Enhanced follow-to-bottom logic with ResizeObserver
+  // Unified Observer for layout changes
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
 
     const resizeObserver = new ResizeObserver(() => {
-        if (isAtBottomRef.current) {
+        const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 5000;
+        if (isAtBottomRef.current || inGuardPeriod) {
             requestAnimationFrame(() => {
                 scrollToBottom('auto');
-                // Double check after a small delay to handle layout settling
                 setTimeout(() => {
-                    if (isAtBottomRef.current) scrollToBottom('auto');
+                    if (isAtBottomRef.current || inGuardPeriod) scrollToBottom('auto');
                 }, 50);
             });
         }
@@ -413,7 +419,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   }, [scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) { 
+    const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 5000;
+    if (isAtBottomRef.current || inGuardPeriod) { 
         requestAnimationFrame(() => {
             scrollToBottom('auto');
             setTimeout(() => scrollToBottom('auto'), 50);
@@ -421,17 +428,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [scrollToBottom]);
 
-  // Read status management and counting reset
+  // Read status management
   useEffect(() => {
     if (!db || !currentUser.uid || !item.id || !messages) return;
     const markAsRead = async () => {
         try {
-            // Instantly reset unread count for current user
             if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) { 
                 await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); 
             }
-            
-            // Mark individual messages as read
             const unreadMessages = messages.filter(m => m.senderId !== currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid)));
             if (unreadMessages.length > 0) {
                 const batch = writeBatch(db);
@@ -445,7 +449,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     markAsRead();
   }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
 
-  // Restore scroll position after history load
+  // Restore scroll or snap to bottom on new messages
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -453,14 +457,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
         prevScrollHeightRef.current = 0;
     } else if (isAtBottomRef.current) {
+        autoScrollGuardRef.current = Date.now(); // Enable 5s guard on new message arrival if already at bottom
         scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
 
-  // Initial scroll
   useEffect(() => {
     const timer = setTimeout(() => { 
         isAtBottomRef.current = true; 
+        autoScrollGuardRef.current = Date.now();
         scrollToBottom('auto'); 
     }, 150);
     return () => clearTimeout(timer);
@@ -490,6 +495,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
     if (originalReplyTo && memberDetails[originalReplyTo.senderId]) { resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; }
     setMessageContent(''); setFileToSend(null); setReplyToMessage(null);
+    autoScrollGuardRef.current = Date.now(); // Enable guard when sending
     try {
         if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
         else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName);
@@ -793,7 +799,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
     useEffect(() => {
         const loadMedia = async () => {
-            // 1. Try Cache First
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
@@ -801,7 +806,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 return;
             }
 
-            // 2. Not in Cache, check if it's an Image with URL
             if (message.imageUrl) {
                 const url = await fetchAndCacheImage(message.id, message.imageUrl);
                 if (url) {
@@ -811,7 +815,6 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 return;
             }
 
-            // 3. Not in Cache, assembly chunks from Firestore if complete
             if (!db) return;
             if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') {
                 try {
@@ -823,15 +826,9 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const assembled = chunksData.map(c => c.data).join('');
                     const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream';
                     const dataUrl = `data:${mime};base64,${assembled}`;
-                    
-                    // SAVE TO CACHE FOR NEXT TIME
                     await cacheFile(message.id, dataUrl);
-                    
                     const finalUrl = await getCachedFile(message.id);
-                    if (finalUrl) { 
-                        setMediaUrl(finalUrl); 
-                        requestAnimationFrame(() => { onMediaLoad(); }); 
-                    }
+                    if (finalUrl) { setMediaUrl(finalUrl); requestAnimationFrame(() => { onMediaLoad(); }); }
                 } catch (e) { console.error("Media failed", e); }
             }
         };
@@ -863,24 +860,13 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
           const cleanBase64 = mediaUrl.split(',')[1];
           const ext = message.imageUrl ? 'jpg' : message.videoStatus ? 'mp4' : message.musicStatus ? 'mp3' : 'bin';
           const fileName = `Infinite_${message.id}.${ext}`;
-          
-          await Filesystem.writeFile({
-            path: fileName,
-            data: cleanBase64,
-            directory: Directory.Documents,
-          });
+          await Filesystem.writeFile({ path: fileName, data: cleanBase64, directory: Directory.Documents });
           toast({ title: t('dm_success'), description: t('save_to_device') });
-        } catch (e) {
-          console.error(e);
-          toast({ variant: 'destructive', title: 'Error', description: "Failed to save file." });
-        }
+        } catch (e) { console.error(e); toast({ variant: 'destructive', title: 'Error', description: "Failed to save file." }); }
       } else {
         const link = document.createElement('a');
-        link.href = mediaUrl;
-        link.download = message.fileName || `Infinite_${message.id}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        link.href = mediaUrl; link.download = message.fileName || `Infinite_${message.id}`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
         toast({ title: t('dm_success') });
       }
     };
@@ -888,13 +874,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     const isCircleOnly = message.circleStatus === 'complete' && !message.content;
     const canCopy = message.content && !message.poll;
     const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus;
-    
     const isAdmin = currentUser.username === '@Infinite';
     const isSender = isCurrentUser;
     const isOwner = chat.ownerId === currentUser.uid;
     const isTargetAdmin = sender?.username === '@Infinite';
     const canDelete = isAdmin || (!isTargetAdmin && (isSender || isOwner || chat.type === 'dm'));
-
     const hasSaveableMedia = (message.imageUrl || message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.fileStatus === 'complete') && !message.voiceStatus && !message.circleStatus;
 
     return (
