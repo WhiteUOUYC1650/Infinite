@@ -327,7 +327,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const activeStreamRef = useRef<MediaStream | null>(null);
 
-  // --- Data Fetching (Move to top to avoid ReferenceErrors) ---
+  // --- Data Fetching ---
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
   
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
@@ -353,10 +353,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     messages?.forEach(m => {
         ids.add(m.senderId);
         if (m.reactions) { Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string)); }
-        if (m.replyTo?.messageId) {
-            // We can't easily get the author ID of the replied message without storing it in replyTo
-            // But types show ReplyInfo has senderName. If we want to resolve live, we need senderId in ReplyInfo.
-        }
     });
     return Array.from(ids);
   }, [item.members, messages]);
@@ -365,7 +361,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   // --- Scrolling Logic ---
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior
+      });
+    }
   }, []);
 
   const handleScroll = useCallback(() => {
@@ -373,7 +375,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    // Increased threshold to 300 to be more lenient with dynamic content shifts
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 300;
 
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
@@ -392,7 +393,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Use ResizeObserver to detect internal height changes (like nicknames appearing)
+  // Use ResizeObserver with enhanced follow-to-bottom logic
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -401,6 +402,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (isAtBottomRef.current) {
             requestAnimationFrame(() => {
                 scrollToBottom('auto');
+                // Second attempt to catch late layout shifts
+                setTimeout(() => scrollToBottom('auto'), 50);
             });
         }
     });
@@ -893,7 +896,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
-                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} iMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
