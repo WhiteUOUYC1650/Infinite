@@ -149,7 +149,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
-                const msgTime = lastMessage.timestamp?.toMillis() || 0;
+                const msgTime = lastMsg.timestamp?.toMillis() || 0;
                 if (msgTime < engineStartedAt.current - 5000) {
                     processedMsgIds.current.add(lastMsg.id);
                     return;
