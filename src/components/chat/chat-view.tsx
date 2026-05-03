@@ -372,6 +372,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
+    // Increased threshold to be more forgiving with dynamic nickname loading
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 300;
 
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
@@ -390,7 +391,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Use ResizeObserver with enhanced follow-to-bottom logic
+  // Enhanced follow-to-bottom logic with ResizeObserver
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -399,8 +400,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (isAtBottomRef.current) {
             requestAnimationFrame(() => {
                 scrollToBottom('auto');
-                // Second attempt to catch late layout shifts
-                setTimeout(() => scrollToBottom('auto'), 50);
+                // Double check after a small delay to handle layout settling
+                setTimeout(() => {
+                    if (isAtBottomRef.current) scrollToBottom('auto');
+                }, 50);
             });
         }
     });
@@ -413,26 +416,34 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (isAtBottomRef.current) { 
         requestAnimationFrame(() => {
             scrollToBottom('auto');
+            setTimeout(() => scrollToBottom('auto'), 50);
         });
     }
   }, [scrollToBottom]);
 
-  // Read status management
+  // Read status management and counting reset
   useEffect(() => {
     if (!db || !currentUser.uid || !item.id || !messages) return;
     const markAsRead = async () => {
         try {
-            if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) { await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); }
+            // Instantly reset unread count for current user
+            if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) { 
+                await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); 
+            }
+            
+            // Mark individual messages as read
             const unreadMessages = messages.filter(m => m.senderId !== currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid)));
             if (unreadMessages.length > 0) {
                 const batch = writeBatch(db);
-                unreadMessages.forEach(m => { batch.update(doc(db, 'chats', item.id, 'messages', m.id), { readBy: arrayUnion(currentUser.uid) }); });
+                unreadMessages.forEach(m => { 
+                    batch.update(doc(db, 'chats', item.id, 'messages', m.id), { readBy: arrayUnion(currentUser.uid) }); 
+                });
                 await batch.commit();
             }
         } catch (e) { console.error("Mark read failed:", e); }
     };
     markAsRead();
-  }, [item.id, messages, currentUser.uid, db]);
+  }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
 
   // Restore scroll position after history load
   useLayoutEffect(() => {
@@ -782,12 +793,25 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
     useEffect(() => {
         const loadMedia = async () => {
+            // 1. Try Cache First
             const cached = await getCachedFile(message.id);
             if (cached) {
                 setMediaUrl(cached);
                 requestAnimationFrame(() => { onMediaLoad(); });
                 return;
             }
+
+            // 2. Not in Cache, check if it's an Image with URL
+            if (message.imageUrl) {
+                const url = await fetchAndCacheImage(message.id, message.imageUrl);
+                if (url) {
+                    setMediaUrl(url);
+                    requestAnimationFrame(() => { onMediaLoad(); });
+                }
+                return;
+            }
+
+            // 3. Not in Cache, assembly chunks from Firestore if complete
             if (!db) return;
             if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') {
                 try {
@@ -799,14 +823,20 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     const assembled = chunksData.map(c => c.data).join('');
                     const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream';
                     const dataUrl = `data:${mime};base64,${assembled}`;
+                    
+                    // SAVE TO CACHE FOR NEXT TIME
                     await cacheFile(message.id, dataUrl);
+                    
                     const finalUrl = await getCachedFile(message.id);
-                    if (finalUrl) { setMediaUrl(finalUrl); requestAnimationFrame(() => { onMediaLoad(); }); }
+                    if (finalUrl) { 
+                        setMediaUrl(finalUrl); 
+                        requestAnimationFrame(() => { onMediaLoad(); }); 
+                    }
                 } catch (e) { console.error("Media failed", e); }
             }
         };
         loadMedia();
-    }, [message.id, db, onMediaLoad, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus]);
+    }, [message.id, db, onMediaLoad, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl]);
 
     useEffect(() => {
         if (circleVideoRef.current && mediaUrl && message.circleStatus === 'complete' && !isUserActive) {
@@ -982,3 +1012,4 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
         </div>
     );
 }
+

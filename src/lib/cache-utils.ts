@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Utility for persistent caching of media and files using IndexedDB with Blob support.
  */
@@ -74,16 +75,18 @@ export async function cacheFile(id: string, data: string | Blob): Promise<void> 
 }
 
 export async function fetchAndCacheImage(id: string, url: string): Promise<string | null> {
+  // Check if already cached
   const cached = await getCachedFile(id);
   if (cached) return cached;
 
   try {
-    // Avoid re-fetching base64 images
+    // Avoid re-fetching base64 images, just store them
     if (url.startsWith('data:')) {
         await cacheFile(id, url);
         return await getCachedFile(id);
     }
 
+    // Standard HTTP URL
     const response = await fetch(url);
     const blob = await response.blob();
     await cacheFile(id, blob);
@@ -141,3 +144,4 @@ export async function calculateCacheSize(): Promise<number> {
     return 0;
   }
 }
+

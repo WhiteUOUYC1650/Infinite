@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -5,7 +6,7 @@ import type { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { Bookmark, Ghost, User as UserIcon } from "lucide-react";
 import { useState, useLayoutEffect } from "react";
-import { fetchAndCacheImage, getCachedFile } from "@/lib/cache-utils";
+import { fetchAndCacheImage, getCachedFile, cacheFile } from "@/lib/cache-utils";
 
 interface UserAvatarWithStatusProps {
   user?: User | null;
@@ -62,14 +63,16 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     let isMounted = true;
 
     const loadAvatar = async () => {
-      const cached = await getCachedFile(`avatar-${user.id}`);
+      const cacheId = `avatar-${user.id}`;
+      const cached = await getCachedFile(cacheId);
       if (cached && isMounted) {
         setImgSrc(cached);
         return;
       }
 
       if (user.avatar && isMounted) {
-        const url = await fetchAndCacheImage(`avatar-${user.id}`, user.avatar);
+        // fetchAndCacheImage returns a Blob URL and ensures data is stored in IndexedDB
+        const url = await fetchAndCacheImage(cacheId, user.avatar);
         if (url && isMounted) {
             setImgSrc(url);
         } else if (isMounted) {
@@ -153,3 +156,4 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     </div>
   );
 }
+
