@@ -363,10 +363,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const container = scrollContainerRef.current;
     if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior
-      });
+      container.scrollTop = container.scrollHeight;
     }
   }, []);
 
