@@ -234,7 +234,7 @@ function ForwardMessageDialog({ open, onOpenChange, onForward, currentUser }: { 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md rounded-2xl flex flex-col h-[70vh]">
-                <DialogHeader><DialogTitle>{t('forward_to')}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle className="sr-only">Forward</DialogTitle><DialogTitle>{t('forward_to')}</DialogTitle></DialogHeader>
                 <div className="px-1 py-2"><Input placeholder={t('search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} className="rounded-xl bg-muted/50 border-none" /></div>
                 <ScrollArea className="flex-1 pr-2"><div className="space-y-1">{loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : filteredChats.length > 0 ? filteredChats.map(chat => (
                     <button key={chat.id} onClick={() => { onForward(chat.id); onOpenChange(false); }} className="w-full flex items-center gap-3 p-2 hover:bg-muted rounded-xl transition-colors text-left">
@@ -262,7 +262,7 @@ function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpen
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md rounded-2xl">
-                <DialogHeader><DialogTitle>{t('create_poll')}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle className="sr-only">Poll</DialogTitle><DialogTitle>{t('create_poll')}</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-2">
                     <div className="space-y-2"><Label>{t('poll_question_label')}</Label><Input placeholder={t('poll_question_placeholder')} value={question} onChange={e => setQuestion(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none" /></div>
                     <div className="space-y-2"><Label>{t('poll')}</Label><div className="space-y-2">{options.map((opt, i) => (
@@ -287,7 +287,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme();
   const isMobile = useIsMobile();
   
-  // Define limits for file uploads
   const isPrem = currentUser.subscriptionTier === 'prem';
   const maxSizeText = isPrem ? '4GB' : '1GB';
   const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
@@ -320,7 +319,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  // Recording State
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isRecordingCircle, setIsRecordingCircle] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -383,6 +381,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setMessageLimit(prev => prev + 50); 
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
+
+  // Robust scrolling logic for dynamic height changes (nicknames loading, media rendering)
+  useEffect(() => {
+    const container = listInnerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver(() => {
+        if (isAtBottomRef.current) {
+            scrollToBottom('auto');
+        }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
     if (isAtBottomRef.current) { requestAnimationFrame(() => scrollToBottom('auto')); }
@@ -840,9 +853,18 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5"))}>
                 {message.replyTo && (
-                    <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
-                        <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
-                        <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
+                    <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
+                        {!alignRight ? (
+                            <>
+                                <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-muted-foreground">{message.replyTo.content}</p>
+                                <p className="text-[10px] font-bold truncate text-primary">{message.replyTo.senderName}</p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-[10px] font-bold truncate text-white">{message.replyTo.senderName}</p>
+                                <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-white">{message.replyTo.content}</p>
+                            </>
+                        )}
                     </div>
                 )}
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-semibold text-[13px] flex items-center gap-2 mb-0"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
