@@ -327,6 +327,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const activeStreamRef = useRef<MediaStream | null>(null);
 
+  // --- Data Fetching ---
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
   const { data: liveChatData } = useDoc<Chat>(chatDocRef);
 
@@ -358,6 +359,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
 
+  // --- Scrolling Logic ---
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (messagesEndRef.current) { messagesEndRef.current.scrollIntoView({ behavior }); }
   }, []);
@@ -366,7 +368,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const container = scrollContainerRef.current;
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
+    
+    // Update "at bottom" state
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
+
+    // Sticky date logic
     const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
     let currentStickyDate: string | null = null;
     if (dateSeparators.length > 0) {
@@ -376,31 +382,38 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
     }
     setStickyDate(currentStickyDate);
+
+    // Infinite scroll (load more)
     if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
         prevScrollHeightRef.current = scrollHeight;
         setMessageLimit(prev => prev + 50); 
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Robust scrolling logic for dynamic height changes (nicknames loading, media rendering)
+  // Robust Height Change Detection (ResizeObserver)
   useEffect(() => {
-    const container = listInnerRef.current;
-    if (!container) return;
+    const listElement = listInnerRef.current;
+    if (!listElement) return;
 
-    const observer = new ResizeObserver(() => {
+    const resizeObserver = new ResizeObserver(() => {
         if (isAtBottomRef.current) {
-            scrollToBottom('auto');
+            requestAnimationFrame(() => {
+                scrollToBottom('auto');
+            });
         }
     });
 
-    observer.observe(container);
-    return () => observer.disconnect();
+    resizeObserver.observe(listElement);
+    return () => resizeObserver.disconnect();
   }, [scrollToBottom]);
 
   const handleMediaLoad = useCallback(() => {
-    if (isAtBottomRef.current) { requestAnimationFrame(() => scrollToBottom('auto')); }
+    if (isAtBottomRef.current) { 
+        requestAnimationFrame(() => scrollToBottom('auto')); 
+    }
   }, [scrollToBottom]);
 
+  // Read status management
   useEffect(() => {
     if (!db || !currentUser.uid || !item.id || !messages) return;
     const markAsRead = async () => {
@@ -417,6 +430,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     markAsRead();
   }, [item.id, messages, currentUser.uid, db]);
 
+  // Restore scroll position after history load
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -428,8 +442,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [messages, smoothScroll, scrollToBottom]);
 
+  // Initial scroll
   useEffect(() => {
-    const timer = setTimeout(() => { isAtBottomRef.current = true; scrollToBottom('auto'); }, 150);
+    const timer = setTimeout(() => { 
+        isAtBottomRef.current = true; 
+        scrollToBottom('auto'); 
+    }, 150);
     return () => clearTimeout(timer);
   }, [item.id, scrollToBottom]);
 
