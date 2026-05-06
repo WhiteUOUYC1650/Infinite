@@ -372,11 +372,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    // Increased threshold to 300px for better stability during dynamic shifts
+    // Threshold to keep at bottom even with async content
     const atBottom = scrollHeight - scrollTop - clientHeight < 300;
     isAtBottomRef.current = atBottom;
 
-    // Reset guard if user scrolls up significantly
+    // Reset guard if user scrolls up manually
     if (!atBottom && Date.now() - autoScrollGuardRef.current > 500) {
         autoScrollGuardRef.current = 0;
     }
@@ -397,13 +397,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Observer with strengthened guard (10 seconds)
+  // Dynamic content observer (Handle nicknames/media loading)
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
 
     const resizeObserver = new ResizeObserver(() => {
-        // Increased guard to 10 seconds for long loading nicknames/media
         const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000;
         if (isAtBottomRef.current || inGuardPeriod) {
             requestAnimationFrame(() => {

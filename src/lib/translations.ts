@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -339,7 +338,7 @@ export const translations = {
       'whats_new_back_button_title': 'Smart Scroll',
       'whats_new_back_button_desc': 'New 10-second guard ensures the chat stays at the bottom during slow content loading.',
       'whats_new_ui_title': 'Reply Design',
-      'whats_new_ui_desc': 'Swapped Name/Text order in incoming replies for better readability.',
+      'whats_new_ui_desc': 'Swapped order: message text now appears above the author\'s name in incoming replies.',
       'whats_new_bug_fix_title': 'Critical Fixes',
       'whats_new_bug_fix_desc': 'Resolved crashes related to icons and bot logic. Updated Android notification colors.',
       'infvid_title': 'InfVid',
@@ -900,7 +899,7 @@ export const translations = {
       'whats_new_back_button_title': 'Умный скролл',
       'whats_new_back_button_desc': '10-секундный «страж» удерживает чат внизу при медленной подгрузке никнеймов и медиа.',
       'whats_new_ui_title': 'Дизайн ответов',
-      'whats_new_ui_desc': 'Поменяли местами текст и имя в ответах собеседников для удобства чтения.',
+      'whats_new_ui_desc': 'Поменяли местами текст и имя в ответах собеседников: текст теперь сверху.',
       'whats_new_bug_fix_title': 'Критические исправления',
       'whats_new_bug_fix_desc': 'Устранены ошибки импортов и опечатки в бот-движке. Настроены оранжевые уведомления.',
       'infvid_title': 'InfVid',
@@ -1073,7 +1072,7 @@ export const translations = {
       'bot_name_label': 'Имя бота',
       'no_studio_bots': 'Вы пока что не создали ни одного бота.',
       'start_button': 'СТАРТ',
-      'transfer_history': 'История переводов',
+      'transfer_history': 'Transfer History',
       'sent': 'Отправлено',
       'received': 'Получено',
       'no_transfers': 'История пуста.',
