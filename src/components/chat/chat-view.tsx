@@ -377,7 +377,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     isAtBottomRef.current = atBottom;
 
     // Reset guard if user scrolls up manually
-    if (!atBottom && Date.now() - autoScrollGuardRef.current > 500) {
+    if (!atBottom && Date.now() - autoScrollGuardRef.current > 1000) {
         autoScrollGuardRef.current = 0;
     }
 
@@ -566,11 +566,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendVoice = async (p: any, c: string, r: any, d: number, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = Timestamp.now();
+    const ts = serverTimestamp();
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -582,11 +582,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = Timestamp.now();
+    const ts = serverTimestamp();
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -597,12 +597,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string) => {
     if (!db) return;
-    const ts = Timestamp.now();
+    const ts = serverTimestamp();
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], senderName: currentUser.name || currentUser.username, ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    const upd: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } };
+    const upd: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } };
     if (item.type !== 'channel') item.members.forEach(id => { if (id !== currentUser.uid) upd[`unreadCounts.${id}`] = increment(1); });
     batch.update(doc(db, 'chats', item.id), upd);
     await batch.commit(); if (i) fetchAndCacheImage(mref.id, i);
@@ -612,11 +612,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendVideo = async (p: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = Timestamp.now();
+    const ts = serverTimestamp();
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -628,11 +628,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMusic = async (p: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = Timestamp.now();
+    const ts = serverTimestamp();
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -644,11 +644,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendGenericFile = async (p: any, c: string, r: any, sname: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = Timestamp.now();
+    const ts = serverTimestamp();
     const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: ts } });
+    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     await batch.commit();
     const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
     const cids: string[] = [];
@@ -758,14 +758,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(m => item.members.includes(m.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
-      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: Timestamp.now(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} />
+      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: serverTimestamp(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} />
       <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { 
           if (!db || !forwardingMessage) return; 
           const { id: _, ...messageData } = forwardingMessage; 
           addDoc(collection(db, 'chats', cid, 'messages'), { 
               ...messageData, 
               senderId: currentUser.uid, 
-              timestamp: Timestamp.now(), 
+              timestamp: serverTimestamp(), 
               readBy: [],
               senderName: currentUser.name || currentUser.username
           }); 
@@ -888,17 +888,8 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5"))}>
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
-                        {!alignRight ? (
-                            <>
-                                <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-muted-foreground">{message.replyTo.content}</p>
-                                <p className="text-[10px] font-bold truncate text-primary">{message.replyTo.senderName}</p>
-                            </>
-                        ) : (
-                            <>
-                                <p className="text-[10px] font-bold truncate text-white">{message.replyTo.senderName}</p>
-                                <p className="text-[11px] truncate line-clamp-1 opacity-80 italic text-white">{message.replyTo.content}</p>
-                            </>
-                        )}
+                        <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
+                        <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
                 )}
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-semibold text-[13px] flex items-center gap-2 mb-0"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
@@ -938,7 +929,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         })}
                     </div>
                 )}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}</span>)}</div>
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>

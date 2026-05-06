@@ -148,7 +148,6 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 
-                // Fixed ReferenceError: lastMessage -> lastMsg
                 const msgTime = lastMsg.timestamp?.toMillis() || 0;
                 if (msgTime < engineStartedAt.current - 5000) {
                     processedMsgIds.current.add(lastMsg.id);
@@ -247,7 +246,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
     const sendBotMessage = async (bot: CustomBot, block: BotBlock, chatId: string, replyTo?: any, vars?: Record<string, string>) => {
         const msgRef = doc(collection(db, 'chats', chatId, 'messages'));
-        const timestamp = Timestamp.now();
+        const timestamp = serverTimestamp();
         const text = resolveVars(block.params?.text, vars || {});
         const mediaData = block.params?.mediaData;
         const mimeType = block.params?.mimeType;
@@ -285,7 +284,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), {
-            lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, content: lastMsgContent }
+            lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, content: lastMsgContent, timestamp: Timestamp.now() }
         });
 
         // Handle chunking for non-image media
@@ -441,7 +440,21 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         )}
         {activeCall && <CallDialog open={showCallDialog} onOpenChange={(open) => { setShowCallDialog(open); if (!open) setActiveCall(null); }} chat={activeCall.chat} otherUser={activeCall.otherUser} currentUser={populatedUser} isCaller={activeCall.isCaller} isVideo={activeCall.isVideo} />}
         <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
-          <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl"><DialogHeader className="items-center text-center space-y-4"><div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center"><Bell className="h-10 w-10 text-primary animate-bounce" /></div><div className="space-y-2"><DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle><DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription></div></DialogHeader><DialogFooter className="flex-col gap-2 pt-4"><Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">{t('subscribe')}</Button><Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button></DialogFooter></DialogContent>
+          <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
+              <DialogHeader className="items-center text-center space-y-4">
+                  <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                      <Bell className="h-10 w-10 text-primary animate-bounce" />
+                  </div>
+                  <div className="space-y-2">
+                      <DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle>
+                      <DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription>
+                  </div>
+              </DialogHeader>
+              <DialogFooter className="flex-col gap-2 pt-4">
+                  <Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">{t('subscribe')}</Button>
+                  <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
+              </DialogFooter>
+          </DialogContent>
         </Dialog>
       </SidebarInset>
     </>
