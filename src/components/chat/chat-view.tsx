@@ -372,7 +372,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (!container) return;
     const { scrollTop, scrollHeight, clientHeight } = container;
     
-    // Threshold to keep at bottom even with async content
+    // Threshold to keep at bottom even with async content (300px safe zone)
     const atBottom = scrollHeight - scrollTop - clientHeight < 300;
     isAtBottomRef.current = atBottom;
 
@@ -397,7 +397,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [hasMore, messagesLoading, messages, messageLimit]);
 
-  // Dynamic content observer (Handle nicknames/media loading)
+  // Dynamic content observer (Handle nicknames/media loading) - 10 second guard
   useEffect(() => {
     const listElement = listInnerRef.current;
     if (!listElement) return;
@@ -886,19 +886,44 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5"))}>
+                {/* 1. SENDER NICKNAME (Top of bubble) */}
+                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
+                    <div className="font-semibold text-[13px] flex items-center gap-2 mb-0.5">
+                        <span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>
+                        {sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}
+                    </div>
+                )}
+
+                {/* 2. REPLY PREVIEW (Below sender nickname, above reply text) */}
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
                         <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
                 )}
-                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-semibold text-[13px] flex items-center gap-2 mb-0"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
+
+                {/* 3. MEDIA & POLLS */}
                 {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                {message.content && !message.poll && <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>}
+                
+                {/* 4. REPLY CONTENT (The text itself) */}
+                {message.content && !message.poll && (
+                    <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}>
+                        <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]} 
+                            components={{ 
+                                a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> 
+                            }}
+                        >
+                            {message.content}
+                        </ReactMarkdown>
+                    </div>
+                )}
+
+                {/* 5. REACTIONS */}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
                     <div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>
                         {Object.entries(message.reactions).map(([emoji, uids]) => { 
@@ -929,7 +954,13 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                         })}
                     </div>
                 )}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
+                
+                {/* 6. TIMESTAMP & STATUS */}
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>
+                    {message.editedAt && <span className="font-bold">{t('edited')}</span>}
+                    <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
+                    {isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}
+                </div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
