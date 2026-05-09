@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -490,17 +491,34 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     setIsSending(true);
     const originalContent = finalContent;
     const originalReplyTo = replyToMessage;
+
     let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
-    if (originalReplyTo && memberDetails[originalReplyTo.senderId]) { resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; }
+    let replyPreview = originalReplyTo?.content || '';
+
+    if (originalReplyTo) {
+        if (memberDetails[originalReplyTo.senderId]) { 
+            resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; 
+        }
+        if (!replyPreview) {
+            if (originalReplyTo.imageUrl) replyPreview = t('photo');
+            else if (originalReplyTo.videoStatus === 'complete') replyPreview = t('video');
+            else if (originalReplyTo.musicStatus === 'complete') replyPreview = t('music');
+            else if (originalReplyTo.voiceStatus === 'complete') replyPreview = t('voice_message_short');
+            else if (originalReplyTo.fileStatus === 'complete') replyPreview = t('file');
+            else if (originalReplyTo.poll) replyPreview = t('poll');
+        }
+    }
+
     setMessageContent(''); setFileToSend(null); setReplyToMessage(null);
     autoScrollGuardRef.current = Date.now(); 
+
     try {
-        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
-        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName);
-        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName);
-        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
-        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo, resolvedReplySenderName);
-        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName);
+        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
         isAtBottomRef.current = true;
         scrollToBottom('auto');
     } catch (error) { console.error(error); setMessageContent(originalContent); setFileToSend(null); setReplyToMessage(originalReplyTo); }
@@ -528,6 +546,46 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         transaction.update(messageRef, updates);
       });
     } catch (e) { console.error("Reaction failed", e); }
+  };
+
+  const handleVote = async (messageId: string, optionIndex: number) => {
+    if (!db || !currentUser.uid) return;
+    const messageRef = doc(db, 'chats', item.id, 'messages', messageId);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(messageRef);
+            if (!snap.exists()) return;
+            const poll = snap.data().poll as Poll;
+            if (!poll) return;
+
+            const newOptions = [...poll.options];
+
+            if (poll.isMultipleChoice) {
+                const optionVotes = [...newOptions[optionIndex].votes];
+                if (optionVotes.includes(currentUser.uid)) {
+                    newOptions[optionIndex].votes = optionVotes.filter(uid => uid !== currentUser.uid);
+                } else {
+                    newOptions[optionIndex].votes = [...optionVotes, currentUser.uid];
+                }
+            } else {
+                newOptions.forEach((opt, idx) => {
+                    if (idx === optionIndex) {
+                        if (opt.votes.includes(currentUser.uid)) {
+                            opt.votes = opt.votes.filter(uid => uid !== currentUser.uid);
+                        } else {
+                            opt.votes = [...opt.votes, currentUser.uid];
+                        }
+                    } else {
+                        opt.votes = opt.votes.filter(uid => uid !== currentUser.uid);
+                    }
+                });
+            }
+
+            transaction.update(messageRef, { 'poll.options': newOptions });
+        });
+    } catch (e) {
+        console.error("Voting failed", e);
+    }
   };
 
   const startRecording = async (type: 'voice' | 'circle') => {
@@ -563,11 +621,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try { await deleteDoc(doc(db, 'chats', item.id, 'messages', messageId)); toast({ title: t('dm_success') }); } catch (e) { console.error("Delete failed", e); }
   };
 
-  const handleSendVoice = async (p: any, c: string, r: any, d: number, sname: string) => {
+  const handleSendVoice = async (p: any, c: string, r: any, d: number, sname: string, rContent: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
@@ -579,11 +637,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await mirrorToDiscussion({ ...data, voiceStatus: 'complete', voiceChunkIds: cids }, t('voice_message_short'));
   };
 
-  const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string) => {
+  const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string, rContent: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
@@ -595,11 +653,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await mirrorToDiscussion({ ...data, circleStatus: 'complete', circleChunkIds: cids }, t('video_attachment_placeholder'));
   };
 
-  const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string) => {
+  const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string, rContent: string) => {
     if (!db) return;
     const ts = serverTimestamp();
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], senderName: currentUser.name || currentUser.username, ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
+    const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], senderName: currentUser.name || currentUser.username, ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     const upd: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } };
@@ -609,11 +667,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await mirrorToDiscussion(data, c.trim() || (i ? t('image_attachment_placeholder') : ''));
   };
 
-  const handleSendVideo = async (p: any, c: string, r: any, sname: string) => {
+  const handleSendVideo = async (p: any, c: string, r: any, sname: string, rContent: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
@@ -625,11 +683,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await mirrorToDiscussion({ ...data, videoStatus: 'complete', videoChunkIds: cids }, c || t('video_attachment_placeholder'));
   };
 
-  const handleSendMusic = async (p: any, c: string, r: any, sname: string) => {
+  const handleSendMusic = async (p: any, c: string, r: any, sname: string, rContent: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
@@ -641,11 +699,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     await mirrorToDiscussion({ ...data, musicStatus: 'complete', musicChunkIds: cids }, c || t('music_attachment_placeholder'));
   };
 
-  const handleSendGenericFile = async (p: any, c: string, r: any, sname: string) => {
+  const handleSendGenericFile = async (p: any, c: string, r: any, sname: string, rContent: string) => {
     if (!db) return;
     const mref = doc(collection(db, 'chats', item.id, 'messages'));
     const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: r.content, senderName: sname } }) };
+    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
     const batch = writeBatch(db);
     batch.set(mref, data);
     batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
@@ -737,7 +795,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       {messages.map((m, i) => {
                           const sd = getSafeDate(m.timestamp);
                           const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={() => {}} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} /></React.Fragment>;
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} /></React.Fragment>;
                       })}
                       <div ref={messagesEndRef} className="h-px shrink-0" /></div>
               ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
@@ -894,7 +952,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                     </div>
                 )}
 
-                {/* 2. REPLY PREVIEW (Below sender nickname, above reply text) */}
+                {/* 2. REPLY PREVIEW */}
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
@@ -909,7 +967,7 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 
-                {/* 4. REPLY CONTENT (The text itself) */}
+                {/* 4. CONTENT */}
                 {message.content && !message.poll && (
                     <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}>
                         <ReactMarkdown 

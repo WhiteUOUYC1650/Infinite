@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -441,19 +442,19 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         {activeCall && <CallDialog open={showCallDialog} onOpenChange={(open) => { setShowCallDialog(open); if (!open) setActiveCall(null); }} chat={activeCall.chat} otherUser={activeCall.otherUser} currentUser={populatedUser} isCaller={activeCall.isCaller} isVideo={activeCall.isVideo} />}
         <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
           <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
-              <DialogHeader className="items-center text-center space-y-4">
-                  <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                      <Bell className="h-10 w-10 text-primary animate-bounce" />
-                  </div>
-                  <div className="space-y-2">
-                      <DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle>
-                      <DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription>
-                  </div>
-              </DialogHeader>
-              <DialogFooter className="flex-col gap-2 pt-4">
-                  <Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">{t('subscribe')}</Button>
-                  <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
-              </DialogFooter>
+            <DialogHeader className="items-center text-center space-y-4">
+              <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                <Bell className="h-10 w-10 text-primary animate-bounce" />
+              </div>
+              <div className="space-y-2">
+                <DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle>
+                <DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription>
+              </div>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 pt-4">
+              <Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">{t('subscribe')}</Button>
+              <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </SidebarInset>
