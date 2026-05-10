@@ -1,19 +1,18 @@
-
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, Lock, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, Lock, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, addDoc, increment, getDoc, setDoc, writeBatch, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDocs } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +37,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -46,41 +51,26 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
+import { ScrollArea } from '../ui/scroll-area';
 
-export const COMMON_EMOJIS = ['👍', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨'];
+export const COMMON_EMOJIS = [
+    '👍', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨', 
+    '🤔', '🤯', '🤩', '🥳', '🤮', '💩', '🤡', '👻', '👽', '👾', 
+    '🤖', '🎃', '😺', '🤟', '🤘'
+];
 
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
-const compressImage = (file: File, quality = 0.75, maxDimension = 1200): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        if (width > height) { if (width > maxDimension) { height *= maxDimension / width; width = maxDimension; } } else { if (height > maxDimension) { width *= maxDimension / height; height = maxDimension; } }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error('Canvas context error'));
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = (e) => reject(e);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-function DateSeparator({ date, rawDate }: { date: string, rawDate: string }) {
+function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, rawDate: string, experimentalDesign: boolean }) {
   return (
     <div className="relative my-6 flex items-center justify-center date-separator-marker" data-date={date}>
       <div className="absolute inset-0 flex items-center" aria-hidden="true">
         <div className="w-full border-t border-muted-foreground/10" />
       </div>
-      <div className="relative px-4 py-1 rounded-full bg-muted/40 backdrop-blur-sm border border-border/50 shadow-sm">
+      <div className={cn(
+          "relative px-4 py-1 rounded-full border border-border/50 shadow-sm",
+          experimentalDesign ? "bg-muted/40 backdrop-blur-md" : "bg-muted/80"
+      )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
           {date}
         </span>
@@ -114,8 +104,9 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
     return (<div className={cn("flex items-center gap-3 w-full px-2 py-1.5 rounded-xl transition-all", isMusic ? "max-w-[400px]" : "min-w-[200px]", "bg-black/10 dark:bg-white/10")}><audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={() => { onTimeUpdate(); onMediaLoad?.(); }} preload="metadata" /><button onClick={togglePlay} className="w-10 h-10 rounded-full bg-background flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95">{isPlaying ? <Pause className="h-5 w-5 text-primary fill-primary" /> : <Play className="h-5 w-5 ml-0.5 text-primary fill-primary" />}</button><div className="flex-1 min-w-0 flex flex-col justify-center">{isMusic && fileName && <div className="text-[10px] font-bold truncate mb-0.5 opacity-80">{fileName}</div>}<div className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer" onClick={(e) => { e.stopPropagation(); if (audioRef.current && maxTime) { const rect = e.currentTarget.getBoundingClientRect(); audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * maxTime; } }}><div className="absolute h-full bg-primary rounded-full transition-all duration-100" style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }} /></div>{!hideTime && <div className="flex justify-between items-center text-[9px] font-bold mt-1 opacity-70"><span>{formatTime(currentTime)} / {formatTime(maxTime)}</span></div>}</div></div>);
 }
 
-const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, memberDetails }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; memberDetails: Record<string, User> }) => {
+const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, memberDetails, experimentalDesign }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; memberDetails: Record<string, User>, experimentalDesign: boolean }) => {
     const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel'; const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite'; const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm')); const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
+    const isCircleComplete = message.circleStatus === 'complete';
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
@@ -125,28 +116,34 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (<div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5 shadow-sm" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5 shadow-sm"))}>
-                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-semibold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
+            <div className={cn(
+                "min-w-0 flex flex-col relative transition-all duration-300",
+                experimentalDesign ? "rounded-[1.25rem]" : "rounded-lg",
+                isCircleComplete ? "bg-transparent shadow-none" : (alignRight ? "bg-primary text-white shadow-sm" : "bg-card text-card-foreground shadow-sm"),
+                experimentalDesign ? (alignRight ? "rounded-br-none" : "rounded-bl-none") : (alignRight ? "rounded-br-none" : "rounded-bl-none"),
+                "px-2 pb-1 pt-1.5 max-w-[85%] md:max-w-[70%]"
+            )}>
+                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
-                        <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
+                        <p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
                         <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
                 )}
                 {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
-                {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
+                {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg w-48 h-48 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                {message.content && !message.poll && (<div className="text-sm break-words whitespace-pre-wrap pt-0 px-0.5"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href!); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>)}
+                {message.content && !message.poll && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5", experimentalDesign && "text-[15px] leading-relaxed")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href!); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>)}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
                 <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
             </div>
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] bg-popover/95 backdrop-blur-xl z-[100]">
-                        <div className="px-2 py-2 mb-1 flex items-center gap-1 overflow-x-auto no-scrollbar bg-muted/40 rounded-2xl border border-border/20 shadow-inner z-[110]">
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className="w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] bg-popover/95 backdrop-blur-xl z-[100]">
+                        <div className="px-2 py-2 mb-1 flex flex-wrap items-center gap-1 bg-muted/40 rounded-2xl border border-border/20 shadow-inner z-[110] max-h-[120px] overflow-y-auto no-scrollbar">
                             {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); })}
                         </div>
                         <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Reply className="mr-3 h-4 w-4 text-primary" /><span>{t('reply')}</span></DropdownMenuItem>
@@ -164,7 +161,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
 ChatMessage.displayName = 'ChatMessage';
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll } = useTheme(); const isMobile = useIsMobile();
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme(); const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   
   const [messageContent, setMessageContent] = useState(''); 
@@ -216,7 +213,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         setMessageLimit(p => p + 50); 
     } 
 
-    // Sticky Date Logic
     setShowStickyDate(true);
     if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current);
     stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000);
@@ -266,43 +262,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     setIsRecordingVoice(false); setIsRecordingCircle(false);
   };
 
-  const cancelRecording = () => stopRecording(true);
-
-  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
-    if (!db) return; setIsSending(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        const mref = doc(collection(db, 'chats', item.id, 'messages'));
-        const chunkRef = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks'));
-        await setDoc(chunkRef, { data: base64, part: 0, senderId: currentUser.uid });
-        const ts = serverTimestamp();
-        const msgData: any = {
-          senderId: currentUser.uid,
-          timestamp: ts,
-          readBy: [],
-          senderName: currentUser.name || currentUser.username,
-          content: '',
-        };
-        if (type === 'voice') {
-          msgData.voiceMimeType = blob.type;
-          msgData.voiceStatus = 'complete';
-          msgData.voiceChunkIds = [chunkRef.id];
-          msgData.voiceDuration = recordingDuration;
-        } else {
-          msgData.circleMimeType = blob.type;
-          msgData.circleStatus = 'complete';
-          msgData.circleChunkIds = [chunkRef.id];
-          msgData.circleDuration = recordingDuration;
-        }
-        await setDoc(mref, msgData);
-        await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-      };
-    } catch (e) { console.error(e); } finally { setIsSending(false); }
-  };
-
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
   
   const handleSendMessage = async (customC?: string, immediateFile?: any) => {
@@ -319,6 +278,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
 
+  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
+    if (!db) return; setIsSending(true);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        const mref = doc(collection(db, 'chats', item.id, 'messages'));
+        const chunkRef = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks'));
+        await setDoc(chunkRef, { data: base64, part: 0, senderId: currentUser.uid });
+        const ts = serverTimestamp();
+        const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
+        if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [chunkRef.id]; msgData.voiceDuration = recordingDuration; } 
+        else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [chunkRef.id]; msgData.circleDuration = recordingDuration; }
+        await setDoc(mref, msgData);
+        await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+      };
+    } catch (e) { console.error(e); } finally { setIsSending(false); }
+  };
+
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   
   const handleVote = async (msgId: string, index: number) => {
@@ -326,24 +305,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const mref = doc(db, 'chats', item.id, 'messages', msgId);
     try {
         await runTransaction(db, async (tx) => {
-            const snap = await tx.get(mref);
-            if (!snap.exists()) return;
-            const poll = snap.data().poll as Poll;
-            if (!poll) return;
-
+            const snap = await tx.get(mref); if (!snap.exists()) return;
+            const poll = snap.data().poll as Poll; if (!poll) return;
             const newOptions = poll.options.map((opt, i) => {
-                const votes = [...opt.votes];
-                const alreadyVoted = votes.includes(currentUser.uid);
-                if (i === index) {
-                    if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1);
-                    else votes.push(currentUser.uid);
-                } else if (!poll.isMultipleChoice && !alreadyVoted) {
-                    const idx = votes.indexOf(currentUser.uid);
-                    if (idx !== -1) votes.splice(idx, 1);
-                }
+                const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid);
+                if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } 
+                else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); }
                 return { ...opt, votes };
             });
-
             tx.update(mref, { 'poll.options': newOptions });
         });
     } catch (e) { console.error("Voting failed", e); }
@@ -367,22 +336,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <div className="flex-1 flex items-center min-w-0 h-12">
                 <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                     <div className='shrink-0 h-10 w-10'>
-                        {item.type === 'dm' ? (
-                            <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} isSelected={true} />
-                        ) : (
-                            <Avatar className="h-10 w-10">
-                                <AvatarImage src={item.avatar} />
-                                <AvatarFallback>
-                                    {item.id === 'GENERAL_CHAT' ? <Globe className="h-6 w-6 text-primary" /> : <InfiniteLogo />}
-                                </AvatarFallback>
-                            </Avatar>
-                        )}
+                        {item.type === 'dm' ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{item.id === 'GENERAL_CHAT' ? <Globe className="h-6 w-6 text-primary" /> : <InfiniteLogo />}</AvatarFallback></Avatar>)}
                     </div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold font-headline truncate leading-none">
-                                {item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}
-                            </h2>
+                            <h2 className="text-lg font-semibold font-headline truncate leading-none">{item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}</h2>
                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
                     </div>
@@ -390,12 +348,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             </div>
         </div>
         
-        {/* Floating Sticky Date Plate */}
         <div className={cn(
             "absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none",
             showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
         )}>
-            <div className="px-4 py-1.5 rounded-full bg-muted/60 backdrop-blur-md border border-border/50 shadow-lg">
+            <div className={cn(
+                "px-4 py-1.5 rounded-full border border-border/50 shadow-lg",
+                experimentalDesign ? "bg-muted/60 backdrop-blur-md" : "bg-muted/95"
+            )}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                     {stickyDate}
                 </span>
@@ -410,13 +370,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 const msgDate = getSafeDate(m.timestamp);
                 const prevMsg = messages[i - 1];
                 const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
-                let dateStr = format(msgDate, 'dd MMMM yyyy');
-                if (isSameDay(msgDate, new Date())) dateStr = t('today_is').toLowerCase();
+                let dateStr = "";
+                if (isSameDay(msgDate, new Date())) dateStr = t('today_is');
+                else if (isYesterday(msgDate)) dateStr = t('yesterday');
+                else dateStr = format(msgDate, 'dd.MM.yyyy');
                 
                 return (
                     <React.Fragment key={m.id}>
-                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} />}
-                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} />
+                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} />}
+                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} experimentalDesign={experimentalDesign} />
                     </React.Fragment>
                 );
             })}
@@ -424,38 +386,29 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </div>
       </div>
-      {isMember && <footer className="flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative">
+      {isMember && <footer className={cn(
+          "flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative",
+          experimentalDesign && "bg-background/60 backdrop-blur-xl"
+      )}>
         {(isRecordingVoice || isRecordingCircle) && (
           <div className="absolute inset-0 bg-background/95 backdrop-blur-md z-40 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2">
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="font-mono font-bold text-base">
-                {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-              </span>
-              <span className="text-xs text-muted-foreground ml-2 font-bold uppercase tracking-widest">
-                {isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}
-              </span>
+              <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
+              <span className="text-xs text-muted-foreground ml-2 font-bold uppercase tracking-widest">{isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={cancelRecording} className="text-destructive font-black uppercase text-[10px] tracking-widest">
-                {t('cancel')}
-              </Button>
-              <div className="text-[9px] font-bold text-muted-foreground animate-pulse mr-2">HOLDING...</div>
-            </div>
+            <div className="flex items-center gap-2"><Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button><div className="text-[9px] font-bold text-muted-foreground animate-pulse mr-2">HOLDING...</div></div>
           </div>
         )}
         <div className="max-w-3xl mx-auto w-full h-full flex items-center">
           <div className="flex flex-col gap-2 w-full">
-            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content || "[Media]"}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
             <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
-              <Textarea placeholder={t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" />
               <div className="flex items-center gap-1 shrink-0 h-[38px]">
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">
-                      {t('max_file_size_label', { size: maxSizeText })}
-                    </DropdownMenuLabel>
+                  <DropdownMenuContent align="start" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
@@ -463,37 +416,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) compressImage(f).then(p => setFileToSend({ file: f, previewUrl: p, type: 'image' })); else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
+              </div>
+              <Textarea placeholder={t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" />
+              <div className="flex items-center gap-1 shrink-0 h-[38px]">
+                {experimentalDesign && <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground"><Smile className="h-5 w-5" /></Button>}
+                <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) { const reader = new FileReader(); reader.readAsDataURL(f); reader.onload = (ev) => setFileToSend({ file: f, previewUrl: ev.target?.result as string, type: 'image' }); } else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
                 {messageContent.trim() || fileToSend ? (
                   <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button>
                 ) : (
                   <div className="flex items-center gap-0.5">
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-9 w-9 text-muted-foreground" 
-                        onMouseDown={() => startRecording('circle')} 
-                        onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }}
-                        onMouseUp={() => stopRecording(false)}
-                        onMouseLeave={() => stopRecording(false)}
-                        onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }}
-                    >
-                        <Camera className="h-5 w-5" />
-                    </Button>
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-9 w-9 text-muted-foreground" 
-                        onMouseDown={() => startRecording('voice')} 
-                        onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }}
-                        onMouseUp={() => stopRecording(false)}
-                        onMouseLeave={() => stopRecording(false)}
-                        onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }}
-                    >
-                        <Mic className="h-5 w-5" />
-                    </Button>
+                    {!experimentalDesign && (
+                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('circle')} onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Camera className="h-5 w-5" /></Button>
+                    )}
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('voice')} onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Mic className="h-5 w-5" /></Button>
                   </div>
                 )}
               </div>
@@ -503,6 +438,40 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </footer>}
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
+      {forwardingMessage && <ForwardDialog open={!!forwardingMessage} onOpenChange={(o) => !o && setForwardingMessage(null)} message={forwardingMessage} currentUser={currentUser} onForward={async (targetChatId) => {
+          if (!db) return;
+          const msgRef = doc(collection(db, 'chats', targetChatId, 'messages'));
+          const data: any = { senderId: currentUser.uid, content: forwardingMessage.content || '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username };
+          if (forwardingMessage.imageUrl) data.imageUrl = forwardingMessage.imageUrl;
+          // ... handle other media if needed
+          await setDoc(msgRef, data);
+          await updateDoc(doc(db, 'chats', targetChatId), { lastMessage: { ...data, id: msgRef.id, timestamp: Timestamp.now() } });
+          setForwardingMessage(null);
+          toast({ title: t('message_forwarded_success') });
+      }} />}
     </div>
   );
+}
+
+function ForwardDialog({ open, onOpenChange, message, currentUser, onForward }: { open: boolean, onOpenChange: (o: boolean) => void, message: Message, currentUser: AuthenticatedUser, onForward: (chatId: string) => Promise<void> }) {
+    const db = useFirestore(); const { t } = useLanguage();
+    const q = useMemo(() => db ? query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid)) : null, [db, currentUser.uid]);
+    const { data: chats, loading } = useCollection<Chat>(q);
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-[2rem] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+                <DialogHeader className="p-6 border-b"><DialogTitle>{t('forward_to')}</DialogTitle></DialogHeader>
+                <ScrollArea className="flex-1 p-4">
+                    {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div> : (
+                        <div className="space-y-2">{chats?.map(c => (
+                            <button key={c.id} onClick={() => onForward(c.id)} className="w-full p-3 rounded-2xl hover:bg-muted flex items-center gap-3 text-left">
+                                <Avatar className="h-10 w-10"><AvatarFallback>{c.name?.charAt(0) || <Users />}</AvatarFallback></Avatar>
+                                <div className="flex-1 min-w-0"><p className="font-bold truncate">{c.name || "Chat"}</p><p className="text-xs text-muted-foreground truncate">{c.link || c.type}</p></div>
+                            </button>
+                        ))}</div>
+                    )}
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    );
 }
