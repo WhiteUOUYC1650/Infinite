@@ -70,7 +70,7 @@ function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, ra
       </div>
       <div className={cn(
           "relative px-4 py-1 rounded-full border border-border/50 shadow-sm transition-all",
-          experimentalDesign ? "bg-card/40 backdrop-blur-md" : "bg-muted/80"
+          experimentalDesign ? "bg-card/60 backdrop-blur-md border-white/20" : "bg-muted/80"
       )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
           {date}
