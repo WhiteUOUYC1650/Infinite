@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, File as FileIcon, Mic, Camera, Pause, Play, Trash, Lock, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, Lock, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -38,14 +38,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -54,18 +46,37 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
-import { Switch } from '../ui/switch';
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
-import { ScrollArea } from '../ui/scroll-area';
 
-export const COMMON_EMOJIS = ['👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '🤔', '🤩', '😡', '💩', '💯', '👀', '✅', '❌', '✨', '⚡️', '🚀', '🤝', '🤡', '💘', '🌚'];
+export const COMMON_EMOJIS = ['👍', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨'];
 
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
-function DateSeparator({ date }: { date: string }) {
+const compressImage = (file: File, quality = 0.75, maxDimension = 1200): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > height) { if (width > maxDimension) { height *= maxDimension / width; width = maxDimension; } } else { if (height > maxDimension) { width *= maxDimension / height; height = maxDimension; } }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context error'));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = (e) => reject(e);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+function DateSeparator({ date, rawDate }: { date: string, rawDate: string }) {
   return (
-    <div className="relative my-6 flex items-center justify-center">
+    <div className="relative my-6 flex items-center justify-center date-separator-marker" data-date={date}>
       <div className="absolute inset-0 flex items-center" aria-hidden="true">
         <div className="w-full border-t border-muted-foreground/10" />
       </div>
@@ -77,20 +88,6 @@ function DateSeparator({ date }: { date: string }) {
     </div>
   );
 }
-
-const iconMap = { Users, Megaphone, Bookmark, Globe, Bot };
-
-const compressImage = (file: File, quality = 0.85, maxDimension = 1920): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader(); reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image(); img.src = event.target?.result as string;
-      img.onload = () => { const canvas = document.createElement('canvas'); let { width, height } = img; if (width > height) { if (width > maxDimension) { height *= maxDimension / width; width = maxDimension; } } else { if (height > maxDimension) { width *= maxDimension / height; height = maxDimension; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); if (!ctx) return reject(new Error('Context error')); ctx.drawImage(img, 0, 0, width, height); resolve(canvas.toDataURL(file.type, 0.85)); };
-      img.onerror = (error) => reject(error);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
 
 function PollDisplay({ poll, onVote, currentUserId, alignRight }: { poll: Poll, onVote: (index: number) => void, currentUserId: string, alignRight: boolean, memberDetails: Record<string, User> }) {
     const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0); const { t } = useLanguage();
@@ -118,17 +115,17 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
 }
 
 const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, memberDetails }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; memberDetails: Record<string, User> }) => {
-    const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel'; const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite'; const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm')); const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false); const [isUserActive, setIsUserActive] = useState(false);
+    const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel'; const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite'; const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm')); const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
-    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl]);
-    const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; setIsUserActive(true); if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
+    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
+    const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
     const handleSaveToDevice = async () => { if (!mediaUrl) return; if (Capacitor.isNativePlatform()) { try { const { Filesystem, Directory } = await import('@capacitor/filesystem'); const cleanBase64 = mediaUrl.split(',')[1]; const ext = message.imageUrl ? 'jpg' : (message.videoStatus ? 'mp4' : (message.musicStatus ? 'mp3' : 'bin')); const fileName = `Infinite_${message.id}_${Date.now()}.${ext}`; await Filesystem.writeFile({ path: fileName, data: cleanBase64, directory: Directory.Documents }); toast({ title: t('dm_success'), description: t('save_to_device') }); } catch (e) { console.error(e); toast({ variant: 'destructive', title: 'Error', description: 'Failed to save file.' }); } } else { const link = document.createElement('a'); link.href = mediaUrl; link.download = message.fileName || `Infinite_${message.id}`; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast({ title: t('dm_success') }); } };
-    const isCircleOnly = message.circleStatus === 'complete' && !message.content; const canCopy = message.content && !message.poll; const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
+    const canCopy = message.content && !message.poll; const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
     const isLikedByMe = (emoji: string) => message.reactions?.[emoji]?.includes(currentUser.uid);
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (<div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5 shadow-sm" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5 shadow-sm"))}>
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5 shadow-sm" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5 shadow-sm"))}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-semibold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
@@ -143,7 +140,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
                 {message.content && !message.poll && (<div className="text-sm break-words whitespace-pre-wrap pt-0 px-0.5"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href!); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>)}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
             </div>
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
@@ -169,15 +166,71 @@ ChatMessage.displayName = 'ChatMessage';
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
   const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll } = useTheme(); const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
-  const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [showNewPoll, setShowNewPoll] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null); const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); const [stickyDate, setStickyDate] = useState<string | null>(null);
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
+  
+  const [messageContent, setMessageContent] = useState(''); 
+  const [isSending, setIsSending] = useState(false); 
+  const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); 
+  const [showChatProfile, setShowChatProfile] = useState(false); 
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); 
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
+  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null); 
+  const [previewImage, setPreviewImage] = useState<string | null>(null); 
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null); 
+  const [messageLimit, setMessageLimit] = useState(50); 
+  const [hasMore, setHasMore] = useState(true); 
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null); 
+  const listInnerRef = useRef<HTMLDivElement>(null); 
+  const fileInputRef = useRef<HTMLInputElement>(null); 
+  const prevScrollHeightRef = useRef<number>(0); 
+  const isAtBottomRef = useRef(true); 
+  const autoScrollGuardRef = useRef<number>(0); 
+  
+  const [stickyDate, setStickyDate] = useState<string | null>(null);
+  const [showStickyDate, setShowStickyDate] = useState(false);
+  const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false); 
+  const [isRecordingCircle, setIsRecordingCircle] = useState(false); 
+  const [recordingDuration, setRecordingDuration] = useState(0); 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null); 
+  const chunksRef = useRef<Blob[]>([]); 
+  const timerRef = useRef<NodeJS.Timeout | null>(null); 
+  const activeStreamRef = useRef<MediaStream | null>(null);
+  
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem, liveChatData]);
   const messagesQuery = useMemoFirebase(() => { if (!db || !isMember) return null; return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit)); }, [db, item.id, isMember, messageLimit]); const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery); const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
   const scrollToBottom = useCallback((b: ScrollBehavior = 'auto') => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight; }, []);
-  const handleScroll = useCallback(() => { if (!scrollContainerRef.current) return; const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(p => p + 50); } }, [hasMore, messagesLoading, messages, messageLimit]);
+  
+  const handleScroll = useCallback(() => { 
+    if (!scrollContainerRef.current) return; 
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; 
+    const atBottom = scrollHeight - scrollTop - clientHeight < 300; 
+    isAtBottomRef.current = atBottom; 
+    if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; 
+    if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
+        prevScrollHeightRef.current = scrollHeight; 
+        setMessageLimit(p => p + 50); 
+    } 
+
+    // Sticky Date Logic
+    setShowStickyDate(true);
+    if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current);
+    stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000);
+
+    const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker');
+    let currentTopDate = null;
+    markers.forEach((marker: any) => {
+        if (marker.offsetTop <= scrollTop + 100) {
+            currentTopDate = marker.getAttribute('data-date');
+        }
+    });
+    setStickyDate(currentTopDate);
+  }, [hasMore, messagesLoading, messages, messageLimit]);
+
   useEffect(() => { const ro = new ResizeObserver(() => { if (isAtBottomRef.current || (Date.now() - autoScrollGuardRef.current < 10000)) requestAnimationFrame(() => { scrollToBottom(); setTimeout(scrollToBottom, 50); }); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
   useEffect(() => { if (!db || !currentUser.uid || !item.id || !messages) return; const markRead = async () => { if (item.unreadCounts?.[currentUser.uid] > 0) await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); }; markRead(); }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
@@ -309,7 +362,45 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
-        <div className="flex items-center p-2 h-14"><Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button><div className="flex-1 flex items-center min-w-0 h-12"><button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}><div className='shrink-0 h-10 w-10'>{item.type === 'dm' ? <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} isSelected={true} /> : <Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback><InfiniteLogo /></AvatarFallback></Avatar>}</div><div className="ml-3 min-w-0 flex flex-col justify-center h-full"><div className="flex items-center gap-2"><h2 className="text-lg font-semibold font-headline truncate leading-none">{item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div></div></button></div></div>
+        <div className="flex items-center p-2 h-14">
+            <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
+            <div className="flex-1 flex items-center min-w-0 h-12">
+                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                    <div className='shrink-0 h-10 w-10'>
+                        {item.type === 'dm' ? (
+                            <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} isSelected={true} />
+                        ) : (
+                            <Avatar className="h-10 w-10">
+                                <AvatarImage src={item.avatar} />
+                                <AvatarFallback>
+                                    {item.id === 'GENERAL_CHAT' ? <Globe className="h-6 w-6 text-primary" /> : <InfiniteLogo />}
+                                </AvatarFallback>
+                            </Avatar>
+                        )}
+                    </div>
+                    <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-semibold font-headline truncate leading-none">
+                                {item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}
+                            </h2>
+                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+        
+        {/* Floating Sticky Date Plate */}
+        <div className={cn(
+            "absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none",
+            showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
+        )}>
+            <div className="px-4 py-1.5 rounded-full bg-muted/60 backdrop-blur-md border border-border/50 shadow-lg">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                    {stickyDate}
+                </span>
+            </div>
+        </div>
       </header>
       <div className="relative flex-1 bg-background overflow-hidden min-h-0">
         <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
@@ -324,7 +415,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 
                 return (
                     <React.Fragment key={m.id}>
-                        {showDate && <DateSeparator date={dateStr} />}
+                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} />}
                         <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} />
                     </React.Fragment>
                 );
@@ -360,7 +451,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               <Textarea placeholder={t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" />
               <div className="flex items-center gap-1 shrink-0 h-[38px]">
                 <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">
                       {t('max_file_size_label', { size: maxSizeText })}
