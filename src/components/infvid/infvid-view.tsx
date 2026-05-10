@@ -7,8 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
-import type { AuthenticatedUser, SharedVideo, User, VideoComment, PopulatedChat } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, MessageSquare, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
+import { Loader2, Upload, Play, X, User as UserIcon, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -63,6 +63,25 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const senderIds = useMemo(() => { const ids = new Set(videos?.map(v => v.senderId) || []); if (fetchedExternalVideo) ids.add(fetchedExternalVideo.senderId); return Array.from(ids); }, [videos, fetchedExternalVideo]);
   const { users: senders } = useBatchUsers(senderIds);
 
+  const filteredVideos = useMemo(() => {
+      if (!videos) return [];
+      if (!searchQuery.trim()) return videos;
+      const q = searchQuery.toLowerCase().trim();
+      
+      if (q.startsWith('/iv/v/')) {
+          const id = q.substring(6);
+          return videos.filter(v => v.id === id);
+      }
+
+      return videos.filter(v => {
+          const author = senders[v.senderId];
+          return v.title.toLowerCase().includes(q) || 
+                 (author?.name || '').toLowerCase().includes(q) || 
+                 (author?.username || '').toLowerCase().includes(q) ||
+                 v.id === q;
+      });
+  }, [videos, searchQuery, senders]);
+
   useEffect(() => {
     const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); } else { onClose(); } };
     let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); }
@@ -78,7 +97,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             const videoSnap = await getDoc(doc(db, 'videos', initialVideoId));
             if (videoSnap.exists()) { const videoData = { id: videoSnap.id, ...videoSnap.data() } as SharedVideo; setFetchedExternalVideo(videoData); setSelectedVideoId(initialVideoId); }
             else { toast({ variant: 'destructive', title: t('video_not_found') }); }
-        } catch (e) { console.error("Error loading initial video:", e); toast({ variant: 'destructive', title: 'Error', description: t('unexpected_error') }); }
+        } catch (e) { console.error("Error loading initial video:", e); }
     };
     if (!videosLoading) { checkAndLoadVideo(); }
   }, [initialVideoId, db, videosLoading, videos, t, toast]);
@@ -91,8 +110,14 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         const videoData: Omit<SharedVideo, 'id'> = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl };
         await setDoc(videoDocRef, videoData);
         const videoBase64 = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve((reader.result as string).split(',')[1]); reader.onerror = (error) => reject(error); });
-        const CHUNK_SIZE = 900 * 1024; const chunks: string[] = []; for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) { chunks.push(videoBase64.substring(i, i + CHUNK_SIZE)); }
-        const chunkIds: string[] = []; for (const [index, chunkData] of chunks.entries()) { const chunkDocRef = doc(collection(db, 'videoChunks')); await setDoc(chunkDocRef, { data: chunkData, part: index, senderId: currentUser.uid, videoId: videoDocRef.id }); chunkIds.push(chunkDocRef.id); await new Promise(res => setTimeout(res, 50)); }
+        const CHUNK_SIZE = 900 * 1024;
+        const chunkIds: string[] = [];
+        for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
+            const chunkRef = doc(collection(db, 'videoChunks'));
+            await setDoc(chunkRef, { data: videoBase64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid, videoId: videoDocRef.id });
+            chunkIds.push(chunkRef.id);
+            await new Promise(res => setTimeout(res, 50));
+        }
         await updateDoc(videoDocRef, { videoStatus: 'complete', videoChunkIds: chunkIds }); await cacheFile(videoDocRef.id, file);
         toast({ title: t('dm_success'), description: t('infvid_upload_success') }); setIsUploadOpen(false);
     } catch (error) { console.error("Video upload failed:", error); toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload video.' }); }
@@ -110,10 +135,10 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                 <InfVidIcon className="h-8 w-8 shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infvid_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
             </div>
         </div>
-        <div className="hidden md:block flex-1 max-w-md mx-4"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
+        <div className="flex-1 max-w-md mx-4"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
         <div className="flex items-center gap-2 shrink-0"><Button onClick={() => setIsUploadOpen(true)} className="gap-2 rounded-full h-10 px-4"><PlusCircle className="h-4 w-4" /><span className="hidden sm:inline">{t('infvid_upload_title')}</span></Button></div>
       </header>
-      <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : videos && videos.length > 0 ? (<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">{videos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{t('infvid_no_videos')}</h3></div>)}</div></main>
+      <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{t('infvid_no_videos')}</h3></div>)}</div></main>
       {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} />)}
       <UploadDialog open={isUploadOpen} onOpenChange={setIsUploadOpen} onUpload={handleUploadVideo} isUploading={isUploading} maxSizeText={maxSizeText} maxSizeInBytes={maxSizeInBytes} />
     </div>
@@ -126,7 +151,7 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
 }
 
 function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser }) {
-    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
+    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]); const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
@@ -152,18 +177,9 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
     useEffect(() => { if (!db) return; const commentsQuery = query(collection(db, 'videos', video.id, 'comments'), orderBy('timestamp', 'desc'), limit(100)); return onSnapshot(commentsQuery, (snapshot) => { setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as VideoComment))); }); }, [db, video.id]);
     useEffect(() => { if (!db) return; const userRef = doc(db, 'users', currentUser.uid); return onSnapshot(userRef, (snapshot) => { if (snapshot.exists()) { setUserSubscriptions(snapshot.data().subscriptions || []); } }); }, [db, currentUser.uid]);
 
-    useEffect(() => {
-      const handleFullscreenChange = async () => {
-        const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-        if (Capacitor.isNativePlatform()) { const { ScreenOrientation } = await import('@capacitor/screen-orientation'); try { if (isFullscreen) { await ScreenOrientation.unlock(); } else { const isTablet = window.innerWidth >= 768 || window.innerHeight >= 768; if (!isTablet) { await ScreenOrientation.lock({ orientation: 'portrait' }); } else { await ScreenOrientation.unlock(); } } } catch (e) { console.error("InfVid Fullscreen Orientation error:", e); } }
-      };
-      document.addEventListener('fullscreenchange', handleFullscreenChange); document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-      return () => { document.removeEventListener('fullscreenchange', handleFullscreenChange); document.removeEventListener('webkitfullscreenchange', handleFullscreenChange); };
-    }, []);
-
     const handleAddComment = async (replyTo?: VideoComment) => { if (!db || !commentText.trim()) return; try { const commentData: any = { userId: currentUser.uid, userName: currentUser.name || currentUser.username, userAvatar: currentUser.avatar || null, text: commentText.trim(), timestamp: Timestamp.now(), likedBy: [], }; if (replyTo) { commentData.parentId = replyTo.parentId || replyTo.id; commentData.replyTo = { userId: replyTo.userId, userName: replyTo.userName, }; } await addDoc(collection(db, 'videos', video.id, 'comments'), commentData); setAddCommentText(''); } catch (e) { console.error(e); } };
     const handleToggleLike = async () => { if (!db) return; const videoRef = doc(db, 'videos', video.id); try { if (isLiked) { await updateDoc(videoRef, { likedBy: arrayRemove(currentUser.uid) }); } else { await updateDoc(videoRef, { likedBy: arrayUnion(currentUser.uid) }); } } catch (e) { console.error("Like toggle failed", e); } };
-    const handleToggleSubscribe = async () => { if (!db || video.senderId === currentUser.uid) return; const userRef = doc(db, 'users', currentUser.uid); const authorRef = doc(db, 'users', video.senderId); try { const batch = writeBatch(db); if (isSubscribed) { batch.update(userRef, { subscriptions: arrayRemove(video.senderId) }); batch.update(authorRef, { subscriberCount: increment(-1) }); } else { batch.update(userRef, { subscriptions: arrayUnion(video.senderId) }); batch.update(authorRef, { subscriberCount: increment(1) }); } await batch.commit(); } catch (e) { console.error("Subscription toggle failed", e); toast({ variant: "destructive", title: "Error", description: "Failed to update subscription." }); } };
+    const handleToggleSubscribe = async () => { if (!db || video.senderId === currentUser.uid) return; const userRef = doc(db, 'users', currentUser.uid); const authorRef = doc(db, 'users', video.senderId); try { const batch = writeBatch(db); if (isSubscribed) { batch.update(userRef, { subscriptions: arrayRemove(video.senderId) }); batch.update(authorRef, { subscriberCount: increment(-1) }); } else { batch.update(userRef, { subscriptions: arrayUnion(video.senderId) }); batch.update(authorRef, { subscriberCount: increment(1) }); } await batch.commit(); } catch (e) { console.error("Subscription toggle failed", e); } };
     const handleShare = () => { const internalLink = `/IV/V/${video.id}`; navigator.clipboard.writeText(internalLink); toast({ title: t('video_link_copied') }); };
     const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
 
@@ -211,7 +227,7 @@ function CommentItem({ comment, replies, currentUser, onReply, videoId, commentA
     const { t, language } = useLanguage(); const db = useFirestore(); const [showReplies, setShowReplies] = useState(false); const isLikedByMe = comment.likedBy?.includes(currentUser.uid);
     const author = commentAuthors[comment.userId]; const displayName = author?.name || comment.userName; const displayAvatar = author?.avatar || comment.userAvatar;
     const handleToggleCommentLike = async (c: VideoComment) => { if (!db) return; const commentRef = doc(db, 'videos', videoId, 'comments', c.id); const isLiked = c.likedBy?.includes(currentUser.uid); try { if (isLiked) { await updateDoc(commentRef, { likedBy: arrayRemove(currentUser.uid) }); } else { await updateDoc(commentRef, { likedBy: arrayUnion(currentUser.uid) }); } } catch (e) { console.error("Comment like failed", e); } };
-    return (<div className="space-y-3"><div className="flex gap-3"><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={displayAvatar || undefined} /><AvatarFallback>{displayName?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><span className="font-bold text-sm leading-none">{displayName}</span><span className="text-[10px] text-muted-foreground font-medium">{comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}</span></div><p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p><div className="flex items-center gap-4 mt-1"><button onClick={() => handleToggleCommentLike(comment)} className={cn("flex items-center gap-1.5 transition-colors", isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary")}><ThumbsUp className={cn("h-3.5 w-3.5", isLikedByMe && "fill-current")} /><span className="text-[10px] font-bold">{comment.likedBy?.length || 0}</span></button><button onClick={() => onReply(comment)} className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button></div></div></div>{replies.length > 0 && (<div className="ml-12 space-y-3"><button onClick={() => setShowReplies(!showReplies)} className="flex items-center gap-2 text-[11px] font-bold text-primary hover:underline">{showReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{t('answers_button')} ({replies.length})</button>{showReplies && (<div className="space-y-4 pt-1 animate-in slide-in-from-top-1">{replies.map((reply) => { const isReplyLikedByMe = reply.likedBy?.includes(currentUser.uid); const replyAuthor = commentAuthors[reply.userId]; const replyDisplayName = replyAuthor?.name || reply.userName; const replyDisplayAvatar = replyAuthor?.avatar || reply.userAvatar; return (<div key={reply.id} className="flex gap-3"><Avatar className="h-7 w-7 shrink-0"><AvatarImage src={replyDisplayAvatar || undefined} /><AvatarFallback className="text-[10px]">{replyDisplayName?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><span className="font-bold text-xs leading-none">{replyDisplayName}</span><span className="text-[9px] text-muted-foreground">{reply.timestamp?.seconds ? formatDistanceToNow(new Date(reply.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}</span></div><p className="text-xs text-foreground/90"><span className="text-primary font-bold mr-1">{reply.replyTo?.userName}</span>{reply.text}</p><div className="flex items-center gap-3 mt-1"><button onClick={() => handleToggleCommentLike(reply)} className={cn("flex items-center gap-1 transition-colors", isReplyLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary")}><ThumbsUp className={cn("h-3 w-3", isReplyLikedByMe && "fill-current")} /><span className="text-[9px] font-bold">{reply.likedBy?.length || 0}</span></button><button onClick={() => onReply(reply)} className="text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button></div></div></div>); })}</div>)}</div>)}</div>);
+    return (<div className="space-y-3"><div className="flex gap-3"><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={displayAvatar || undefined} /><AvatarFallback>{displayName?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><span className="font-bold text-sm leading-none">{displayName}</span><span className="text-[10px] text-muted-foreground font-medium">{comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}</span></div><p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p><div className="flex items-center gap-4 mt-1"><button onClick={() => handleToggleCommentLike(comment)} className={cn("flex items-center gap-1.5 transition-colors", isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary")}><ThumbsUp className={cn("h-3.5 w-3.5", isLikedByMe && "fill-current")} /><span className="text-[10px] font-bold">{comment.likedBy?.length || 0}</span></button><button onClick={() => onReply(comment)} className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button></div></div></div>{replies.length > 0 && (<div className="ml-12 space-y-3"><button onClick={() => setShowReplies(!showReplies)} className="flex items-center gap-2 text-[11px] font-bold text-primary hover:underline">{showReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{t('answers_button')} ({replies.length})</button>{showReplies && (<div className="space-y-4 pt-1 animate-in slide-in-from-top-1">{replies.map((reply) => { const isReplyLikedByMe = reply.likedBy?.includes(currentUser.uid); const replyAuthor = commentAuthors[reply.userId]; const replyDisplayName = replyAuthor?.name || reply.userName; const replyDisplayAvatar = replyAuthor?.avatar || reply.userAvatar; return (<div key={reply.id} className="flex gap-3"><Avatar className="h-7 w-7 shrink-0"><AvatarImage src={replyDisplayAvatar || undefined} /><AvatarFallback className="text-[10px]">{replyDisplayName?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><span className="font-bold text-xs leading-none">{replyDisplayName}</span><span className="text-[9px] text-muted-foreground">{reply.timestamp?.seconds ? formatDistanceToNow(new Date(reply.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}</span></div><p className="text-xs text-foreground/90"><span className="text-primary font-bold mr-1">{reply.replyTo?.userName}</span>{reply.text}</p><div className="flex items-center gap-3 mt-1"><button onClick={() => handleToggleCommentLike(reply)} className={cn("flex items-center gap-1 transition-colors", isReplyLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary")}><ThumbsUp className={cn("h-3.5 w-3.5", isReplyLikedByMe && "fill-current")} /><span className="text-[9px] font-bold">{reply.likedBy?.length || 0}</span></button><button onClick={() => onReply(reply)} className="text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button></div></div></div>); })}</div>)}</div>)}</div>);
 }
 
 function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, maxSizeInBytes }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, thumbnailFile: File | null, title: string, description: string) => Promise<void>, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number }) {
@@ -222,7 +238,7 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent hideCloseButton className="max-w-5xl w-[95vw] h-[90vh] overflow-hidden rounded-[2rem] border-none shadow-2xl relative p-0 flex flex-col items-stretch">
+            <DialogContent hideCloseButton className="max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden rounded-[2rem] border-none shadow-2xl relative p-0 flex flex-col items-stretch">
                 <DialogHeader className="relative flex-row items-center justify-center p-6 border-b shrink-0 h-20">
                     <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute left-6 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
                     <DialogTitle className="text-2xl font-bold font-headline">{t('infvid_upload_title')}</DialogTitle>

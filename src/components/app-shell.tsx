@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -51,7 +50,6 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const [showSubPrompt, setShowSubPrompt] = useState(false);
   const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
 
-  // Bot engine stability refs
   const processedMsgIds = useRef<Set<string>>(new Set());
   const engineStartedAt = useRef<number>(Date.now());
   const botDetectionCache = useRef<Record<string, boolean>>({});
@@ -95,147 +93,71 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
   useEffect(() => {
     const selectedId = typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
-    if (selectedId) {
-      setActiveChatId(selectedId);
-    } else {
-      setActiveChatId(null);
-    }
+    setActiveChatId(selectedId || null);
   }, [selectedItem, setActiveChatId]);
 
-  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio') => {
+  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio' | null) => {
     setSelectedItem(item);
     if (item !== 'infvid') setInfVidInitialVideoId(null);
   }, []);
 
-  // Global System Back Button Support for all items (Robust implementation)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-
-    const handleSystemBack = () => {
-      // If we are in a chat or special view, return to sidebar
-      if (selectedItem) {
-        setSelectedItem(null);
-      }
-    };
-
+    const handleSystemBack = () => { if (selectedItem) setSelectedItem(null); };
     let backListener: any;
-    import('@capacitor/app').then(({ App }) => {
-      backListener = App.addListener('backButton', handleSystemBack);
-    });
-
-    return () => {
-      if (backListener) {
-        backListener.then((l: any) => l.remove());
-      }
-    };
+    import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); });
+    return () => { if (backListener) backListener.then((l: any) => l.remove()); };
   }, [selectedItem]);
 
-  // Global Custom Bot Engine
   useEffect(() => {
     if (!db || !currentUser || !userData) return;
-
     const chatsRef = collection(db, 'chats');
     const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach(async (change) => {
             const chatData = change.doc.data() as Chat;
             const lastMsg = chatData.lastMessage;
-
             if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
-                // LEADERSHIP CHECK
                 const currentLeader = (userData as any).activeSessionId;
                 if (currentLeader && currentLeader !== sessionId) return;
-
                 if (processedMsgIds.current.has(lastMsg.id)) return;
-                
                 const msgTime = lastMsg.timestamp?.toMillis() || 0;
-                if (msgTime < engineStartedAt.current - 5000) {
-                    processedMsgIds.current.add(lastMsg.id);
-                    return;
-                }
-
+                if (msgTime < engineStartedAt.current - 5000) { processedMsgIds.current.add(lastMsg.id); return; }
                 processedMsgIds.current.add(lastMsg.id);
                 const otherMembers = chatData.members.filter(m => m !== currentUser.uid);
                 for (const memberId of otherMembers) {
                     if (botDetectionCache.current[memberId] === false) continue;
-
                     const memberDoc = await getDoc(doc(db, 'users', memberId));
                     if (memberDoc.exists() && memberDoc.data().isCustomBot) {
                         botDetectionCache.current[memberId] = true;
                         const botLogicSnap = await getDoc(doc(db, 'customBots', memberId));
-                        if (botLogicSnap.exists() && botLogicSnap.data().isActive) {
-                            executeBotLogic(botLogicSnap.data() as CustomBot, lastMsg, change.doc.id);
-                        }
-                    } else {
-                        botDetectionCache.current[memberId] = false;
-                    }
+                        if (botLogicSnap.exists() && botLogicSnap.data().isActive) { executeBotLogic(botLogicSnap.data() as CustomBot, lastMsg, change.doc.id); }
+                    } else { botDetectionCache.current[memberId] = false; }
                 }
             }
         });
     });
-
-    const resolveVars = (text: string = '', vars: Record<string, string>) => {
-        return text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
-    };
-
-    const checkCondition = (block: any, message: any, vars: Record<string, string>) => {
-        const cond = block.params?.condition || '';
-        if (!cond) return true;
-        
-        const resolvedCond = resolveVars(cond, vars).toLowerCase();
-        const msgText = (message.content || '').toLowerCase();
-        
-        if (resolvedCond.includes('==')) {
-            const [left, right] = resolvedCond.split('==').map(s => s.trim());
-            return left === right;
-        }
-        if (resolvedCond.includes('contains')) {
-            const [_, val] = resolvedCond.split('contains').map(s => s.trim());
-            return msgText.includes(val);
-        }
-        return msgText.includes(resolvedCond);
-    };
-
+    const resolveVars = (text: string = '', vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
     const executeBotLogic = async (bot: CustomBot, message: any, chatId: string) => {
         const stateRef = doc(db, 'customBots', bot.id, 'userStates', currentUser.uid);
         const stateSnap = await getDoc(stateRef);
         const memory = stateSnap.exists() ? stateSnap.data().vars || {} : {};
-
-        const vars: Record<string, string> = {
-            ...memory,
-            'user_name': userData.name || currentUser.displayName || 'User',
-            'msg_text': message.content || '',
-            'bot_name': bot.name,
-            'time': new Date().toLocaleTimeString()
-        };
-
+        const vars: Record<string, string> = { ...memory, 'user_name': userData.name || currentUser.displayName || 'User', 'msg_text': message.content || '', 'bot_name': bot.name, 'time': new Date().toLocaleTimeString() };
         const isStartCommand = message.content === '/start';
         const triggerType = isStartCommand ? 'event_start' : 'event_message';
-
         for (const script of bot.scripts) {
-            const blocks = script.blocks;
-            if (!blocks || blocks.length === 0 || blocks[0].type !== triggerType) continue;
-
-            let i = 1;
-            const ifStack: boolean[] = [];
-
+            const blocks = script.blocks; if (!blocks || blocks.length === 0 || blocks[0].type !== triggerType) continue;
+            let i = 1; const ifStack: boolean[] = [];
             while (i < blocks.length) {
                 const block = blocks[i];
                 if (block.type === 'logic_end_if') { ifStack.pop(); i++; continue; }
                 if (block.type === 'logic_else') { if (ifStack.length > 0) { ifStack[ifStack.length - 1] = !ifStack[ifStack.length - 1]; } i++; continue; }
                 if (ifStack.some(val => val === false)) { if (block.type === 'logic_if') ifStack.push(false); i++; continue; }
-
                 switch (block.type) {
-                    case 'logic_if': ifStack.push(checkCondition(block, message, vars)); break;
+                    case 'logic_if': ifStack.push(resolveVars(block.params?.condition, vars).includes('==')); break;
                     case 'variable_set': vars[block.params?.name] = resolveVars(block.params?.value, vars); break;
                     case 'action_send':
-                    case 'action_reply': 
-                    case 'action_send_image':
-                    case 'action_send_video':
-                    case 'action_send_music':
-                    case 'action_send_file':
-                        await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? message : undefined), vars); break;
+                    case 'action_reply': await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? message : undefined), vars); break;
                     case 'action_wait': await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000)); break;
                 }
                 i++;
@@ -244,72 +166,16 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         const { user_name, msg_text, bot_name, time, ...persistentOnly } = vars;
         await setDoc(stateRef, { vars: persistentOnly, updatedAt: serverTimestamp() }, { merge: true });
     };
-
     const sendBotMessage = async (bot: CustomBot, block: BotBlock, chatId: string, replyTo?: any, vars?: Record<string, string>) => {
         const msgRef = doc(collection(db, 'chats', chatId, 'messages'));
-        const timestamp = serverTimestamp();
         const text = resolveVars(block.params?.text, vars || {});
-        const mediaData = block.params?.mediaData;
-        const mimeType = block.params?.mimeType;
-        const fileName = block.params?.fileName;
-
-        const msgData: any = {
-            senderId: bot.id,
-            content: text || '',
-            timestamp,
-            type: 'user' as const,
-            readBy: [],
-            ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || currentUser.displayName || 'User' } }),
-        };
-
-        let lastMsgContent = text || 'Message';
-
-        if (block.type === 'action_send_image' && mediaData) {
-            msgData.imageUrl = mediaData;
-            lastMsgContent = t('image_attachment_placeholder');
-        } else if (block.type === 'action_send_video' && mediaData) {
-            msgData.videoMimeType = mimeType || 'video/mp4';
-            msgData.videoStatus = 'uploading';
-            lastMsgContent = t('video_attachment_placeholder');
-        } else if (block.type === 'action_send_music' && mediaData) {
-            msgData.musicMimeType = mimeType || 'audio/mpeg';
-            msgData.musicStatus = 'uploading';
-            msgData.fileName = fileName || 'audio.mp3';
-            lastMsgContent = t('music_attachment_placeholder');
-        } else if (block.type === 'action_send_file' && mediaData) {
-            msgData.fileMimeType = mimeType || 'application/octet-stream';
-            msgData.fileStatus = 'uploading';
-            msgData.fileName = fileName || 'file.bin';
-            lastMsgContent = t('file_attachment_placeholder');
-        }
-
+        const msgData: any = { senderId: bot.id, content: text || '', timestamp: serverTimestamp(), type: 'user', readBy: [], ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || 'User' } }) };
         await setDoc(msgRef, msgData);
-        await updateDoc(doc(db, 'chats', chatId), {
-            lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, content: lastMsgContent, timestamp: Timestamp.now() }
-        });
-
-        // Handle chunking for non-image media
-        if (mediaData && (block.type === 'action_send_video' || block.type === 'action_send_music' || block.type === 'action_send_file')) {
-            const base64 = mediaData.split(',')[1];
-            const CHUNK_SIZE = 900 * 1024;
-            const chunkIds: string[] = [];
-            const colName = block.type === 'action_send_video' ? 'videoChunks' : block.type === 'action_send_music' ? 'musicChunks' : 'fileChunks';
-            const statusKey = block.type === 'action_send_video' ? 'videoStatus' : block.type === 'action_send_music' ? 'musicStatus' : 'fileStatus';
-            const idKey = block.type === 'action_send_video' ? 'videoChunkIds' : block.type === 'action_send_music' ? 'musicChunkIds' : 'fileChunkIds';
-
-            for (let j = 0; j < base64.length; j += CHUNK_SIZE) {
-                const chunkRef = doc(collection(db, colName));
-                await setDoc(chunkRef, { data: base64.substring(j, j + CHUNK_SIZE), part: j/CHUNK_SIZE, senderId: bot.id });
-                chunkIds.push(chunkRef.id);
-            }
-            await updateDoc(msgRef, { [statusKey]: 'complete', [idKey]: chunkIds });
-        }
+        await updateDoc(doc(db, 'chats', chatId), { lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, timestamp: Timestamp.now() } });
     };
-
     return () => unsubscribe();
-  }, [db, currentUser, userData, sessionId, t]);
+  }, [db, currentUser, userData, sessionId]);
 
-  // Global Call Listener
   useEffect(() => {
     if (!db || !currentUser) return;
     const qCalls = query(collection(db, 'calls'), where('calleeId', '==', currentUser.uid), where('status', '==', 'calling'));
@@ -324,31 +190,26 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
           showCallNotification(callerName, callData.id, !!callData.isVideo);
         }
       } else if (incomingCall) {
-        setIncomingCall(null);
-        window.dispatchEvent(new CustomEvent('stop-ringtone'));
+        setIncomingCall(null); window.dispatchEvent(new CustomEvent('stop-ringtone'));
       }
     });
     return () => unsubscribe();
-  }, [db, currentUser, incomingCall, showCallNotification, t]);
+  }, [db, currentUser, incomingCall, showCallNotification]);
 
-  // Global Events
   useEffect(() => {
     const handleOpenChat = async (event: any) => {
-      const chatId = event.detail.chatId;
-      if (!chatId || !db) return;
+      const chatId = event.detail.chatId; if (!chatId || !db) return;
       try {
         const chatDoc = await getDoc(doc(db, 'chats', chatId));
         if (chatDoc.exists()) {
           const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
-          const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite') ? 'Bot' : chatData.icon as keyof typeof iconMap | undefined;
-          handleSelect({ ...chatData, id: chatDoc.id, iconComponent: iconName ? iconMap[iconName] : undefined } as PopulatedChat);
+          const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite') ? 'Bot' : chatData.icon as any;
+          handleSelect({ ...chatData, id: chatDoc.id, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
         }
       } catch (e) { console.error(e); }
     };
-
     const handleAnswerCall = async (event: any) => {
-      const chatId = event.detail.chatId;
-      if (!chatId || !db) return;
+      const chatId = event.detail.chatId; if (!chatId || !db) return;
       window.dispatchEvent(new CustomEvent('stop-ringtone'));
       const callDoc = await getDoc(doc(db, 'calls', chatId));
       const chatDoc = await getDoc(doc(db, 'chats', chatId));
@@ -360,33 +221,13 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         const iconName = (chatData.icon === 'Drum' || chatData.name === 'Infinite') ? 'Bot' : chatData.icon as any;
         const populatedChat = { ...chatData, id: chatDoc.id, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat;
         setActiveCall({ chat: populatedChat, otherUser: otherUserDoc.exists() ? { id: otherUserDoc.id, ...otherUserDoc.data() } as User : null, isVideo: !!callData.isVideo, isCaller: false });
-        setShowCallDialog(true);
-        handleSelect(populatedChat);
+        setShowCallDialog(true); handleSelect(populatedChat);
       }
     };
-
-    const handleInitiateCallEvent = (event: any) => {
-      const { chat, otherUser, isVideo } = event.detail;
-      setActiveCall({ chat, otherUser, isVideo, isCaller: true });
-      setShowCallDialog(true);
-    };
-
-    const handleOpenInfVid = (event: any) => {
-        const videoId = event.detail.videoId;
-        setInfVidInitialVideoId(videoId);
-        handleSelect('infvid');
-    };
-
-    window.addEventListener('open-chat', handleOpenChat);
-    window.addEventListener('answer-call', handleAnswerCall);
-    window.addEventListener('initiate-call', handleInitiateCallEvent);
-    window.addEventListener('open-infvid', handleOpenInfVid);
-    return () => {
-        window.removeEventListener('open-chat', handleOpenChat);
-        window.removeEventListener('answer-call', handleAnswerCall);
-        window.removeEventListener('initiate-call', handleInitiateCallEvent);
-        window.removeEventListener('open-infvid', handleOpenInfVid);
-    };
+    const handleInitiateCallEvent = (event: any) => { const { chat, otherUser, isVideo } = event.detail; setActiveCall({ chat, otherUser, isVideo, isCaller: true }); setShowCallDialog(true); };
+    const handleOpenInfVid = (event: any) => { setInfVidInitialVideoId(event.detail.videoId); handleSelect('infvid'); };
+    window.addEventListener('open-chat', handleOpenChat); window.addEventListener('answer-call', handleAnswerCall); window.addEventListener('initiate-call', handleInitiateCallEvent); window.addEventListener('open-infvid', handleOpenInfVid);
+    return () => { window.removeEventListener('open-chat', handleOpenChat); window.removeEventListener('answer-call', handleAnswerCall); window.removeEventListener('initiate-call', handleInitiateCallEvent); window.removeEventListener('open-infvid', handleOpenInfVid); };
   }, [db, handleSelect, currentUser.uid]);
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
@@ -394,40 +235,24 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     return { ...currentUser, ...userData, isAdmin: userData.username === '@Infinite' };
   }, [currentUser, userData]);
 
-  const currentSelectedId = useMemo(() => {
-      return typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
-  }, [selectedItem]);
-
-  const handleDeclineCall = () => {
-    if (!db || !incomingCall) return;
-    updateDoc(doc(db, 'calls', incomingCall.id), { status: 'ended' });
-    setIncomingCall(null);
-    window.dispatchEvent(new CustomEvent('stop-ringtone'));
-  };
-
-  const handleAcceptIncoming = () => {
-    if (incomingCall) window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId: incomingCall.id } }));
-  };
+  const currentSelectedId = useMemo(() => typeof selectedItem === 'string' ? selectedItem : selectedItem?.id, [selectedItem]);
+  const handleDeclineCall = () => { if (!db || !incomingCall) return; updateDoc(doc(db, 'calls', incomingCall.id), { status: 'ended' }); setIncomingCall(null); window.dispatchEvent(new CustomEvent('stop-ringtone')); };
+  const handleAcceptIncoming = () => { if (incomingCall) window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId: incomingCall.id } })); };
 
   const renderMainView = () => {
     if (!populatedUser) return <div className="flex h-svh items-center justify-center">Loading...</div>;
-
-    if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null as any)} onSelectChat={handleSelect} />;
-    if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null as any)} />;
-    if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null as any)} initialVideoId={infVidInitialVideoId || undefined} />;
-    if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null as any)} />;
-    if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null as any)} currentUser={populatedUser} onSelectChat={handleSelect} />;
+    if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null)} onSelectChat={handleSelect} />;
+    if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
+    if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null)} initialVideoId={infVidInitialVideoId || undefined} />;
+    if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
+    if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     if (isMobile) return <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground"><SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} /></div>;
     return <div className="relative flex h-full flex-col items-center justify-center bg-background p-4"><div className="flex flex-col items-center text-center"><MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} /><h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2></div></div>;
   };
 
   return (
     <>
-      {!isMobile && (
-        <Sidebar>
-          {populatedUser && <SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} />}
-        </Sidebar>
-      )}
+      {!isMobile && populatedUser && <Sidebar><SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} /></Sidebar>}
       <SidebarInset className="min-h-0">
         {renderMainView()}
         {incomingCall && (
@@ -443,9 +268,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
           <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
             <DialogHeader className="items-center text-center space-y-4">
-              <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                <Bell className="h-10 w-10 text-primary animate-bounce" />
-              </div>
+              <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center"><Bell className="h-10 w-10 text-primary animate-bounce" /></div>
               <div className="space-y-2">
                 <DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle>
                 <DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription>
