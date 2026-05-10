@@ -22,18 +22,25 @@ export async function openCacheDB(): Promise<IDBDatabase> {
 }
 
 /**
- * Converts a base64 data URI to a Blob.
+ * Converts a base64 data URI to a Blob safely.
  */
 function dataURItoBlob(dataURI: string): Blob {
-  const parts = dataURI.split(',');
-  const byteString = atob(parts[1]);
-  const mimeString = parts[0].split(':')[1].split(';')[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
+  try {
+    const parts = dataURI.split(',');
+    if (parts.length < 2) throw new Error('Invalid Data URI');
+    
+    const byteString = atob(parts[1]);
+    const mimeString = parts[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  } catch (e) {
+    console.error('atob decoding failed, returning empty blob', e);
+    return new Blob([], { type: 'application/octet-stream' });
   }
-  return new Blob([ab], { type: mimeString });
 }
 
 export async function getCachedFile(id: string): Promise<string | null> {
@@ -144,4 +151,3 @@ export async function calculateCacheSize(): Promise<number> {
     return 0;
   }
 }
-

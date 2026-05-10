@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -64,13 +65,10 @@ function HolidayBanner() {
     { day: 7, month: 1, name: 'holiday_christmas', icon: Sparkles, color: 'from-blue-600 to-indigo-500' },
     { day: 14, month: 2, name: 'holiday_valentines', icon: Heart, color: 'from-rose-500 to-pink-400' },
     { day: 23, month: 2, name: 'holiday_defenders', icon: ShieldCheck, color: 'from-red-600 to-orange-600' },
-    { day: 14, month: 2, name: 'holiday_valentines_day', icon: Heart, color: 'from-rose-500 to-pink-400' },
-    { day: 23, month: 2, name: 'holiday_defender_day', icon: ShieldCheck, color: 'from-red-600 to-orange-600' },
     { day: 8, month: 3, name: 'holiday_womens_day', icon: Flower2, color: 'from-pink-500 to-rose-400' },
     { day: 12, month: 4, name: 'holiday_cosmonautics', icon: Rocket, color: 'from-indigo-600 to-purple-500' },
     { day: 1, month: 5, name: 'holiday_labor_day', icon: Flag, color: 'from-red-500 to-orange-500' },
     { day: 9, month: 5, name: 'holiday_victory_day', icon: Star, color: 'from-orange-600 to-red-700' },
-    { day: 12, month: 6, name: 'holiday_russia_day', icon: Flag, color: 'from-blue-500 to-red-500' },
     { day: 12, month: 6, name: 'holiday_russia_day', icon: Flag, color: 'from-blue-500 to-red-500' },
     { day: 4, month: 11, name: 'holiday_unity_day', icon: Users, color: 'from-blue-600 to-red-600' },
     { day: 31, month: 12, name: 'holiday_new_year_eve', icon: PartyPopper, color: 'from-blue-500 to-purple-600' },

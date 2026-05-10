@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, File as FileIcon, Mic, Camera, Pause, Play, Trash, Lock, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, File as FileIcon, Mic, Camera, Pause, Play, Trash, Lock, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -64,7 +64,18 @@ export const COMMON_EMOJIS = ['👍', '👎', '❤️', '🔥', '😂', '😮', 
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
 function DateSeparator({ date }: { date: string }) {
-  return (<div className="relative my-4" data-date-separator={date}><div className="absolute inset-0 flex items-center" aria-hidden="true"><div className="w-full border-t" /></div><div className="relative flex justify-center"><span className="bg-background px-3 text-sm font-medium text-muted-foreground">{date}</span></div></div>);
+  return (
+    <div className="relative my-6 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center" aria-hidden="true">
+        <div className="w-full border-t border-muted-foreground/10" />
+      </div>
+      <div className="relative px-4 py-1 rounded-full bg-muted/40 backdrop-blur-sm border border-border/50 shadow-sm">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
+          {date}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 const iconMap = { Users, Megaphone, Bookmark, Globe, Bot };
@@ -111,8 +122,9 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl]);
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; setIsUserActive(true); if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
-    const handleSaveToDevice = async () => { if (!mediaUrl) return; if (Capacitor.isNativePlatform()) { try { const { Filesystem, Directory } = await import('@capacitor/filesystem'); const cleanBase64 = mediaUrl.split(',')[1]; const ext = message.imageUrl ? 'jpg' : message.videoStatus ? 'mp4' : message.musicStatus ? 'mp3' : 'bin'; const fileName = `Infinite_${message.id}.${ext}`; await Filesystem.writeFile({ path: fileName, data: cleanBase64, directory: Directory.Documents }); toast({ title: t('dm_success'), description: t('save_to_device') }); } catch (e) { console.error(e); } } else { const link = document.createElement('a'); link.href = mediaUrl; link.download = message.fileName || `Infinite_${message.id}`; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast({ title: t('dm_success') }); } };
+    const handleSaveToDevice = async () => { if (!mediaUrl) return; if (Capacitor.isNativePlatform()) { try { const { Filesystem, Directory } = await import('@capacitor/filesystem'); const cleanBase64 = mediaUrl.split(',')[1]; const ext = message.imageUrl ? 'jpg' : (message.videoStatus ? 'mp4' : (message.musicStatus ? 'mp3' : 'bin')); const fileName = `Infinite_${message.id}_${Date.now()}.${ext}`; await Filesystem.writeFile({ path: fileName, data: cleanBase64, directory: Directory.Documents }); toast({ title: t('dm_success'), description: t('save_to_device') }); } catch (e) { console.error(e); toast({ variant: 'destructive', title: 'Error', description: 'Failed to save file.' }); } } else { const link = document.createElement('a'); link.href = mediaUrl; link.download = message.fileName || `Infinite_${message.id}`; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast({ title: t('dm_success') }); } };
     const isCircleOnly = message.circleStatus === 'complete' && !message.content; const canCopy = message.content && !message.poll; const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
+    const isLikedByMe = (emoji: string) => message.reactions?.[emoji]?.includes(currentUser.uid);
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (<div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
@@ -138,13 +150,14 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] bg-popover/95 backdrop-blur-xl z-[100]">
                         <div className="px-2 py-2 mb-1 flex items-center gap-1 overflow-x-auto no-scrollbar bg-muted/40 rounded-2xl border border-border/20 shadow-inner z-[110]">
-                            {COMMON_EMOJIS.map(emoji => { const sel = message.reactions?.[emoji]?.includes(currentUser.uid); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); })}
+                            {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); })}
                         </div>
                         <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Reply className="mr-3 h-4 w-4 text-primary" /><span>{t('reply')}</span></DropdownMenuItem>
                         {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Copy className="mr-3 h-4 w-4 text-primary" /><span>{t('copy_text')}</span></DropdownMenuItem>}
                         <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Forward className="mr-3 h-4 w-4 text-primary" /><span>{t('forward')}</span></DropdownMenuItem>
+                        {mediaUrl && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl px-3 focus:bg-primary/10"><FileIcon className="mr-3 h-4 w-4 text-primary" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
                         {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Edit className="mr-3 h-4 w-4 text-primary" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                        {canDelete && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem></>}
+                        {canDelete && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3 focus:bg-destructive/10"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem></>}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -238,6 +251,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
+  
   const handleSendMessage = async (customC?: string, immediateFile?: any) => {
     const finalC = customC !== undefined ? customC : messageContent; const finalF = immediateFile || fileToSend; if ((!finalC.trim() && !finalF) || !db) return;
     setIsSending(true); const originalC = finalC; const originalR = replyToMessage; let sname = originalR?.senderName || 'User'; let rcontent = originalR?.content || '';
@@ -251,8 +265,47 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: finalC.trim() || t('image_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
+
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
+  
+  const handleVote = async (msgId: string, index: number) => {
+    if (!db) return;
+    const mref = doc(db, 'chats', item.id, 'messages', msgId);
+    try {
+        await runTransaction(db, async (tx) => {
+            const snap = await tx.get(mref);
+            if (!snap.exists()) return;
+            const poll = snap.data().poll as Poll;
+            if (!poll) return;
+
+            const newOptions = poll.options.map((opt, i) => {
+                const votes = [...opt.votes];
+                const alreadyVoted = votes.includes(currentUser.uid);
+                if (i === index) {
+                    if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1);
+                    else votes.push(currentUser.uid);
+                } else if (!poll.isMultipleChoice && !alreadyVoted) {
+                    const idx = votes.indexOf(currentUser.uid);
+                    if (idx !== -1) votes.splice(idx, 1);
+                }
+                return { ...opt, votes };
+            });
+
+            tx.update(mref, { 'poll.options': newOptions });
+        });
+    } catch (e) { console.error("Voting failed", e); }
+  };
+
+  const handleDeleteMessage = async (msgId: string) => {
+      if (!db) return;
+      try {
+          await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId));
+          toast({ title: t('dm_success'), description: t('delete_message') });
+      } catch (e) { console.error(e); }
+  };
+
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
+
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
@@ -262,7 +315,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
           <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full">
             <div className="flex-1" />
-            {messages?.map((m, i) => <ChatMessage key={m.id} message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={() => {}} onDelete={() => {}} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} />)}
+            {messages?.map((m, i) => {
+                const msgDate = getSafeDate(m.timestamp);
+                const prevMsg = messages[i - 1];
+                const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
+                let dateStr = format(msgDate, 'dd MMMM yyyy');
+                if (isSameDay(msgDate, new Date())) dateStr = t('today_is').toLowerCase();
+                
+                return (
+                    <React.Fragment key={m.id}>
+                        {showDate && <DateSeparator date={dateStr} />}
+                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} />
+                    </React.Fragment>
+                );
+            })}
             <div className="h-px shrink-0" />
           </div>
         </div>
@@ -283,9 +349,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               <Button variant="ghost" onClick={cancelRecording} className="text-destructive font-black uppercase text-[10px] tracking-widest">
                 {t('cancel')}
               </Button>
-              <Button size="icon" onClick={() => stopRecording(false)} className="rounded-full bg-primary h-12 w-12 shadow-xl animate-in zoom-in border-4 border-background">
-                <Send className="h-6 w-6 text-white" />
-              </Button>
+              <div className="text-[9px] font-bold text-muted-foreground animate-pulse mr-2">HOLDING...</div>
             </div>
           </div>
         )}
@@ -313,8 +377,32 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button>
                 ) : (
                   <div className="flex items-center gap-0.5">
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onMouseDown={() => startRecording('circle')} onTouchStart={() => startRecording('circle')}><Camera className="h-5 w-5 text-muted-foreground" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onMouseDown={() => startRecording('voice')} onTouchStart={() => startRecording('voice')}><Mic className="h-5 w-5 text-muted-foreground" /></Button>
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-9 w-9 text-muted-foreground" 
+                        onMouseDown={() => startRecording('circle')} 
+                        onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }}
+                        onMouseUp={() => stopRecording(false)}
+                        onMouseLeave={() => stopRecording(false)}
+                        onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }}
+                    >
+                        <Camera className="h-5 w-5" />
+                    </Button>
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-9 w-9 text-muted-foreground" 
+                        onMouseDown={() => startRecording('voice')} 
+                        onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }}
+                        onMouseUp={() => stopRecording(false)}
+                        onMouseLeave={() => stopRecording(false)}
+                        onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }}
+                    >
+                        <Mic className="h-5 w-5" />
+                    </Button>
                   </div>
                 )}
               </div>
