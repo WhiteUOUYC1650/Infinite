@@ -193,7 +193,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
   };
   const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { if (canceled) chunksRef.current = []; mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); };
+  
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
+  
+  const getStatusLine = () => {
+      if (item.id === currentUser.uid) return null;
+      if (item.type === 'dm' && otherUser) {
+          if (otherUser.isBot) return t('bot_status');
+          if (otherUser.status === 'online') return <span className="text-primary font-bold">{t('online')}</span>;
+          if (otherUser.lastSeen) return `${t('was_online')} ${format(new Date(otherUser.lastSeen.seconds * 1000), 'dd.MM, HH:mm')}`;
+          return t('offline');
+      }
+      if (item.type === 'group') return t('members_count', { count: item.members?.length || 0 });
+      if (item.type === 'channel') return t('subscribers_count', { count: item.members?.length || 0 });
+      return null;
+  };
+
   const handleSendMessage = async (customC?: string, immediateFile?: any) => {
     const finalC = customC !== undefined ? customC : messageContent; const finalF = immediateFile || fileToSend; if ((!finalC.trim() && !finalF) || !db) return;
     setIsSending(true); setMessageContent(''); setFileToSend(null); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
@@ -214,7 +229,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
         if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [chunkRef.id]; msgData.voiceDuration = recordingDuration; } 
         else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [chunkRef.id]; msgData.circleDuration = recordingDuration; }
-        await setDoc(mref, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+        await setDoc(mref, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...msgData, id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', timestamp: Timestamp.now() } });
       };
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
@@ -238,6 +253,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                             <h2 className="text-lg font-semibold font-headline truncate leading-none">{item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}</h2>
                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
+                        <p className="text-[10px] text-muted-foreground truncate font-medium mt-0.5">{getStatusLine()}</p>
                     </div>
                 </button>
             </div>
@@ -288,7 +304,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                 className={cn(
                     "min-h-[40px] h-[40px] max-h-32 resize-none border-none rounded-2xl transition-all duration-300",
-                    experimentalDesign ? "bg-card/40 backdrop-blur-xl border border-border/20 shadow-inner" : "bg-muted/50"
+                    experimentalDesign ? "bg-card/40 backdrop-blur-xl border border-white/20 shadow-inner" : "bg-muted/50"
                 )} 
               />
               <div className="flex items-center gap-1 shrink-0 h-[40px]">
