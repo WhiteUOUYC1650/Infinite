@@ -29,7 +29,15 @@ function dataURItoBlob(dataURI: string): Blob {
     const parts = dataURI.split(',');
     if (parts.length < 2) throw new Error('Invalid Data URI');
     
-    const byteString = atob(parts[1]);
+    // Robustly handle base64 decoding errors
+    let byteString;
+    try {
+        byteString = atob(parts[1]);
+    } catch (atobError) {
+        console.warn('atob decoding failed, returning empty blob', atobError);
+        return new Blob([], { type: 'application/octet-stream' });
+    }
+
     const mimeString = parts[0].split(':')[1].split(';')[0];
     const ab = new ArrayBuffer(byteString.length);
     const ia = new Uint8Array(ab);
@@ -38,7 +46,7 @@ function dataURItoBlob(dataURI: string): Blob {
     }
     return new Blob([ab], { type: mimeString });
   } catch (e) {
-    console.error('atob decoding failed, returning empty blob', e);
+    console.error('DataURI conversion failed', e);
     return new Blob([], { type: 'application/octet-stream' });
   }
 }

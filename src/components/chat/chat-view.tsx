@@ -70,7 +70,7 @@ function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, ra
       </div>
       <div className={cn(
           "relative px-4 py-1 rounded-full border border-border/50 shadow-sm transition-all",
-          experimentalDesign ? "bg-muted/40 backdrop-blur-md" : "bg-muted/80"
+          experimentalDesign ? "bg-card/40 backdrop-blur-md" : "bg-muted/80"
       )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
           {date}
@@ -243,7 +243,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             </div>
         </div>
         <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-muted/60 backdrop-blur-md" : "bg-muted/95")}>
+            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-card/60 backdrop-blur-md" : "bg-muted/95")}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
         </div>
@@ -288,7 +288,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                 className={cn(
                     "min-h-[40px] h-[40px] max-h-32 resize-none border-none rounded-2xl transition-all duration-300",
-                    experimentalDesign ? "bg-background/40 backdrop-blur-xl" : "bg-muted/50"
+                    experimentalDesign ? "bg-card/40 backdrop-blur-xl border border-border/20 shadow-inner" : "bg-muted/50"
                 )} 
               />
               <div className="flex items-center gap-1 shrink-0 h-[40px]">

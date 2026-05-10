@@ -150,10 +150,8 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
     }
   }, [chat, form, open]);
 
-  // --- System Back Button Support ---
   useEffect(() => {
     if (!open) return;
-
     const handleSystemBack = () => {
       if (imageToCrop) {
         setImageToCrop('');
@@ -163,14 +161,12 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         onOpenChange(false);
       }
     };
-
     let backListener: any;
     if (Capacitor.isNativePlatform()) {
       import('@capacitor/app').then(({ App }) => {
         backListener = App.addListener('backButton', handleSystemBack);
       });
     }
-
     return () => {
       if (backListener) {
         backListener.then((l: any) => l.remove());
@@ -229,13 +225,8 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
         {imageToCrop ? (
             <div className="p-6 h-full flex flex-col">
                 <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
-                    <Button variant="ghost" size="icon" onClick={() => setImageToCrop('')} className="absolute left-2 top-1/2 -translate-y-1/2">
-                        <ArrowLeft />
-                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setImageToCrop('')} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
                     <DialogTitle>Crop your new avatar</DialogTitle>
-                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
-                        <X />
-                    </Button>
                 </DialogHeader>
                 <div className="flex-1 flex items-center justify-center my-4 overflow-hidden"><ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={1} minWidth={100}><img ref={imgRef} src={imageToCrop} onLoad={e => setCrop(centerAspectCrop(e.currentTarget.width, e.currentTarget.height, 1))} className="max-h-full max-w-full" /></ReactCrop></div>
                 <DialogFooter className="gap-2"><Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button><Button onClick={handleCropConfirm} disabled={isCropping}>{isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Set Avatar</Button></DialogFooter>
@@ -244,13 +235,9 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSaveChanges)} className="flex flex-col h-full overflow-hidden">
                     <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
-                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)} className="absolute left-2 top-1/2 -translate-y-1/2">
-                            <ArrowLeft />
-                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
                         <DialogTitle>{t('edit_chat_title')}</DialogTitle>
-                        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2">
-                            <X />
-                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2"><X /></Button>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto p-6"><div className="space-y-6">
                             <div className="flex justify-center"><div className="relative">
@@ -277,10 +264,9 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                         <DialogHeader className="p-0 relative">
                             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
-                            <DialogTitle className="sr-only">{chat.name}</DialogTitle>
                             <div className='relative mx-auto flex justify-center'><Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background rounded-full">{chat.avatar ? (<AvatarImage src={chat.avatar} />) : (<AvatarFallback><Icon className="h-16 w-16" /></AvatarFallback>)}</Avatar></div>
                         </DialogHeader>
-                        <div className="text-center pt-4"><div className="flex items-center justify-center gap-2"><h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{chat.name}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge />}</div><p className="text-muted-foreground font-medium">{chat.link}</p></div>
+                        <div className="text-center pt-4"><div className="flex items-center justify-center gap-2"><h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{chat.name}</h2>{(chat.link === '/G/Infinite' || chat.link === '/C/Infinite') && <VerifiedBadge />}</div><p className="text-muted-foreground font-medium">{chat.link}</p></div>
                         <div className={cn("grid gap-3 w-full mt-6 px-6", chat.type === 'channel' ? "grid-cols-3" : "grid-cols-2")}>
                             {chat.type === 'channel' && (<button onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className={cn("flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm transition-all active:scale-95", !chat.discussionChatId ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-md")}><div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight">{t('join_discussion_button')}</span></button>)}
                             <button onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center"><Share2 className="w-5 h-5 text-orange-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span></button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -151,7 +152,7 @@ function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: Us
 }
 
 function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser }) {
-    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
+    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]); const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
@@ -191,7 +192,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button>
             </header>
             <div className="flex-1 overflow-y-auto">
-                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden h-[60vh]"><div className="h-full flex items-center justify-center w-full">{isLoading ? (<div className="text-center space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" /><div className="space-y-2"><p className="text-white/60 text-sm font-medium animate-pulse">{video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...</p><p className="text-primary text-xs font-black">{assemblyProgress}%</p></div></div>) : videoUrl ? (<video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />) : (<p className="text-destructive font-bold">{t('infvid_assembly_failed')}</p>)}</div></section>
+                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden h-[60vh]"><div className="h-full flex items-center justify-center w-full">{isLoading ? (<div className="text-center space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><div className="space-y-2"><p className="text-white/60 text-sm font-medium animate-pulse">{video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...</p><p className="text-primary text-xs font-black">{assemblyProgress}%</p></div></div>) : videoUrl ? (<video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />) : (<p className="text-destructive font-bold">{t('infvid_assembly_failed')}</p>)}</div></section>
                 <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
                     <div className="flex-1 space-y-6">
                         <div className="space-y-4">
