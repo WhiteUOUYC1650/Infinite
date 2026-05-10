@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -68,7 +69,7 @@ function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, ra
         <div className="w-full border-t border-muted-foreground/10" />
       </div>
       <div className={cn(
-          "relative px-4 py-1 rounded-full border border-border/50 shadow-sm",
+          "relative px-4 py-1 rounded-full border border-border/50 shadow-sm transition-all",
           experimentalDesign ? "bg-muted/40 backdrop-blur-md" : "bg-muted/80"
       )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
@@ -118,26 +119,26 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             {showSenderAvatar ? (<div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
             <div className={cn(
                 "min-w-0 flex flex-col relative transition-all duration-300",
-                experimentalDesign ? "rounded-[1.25rem]" : "rounded-lg",
-                isCircleComplete ? "bg-transparent shadow-none" : (alignRight ? "bg-primary text-white shadow-sm" : "bg-card text-card-foreground shadow-sm"),
-                experimentalDesign ? (alignRight ? "rounded-br-none" : "rounded-bl-none") : (alignRight ? "rounded-br-none" : "rounded-bl-none"),
-                "px-2 pb-1 pt-1.5 max-w-[85%] md:max-w-[70%]"
+                isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-white shadow-sm" : "bg-card text-card-foreground shadow-sm"),
+                isCircleComplete ? "rounded-full" : (alignRight ? "rounded-lg rounded-br-none" : "rounded-lg rounded-bl-none"),
+                !isCircleComplete && "px-2 pb-1 pt-1.5",
+                "max-w-[85%] md:max-w-[70%]"
             )}>
-                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (<div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
-                {message.replyTo && (
+                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
+                {message.replyTo && !isCircleComplete && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         <p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
                         <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
                 )}
-                {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
-                {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
-                {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg w-48 h-48 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
-                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
-                {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                {message.content && !message.poll && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5", experimentalDesign && "text-[15px] leading-relaxed")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href!); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>)}
-                {message.reactions && Object.keys(message.reactions).length > 0 && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
+                {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
+                {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
+                {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
+                {message.poll && !isCircleComplete && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
+                {message.content && !message.poll && !isCircleComplete && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href!); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown></div>)}
+                {message.reactions && Object.keys(message.reactions).length > 0 && !isCircleComplete && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
+                {!isCircleComplete && (<div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>)}
             </div>
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
@@ -164,37 +165,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme(); const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   
-  const [messageContent, setMessageContent] = useState(''); 
-  const [isSending, setIsSending] = useState(false); 
-  const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); 
-  const [showChatProfile, setShowChatProfile] = useState(false); 
-  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); 
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
-  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null); 
-  const [previewImage, setPreviewImage] = useState<string | null>(null); 
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null); 
-  const [messageLimit, setMessageLimit] = useState(50); 
-  const [hasMore, setHasMore] = useState(true); 
-  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null); const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); const [stickyDate, setStickyDate] = useState<string | null>(null); const [showStickyDate, setShowStickyDate] = useState(false); const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const scrollContainerRef = useRef<HTMLDivElement>(null); 
-  const listInnerRef = useRef<HTMLDivElement>(null); 
-  const fileInputRef = useRef<HTMLInputElement>(null); 
-  const prevScrollHeightRef = useRef<number>(0); 
-  const isAtBottomRef = useRef(true); 
-  const autoScrollGuardRef = useRef<number>(0); 
-  
-  const [stickyDate, setStickyDate] = useState<string | null>(null);
-  const [showStickyDate, setShowStickyDate] = useState(false);
-  const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false); 
-  const [isRecordingCircle, setIsRecordingCircle] = useState(false); 
-  const [recordingDuration, setRecordingDuration] = useState(0); 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null); 
-  const chunksRef = useRef<Blob[]>([]); 
-  const timerRef = useRef<NodeJS.Timeout | null>(null); 
-  const activeStreamRef = useRef<MediaStream | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem, liveChatData]);
@@ -202,31 +176,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
   const scrollToBottom = useCallback((b: ScrollBehavior = 'auto') => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight; }, []);
   
-  const handleScroll = useCallback(() => { 
-    if (!scrollContainerRef.current) return; 
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; 
-    const atBottom = scrollHeight - scrollTop - clientHeight < 300; 
-    isAtBottomRef.current = atBottom; 
-    if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; 
-    if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
-        prevScrollHeightRef.current = scrollHeight; 
-        setMessageLimit(p => p + 50); 
-    } 
-
-    setShowStickyDate(true);
-    if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current);
-    stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000);
-
-    const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker');
-    let currentTopDate = null;
-    markers.forEach((marker: any) => {
-        if (marker.offsetTop <= scrollTop + 100) {
-            currentTopDate = marker.getAttribute('data-date');
-        }
-    });
-    setStickyDate(currentTopDate);
-  }, [hasMore, messagesLoading, messages, messageLimit]);
-
+  const handleScroll = useCallback(() => { if (!scrollContainerRef.current) return; const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(p => p + 50); } setShowStickyDate(true); if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current); stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000); const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker'); let currentTopDate = null; markers.forEach((marker: any) => { if (marker.offsetTop <= scrollTop + 100) { currentTopDate = marker.getAttribute('data-date'); } }); setStickyDate(currentTopDate); }, [hasMore, messagesLoading, messages, messageLimit]);
   useEffect(() => { const ro = new ResizeObserver(() => { if (isAtBottomRef.current || (Date.now() - autoScrollGuardRef.current < 10000)) requestAnimationFrame(() => { scrollToBottom(); setTimeout(scrollToBottom, 50); }); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
   useEffect(() => { if (!db || !currentUser.uid || !item.id || !messages) return; const markRead = async () => { if (item.unreadCounts?.[currentUser.uid] > 0) await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); }; markRead(); }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
@@ -235,97 +185,42 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
       const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      activeStreamRef.current = stream;
-      const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' });
-      mediaRecorderRef.current = mr;
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
-        if (blob.size > 50) handleSendMediaMessage(blob, type);
-        stream.getTracks().forEach(t => t.stop());
-      };
-      mr.start();
-      if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true);
-      setRecordingDuration(0);
-      timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints); activeStreamRef.current = stream;
+      const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
+      chunksRef.current = []; mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => { const blob = new Blob(chunksRef.current, { type: mr.mimeType }); if (blob.size > 50) handleSendMediaMessage(blob, type); stream.getTracks().forEach(t => t.stop()); };
+      mr.start(); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); setRecordingDuration(0); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
     } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
   };
-
-  const stopRecording = (canceled: boolean) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      if (canceled) chunksRef.current = [];
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecordingVoice(false); setIsRecordingCircle(false);
-  };
-
+  const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { if (canceled) chunksRef.current = []; mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); };
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
-  
   const handleSendMessage = async (customC?: string, immediateFile?: any) => {
     const finalC = customC !== undefined ? customC : messageContent; const finalF = immediateFile || fileToSend; if ((!finalC.trim() && !finalF) || !db) return;
-    setIsSending(true); const originalC = finalC; const originalR = replyToMessage; let sname = originalR?.senderName || 'User'; let rcontent = originalR?.content || '';
-    if (originalR) { if (memberDetails[originalR.senderId]) sname = memberDetails[originalR.senderId].name; if (!rcontent) { if (originalR.imageUrl) rcontent = t('photo'); else if (originalR.videoStatus === 'complete') rcontent = t('video'); else if (originalR.musicStatus === 'complete') rcontent = t('music'); else if (originalR.voiceStatus === 'complete') rcontent = t('voice_message_short'); else if (originalR.fileStatus === 'complete') rcontent = t('file'); } }
-    setMessageContent(''); setFileToSend(null); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    setIsSending(true); setMessageContent(''); setFileToSend(null); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
-        const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, ...(originalR && { replyTo: { messageId: originalR.id, content: rcontent, senderName: sname } }) };
-        if (finalF?.type === 'image') data.imageUrl = finalF.previewUrl;
-        await setDoc(mref, data);
+        const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
+        if (finalF?.type === 'image') data.imageUrl = finalF.previewUrl; await setDoc(mref, data);
         await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: finalC.trim() || t('image_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
-
   const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
     if (!db) return; setIsSending(true);
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
+      const reader = new FileReader(); reader.readAsDataURL(blob);
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        const mref = doc(collection(db, 'chats', item.id, 'messages'));
-        const chunkRef = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks'));
-        await setDoc(chunkRef, { data: base64, part: 0, senderId: currentUser.uid });
-        const ts = serverTimestamp();
-        const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
+        const mref = doc(collection(db, 'chats', item.id, 'messages')); const chunkRef = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks')); await setDoc(chunkRef, { data: base64, part: 0, senderId: currentUser.uid });
+        const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
         if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [chunkRef.id]; msgData.voiceDuration = recordingDuration; } 
         else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [chunkRef.id]; msgData.circleDuration = recordingDuration; }
-        await setDoc(mref, msgData);
-        await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+        await setDoc(mref, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
       };
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
-
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
-  
-  const handleVote = async (msgId: string, index: number) => {
-    if (!db) return;
-    const mref = doc(db, 'chats', item.id, 'messages', msgId);
-    try {
-        await runTransaction(db, async (tx) => {
-            const snap = await tx.get(mref); if (!snap.exists()) return;
-            const poll = snap.data().poll as Poll; if (!poll) return;
-            const newOptions = poll.options.map((opt, i) => {
-                const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid);
-                if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } 
-                else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); }
-                return { ...opt, votes };
-            });
-            tx.update(mref, { 'poll.options': newOptions });
-        });
-    } catch (e) { console.error("Voting failed", e); }
-  };
-
-  const handleDeleteMessage = async (msgId: string) => {
-      if (!db) return;
-      try {
-          await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId));
-          toast({ title: t('dm_success'), description: t('delete_message') });
-      } catch (e) { console.error(e); }
-  };
-
+  const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
+  const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
   return (
@@ -347,18 +242,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </button>
             </div>
         </div>
-        
-        <div className={cn(
-            "absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none",
-            showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
-        )}>
-            <div className={cn(
-                "px-4 py-1.5 rounded-full border border-border/50 shadow-lg",
-                experimentalDesign ? "bg-muted/60 backdrop-blur-md" : "bg-muted/95"
-            )}>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                    {stickyDate}
-                </span>
+        <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
+            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-muted/60 backdrop-blur-md" : "bg-muted/95")}>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
         </div>
       </header>
@@ -367,14 +253,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full">
             <div className="flex-1" />
             {messages?.map((m, i) => {
-                const msgDate = getSafeDate(m.timestamp);
-                const prevMsg = messages[i - 1];
-                const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
-                let dateStr = "";
-                if (isSameDay(msgDate, new Date())) dateStr = t('today_is');
-                else if (isYesterday(msgDate)) dateStr = t('yesterday');
-                else dateStr = format(msgDate, 'dd.MM.yyyy');
-                
+                const msgDate = getSafeDate(m.timestamp); const prevMsg = messages[i - 1]; const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
+                let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
                 return (
                     <React.Fragment key={m.id}>
                         {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} />}
@@ -386,10 +266,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </div>
       </div>
-      {isMember && <footer className={cn(
-          "flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative",
-          experimentalDesign && "bg-background/60 backdrop-blur-xl"
-      )}>
+      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 bg-transparent h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative")}>
         {(isRecordingVoice || isRecordingCircle) && (
           <div className="absolute inset-0 bg-background/95 backdrop-blur-md z-40 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2">
             <div className="flex items-center gap-3">
@@ -402,12 +279,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}
         <div className="max-w-3xl mx-auto w-full h-full flex items-center">
           <div className="flex flex-col gap-2 w-full">
-            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content || "[Media]"}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file'))}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
             <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
-              <div className="flex items-center gap-1 shrink-0 h-[38px]">
+              <Textarea 
+                placeholder={t('message_placeholder')} 
+                value={messageContent} 
+                onChange={(e) => setMessageContent(e.target.value)} 
+                onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
+                className={cn(
+                    "min-h-[40px] h-[40px] max-h-32 resize-none border-none rounded-2xl transition-all duration-300",
+                    experimentalDesign ? "bg-background/40 backdrop-blur-xl" : "bg-muted/50"
+                )} 
+              />
+              <div className="flex items-center gap-1 shrink-0 h-[40px]">
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
+                  <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -416,18 +303,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-              <Textarea placeholder={t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" />
-              <div className="flex items-center gap-1 shrink-0 h-[38px]">
-                {experimentalDesign && <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground"><Smile className="h-5 w-5" /></Button>}
                 <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) { const reader = new FileReader(); reader.readAsDataURL(f); reader.onload = (ev) => setFileToSend({ file: f, previewUrl: ev.target?.result as string, type: 'image' }); } else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
                 {messageContent.trim() || fileToSend ? (
-                  <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button>
+                  <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full transition-transform active:scale-95"><Send className="h-5 w-5" /></Button>
                 ) : (
                   <div className="flex items-center gap-0.5">
-                    {!experimentalDesign && (
-                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('circle')} onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Camera className="h-5 w-5" /></Button>
-                    )}
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('circle')} onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Camera className="h-5 w-5" /></Button>
                     <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('voice')} onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Mic className="h-5 w-5" /></Button>
                   </div>
                 )}
@@ -439,16 +320,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
       {forwardingMessage && <ForwardDialog open={!!forwardingMessage} onOpenChange={(o) => !o && setForwardingMessage(null)} message={forwardingMessage} currentUser={currentUser} onForward={async (targetChatId) => {
-          if (!db) return;
-          const msgRef = doc(collection(db, 'chats', targetChatId, 'messages'));
+          if (!db) return; const msgRef = doc(collection(db, 'chats', targetChatId, 'messages'));
           const data: any = { senderId: currentUser.uid, content: forwardingMessage.content || '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username };
           if (forwardingMessage.imageUrl) data.imageUrl = forwardingMessage.imageUrl;
-          // ... handle other media if needed
-          await setDoc(msgRef, data);
-          await updateDoc(doc(db, 'chats', targetChatId), { lastMessage: { ...data, id: msgRef.id, timestamp: Timestamp.now() } });
-          setForwardingMessage(null);
-          toast({ title: t('message_forwarded_success') });
+          await setDoc(msgRef, data); await updateDoc(doc(db, 'chats', targetChatId), { lastMessage: { ...data, id: msgRef.id, timestamp: Timestamp.now() } });
+          setForwardingMessage(null); toast({ title: t('message_forwarded_success') });
       }} />}
+      {previewImage && <Dialog open={!!previewImage} onOpenChange={(o) => !o && setPreviewImage(null)}><DialogContent className="max-w-[95vw] h-auto p-0 border-none bg-transparent shadow-none"><img src={previewImage} className="w-full h-auto object-contain rounded-xl" /></DialogContent></Dialog>}
     </div>
   );
 }
@@ -464,7 +342,7 @@ function ForwardDialog({ open, onOpenChange, message, currentUser, onForward }: 
                 <ScrollArea className="flex-1 p-4">
                     {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div> : (
                         <div className="space-y-2">{chats?.map(c => (
-                            <button key={c.id} onClick={() => onForward(c.id)} className="w-full p-3 rounded-2xl hover:bg-muted flex items-center gap-3 text-left">
+                            <button key={c.id} onClick={() => onForward(c.id)} className="w-full p-3 rounded-2xl hover:bg-muted flex items-center gap-3 text-left transition-colors">
                                 <Avatar className="h-10 w-10"><AvatarFallback>{c.name?.charAt(0) || <Users />}</AvatarFallback></Avatar>
                                 <div className="flex-1 min-w-0"><p className="font-bold truncate">{c.name || "Chat"}</p><p className="text-xs text-muted-foreground truncate">{c.link || c.type}</p></div>
                             </button>
