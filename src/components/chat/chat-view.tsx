@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Call, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckCheckIcon, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search, PlayCircle, Cake, Gift, Coins, ChevronRight, Bell, BellOff } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, User as UserIcon, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, CornerDownLeft, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckCheckIcon, File as FileIcon, Download, Save, Maximize2, SmilePlus, Radio, Mic, Camera, Play, Pause, Trash, Lock, CircleHelp, PhoneOff, LogOut, ListTodo, Plus, Minus, CheckCircle2, Forward, Search, PlayCircle, Cake, Gift, Coins, ChevronRight, Bell, BellOff, Upload, AlertCircle } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -280,560 +279,38 @@ function NewPollDialog({ open, onOpenChange, onSubmit }: { open: boolean, onOpen
     );
 }
 
-export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore();
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme();
-  const isMobile = useIsMobile();
-  
-  const isPrem = currentUser.subscriptionTier === 'prem';
-  const maxSizeText = isPrem ? '4GB' : '1GB';
-  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
+function AttachmentDialog({ open, onOpenChange, type, maxSizeText, onSelect }: { open: boolean, onOpenChange: (v: boolean) => void, type: 'photo' | 'video' | 'music' | 'file', maxSizeText: string, onSelect: () => void }) {
+    const { t } = useLanguage();
+    const Icon = type === 'photo' ? ImageIcon : type === 'video' ? VideoIcon : type === 'music' ? MusicIcon : FileIcon;
+    const colorClass = type === 'photo' ? 'text-blue-500 bg-blue-500/10' : type === 'video' ? 'text-orange-500 bg-orange-500/10' : type === 'music' ? 'text-purple-500 bg-purple-500/10' : 'text-green-500 bg-green-500/10';
 
-  const [messageContent, setMessageContent] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
-  const [showChatProfile, setShowChatProfile] = useState(false);
-  const [showNewPoll, setShowNewPoll] = useState(false);
-  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null); 
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
-
-  const [messageLimit, setMessageLimit] = useState(50);
-  const [hasMore, setHasMore] = useState(true);
-  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
-  
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const listInnerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const prevScrollHeightRef = useRef<number>(0);
-  const isAtBottomRef = useRef(true);
-  const autoScrollGuardRef = useRef<number>(0); 
-  const [stickyDate, setStickyDate] = useState<string | null>(null);
-
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
-  const [isRecordingCircle, setIsRecordingCircle] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const activeStreamRef = useRef<MediaStream | null>(null);
-
-  // --- Data Fetching ---
-  const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
-  
-  const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
-  const { data: liveChatData } = useDoc<Chat>(chatDocRef);
-
-  const item = useMemo(() => {
-    if (!liveChatData) return initialItem;
-    const newChatData = { ...initialItem, ...liveChatData };
-    if (newChatData.type === 'dm' && newChatData.id === currentUser.uid) { newChatData.icon = 'Bookmark'; }
-    return newChatData;
-  }, [initialItem, liveChatData, currentUser.uid]);
-
-  const messagesQuery = useMemoFirebase(() => {
-    if (!db || !isMember) return null;
-    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
-  }, [db, item.id, isMember, messageLimit]);
-
-  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
-  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
-
-  const allUserIdsToFetch = useMemo(() => {
-    const ids = new Set<string>(item.members || []);
-    messages?.forEach(m => {
-        ids.add(m.senderId);
-        if (m.reactions) { Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string)); }
-    });
-    return Array.from(ids);
-  }, [item.members, messages]);
-
-  const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
-
-  // --- Scrolling Logic ---
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    
-    // Threshold to keep at bottom even with async content (300px safe zone)
-    const atBottom = scrollHeight - scrollTop - clientHeight < 300;
-    isAtBottomRef.current = atBottom;
-
-    // Reset guard if user scrolls up manually
-    if (!atBottom && Date.now() - autoScrollGuardRef.current > 1000) {
-        autoScrollGuardRef.current = 0;
-    }
-
-    const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]');
-    let currentStickyDate: string | null = null;
-    if (dateSeparators.length > 0) {
-        for (let i = 0; i < dateSeparators.length; i++) {
-            const separator = dateSeparators[i];
-            if (separator && separator.offsetTop <= scrollTop + 5) { currentStickyDate = separator.dataset.dateSeparator || null; } else break;
-        }
-    }
-    setStickyDate(currentStickyDate);
-
-    if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { 
-        prevScrollHeightRef.current = scrollHeight;
-        setMessageLimit(prev => prev + 50); 
-    }
-  }, [hasMore, messagesLoading, messages, messageLimit]);
-
-  // Dynamic content observer (Handle nicknames/media loading) - 10 second guard
-  useEffect(() => {
-    const listElement = listInnerRef.current;
-    if (!listElement) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-        const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000;
-        if (isAtBottomRef.current || inGuardPeriod) {
-            requestAnimationFrame(() => {
-                scrollToBottom('auto');
-                setTimeout(() => {
-                    if (isAtBottomRef.current || inGuardPeriod) scrollToBottom('auto');
-                }, 50);
-            });
-        }
-    });
-
-    resizeObserver.observe(listElement);
-    return () => resizeObserver.disconnect();
-  }, [scrollToBottom]);
-
-  const handleMediaLoad = useCallback(() => {
-    const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000;
-    if (isAtBottomRef.current || inGuardPeriod) { 
-        requestAnimationFrame(() => {
-            scrollToBottom('auto');
-            setTimeout(() => scrollToBottom('auto'), 50);
-        });
-    }
-  }, [scrollToBottom]);
-
-  useEffect(() => {
-    if (!db || !currentUser.uid || !item.id || !messages) return;
-    const markAsRead = async () => {
-        try {
-            if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) { 
-                await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); 
-            }
-            const unreadMessages = messages.filter(m => m.senderId !== currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid)));
-            if (unreadMessages.length > 0) {
-                const batch = writeBatch(db);
-                unreadMessages.forEach(m => { 
-                    batch.update(doc(db, 'chats', item.id, 'messages', m.id), { readBy: arrayUnion(currentUser.uid) }); 
-                });
-                await batch.commit();
-            }
-        } catch (e) { console.error("Mark read failed:", e); }
-    };
-    markAsRead();
-  }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
-
-  useLayoutEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    if (prevScrollHeightRef.current > 0) {
-        container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
-        prevScrollHeightRef.current = 0;
-    } else if (isAtBottomRef.current) {
-        autoScrollGuardRef.current = Date.now(); 
-        scrollToBottom(smoothScroll ? 'smooth' : 'auto');
-    }
-  }, [messages, smoothScroll, scrollToBottom]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => { 
-        isAtBottomRef.current = true; 
-        autoScrollGuardRef.current = Date.now();
-        scrollToBottom('auto'); 
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [item.id, scrollToBottom]);
-
-  const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
-  const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
-  const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
-
-  const mirrorToDiscussion = async (msgData: any, contentPreview: string) => {
-    if (item.type === 'channel' && item.discussionChatId && db) {
-        const discussionMessagesRef = collection(db, 'chats', item.discussionChatId, 'messages');
-        const discussionChatRef = doc(db, 'chats', item.discussionChatId);
-        const mirroredData = { ...msgData, fromChannelId: item.id, timestamp: serverTimestamp(), readBy: [] };
-        const mRef = await addDoc(discussionMessagesRef, mirroredData);
-        await updateDoc(discussionChatRef, { lastMessage: { ...mirroredData, id: mRef.id, content: contentPreview, timestamp: Timestamp.now() } });
-    }
-  };
-
-  const handleSendMessage = async (customContent?: string, immediateFile?: {file: File, type: 'voice' | 'circle', duration: number}) => {
-    const finalContent = customContent !== undefined ? customContent : messageContent;
-    const finalFile = immediateFile || fileToSend;
-    if ((!finalContent.trim() && !finalFile) || !db) return;
-    setIsSending(true);
-    const originalContent = finalContent;
-    const originalReplyTo = replyToMessage;
-
-    let resolvedReplySenderName = originalReplyTo?.senderName || 'User';
-    let replyPreview = originalReplyTo?.content || '';
-
-    if (originalReplyTo) {
-        if (memberDetails[originalReplyTo.senderId]) { 
-            resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; 
-        }
-        if (!replyPreview) {
-            if (originalReplyTo.imageUrl) replyPreview = t('photo');
-            else if (originalReplyTo.videoStatus === 'complete') replyPreview = t('video');
-            else if (originalReplyTo.musicStatus === 'complete') replyPreview = t('music');
-            else if (originalReplyTo.voiceStatus === 'complete') replyPreview = t('voice_message_short');
-            else if (originalReplyTo.fileStatus === 'complete') replyPreview = t('file');
-            else if (originalReplyTo.poll) replyPreview = t('poll');
-        }
-    }
-
-    setMessageContent(''); setFileToSend(null); setReplyToMessage(null);
-    autoScrollGuardRef.current = Date.now(); 
-
-    try {
-        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
-        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName, replyPreview);
-        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName, replyPreview);
-        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
-        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
-        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
-        isAtBottomRef.current = true;
-        scrollToBottom('auto');
-    } catch (error) { console.error(error); setMessageContent(originalContent); setFileToSend(null); setReplyToMessage(originalReplyTo); }
-    finally { setIsSending(false); }
-  };
-
-  const handleToggleReaction = async (messageId: string, emoji: string) => {
-    if (!db || !currentUser.uid) return;
-    const messageRef = doc(db, 'chats', item.id, 'messages', messageId);
-    try {
-      await runTransaction(db, async (transaction) => {
-        const snap = await transaction.get(messageRef);
-        if (!snap.exists()) return;
-        const reactions = { ...(snap.data().reactions || {}) };
-        let existingEmoji: string | null = null;
-        for (const [key, uids] of Object.entries(reactions)) { if (uids.includes(currentUser.uid)) { existingEmoji = key; break; } }
-        const updates: any = {};
-        if (existingEmoji) {
-            const newUids = (reactions[existingEmoji] || []).filter(u => u !== currentUser.uid);
-            if (newUids.length === 0) updates[`reactions.${existingEmoji}`] = deleteField();
-            else updates[`reactions.${existingEmoji}`] = newUids;
-            if (existingEmoji === emoji) { transaction.update(messageRef, updates); return; }
-        }
-        updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid);
-        transaction.update(messageRef, updates);
-      });
-    } catch (e) { console.error("Reaction failed", e); }
-  };
-
-  const handleVote = async (messageId: string, optionIndex: number) => {
-    if (!db || !currentUser.uid) return;
-    const messageRef = doc(db, 'chats', item.id, 'messages', messageId);
-    try {
-        await runTransaction(db, async (transaction) => {
-            const snap = await transaction.get(messageRef);
-            if (!snap.exists()) return;
-            const poll = snap.data().poll as Poll;
-            if (!poll) return;
-
-            const newOptions = [...poll.options];
-
-            if (poll.isMultipleChoice) {
-                const optionVotes = [...newOptions[optionIndex].votes];
-                if (optionVotes.includes(currentUser.uid)) {
-                    newOptions[optionIndex].votes = optionVotes.filter(uid => uid !== currentUser.uid);
-                } else {
-                    newOptions[optionIndex].votes = [...optionVotes, currentUser.uid];
-                }
-            } else {
-                newOptions.forEach((opt, idx) => {
-                    if (idx === optionIndex) {
-                        if (opt.votes.includes(currentUser.uid)) {
-                            opt.votes = opt.votes.filter(uid => uid !== currentUser.uid);
-                        } else {
-                            opt.votes = [...opt.votes, currentUser.uid];
-                        }
-                    } else {
-                        opt.votes = opt.votes.filter(uid => uid !== currentUser.uid);
-                    }
-                });
-            }
-
-            transaction.update(messageRef, { 'poll.options': newOptions });
-        });
-    } catch (e) {
-        console.error("Voting failed", e);
-    }
-  };
-
-  const startRecording = async (type: 'voice' | 'circle') => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false });
-        activeStreamRef.current = stream;
-        const options = { mimeType: type === 'voice' ? 'audio/webm' : 'video/webm;codecs=vp8,opus' };
-        const recorder = new MediaRecorder(stream, options);
-        mediaRecorderRef.current = recorder; chunksRef.current = [];
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-        recorder.onstop = async () => {
-            if (chunksRef.current.length > 0) {
-                const blob = new Blob(chunksRef.current, { type: options.mimeType });
-                const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type });
-                handleSendMessage('', { file, type, duration: recordingDuration });
-            }
-            if (activeStreamRef.current) { activeStreamRef.current.getTracks().forEach(t => t.stop()); activeStreamRef.current = null; }
-        };
-        recorder.start();
-        if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true);
-        setRecordingDuration(0); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
-    } catch (e) { toast({ variant: 'destructive', title: 'Error', description: t('microphone_error_desc') }); }
-  };
-
-  const stopRecording = () => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); }
-    setIsRecordingVoice(false); setIsRecordingCircle(false);
-  };
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!db) return;
-    try { await deleteDoc(doc(db, 'chats', item.id, 'messages', messageId)); toast({ title: t('dm_success') }); } catch (e) { console.error("Delete failed", e); }
-  };
-
-  const handleSendVoice = async (p: any, c: string, r: any, d: number, sname: string, rContent: string) => {
-    if (!db) return;
-    const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
-    const batch = writeBatch(db);
-    batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-    await batch.commit();
-    const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
-    const cids: string[] = [];
-    for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'voiceChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
-    await updateDoc(mref, { voiceStatus: 'complete', voiceChunkIds: cids }); await cacheFile(mref.id, p.file);
-    await mirrorToDiscussion({ ...data, voiceStatus: 'complete', voiceChunkIds: cids }, t('voice_message_short'));
-  };
-
-  const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string, rContent: string) => {
-    if (!db) return;
-    const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
-    const batch = writeBatch(db);
-    batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-    await batch.commit();
-    const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
-    const cids: string[] = [];
-    for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'circleChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
-    await updateDoc(mref, { circleStatus: 'complete', circleChunkIds: cids }); await cacheFile(mref.id, p.file);
-    await mirrorToDiscussion({ ...data, circleStatus: 'complete', circleChunkIds: cids }, t('video_attachment_placeholder'));
-  };
-
-  const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string, rContent: string) => {
-    if (!db) return;
-    const ts = serverTimestamp();
-    const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], senderName: currentUser.name || currentUser.username, ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
-    const batch = writeBatch(db);
-    batch.set(mref, data);
-    const upd: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } };
-    if (item.type !== 'channel') item.members.forEach(id => { if (id !== currentUser.uid) upd[`unreadCounts.${id}`] = increment(1); });
-    batch.update(doc(db, 'chats', item.id), upd);
-    await batch.commit(); if (i) fetchAndCacheImage(mref.id, i);
-    await mirrorToDiscussion(data, c.trim() || (i ? t('image_attachment_placeholder') : ''));
-  };
-
-  const handleSendVideo = async (p: any, c: string, r: any, sname: string, rContent: string) => {
-    if (!db) return;
-    const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
-    const batch = writeBatch(db);
-    batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-    await batch.commit();
-    const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
-    const cids: string[] = [];
-    for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'videoChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
-    await updateDoc(mref, { videoStatus: 'complete', videoChunkIds: cids }); await cacheFile(mref.id, p.file);
-    await mirrorToDiscussion({ ...data, videoStatus: 'complete', videoChunkIds: cids }, c || t('video_attachment_placeholder'));
-  };
-
-  const handleSendMusic = async (p: any, c: string, r: any, sname: string, rContent: string) => {
-    if (!db) return;
-    const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
-    const batch = writeBatch(db);
-    batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-    await batch.commit();
-    const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
-    const cids: string[] = [];
-    for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'musicChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
-    await updateDoc(mref, { musicStatus: 'complete', musicChunkIds: cids }); await cacheFile(mref.id, p.file);
-    await mirrorToDiscussion({ ...data, musicStatus: 'complete', musicChunkIds: cids }, c || t('music_attachment_placeholder'));
-  };
-
-  const handleSendGenericFile = async (p: any, c: string, r: any, sname: string, rContent: string) => {
-    if (!db) return;
-    const mref = doc(collection(db, 'chats', item.id, 'messages'));
-    const ts = serverTimestamp();
-    const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) };
-    const batch = writeBatch(db);
-    batch.set(mref, data);
-    batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-    await batch.commit();
-    const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); });
-    const cids: string[] = [];
-    for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'fileChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); }
-    await updateDoc(mref, { fileStatus: 'complete', fileChunkIds: cids }); await cacheFile(mref.id, p.file);
-    await mirrorToDiscussion({ ...data, fileStatus: 'complete', fileChunkIds: cids }, c || t('file_attachment_placeholder'));
-  };
-
-  const handleInternalLinkClick = async (href: string) => {
-    if (!db || !currentUser) return;
-    try {
-        const lowerHref = href.toLowerCase();
-        if (lowerHref.startsWith('/iv/v/')) { const vid = href.substring(6); if (vid) window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId: vid } })); return; }
-        let target: Chat | null = null;
-        if (href.startsWith('@')) {
-            const snap = await getDoc(doc(db, 'usernames', href));
-            if (snap.exists()) {
-                const uid = snap.data().uid; const mem = [currentUser.uid, uid].sort();
-                const cid = uid === currentUser.uid ? currentUser.uid : mem.join('_');
-                const csnap = await getDoc(doc(db, 'chats', cid));
-                if (csnap.exists()) target = { id: csnap.id, ...csnap.data() } as Chat;
-                else { await setDoc(doc(db, 'chats', cid), { type: 'dm', members: mem, icon: uid === currentUser.uid ? 'Bookmark' : null }); target = { id: cid, type: 'dm', members: mem, icon: uid === currentUser.uid ? 'Bookmark' : null } as Chat; }
-            }
-        } else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) {
-            const linkRef = doc(db, 'chatLinks', encodeURIComponent((lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3)));
-            const linkSnap = await getDoc(linkRef);
-            if (linkSnap.exists()) { const csnap = await getDoc(doc(db, 'chats', linkSnap.data().chatId)); if (csnap.exists()) target = { id: csnap.id, ...csnap.data() } as Chat; }
-        }
-        if (target) {
-            const iconName = (target.icon === 'Drum' || target.name === 'Infinite') ? 'Bot' : target.icon as any;
-            onSelectChat({ ...target, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
-        }
-    } catch (e) { console.error(e); }
-  };
-
-  const getChatIcon = () => {
-    if (item.id === 'GENERAL_CHAT') return <Globe className="h-5 w-5" />;
-    if (item.name === 'Infinite' || item.icon === 'Bot' || item.link === '/B/Infinite') return <Bot className="h-5 w-5" />;
-    if (item.type === 'channel') return <Megaphone className="h-5 w-5" />;
-    if (item.type === 'group') return <Users className="h-5 w-5" />;
-    return <UserIcon className="h-5 w-5" />;
-  };
-
-  const isSavedMessages = item.type === 'dm' && item.id === currentUser.uid;
-
-  return (
-    <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
-      {(isRecordingVoice || isRecordingCircle) && (
-        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300 pointer-events-none">
-            <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full">
-                <div className="relative">
-                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
-                    <div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">{isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}</div>
-                </div>
-                <div className="text-center space-y-2">
-                    <div className="text-4xl font-black font-mono tracking-tighter text-primary">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</div>
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{t('is_recording_locked_placeholder')}</p>
-                </div>
-            </div>
-        </div>
-      )}
-
-      <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
-        <div className="flex items-center p-2 h-14">
-            <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
-            <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
-                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full disabled:cursor-default" onClick={() => { if (isSavedMessages || item.id === 'GENERAL_CHAT') return; if (item.type === 'dm') setProfileDialogUser(otherUser); else setShowChatProfile(true); }} disabled={isSavedMessages || item.id === 'GENERAL_CHAT'}>
-                    <div className='shrink-0 h-10 w-10'>{item.type === 'dm' ? <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} /> : <Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{getChatIcon()}</AvatarFallback></Avatar>}</div>
-                    <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? (otherUser?.name || t('direct_message_tab')) : item.name))}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
-                        {!isSavedMessages && <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">{item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.isBot ? <span className="font-bold text-primary">{t('bot_status')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline'))))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}</div>}
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl outline-none">
+                <DialogHeader className="items-center text-center space-y-4">
+                    <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center animate-in zoom-in duration-300", colorClass)}>
+                        <Icon className="h-10 w-10" />
                     </div>
-                </button>
-            </div>
-            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.id !== 'GENERAL_CHAT' && (
-                    <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
-                )}
-            </div>
-        </div>
-      </header>
-
-      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
-          <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
-              {messagesLoading && !messages ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
-                  <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
-                      {messages.map((m, i) => {
-                          const sd = getSafeDate(m.timestamp);
-                          const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
-                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} /></React.Fragment>;
-                      })}
-                      <div ref={messagesEndRef} className="h-px shrink-0" /></div>
-              ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
-          </div>
-          {stickyDate && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"><Badge variant="secondary" className="opacity-90">{stickyDate}</Badge></div>}
-      </div>
-
-      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
-            {(item.type === 'channel' && item.ownerId !== currentUser.uid) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
-                  {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || memberDetails[replyToMessage.senderId]?.name || 'User'}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
-                  {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
-                  {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
-                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-48 rounded-xl"><DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center py-2 border-b">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel><DropdownMenuItem onSelect={() => fileInputRef.current?.click()} className="py-2"><ImageIcon className="mr-2 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => {}} className="py-2"><VideoIcon className="mr-2 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem><DropdownMenuItem onSelect={() => {}} className="py-2"><MusicIcon className="mr-2 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem><DropdownMenuItem onSelect={() => {}} className="py-2"><FileIcon className="mr-2 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="py-2"><ListTodo className="mr-2 h-4 w-4 text-teal-500" /> {t('poll')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.size > maxFileSizeInBytes) { toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) }); return; } compressImage(f).then(p => setFileToSend({ file: f, previewUrl: p, type: 'image' })); } }} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full touch-none", isRecordingVoice && "text-primary animate-pulse")} onPointerDown={() => startRecording('voice')} onPointerUp={stopRecording} onPointerLeave={stopRecording}><Mic className="h-5 w-5" /></Button><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full touch-none", isRecordingCircle && "text-primary animate-pulse")} onPointerDown={() => startRecording('circle')} onPointerUp={stopRecording} onPointerLeave={stopRecording}><Camera className="h-5 w-5" /></Button></div>}</div></form></div>}
-          </div></footer>}
-
-      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history')}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-      {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
-      {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(m => item.members.includes(m.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
-      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: serverTimestamp(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} />
-      <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { 
-          if (!db || !forwardingMessage) return; 
-          const { id: _, ...messageData } = forwardingMessage; 
-          addDoc(collection(db, 'chats', cid, 'messages'), { 
-              ...messageData, 
-              senderId: currentUser.uid, 
-              timestamp: serverTimestamp(), 
-              readBy: [],
-              senderName: currentUser.name || currentUser.username
-          }); 
-          toast({ title: t('message_forwarded_success') }); 
-      }} currentUser={currentUser} />
-    </div>
-  );
+                    <div className="space-y-2">
+                        <DialogTitle className="text-2xl font-bold font-headline">{t(type as any)}</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            {t('max_file_size_label', { size: maxSizeText })}
+                        </DialogDescription>
+                    </div>
+                </DialogHeader>
+                <DialogFooter className="flex-col gap-2 pt-4">
+                    <Button onClick={() => { onOpenChange(false); onSelect(); }} className="w-full h-12 rounded-xl font-bold gap-2">
+                        <Upload className="h-4 w-4" />
+                        {t('choose_file')}
+                    </Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
-function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, memberDetails }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; memberDetails: Record<string, User> }) {
+const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onInternalLinkClick, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, memberDetails }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onInternalLinkClick: (href: string) => Promise<void>, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; memberDetails: Record<string, User> }) => {
     const { t } = useLanguage();
     const { toast } = useToast();
     const db = useFirestore(); 
@@ -856,21 +333,12 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
     useEffect(() => {
         const loadMedia = async () => {
             const cached = await getCachedFile(message.id);
-            if (cached) {
-                setMediaUrl(cached);
-                requestAnimationFrame(() => { onMediaLoad(); });
-                return;
-            }
-
-            if (message.imageUrl) {
+            if (cached) { setMediaUrl(cached); requestAnimationFrame(() => { onMediaLoad(); }); return; }
+            if (message.imageUrl) { 
                 const url = await fetchAndCacheImage(message.id, message.imageUrl);
-                if (url) {
-                    setMediaUrl(url);
-                    requestAnimationFrame(() => { onMediaLoad(); });
-                }
+                if (url) { setMediaUrl(url); requestAnimationFrame(() => { onMediaLoad(); }); }
                 return;
             }
-
             if (!db) return;
             if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') {
                 try {
@@ -889,12 +357,11 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
             }
         };
         loadMedia();
-    }, [message.id, db, onMediaLoad, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl]);
+    }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl]);
 
     useEffect(() => {
         if (circleVideoRef.current && mediaUrl && message.circleStatus === 'complete' && !isUserActive) {
-            circleVideoRef.current.muted = true;
-            circleVideoRef.current.play().catch(() => {});
+            circleVideoRef.current.muted = true; circleVideoRef.current.play().catch(() => {});
         }
     }, [mediaUrl, message.circleStatus, isUserActive]);
 
@@ -943,134 +410,254 @@ function ChatMessage({ message, sender, isCurrentUser, chatType, onAvatarClick, 
                  <div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
 
-            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5"))}>
-                {/* 1. SENDER NICKNAME (Top of bubble) */}
+            <div className={cn("min-w-0 flex flex-col relative transition-all duration-300 max-w-[75%] md:max-w-[60%]", !isCircleOnly && (alignRight ? "bg-primary text-white rounded-lg px-2 pb-1 rounded-br-none pt-1.5 shadow-sm" : "bg-card text-card-foreground rounded-lg px-2 pb-1 rounded-bl-none pt-1.5 shadow-sm"))}>
                 {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && (
-                    <div className="font-semibold text-[13px] flex items-center gap-2 mb-0.5">
+                    <div className="font-semibold text-[13px] flex items-center gap-2 mb-0.5 px-0.5">
                         <span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>
                         {sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}
                     </div>
                 )}
-
-                {/* 2. REPLY PREVIEW */}
                 {message.replyTo && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         <p className={cn("text-[10px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
                         <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
                 )}
-
-                {/* 3. MEDIA & POLLS */}
                 {message.imageUrl && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && (<div className="pt-1"><video src={mediaUrl} controls className="max-w-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {message.circleStatus === 'complete' && mediaUrl && (<div className={cn("rounded-full overflow-hidden border-2 border-primary/20 bg-black aspect-square shrink-0 cursor-pointer shadow-lg", isCircleOnly ? "w-40 h-40" : "w-40 h-40 mt-1")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} memberDetails={memberDetails} />}
-                
-                {/* 4. CONTENT */}
                 {message.content && !message.poll && (
-                    <div className={cn("text-sm break-words whitespace-pre-wrap pt-0")}>
-                        <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]} 
-                            components={{ 
-                                a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> 
-                            }}
-                        >
-                            {message.content}
-                        </ReactMarkdown>
+                    <div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a onClick={(e) => { if (p.href?.startsWith('@') || p.href?.startsWith('/')) { e.preventDefault(); onInternalLinkClick(p.href); } }} className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target={p.href?.startsWith('http') ? "_blank" : undefined}>{p.children}</a> }}>{message.content}</ReactMarkdown>
                     </div>
                 )}
-
-                {/* 5. REACTIONS */}
                 {message.reactions && Object.keys(message.reactions).length > 0 && (
                     <div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>
                         {Object.entries(message.reactions).map(([emoji, uids]) => { 
                             if (uids.length === 0) return null;
-                            const hasReacted = uids.includes(currentUser.uid); 
-                            const isChannel = chatType === 'channel';
-                            return (
-                                <button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && !isChannel && "text-white border-white/30")}>
-                                    <span>{emoji}</span>
-                                    {isChannel ? (
-                                        <span className={cn(alignRight && "text-white")}>{uids.length}</span>
-                                    ) : (
-                                        <div className="flex -space-x-1.5 items-center">
-                                            {uids.slice(0, 4).map((uid) => {
-                                                const reactor = memberDetails[uid];
-                                                return (
-                                                    <Avatar key={uid} className="h-4 w-4 border-2 border-background ring-1 ring-border/20 shrink-0">
-                                                        <AvatarImage src={reactor?.avatar} />
-                                                        <AvatarFallback className="text-[6px] font-black">{reactor?.name?.charAt(0) || '?'}</AvatarFallback>
-                                                    </Avatar>
-                                                );
-                                            })}
-                                            {uids.length > 4 && <span className={cn("ml-1.5 text-[9px] font-black opacity-80", alignRight && "text-white")}>+{uids.length - 4}</span>}
-                                        </div>
-                                    )}
-                                </button>
-                            ); 
+                            const hasReacted = uids.includes(currentUser.uid); const isChannel = chatType === 'channel';
+                            return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && !isChannel && "text-white border-white/30")}><span>{emoji}</span>{isChannel ? (<span className={cn(alignRight && "text-white")}>{uids.length}</span>) : (<div className="flex -space-x-1.5 items-center">{uids.slice(0, 4).map((uid) => { const reactor = memberDetails[uid]; return (<Avatar key={uid} className="h-4 w-4 border-2 border-background ring-1 ring-border/20 shrink-0"><AvatarImage src={reactor?.avatar} /><AvatarFallback className="text-[6px] font-black">{reactor?.name?.charAt(0) || '?'}</AvatarFallback></Avatar>); })}{uids.length > 4 && <span className={cn("ml-1.5 text-[9px] font-black opacity-80", alignRight && "text-white")}>+{uids.length - 4}</span>}</div>)}</button>); 
                         })}
                     </div>
                 )}
-                
-                {/* 6. TIMESTAMP & STATUS */}
-                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>
-                    {message.editedAt && <span className="font-bold">{t('edited')}</span>}
-                    <span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>
-                    {isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}
-                </div>
+                <div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70", isCircleOnly && "bg-black/40 text-white rounded-full px-2 py-0.5 mt-2 absolute bottom-2 right-2 shadow-sm")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>
             </div>
 
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    {experimentalDesign ? (
-                      <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-48 p-1 shadow-2xl border-none rounded-2xl animate-in zoom-in-95 duration-200">
-                          <DropdownMenuSub>
-                              <DropdownMenuSubTrigger className="h-10 rounded-xl"><SmilePlus className="mr-3 h-4 w-4 text-primary" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
-                              <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-1.5 w-52 border-none shadow-2xl rounded-2xl max-h-[70svh] overflow-y-auto">
-                                      <div className="grid grid-cols-5 gap-0.5">
-                                          {COMMON_EMOJIS.map(emoji => { 
-                                              const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
-                                              return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-9 w-9 flex items-center justify-center transition-all active:scale-125 hover:bg-primary/10 rounded-lg text-lg", sel && "bg-primary/20 scale-110 shadow-inner")}>{emoji}</button>); 
-                                          })}
-                                      </div>
-                                  </DropdownMenuSubContent>
-                              </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                          <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl"><Reply className="mr-3 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
-                          {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl"><Copy className="mr-3 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                          {hasSaveableMedia && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl"><Save className="mr-3 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
-                          <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl"><Forward className="mr-3 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
-                          {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl"><Edit className="mr-3 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                          {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 h-10 rounded-xl"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
-                      </DropdownMenuContent>
-                    ) : (
-                      <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-44 p-1 animate-in fade-in duration-200 rounded-lg">
-                          <DropdownMenuSub>
-                              <DropdownMenuSubTrigger><SmilePlus className="mr-2 h-4 w-4" /><span>{t('reactions')}</span></DropdownMenuSubTrigger>
-                              <DropdownMenuPortal>
-                                  <DropdownMenuSubContent className="p-1 w-52 max-h-[70svh] overflow-y-auto rounded-lg">
-                                      <div className="grid grid-cols-5 gap-0.5">
-                                          {COMMON_EMOJIS.map(emoji => { 
-                                              const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
-                                              return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-9 w-9 flex items-center justify-center hover:bg-accent rounded-md text-lg", sel && "bg-accent")}>{emoji}</button>); 
-                                          })}
-                                      </div>
-                                  </DropdownMenuSubContent>
-                              </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                          <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" /><span>{t('reply')}</span></DropdownMenuItem>
-                          {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }}><Copy className="mr-2 h-4 w-4" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                          {hasSaveableMedia && <DropdownMenuItem onSelect={handleSaveToDevice}><Save className="mr-2 h-4 w-4" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
-                          <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" /><span>{t('forward')}</span></DropdownMenuItem>
-                          {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)}><Edit className="mr-2 h-4 w-4" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                          {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem>}
-                      </DropdownMenuContent>
-                    )}
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} className="w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] animate-in zoom-in-95 duration-200 overflow-hidden bg-popover/95 backdrop-blur-xl">
+                        <div className="px-2 py-2 mb-1 flex items-center justify-between gap-1 overflow-x-auto no-scrollbar scroll-smooth bg-muted/40 rounded-2xl border border-border/20 shadow-inner">
+                            {COMMON_EMOJIS.map(emoji => { 
+                                const sel = message.reactions?.[emoji]?.includes(currentUser.uid); 
+                                return (<button key={emoji} onClick={() => { onToggleReaction(message.id, emoji); }} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); 
+                            })}
+                        </div>
+                        <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Reply className="mr-3 h-4 w-4 text-primary" /><span>{t('reply')}</span></DropdownMenuItem>
+                        {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Copy className="mr-3 h-4 w-4 text-primary" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                        {hasSaveableMedia && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Save className="mr-3 h-4 w-4 text-primary" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
+                        <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Forward className="mr-3 h-4 w-4 text-primary" /><span>{t('forward')}</span></DropdownMenuItem>
+                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Edit className="mr-3 h-4 w-4 text-primary" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                        {canDelete && <><DropdownMenuSeparator className="bg-border/50" /><DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 h-10 rounded-xl px-3"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem></>}
+                    </DropdownMenuContent>
                 </DropdownMenu>
             </div>
         </div>
     );
+});
+ChatMessage.displayName = 'ChatMessage';
+
+export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme(); const isMobile = useIsMobile();
+  const isPrem = currentUser.subscriptionTier === 'prem';
+  const maxSizeText = isPrem ? '4GB' : '1GB';
+  const maxFileSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
+
+  const [messageContent, setMessageContent] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null);
+  const [showChatProfile, setShowChatProfile] = useState(false);
+  const [showNewPoll, setShowNewPoll] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file' | 'voice' | 'circle'} | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null); 
+  const [isMutedLocal, setIsMutedLocal] = useState(false);
+  const [messageLimit, setMessageLimit] = useState(50);
+  const [hasMore, setHasMore] = useState(true);
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const [attachmentType, setAttachmentType] = useState<'photo' | 'video' | 'music' | 'file' | null>(null);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const listInnerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevScrollHeightRef = useRef<number>(0);
+  const isAtBottomRef = useRef(true);
+  const autoScrollGuardRef = useRef<number>(0); 
+  const [stickyDate, setStickyDate] = useState<string | null>(null);
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isRecordingCircle, setIsRecordingCircle] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeStreamRef = useRef<MediaStream | null>(null);
+
+  const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
+  const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]);
+  const { data: liveChatData } = useDoc<Chat>(chatDocRef);
+  const item = useMemo(() => { if (!liveChatData) return initialItem; const n = { ...initialItem, ...liveChatData }; if (n.type === 'dm' && n.id === currentUser.uid) { n.icon = 'Bookmark'; } return n; }, [initialItem, liveChatData, currentUser.uid]);
+
+  const messagesQuery = useMemoFirebase(() => { if (!db || !isMember) return null; return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit)); }, [db, item.id, isMember, messageLimit]);
+  const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
+  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
+  const allUserIdsToFetch = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => { ids.add(m.senderId); if (m.reactions) { Object.values(m.reactions).flat().forEach(uid => ids.add(uid as string)); } }); return Array.from(ids); }, [item.members, messages]);
+  const { users: memberDetails } = useBatchUsers(allUserIdsToFetch);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => { const container = scrollContainerRef.current; if (container) { container.scrollTop = container.scrollHeight; } }, []);
+  const handleScroll = useCallback(() => { const container = scrollContainerRef.current; if (!container) return; const { scrollTop, scrollHeight, clientHeight } = container; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 1000) { autoScrollGuardRef.current = 0; } const dateSeparators = container.querySelectorAll<HTMLElement>('[data-date-separator]'); let currentStickyDate: string | null = null; if (dateSeparators.length > 0) { for (let i = 0; i < dateSeparators.length; i++) { const separator = dateSeparators[i]; if (separator && separator.offsetTop <= scrollTop + 5) { currentStickyDate = separator.dataset.dateSeparator || null; } else break; } } setStickyDate(currentStickyDate); if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(prev => prev + 50); } }, [hasMore, messagesLoading, messages, messageLimit]);
+
+  useEffect(() => { const listElement = listInnerRef.current; if (!listElement) return; const resizeObserver = new ResizeObserver(() => { const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000; if (isAtBottomRef.current || inGuardPeriod) { requestAnimationFrame(() => { scrollToBottom('auto'); setTimeout(() => { if (isAtBottomRef.current || inGuardPeriod) scrollToBottom('auto'); }, 50); }); } }); resizeObserver.observe(listElement); return () => resizeObserver.disconnect(); }, [scrollToBottom]);
+  const handleMediaLoad = useCallback(() => { const inGuardPeriod = Date.now() - autoScrollGuardRef.current < 10000; if (isAtBottomRef.current || inGuardPeriod) { requestAnimationFrame(() => { scrollToBottom('auto'); setTimeout(() => scrollToBottom('auto'), 50); }); } }, [scrollToBottom]);
+
+  useEffect(() => { if (!db || !currentUser.uid || !item.id || !messages) return; const markAsRead = async () => { try { if (item.unreadCounts?.[currentUser.uid] && item.unreadCounts[currentUser.uid] > 0) { await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); } const unreadMessages = messages.filter(m => m.senderId !== currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid))); if (unreadMessages.length > 0) { const batch = writeBatch(db); unreadMessages.forEach(m => { batch.update(doc(db, 'chats', item.id, 'messages', m.id), { readBy: arrayUnion(currentUser.uid) }); }); await batch.commit(); } } catch (e) { console.error("Mark read failed:", e); } }; markAsRead(); }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
+
+  useLayoutEffect(() => { const container = scrollContainerRef.current; if (!container) return; if (prevScrollHeightRef.current > 0) { container.scrollTop = container.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
+  useEffect(() => { const timer = setTimeout(() => { isAtBottomRef.current = true; autoScrollGuardRef.current = Date.now(); scrollToBottom('auto'); }, 150); return () => clearTimeout(timer); }, [item.id, scrollToBottom]);
+
+  const otherUserId = useMemo(() => item.type === 'dm' ? item.members.find(id => id !== currentUser.uid) || currentUser.uid : null, [item, currentUser.uid]);
+  const otherUser = useMemo(() => otherUserId ? memberDetails[otherUserId] : null, [otherUserId, memberDetails]);
+  const isOtherUserTyping = item.type === 'dm' && otherUserId ? item.typingStatus?.[otherUserId] === true : false;
+
+  const mirrorToDiscussion = async (msgData: any, contentPreview: string) => { if (item.type === 'channel' && item.discussionChatId && db) { const discussionMessagesRef = collection(db, 'chats', item.discussionChatId, 'messages'); const discussionChatRef = doc(db, 'chats', item.discussionChatId); const mirroredData = { ...msgData, fromChannelId: item.id, timestamp: serverTimestamp(), readBy: [] }; const mRef = await addDoc(discussionMessagesRef, mirroredData); await updateDoc(discussionChatRef, { lastMessage: { ...mirroredData, id: mRef.id, content: contentPreview, timestamp: Timestamp.now() } }); } };
+
+  const handleSendMessage = async (customContent?: string, immediateFile?: {file: File, type: 'voice' | 'circle', duration: number}) => {
+    const finalContent = customContent !== undefined ? customContent : messageContent;
+    const finalFile = immediateFile || fileToSend;
+    if ((!finalContent.trim() && !finalFile) || !db) return;
+    setIsSending(true); const originalContent = finalContent; const originalReplyTo = replyToMessage;
+    let resolvedReplySenderName = originalReplyTo?.senderName || 'User'; let replyPreview = originalReplyTo?.content || '';
+    if (originalReplyTo) { if (memberDetails[originalReplyTo.senderId]) { resolvedReplySenderName = memberDetails[originalReplyTo.senderId].name; } if (!replyPreview) { if (originalReplyTo.imageUrl) replyPreview = t('photo'); else if (originalReplyTo.videoStatus === 'complete') replyPreview = t('video'); else if (originalReplyTo.musicStatus === 'complete') replyPreview = t('music'); else if (originalReplyTo.voiceStatus === 'complete') replyPreview = t('voice_message_short'); else if (originalReplyTo.fileStatus === 'complete') replyPreview = t('file'); else if (originalReplyTo.poll) replyPreview = t('poll'); } }
+    setMessageContent(''); setFileToSend(null); setReplyToMessage(null); autoScrollGuardRef.current = Date.now(); 
+    try {
+        if (finalFile?.type === 'video') await handleSendVideo(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'voice') await handleSendVoice(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'circle') await handleSendCircle(finalFile, originalContent, originalReplyTo, finalFile.duration, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'music') await handleSendMusic(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        else if (finalFile?.type === 'file') await handleSendGenericFile(finalFile, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        else await handleSendTextOrImage(finalFile?.previewUrl, originalContent, originalReplyTo, resolvedReplySenderName, replyPreview);
+        isAtBottomRef.current = true; scrollToBottom('auto');
+    } catch (error) { console.error(error); setMessageContent(originalContent); setFileToSend(null); setReplyToMessage(originalReplyTo); }
+    finally { setIsSending(false); }
+  };
+
+  const handleToggleReaction = async (messageId: string, emoji: string) => { if (!db || !currentUser.uid) return; const messageRef = doc(db, 'chats', item.id, 'messages', messageId); try { await runTransaction(db, async (transaction) => { const snap = await transaction.get(messageRef); if (!snap.exists()) return; const reactions = { ...(snap.data().reactions || {}) }; let existingEmoji: string | null = null; for (const [key, uids] of Object.entries(reactions)) { if (uids.includes(currentUser.uid)) { existingEmoji = key; break; } } const updates: any = {}; if (existingEmoji) { const newUids = (reactions[existingEmoji] || []).filter(u => u !== currentUser.uid); if (newUids.length === 0) updates[`reactions.${existingEmoji}`] = deleteField(); else updates[`reactions.${existingEmoji}`] = newUids; if (existingEmoji === emoji) { transaction.update(messageRef, updates); return; } } updates[`reactions.${emoji}`] = arrayUnion(currentUser.uid); transaction.update(messageRef, updates); }); } catch (e) { console.error("Reaction failed", e); } };
+  const handleVote = async (messageId: string, optionIndex: number) => { if (!db || !currentUser.uid) return; const messageRef = doc(db, 'chats', item.id, 'messages', messageId); try { await runTransaction(db, async (transaction) => { const snap = await transaction.get(messageRef); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = [...poll.options]; if (poll.isMultipleChoice) { const optionVotes = [...newOptions[optionIndex].votes]; if (optionVotes.includes(currentUser.uid)) { newOptions[optionIndex].votes = optionVotes.filter(uid => uid !== currentUser.uid); } else { newOptions[optionIndex].votes = [...optionVotes, currentUser.uid]; } } else { newOptions.forEach((opt, idx) => { if (idx === optionIndex) { if (opt.votes.includes(currentUser.uid)) { opt.votes = opt.votes.filter(uid => uid !== currentUser.uid); } else { opt.votes = [...opt.votes, currentUser.uid]; } } else { opt.votes = opt.votes.filter(uid => uid !== currentUser.uid); } }); } transaction.update(messageRef, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
+  const startRecording = async (type: 'voice' | 'circle') => { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false }); activeStreamRef.current = stream; const options = { mimeType: type === 'voice' ? 'audio/webm' : 'video/webm;codecs=vp8,opus' }; const recorder = new MediaRecorder(stream, options); mediaRecorderRef.current = recorder; chunksRef.current = []; recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); }; recorder.onstop = async () => { if (chunksRef.current.length > 0) { const blob = new Blob(chunksRef.current, { type: options.mimeType }); const file = new File([blob], type === 'voice' ? 'voice.webm' : 'circle.webm', { type: blob.type }); handleSendMessage('', { file, type, duration: recordingDuration }); } if (activeStreamRef.current) { activeStreamRef.current.getTracks().forEach(t => t.stop()); activeStreamRef.current = null; } }; recorder.start(); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); setRecordingDuration(0); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000); } catch (e) { toast({ variant: 'destructive', title: 'Error', description: t('microphone_error_desc') }); } };
+  const stopRecording = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); };
+  const handleDeleteMessage = async (messageId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', messageId)); toast({ title: t('dm_success') }); } catch (e) { console.error("Delete failed", e); } };
+
+  const handleSendVoice = async (p: any, c: string, r: any, d: number, sname: string, rContent: string) => { if (!db) return; const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp(); const data = { senderId: currentUser.uid, content: c, timestamp: ts, voiceMimeType: p.file.type, voiceStatus: 'uploading', voiceDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) }; const batch = writeBatch(db); batch.set(mref, data); batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('voice_message_short'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }); await batch.commit(); const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); }); const cids: string[] = []; for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'voiceChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); } await updateDoc(mref, { voiceStatus: 'complete', voiceChunkIds: cids }); await cacheFile(mref.id, p.file); await mirrorToDiscussion({ ...data, voiceStatus: 'complete', voiceChunkIds: cids }, t('voice_message_short')); };
+  const handleSendCircle = async (p: any, c: string, r: any, d: number, sname: string, rContent: string) => { if (!db) return; const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp(); const data = { senderId: currentUser.uid, content: c, timestamp: ts, circleMimeType: p.file.type, circleStatus: 'uploading', circleDuration: d, readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) }; const batch = writeBatch(db); batch.set(mref, data); batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }); await batch.commit(); const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); }); const cids: string[] = []; for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'circleChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); } await updateDoc(mref, { circleStatus: 'complete', circleChunkIds: cids }); await cacheFile(mref.id, p.file); await mirrorToDiscussion({ ...data, circleStatus: 'complete', circleChunkIds: cids }, t('video_attachment_placeholder')); };
+  const handleSendTextOrImage = async (i: any, c: string, r: any, sname: string, rContent: string) => { if (!db) return; const ts = serverTimestamp(); const mref = doc(collection(db, 'chats', item.id, 'messages')); const data = { senderId: currentUser.uid, content: c.trim(), timestamp: ts, type: 'user', readBy: [], senderName: currentUser.name || currentUser.username, ...(i && { imageUrl: i }), ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) }; const batch = writeBatch(db); batch.set(mref, data); const upd: any = { lastMessage: { id: mref.id, content: c.trim() || (i ? t('image_attachment_placeholder') : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }; if (item.type !== 'channel') item.members.forEach(id => { if (id !== currentUser.uid) upd[`unreadCounts.${id}`] = increment(1); }); batch.update(doc(db, 'chats', item.id), upd); await batch.commit(); if (i) fetchAndCacheImage(mref.id, i); await mirrorToDiscussion(data, c.trim() || (i ? t('image_attachment_placeholder') : '')); };
+  const handleSendVideo = async (p: any, c: string, r: any, sname: string, rContent: string) => { if (!db) return; const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp(); const data = { senderId: currentUser.uid, content: c, timestamp: ts, videoMimeType: p.file.type, videoStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) }; const batch = writeBatch(db); batch.set(mref, data); batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('video_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }); await batch.commit(); const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); }); const cids: string[] = []; for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'videoChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); } await updateDoc(mref, { videoStatus: 'complete', videoChunkIds: cids }); await cacheFile(mref.id, p.file); await mirrorToDiscussion({ ...data, videoStatus: 'complete', videoChunkIds: cids }, c || t('video_attachment_placeholder')); };
+  const handleSendMusic = async (p: any, c: string, r: any, sname: string, rContent: string) => { if (!db) return; const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp(); const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, musicMimeType: p.file.type, musicStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) }; const batch = writeBatch(db); batch.set(mref, data); batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('music_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }); await batch.commit(); const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); }); const cids: string[] = []; for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'musicChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); } await updateDoc(mref, { musicStatus: 'complete', musicChunkIds: cids }); await cacheFile(mref.id, p.file); await mirrorToDiscussion({ ...data, musicStatus: 'complete', musicChunkIds: cids }, c || t('music_attachment_placeholder')); };
+  const handleSendGenericFile = async (p: any, c: string, r: any, sname: string, rContent: string) => { if (!db) return; const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp(); const data = { senderId: currentUser.uid, content: c, timestamp: ts, fileName: p.file.name, fileMimeType: p.file.type, fileSize: p.file.size, fileStatus: 'uploading', readBy: [], senderName: currentUser.name || currentUser.username, ...(r && { replyTo: { messageId: r.id, content: rContent, senderName: sname } }) }; const batch = writeBatch(db); batch.set(mref, data); batch.update(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: c || t('file_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }); await batch.commit(); const b64 = await new Promise<string>(res => { const reader = new FileReader(); reader.readAsDataURL(p.file); reader.onload = () => res((reader.result as string).split(',')[1]); }); const cids: string[] = []; for (let i = 0; i < b64.length; i += 900*1024) { const cref = doc(collection(db, 'fileChunks')); await setDoc(cref, { data: b64.substring(i, i + 900*1024), part: i/(900*1024), senderId: currentUser.uid }); cids.push(cref.id); } await updateDoc(mref, { fileStatus: 'complete', fileChunkIds: cids }); await cacheFile(mref.id, p.file); await mirrorToDiscussion({ ...data, fileStatus: 'complete', fileChunkIds: cids }, c || t('file_attachment_placeholder')); };
+
+  const handleInternalLinkClick = async (href: string) => { if (!db || !currentUser) return; try { const lowerHref = href.toLowerCase(); if (lowerHref.startsWith('/iv/v/')) { const vid = href.substring(6); if (vid) window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId: vid } })); return; } let target: Chat | null = null; if (href.startsWith('@')) { const snap = await getDoc(doc(db, 'usernames', href)); if (snap.exists()) { const uid = snap.data().uid; const mem = [currentUser.uid, uid].sort(); const cid = uid === currentUser.uid ? currentUser.uid : mem.join('_'); const csnap = await getDoc(doc(db, 'chats', cid)); if (csnap.exists()) target = { id: csnap.id, ...csnap.data() } as Chat; else { await setDoc(doc(db, 'chats', cid), { type: 'dm', members: mem, icon: uid === currentUser.uid ? 'Bookmark' : null }); target = { id: cid, type: 'dm', members: mem, icon: uid === currentUser.uid ? 'Bookmark' : null } as Chat; } } } else if (lowerHref.startsWith('/g/') || lowerHref.startsWith('/c/')) { const linkRef = doc(db, 'chatLinks', encodeURIComponent((lowerHref.startsWith('/g/') ? '/G/' : '/C/') + href.substring(3))); const linkSnap = await getDoc(linkRef); if (linkSnap.exists()) { const csnap = await getDoc(doc(db, 'chats', linkSnap.data().chatId)); if (csnap.exists()) target = { id: csnap.id, ...csnap.data() } as Chat; } } if (target) { const iconName = (target.icon === 'Drum' || target.name === 'Infinite') ? 'Bot' : target.icon as any; onSelectChat({ ...target, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat); } } catch (e) { console.error(e); } };
+  const getChatIcon = () => { if (item.id === 'GENERAL_CHAT') return <Globe className="h-5 w-5" />; if (item.name === 'Infinite' || item.icon === 'Bot' || item.link === '/B/Infinite') return <Bot className="h-5 w-5" />; if (item.type === 'channel') return <Megaphone className="h-5 w-5" />; if (item.type === 'group') return <Users className="h-5 w-5" />; return <UserIcon className="h-5 w-5" />; };
+  const isSavedMessages = item.type === 'dm' && item.id === currentUser.uid;
+
+  const handleAttachmentSelection = (type: 'photo' | 'video' | 'music' | 'file') => {
+      setAttachmentType(type);
+  };
+
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) {
+          const f = e.target.files[0];
+          if (f.size > maxFileSizeInBytes) { toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) }); return; }
+          const type = attachmentType === 'photo' ? 'image' : (attachmentType as any);
+          if (type === 'image') compressImage(f).then(p => setFileToSend({ file: f, previewUrl: p, type: 'image' }));
+          else setFileToSend({ file: f, previewUrl: '', type });
+      }
+  };
+
+  return (
+    <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+      {(isRecordingVoice || isRecordingCircle) && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300 pointer-events-none">
+            <div className="bg-card border-2 border-primary/30 p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+                    <div className="relative bg-primary text-primary-foreground p-6 rounded-full shadow-lg">{isRecordingCircle ? <Camera className="h-10 w-10" /> : <Mic className="h-10 w-10" />}</div>
+                </div>
+                <div className="text-center space-y-2">
+                    <div className="text-4xl font-black font-mono tracking-tighter text-primary">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</div>
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{t('is_recording_locked_placeholder')}</p>
+                </div>
+            </div>
+        </div>
+      )}
+
+      <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
+        <div className="flex items-center p-2 h-14">
+            <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
+            <div className="flex-1 flex items-center min-w-0 overflow-hidden h-12">
+                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 overflow-hidden h-full disabled:cursor-default" onClick={() => { if (isSavedMessages || item.id === 'GENERAL_CHAT') return; if (item.type === 'dm') setProfileDialogUser(otherUser); else setShowChatProfile(true); }} disabled={isSavedMessages || item.id === 'GENERAL_CHAT'}>
+                    <div className='shrink-0 h-10 w-10'>{item.type === 'dm' ? <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} /> : <Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{getChatIcon()}</AvatarFallback></Avatar>}</div>
+                    <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
+                        <div className="flex items-center gap-2 min-0"><h2 className="text-lg font-semibold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? (otherUser?.name || t('direct_message_tab')) : item.name))}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div>
+                        {!isSavedMessages && <div className="text-sm text-muted-foreground truncate h-5 mt-1 leading-none">{item.type === 'dm' ? (isOtherUserTyping ? <span className="text-primary font-bold animate-pulse">{t('searching')}</span> : (otherUser?.isBot ? <span className="font-bold text-primary">{t('bot_status')}</span> : (otherUser?.status === 'online' ? t('online') : (otherUser?.lastSeen ? `${t('was_online')} ${format(getSafeDate(otherUser.lastSeen), 'dd.MM, HH:mm')}` : t('offline'))))) : (item.id === 'GENERAL_CHAT' ? t('public_chat_description') : t(item.type === 'channel' ? 'subscribers_count' : 'members_count', { count: item.members?.length || 0 }))}</div>}
+                    </div>
+                </button>
+            </div>
+            <div className="flex items-center gap-1 ml-2 shrink-0">{item.type === 'dm' && !isSavedMessages && otherUser && !otherUser.isBot && <><Phone className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))} /><Video className="h-5 w-5 cursor-pointer hover:text-primary ml-2" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))} /></>}{item.id !== 'GENERAL_CHAT' && (
+                    <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 ml-1"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl">{item.id !== currentUser.uid && <DropdownMenuItem onSelect={() => setShowChatProfile(true)}><Info className="mr-2 h-4 w-4" /><span>{t('info')}</span></DropdownMenuItem>}<DropdownMenuItem onSelect={() => setShowClearConfirm(true)}><Trash className="mr-2 h-4 w-4" /><span>{t('clear_history')}</span></DropdownMenuItem>{item.id !== currentUser.uid && <><DropdownMenuSeparator />{item.ownerId === currentUser.uid || item.type === 'dm' ? <DropdownMenuItem onSelect={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete_chat')}</span></DropdownMenuItem> : <DropdownMenuItem onSelect={() => setShowLeaveConfirm(true)} className="text-destructive"><LogOut className="mr-2 h-4 w-4" /><span>{t('leave')}</span></DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
+                )}
+            </div>
+        </div>
+      </header>
+
+      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
+              {messagesLoading && !messages ? <div className="flex h-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div> : messages && messages.length > 0 ? (
+                  <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />
+                      {messages.map((m, i) => {
+                          const sd = getSafeDate(m.timestamp);
+                          const showSep = !i || !isSameDay(sd, getSafeDate(messages[i-1].timestamp));
+                          return <React.Fragment key={m.id}>{showSep && <DateSeparator date={format(sd, 'dd.MM.yyyy')} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={handleInternalLinkClick} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoad} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} /></React.Fragment>;
+                      })}
+                      <div ref={messagesEndRef} className="h-px shrink-0" /></div>
+              ) : <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4">{isMember ? <p>{t('no_messages_yet')}</p> : <><Users className="h-16 w-16 mb-4 opacity-50" /><h3 className="text-xl font-semibold">{t('you_left_the_group')}</h3></>}</div>}
+          </div>
+          {stickyDate && <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"><Badge variant="secondary" className="opacity-90">{stickyDate}</Badge></div>}
+      </div>
+
+      {isMember && <footer className={cn("flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}><div className="max-w-3xl mx-auto w-full h-full flex items-center">
+            {(item.type === 'channel' && item.ownerId !== currentUser.uid) ? <div className="flex items-center justify-center w-full h-full"><Button variant="ghost" className="w-full h-full rounded-xl font-bold gap-2 text-primary" onClick={() => setIsMutedLocal(!isMutedLocal)}>{isMutedLocal ? <BellOff className="h-5 w-5" /> : <Bell className="h-5 w-5" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></div> : <div className="flex flex-col gap-2 w-full">
+                  {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary truncate">{replyToMessage.senderName || memberDetails[replyToMessage.senderId]?.name || 'User'}</div><div className="text-xs text-muted-foreground truncate">{replyToMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+                  {editingMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0"><Edit className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0"><div className="text-xs font-bold text-primary">{t('editing_message')}</div><div className="text-xs text-muted-foreground truncate">{editingMessage.content}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingMessage(null)}><X className="h-4 w-4" /></Button></div>}
+                  {fileToSend && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><div className="flex items-center gap-2 min-0">{fileToSend.type === 'image' ? <ImageIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'video' ? <VideoIcon className="h-4 w-4 text-primary" /> : fileToSend.type === 'music' ? <MusicIcon className="h-4 w-4 text-primary" /> : <FileIcon className="h-4 w-4 text-primary" />}<div className="min-w-0"><div className="text-xs font-bold text-primary">{fileToSend.file.name || t('image_attachment_alt')}</div></div></div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFileToSend(null)}><X className="h-4 w-4" /></Button></div>}
+                  <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><div className="relative flex-1"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /></div><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-48 rounded-xl"><DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center py-2 border-b">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel><DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')} className="py-2"><ImageIcon className="mr-2 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('video')} className="py-2"><VideoIcon className="mr-2 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('music')} className="py-2"><MusicIcon className="mr-2 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('file')} className="py-2"><FileIcon className="mr-2 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="py-2"><ListTodo className="mr-2 h-4 w-4 text-teal-500" /> {t('poll')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} onChange={onFileInputChange} className="hidden" />{(messageContent.trim() || fileToSend) ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : <div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full touch-none", isRecordingVoice && "text-primary animate-pulse")} onPointerDown={() => startRecording('voice')} onPointerUp={stopRecording} onPointerLeave={stopRecording}><Mic className="h-5 w-5" /></Button><Button type="button" size="icon" variant="ghost" className={cn("h-9 w-9 rounded-full touch-none", isRecordingCircle && "text-primary animate-pulse")} onPointerDown={() => startRecording('circle')} onPointerUp={stopRecording} onPointerLeave={stopRecording}><Camera className="h-5 w-5" /></Button></div>}</div></form></div>}
+          </div></footer>}
+
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history')}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(item.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {}} className="rounded-xl bg-destructive">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(open) => !open && setProfileDialogUser(null)} onSendMessage={() => {}} />}
+      {showChatProfile && <ChatProfileDialog chat={item} members={Object.values(memberDetails).filter(m => item.members.includes(m.id))} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={() => {}} />}
+      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onSubmit={(poll) => { if (!db) return; addDoc(collection(db, 'chats', item.id, 'messages'), { senderId: currentUser.uid, timestamp: serverTimestamp(), poll, readBy: [], senderName: currentUser.name || currentUser.username }); }} />
+      <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)} onForward={(cid) => { if (!db || !forwardingMessage) return; const { id: _, ...messageData } = forwardingMessage; addDoc(collection(db, 'chats', cid, 'messages'), { ...messageData, senderId: currentUser.uid, timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username }); toast({ title: t('message_forwarded_success') }); }} currentUser={currentUser} />
+      {attachmentType && <AttachmentDialog open={!!attachmentType} onOpenChange={(v) => !v && setAttachmentType(null)} type={attachmentType} maxSizeText={maxSizeText} onSelect={() => fileInputRef.current?.click()} />}
+    </div>
+  );
 }
