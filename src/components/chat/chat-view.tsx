@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -168,6 +169,74 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useEffect(() => { if (!db || !currentUser.uid || !item.id || !messages) return; const markRead = async () => { if (item.unreadCounts?.[currentUser.uid] > 0) await updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }); }; markRead(); }, [item.id, messages, currentUser.uid, db, item.unreadCounts]);
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
   useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, scrollToBottom]);
+
+  const startRecording = async (type: 'voice' | 'circle') => {
+    try {
+      const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      activeStreamRef.current = stream;
+      const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' });
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
+        if (blob.size > 50) handleSendMediaMessage(blob, type);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start();
+      if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true);
+      setRecordingDuration(0);
+      timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+    } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
+  };
+
+  const stopRecording = (canceled: boolean) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      if (canceled) chunksRef.current = [];
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecordingVoice(false); setIsRecordingCircle(false);
+  };
+
+  const cancelRecording = () => stopRecording(true);
+
+  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
+    if (!db) return; setIsSending(true);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        const mref = doc(collection(db, 'chats', item.id, 'messages'));
+        const chunkRef = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks'));
+        await setDoc(chunkRef, { data: base64, part: 0, senderId: currentUser.uid });
+        const ts = serverTimestamp();
+        const msgData: any = {
+          senderId: currentUser.uid,
+          timestamp: ts,
+          readBy: [],
+          senderName: currentUser.name || currentUser.username,
+          content: '',
+        };
+        if (type === 'voice') {
+          msgData.voiceMimeType = blob.type;
+          msgData.voiceStatus = 'complete';
+          msgData.voiceChunkIds = [chunkRef.id];
+          msgData.voiceDuration = recordingDuration;
+        } else {
+          msgData.circleMimeType = blob.type;
+          msgData.circleStatus = 'complete';
+          msgData.circleChunkIds = [chunkRef.id];
+          msgData.circleDuration = recordingDuration;
+        }
+        await setDoc(mref, msgData);
+        await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+      };
+    } catch (e) { console.error(e); } finally { setIsSending(false); }
+  };
+
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
   const handleSendMessage = async (customC?: string, immediateFile?: any) => {
     const finalC = customC !== undefined ? customC : messageContent; const finalF = immediateFile || fileToSend; if ((!finalC.trim() && !finalF) || !db) return;
@@ -189,8 +258,70 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
         <div className="flex items-center p-2 h-14"><Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button><div className="flex-1 flex items-center min-w-0 h-12"><button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}><div className='shrink-0 h-10 w-10'>{item.type === 'dm' ? <UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} isSelected={true} /> : <Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback><InfiniteLogo /></AvatarFallback></Avatar>}</div><div className="ml-3 min-w-0 flex flex-col justify-center h-full"><div className="flex items-center gap-2"><h2 className="text-lg font-semibold font-headline truncate leading-none">{item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}</div></div></button></div></div>
       </header>
-      <div className="relative flex-1 bg-background overflow-hidden min-h-0"><div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain"><div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full"><div className="flex-1" />{messages?.map((m, i) => <ChatMessage key={m.id} message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={() => {}} onDelete={() => {}} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} />)}<div className="h-px shrink-0" /></div></div></div>
-      {isMember && <footer className="flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex items-center pb-[calc(0.5rem+env(safe-area-inset-bottom))]"><div className="max-w-3xl mx-auto w-full h-full flex items-center"><div className="flex flex-col gap-2 w-full">{replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}<form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><Textarea placeholder={t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" /><div className="flex items-center gap-1 shrink-0 h-[38px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="w-48 rounded-xl"><DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-2 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-2 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-2 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-2 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) compressImage(f).then(p => setFileToSend({ file: f, previewUrl: p, type: 'image' })); else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />{messageContent.trim() || fileToSend ? <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button> : null}</div></form></div></div></footer>}
+      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain">
+          <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full">
+            <div className="flex-1" />
+            {messages?.map((m, i) => <ChatMessage key={m.id} message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onInternalLinkClick={async () => {}} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={() => {}} onDelete={() => {}} onToggleReaction={handleToggleReaction} isMobile={isMobile} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} memberDetails={memberDetails} />)}
+            <div className="h-px shrink-0" />
+          </div>
+        </div>
+      </div>
+      {isMember && <footer className="flex-shrink-0 p-2 md:p-3 border-t bg-background h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative">
+        {(isRecordingVoice || isRecordingCircle) && (
+          <div className="absolute inset-0 bg-background/95 backdrop-blur-md z-40 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2">
+            <div className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="font-mono font-bold text-base">
+                {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+              </span>
+              <span className="text-xs text-muted-foreground ml-2 font-bold uppercase tracking-widest">
+                {isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={cancelRecording} className="text-destructive font-black uppercase text-[10px] tracking-widest">
+                {t('cancel')}
+              </Button>
+              <Button size="icon" onClick={() => stopRecording(false)} className="rounded-full bg-primary h-12 w-12 shadow-xl animate-in zoom-in border-4 border-background">
+                <Send className="h-6 w-6 text-white" />
+              </Button>
+            </div>
+          </div>
+        )}
+        <div className="max-w-3xl mx-auto w-full h-full flex items-center">
+          <div className="flex flex-col gap-2 w-full">
+            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
+              <Textarea placeholder={t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="min-h-[38px] h-[38px] max-h-32 resize-none bg-muted/50 border-none rounded-2xl" />
+              <div className="flex items-center gap-1 shrink-0 h-[38px]">
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">
+                      {t('max_file_size_label', { size: maxSizeText })}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) compressImage(f).then(p => setFileToSend({ file: f, previewUrl: p, type: 'image' })); else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
+                {messageContent.trim() || fileToSend ? (
+                  <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full"><Send className="h-5 w-5" /></Button>
+                ) : (
+                  <div className="flex items-center gap-0.5">
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onMouseDown={() => startRecording('circle')} onTouchStart={() => startRecording('circle')}><Camera className="h-5 w-5 text-muted-foreground" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onMouseDown={() => startRecording('voice')} onTouchStart={() => startRecording('voice')}><Mic className="h-5 w-5 text-muted-foreground" /></Button>
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      </footer>}
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
     </div>
