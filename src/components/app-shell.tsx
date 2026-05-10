@@ -106,7 +106,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     const handleSystemBack = () => { if (selectedItem) setSelectedItem(null); };
     let backListener: any;
     import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); });
-    return () => { if (backListener) backListener.then((l: any) => l.remove()); };
+    return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
   }, [selectedItem]);
 
   useEffect(() => {
