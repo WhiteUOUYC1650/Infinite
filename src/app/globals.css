@@ -5,7 +5,7 @@
 @layer components {
   .outgoing-msg audio,
   .outgoing-msg video {
-    accent-color: hsl(var(--primary-foreground));
+    accent-color: white;
   }
   .incoming-msg audio,
   .incoming-msg video {
@@ -38,11 +38,6 @@ body {
     --border: 30 30% 82%;
     --input: 30 30% 87%;
     --ring: 25 95% 53%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
     --radius: 0.5rem;
     --sidebar-background: 30 71% 95%;
     --sidebar-foreground: 20 14.3% 20.1%;
@@ -74,11 +69,6 @@ body {
     --border: 20 10% 25%;
     --input: 20 10% 25%;
     --ring: 25 95% 53%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
     --sidebar-background: 20 10% 12%;
     --sidebar-foreground: 30 71% 92%;
     --sidebar-primary: 25 95% 53%;
@@ -101,20 +91,25 @@ body {
 }
 
 /* Glass Design Utilities */
-[data-experimental-design="true"] [role="dialog"],
-[data-experimental-design="true"] [data-radix-popper-content-wrapper] > div,
 [data-experimental-design="true"] .glass-panel {
   background-color: hsla(var(--card) / 0.45) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 [data-experimental-design="true"] .glass-circle {
   background-color: hsla(var(--card) / 0.45) !important;
   backdrop-filter: blur(20px) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+[data-experimental-design="true"] .glass-send {
+  background-color: hsla(var(--primary) / 0.45) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -142,4 +137,9 @@ body {
 
 .experimental-glow {
   animation: experimental-glow 3s infinite ease-in-out;
+}
+
+/* Player color stability */
+audio, video {
+  filter: none !important;
 }

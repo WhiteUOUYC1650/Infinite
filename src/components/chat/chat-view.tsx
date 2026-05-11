@@ -137,16 +137,20 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] z-[100]", experimentalDesign ? "bg-popover/40 backdrop-blur-xl border border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
-                        <div className="px-2 py-2 mb-1 flex flex-wrap items-center gap-1 bg-muted/40 rounded-2xl border border-border/20 shadow-inner z-[110] max-h-[120px] overflow-y-auto no-scrollbar">
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("w-64 p-1.5 shadow-2xl border-none rounded-[1.5rem] z-[100] max-h-[80vh] flex flex-col", experimentalDesign ? "glass-panel" : "bg-popover/95 backdrop-blur-xl")}>
+                        <div className="px-2 py-2 mb-1 flex flex-wrap items-center gap-1 bg-muted/40 rounded-2xl border border-border/20 shadow-inner shrink-0 max-h-[160px] overflow-y-auto no-scrollbar">
                             {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); })}
                         </div>
-                        <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Reply className="mr-3 h-4 w-4 text-primary" /><span>{t('reply')}</span></DropdownMenuItem>
-                        {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Copy className="mr-3 h-4 w-4 text-primary" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                        <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Forward className="mr-3 h-4 w-4 text-primary" /><span>{t('forward')}</span></DropdownMenuItem>
-                        {mediaUrl && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl px-3 focus:bg-primary/10"><FileIcon className="mr-3 h-4 w-4 text-primary" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
-                        {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Edit className="mr-3 h-4 w-4 text-primary" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                        {canDelete && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3 focus:bg-destructive/10"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem></>}
+                        <ScrollArea className="flex-1">
+                          <div className="p-1 space-y-0.5">
+                            <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Reply className="mr-3 h-4 w-4 text-primary" /><span>{t('reply')}</span></DropdownMenuItem>
+                            {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Copy className="mr-3 h-4 w-4 text-primary" /><span>{t('copy_text')}</span></DropdownMenuItem>}
+                            <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Forward className="mr-3 h-4 w-4 text-primary" /><span>{t('forward')}</span></DropdownMenuItem>
+                            {mediaUrl && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl px-3 focus:bg-primary/10"><FileIcon className="mr-3 h-4 w-4 text-primary" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
+                            {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Edit className="mr-3 h-4 w-4 text-primary" /><span>{t('edit_message')}</span></DropdownMenuItem>}
+                            {canDelete && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3 focus:bg-destructive/10"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem></>}
+                          </div>
+                        </ScrollArea>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -266,7 +270,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "bg-popover/40 backdrop-blur-xl border border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
+                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "glass-panel" : "bg-popover/95 backdrop-blur-xl")}>
                   {!isSavedMessages && (
                       <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                         <Info className="mr-3 h-4 w-4 text-primary" />
@@ -320,7 +324,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             )}
         </div>
         <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-card/40 backdrop-blur-md border-white/20" : "bg-muted/95")}>
+            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "glass-panel" : "bg-muted/95")}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
         </div>
@@ -339,7 +343,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            {experimentalDesign && <div className="h-10 shrink-0 pointer-events-none" aria-hidden="true" />}
+            {experimentalDesign && <div className="h-6 shrink-0 pointer-events-none" aria-hidden="true" />}
             <div className="h-px shrink-0" />
           </div>
         </div>
@@ -349,7 +353,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           experimentalDesign ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
       )}>
         {(isRecordingVoice || isRecordingCircle) && (
-          <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", experimentalDesign ? "bg-popover/40 backdrop-blur-xl" : "bg-background/95 backdrop-blur-md")}>
+          <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", experimentalDesign ? "glass-panel border-none shadow-none rounded-none" : "bg-background/95 backdrop-blur-md")}>
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
               <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
@@ -369,7 +373,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                 className={cn(
                     "min-h-[40px] h-[40px] max-h-32 resize-none border-none rounded-2xl transition-all duration-300",
-                    experimentalDesign ? "bg-card/40 backdrop-blur-xl border border-white/20 shadow-inner" : "bg-muted/50"
+                    experimentalDesign ? "glass-panel border border-white/20 shadow-inner" : "bg-muted/50"
                 )} 
               />
               <div className="flex items-center gap-1.5 shrink-0 h-[40px]">
@@ -384,7 +388,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <Paperclip className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "bg-popover/40 backdrop-blur-xl border border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
+                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "glass-panel" : "bg-popover/95 backdrop-blur-xl")}>
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -397,7 +401,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) { const reader = new FileReader(); reader.readAsDataURL(f); reader.onload = (ev) => setFileToSend({ file: f, previewUrl: ev.target?.result as string, type: 'image' }); } else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
                 
                 {messageContent.trim() || fileToSend ? (
-                  <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign && "glass-circle")}><Send className="h-5 w-5" /></Button>
+                  <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign ? "glass-send" : "")}><Send className="h-5 w-5" /></Button>
                 ) : (
                   <div className="flex items-center gap-1.5">
                     <Button 
@@ -453,7 +457,7 @@ function ForwardDialog({ open, onOpenChange, currentUser, onForward }: { open: b
     const { data: chats, loading } = useCollection<Chat>(q);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={cn("max-w-md rounded-[2rem] p-0 overflow-hidden flex flex-col max-h-[80vh]", experimentalDesign && "glass-panel")}>
+            <DialogContent hideCloseButton className={cn("max-w-md rounded-[2rem] p-0 overflow-hidden flex flex-col max-h-[80vh]", experimentalDesign && "glass-panel border-none")}>
                 <div className="p-6 border-b font-bold text-lg">{t('forward_to')}</div>
                 <ScrollArea className="flex-1 p-4">
                     {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div> : (

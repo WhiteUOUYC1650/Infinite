@@ -584,7 +584,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <PopoverTrigger asChild>
                 <button className={cn(
                   "flex items-center gap-2 flex-1 truncate p-1.5 rounded-xl hover:bg-sidebar-accent text-left transition-all",
-                  experimentalDesign ? "glass-panel border border-white/20 shadow-xl" : "bg-sidebar-background border border-border/50 shadow-sm"
+                  experimentalDesign ? "glass-panel" : "bg-sidebar-background border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
                     <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className="h-9 w-9" />
@@ -595,7 +595,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     </div>
                 </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh]", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl glass-panel" : "rounded-xl")}>
+            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh] border-none shadow-2xl", experimentalDesign ? "glass-panel" : "rounded-xl")}>
                 <UserProfileCard 
                     user={currentUser} 
                     onEditProfile={() => {
