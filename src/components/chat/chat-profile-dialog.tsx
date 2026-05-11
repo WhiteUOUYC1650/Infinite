@@ -12,9 +12,9 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe, Eraser } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
@@ -102,12 +102,14 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   const { experimentalDesign } = useTheme();
   const [isLeaving, setIsLeaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [ownedGroups, setOwnedGroups] = useState<Chat[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const isOwner = chat.ownerId === currentUser.uid;
+  const isAdmin = currentUser.username === '@Infinite';
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -209,12 +211,30 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   };
 
   const handleDeleteChat = async () => {
-    if (!db || !isOwner) return;
+    if (!db || (!isOwner && !isAdmin)) return;
     setIsDeleting(true);
     try { await deleteDoc(doc(db, 'chats', chat.id)); toast({ title: t('dm_success'), description: t('delete_chat_success')}); onOpenChange(false); onCloseChat(); }
     catch (e) { toast({ variant: 'destructive', title: 'Error', description: t('delete_chat_error')}); }
     finally { setIsDeleting(false); }
   }
+
+  const handleClearHistory = async () => {
+    if (!db || chat.id === 'GENERAL_CHAT') return;
+    setIsClearing(true);
+    try {
+        const snap = await getDocs(collection(db, 'chats', chat.id, 'messages'));
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        await updateDoc(doc(db, 'chats', chat.id), { lastMessage: deleteField() });
+        toast({ title: t('dm_success') });
+    } catch(e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' });
+    } finally {
+        setIsClearing(false);
+    }
+  };
 
   const Icon = chat.id === 'GENERAL_CHAT' ? Globe : (chat.type === 'group' ? Users : Megaphone);
   
@@ -279,7 +299,10 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                 <div className={cn('shrink-0 flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "bg-background")}>
                     {chat.id !== 'GENERAL_CHAT' && (<div className="flex gap-2 w-full">
                         {isOwner && chat.type !== 'dm' && (<Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl"><Pencil className="mr-2 h-4 w-4" />{t('edit')}</Button>)}
-                        {isOwner ? (
+                        {(isOwner || isAdmin || chat.type === 'dm') && (
+                            <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" disabled={isClearing} className="flex-1 rounded-xl text-destructive border-destructive/20 hover:bg-destructive/5"><Eraser className="mr-2 h-4 w-4" />{isClearing ? t('loading') : t('clear_history')}</Button></AlertDialogTrigger><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history_confirm_desc')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleClearHistory} disabled={isClearing} className="rounded-xl bg-destructive hover:bg-destructive/90">{t('ok')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                        )}
+                        {isOwner || isAdmin ? (
                             <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" disabled={isDeleting} className="flex-1 rounded-xl"><Trash2 className="mr-2 h-4 w-4" />{isDeleting ? t('deleting') : t('delete')}</Button></AlertDialogTrigger><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className="rounded-xl">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                         ) : (<AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" disabled={isLeaving} className="flex-1 rounded-xl"><LogOut className="mr-2 h-4 w-4" />{isLeaving ? t('leaving') : t('leave')}</Button></AlertDialogTrigger><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving} className="rounded-xl">{t('leave')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
                     </div>)}

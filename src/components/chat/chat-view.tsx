@@ -5,11 +5,11 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
@@ -232,7 +232,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
+  const handleClearHistory = async () => { if (!db || item.id === 'GENERAL_CHAT') return; try { const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit(); await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); toast({ title: t('dm_success') }); } catch(e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
+
+  const isOwner = item.ownerId === currentUser.uid;
+  const isAdmin = currentUser.username === '@Infinite';
+  const isDM = item.type === 'dm';
+  const isSavedMessages = item.id === currentUser.uid;
+  const isGeneralChat = item.id === 'GENERAL_CHAT';
 
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -240,35 +247,75 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         <div className="flex items-center p-2 h-14">
             <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
             <div className="flex-1 flex items-center min-w-0 h-12">
-                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                     <div className='shrink-0 h-10 w-10'>
-                        {item.type === 'dm' ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={item.id === currentUser.uid} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{item.id === 'GENERAL_CHAT' ? <Globe className="h-6 w-6 text-primary" /> : <InfiniteLogo />}</AvatarFallback></Avatar>)}
+                        {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-6 w-6 text-primary" /> : <InfiniteLogo />}</AvatarFallback></Avatar>)}
                     </div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold font-headline truncate leading-none">{item.id === currentUser.uid ? t('saved_messages') : (item.id === 'GENERAL_CHAT' ? t('general_chat') : (item.type === 'dm' ? otherUser?.name : item.name))}</h2>
+                            <h2 className="text-lg font-semibold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
                             {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
                         </div>
                         <p className="text-[10px] text-muted-foreground truncate font-medium mt-0.5">{getStatusLine()}</p>
                     </div>
                 </button>
             </div>
-            {item.id !== 'GENERAL_CHAT' && (
+            {!isGeneralChat && (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="shrink-0 ml-2">
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-2xl">
-                  <DropdownMenuItem onSelect={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
-                    <Info className="mr-3 h-4 w-4 text-primary" />
-                    <span>{t('view_profile')}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } })); }}>
-                    <Phone className="mr-3 h-4 w-4 text-primary" />
-                    <span>{t('audio_call')}</span>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" collisionPadding={16} className="w-64 rounded-xl p-1 shadow-2xl z-[100]">
+                  {!isSavedMessages && (
+                      <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                        <Info className="mr-3 h-4 w-4 text-primary" />
+                        <span>{t('view_profile')}</span>
+                      </DropdownMenuItem>
+                  )}
+                  {isDM && !otherUser?.isBot && !isSavedMessages && (
+                    <>
+                        <DropdownMenuItem onSelect={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
+                            <Phone className="mr-3 h-4 w-4 text-primary" />
+                            <span>{t('audio_call')}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))}>
+                            <Video className="mr-3 h-4 w-4 text-primary" />
+                            <span>{t('video_call')}</span>
+                        </DropdownMenuItem>
+                    </>
+                  )}
+                  {(isOwner || isAdmin) && item.type === 'group' && (
+                    <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                      <Video className="mr-3 h-4 w-4 text-primary" />
+                      <span>{t('broadcast_title')}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {(isOwner || isAdmin) && item.type === 'channel' && (
+                    <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                      <Radio className="mr-3 h-4 w-4 text-primary" />
+                      <span>{t('broadcast_title')}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {(isOwner || isAdmin || isDM) && (
+                      <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
+                        <Eraser className="mr-3 h-4 w-4" />
+                        <span>{t('clear_history')}</span>
+                      </DropdownMenuItem>
+                  )}
+                  {!isSavedMessages && (isOwner || isAdmin || isDM) && (
+                      <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
+                        <Trash2 className="mr-3 h-4 w-4" />
+                        <span>{t('delete_chat')}</span>
+                      </DropdownMenuItem>
+                  )}
+                  {!isSavedMessages && !isOwner && !isAdmin && (item.type === 'group' || item.type === 'channel') && (
+                      <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
+                        <LogOut className="mr-3 h-4 w-4" />
+                        <span>{t('leave')}</span>
+                      </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -293,7 +340,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            {experimentalDesign && <div className="h-14 shrink-0 pointer-events-none" aria-hidden="true" />}
+            {experimentalDesign && <div className="h-10 shrink-0 pointer-events-none" aria-hidden="true" />}
             <div className="h-px shrink-0" />
           </div>
         </div>

@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -127,6 +128,7 @@ export const translations = {
       'audio_call': 'Audio Call',
       'video_call': 'Video Call',
       'clear_history': 'Clear History',
+      'clear_history_confirm_desc': 'Are you sure you want to delete all messages in this chat? This cannot be undone.',
       'group_info': 'Group Info',
       'channel_info': 'Channel Info',
       'info': 'Info',
@@ -686,6 +688,7 @@ export const translations = {
       'audio_call': 'Аудиозвонок',
       'video_call': 'Видеозвонок',
       'clear_history': 'Очистить историю',
+      'clear_history_confirm_desc': 'Вы уверены, что хотите удалить все сообщения в этом чате? Это действие нельзя отменить.',
       'group_info': 'Информация о группе',
       'channel_info': 'Информация о канале',
       'info': 'Информация',
@@ -781,7 +784,7 @@ export const translations = {
       'faq_beta_badge_q': 'Что означает символ "β"?',
       'faq_beta_badge_a': 'Символ "β" (Бета) на некоторых кнопках указывает на новые, экспериментальные функции. Мы тестируем их, чтобы убедиться в стабильности и производительности перед полноценным выпуском.',
       'faq_poll_q': 'Как создать опрос?',
-      'faq_poll_a': 'В любом чате нажмите на скрепку и выберите «Опрос». Введите вопрос и до 10 вариантов ответа, затем нажмите «Создать».',
+      'faq_poll_a': 'In any chat, нажмите на скрепку и выберите «Опрос». Введите вопрос и до 10 вариантов ответа, затем нажмите «Создать».',
       'faq_story_q': 'Как добавить историю?',
       'faq_story_a': 'В боковой панели над чатами находится полоса историй. Нажмите на "+" на своем аватаре, чтобы загрузить фото-историю.',
       'faq_transfer_q': 'Как мне отправить InfGold другу?',
@@ -925,6 +928,7 @@ export const translations = {
       'glass_effect_label': 'Эффект стекла (Бета)',
       'glass_effect_desc': 'Добавляет глянцевый, объемный вид кнопкам и сообщениям в стиле Aero.',
       'today_is': 'Сегодня',
+      'yesterday': 'Вчера',
       'holiday_new_year': 'Новый год',
       'holiday_christmas': 'Рождество Христово',
       'holiday_valentines': 'День святого Валентина',
@@ -1118,6 +1122,7 @@ export const translations = {
       'choose_file': 'Выбрать файл',
       'file_selected': 'Файл выбран',
       'is_recording_locked_placeholder': 'Идет запись...',
+      'clear_history_confirm_desc': 'Вы уверены, что хотите полностью очистить историю сообщений в этом чате?',
     }
   };
 
