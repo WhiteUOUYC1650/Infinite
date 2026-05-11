@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -579,13 +578,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <Separator />
 
-      <SidebarFooter className={cn("p-2 h-[54px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))]", experimentalDesign && "bg-muted/30 rounded-t-2xl")}>
+      <SidebarFooter className={cn("p-2 h-[54px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))]", experimentalDesign && "bg-transparent")}>
         <div className="flex items-center gap-2 w-full h-full">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
                 <button className={cn(
                   "flex items-center gap-2 flex-1 truncate p-1.5 rounded-xl hover:bg-sidebar-accent text-left transition-all",
-                  experimentalDesign && "bg-background/50 border border-border/50 shadow-sm"
+                  experimentalDesign ? "glass-panel border border-white/20 shadow-xl" : "bg-sidebar-background border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
                     <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className="h-9 w-9" />
@@ -596,7 +595,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     </div>
                 </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh]", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-xl")}>
+            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh]", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl glass-panel" : "rounded-xl")}>
                 <UserProfileCard 
                     user={currentUser} 
                     onEditProfile={() => {
@@ -606,12 +605,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9 shrink-0", experimentalDesign && "rounded-xl bg-background/50")}>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9 shrink-0", experimentalDesign && "glass-circle rounded-xl")}>
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9 shrink-0", experimentalDesign && "rounded-xl bg-background/50")}>
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9 shrink-0", experimentalDesign && "glass-circle rounded-xl")}>
               <div className="relative">
                 <Cog className="h-4 w-4" />
                 {isUpdateAvailable && (

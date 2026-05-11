@@ -414,6 +414,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
 
       root.setAttribute('data-glass-effect', glassEffect ? 'true' : 'false');
+      root.setAttribute('data-experimental-design', experimentalDesign ? 'true' : 'false');
       root.style.setProperty('--glass-intensity', glassEffect ? '0.7' : '0');
 
       if (theme === 'frutiger') {
@@ -477,7 +478,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         body.style.backgroundColor = '';
       }
     }
-  }, [theme, isDarkMode, glassEffect, isMounted]);
+  }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);

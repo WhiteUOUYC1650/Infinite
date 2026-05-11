@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -65,7 +64,7 @@ function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, ra
       </div>
       <div className={cn(
           "relative px-4 py-1 rounded-full border border-border/50 shadow-sm transition-all",
-          experimentalDesign ? "bg-card/60 backdrop-blur-md border-white/20" : "bg-muted/80"
+          experimentalDesign ? "bg-card/40 backdrop-blur-xl border-white/20" : "bg-muted/80"
       )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
           {date}
@@ -138,7 +137,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className="w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] bg-popover/95 backdrop-blur-xl z-[100]">
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("w-56 p-1.5 shadow-2xl border-none rounded-[1.5rem] z-[100]", experimentalDesign ? "bg-popover/40 backdrop-blur-xl border border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
                         <div className="px-2 py-2 mb-1 flex flex-wrap items-center gap-1 bg-muted/40 rounded-2xl border border-border/20 shadow-inner z-[110] max-h-[120px] overflow-y-auto no-scrollbar">
                             {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); })}
                         </div>
@@ -267,7 +266,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" collisionPadding={16} className="w-64 rounded-xl p-1 shadow-2xl z-[100]">
+                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "bg-popover/40 backdrop-blur-xl border border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
                   {!isSavedMessages && (
                       <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                         <Info className="mr-3 h-4 w-4 text-primary" />
@@ -289,7 +288,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   {(isOwner || isAdmin) && item.type === 'group' && (
                     <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
                       <Video className="mr-3 h-4 w-4 text-primary" />
-                      <span>{t('broadcast_title')}</span>
+                      <span>{t('video_chat_title')}</span>
                     </DropdownMenuItem>
                   )}
                   {(isOwner || isAdmin) && item.type === 'channel' && (
@@ -321,7 +320,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             )}
         </div>
         <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-card/60 backdrop-blur-md" : "bg-muted/95")}>
+            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-card/40 backdrop-blur-md border-white/20" : "bg-muted/95")}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
         </div>
@@ -350,7 +349,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           experimentalDesign ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
       )}>
         {(isRecordingVoice || isRecordingCircle) && (
-          <div className="absolute inset-0 bg-background/95 backdrop-blur-md z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2">
+          <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", experimentalDesign ? "bg-popover/40 backdrop-blur-xl" : "bg-background/95 backdrop-blur-md")}>
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
               <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
@@ -380,12 +379,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign && "rounded-full bg-card/40 backdrop-blur-xl border border-white/20")}
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle rounded-full" : "rounded-full")}
                     >
                       <Paperclip className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
+                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "bg-popover/40 backdrop-blur-xl border border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -398,14 +397,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) { const reader = new FileReader(); reader.readAsDataURL(f); reader.onload = (ev) => setFileToSend({ file: f, previewUrl: ev.target?.result as string, type: 'image' }); } else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
                 
                 {messageContent.trim() || fileToSend ? (
-                  <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full transition-transform active:scale-95"><Send className="h-5 w-5" /></Button>
+                  <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign && "glass-circle")}><Send className="h-5 w-5" /></Button>
                 ) : (
                   <div className="flex items-center gap-1.5">
                     <Button 
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign && "rounded-full bg-card/40 backdrop-blur-xl border border-white/20")} 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle rounded-full" : "rounded-full")} 
                       onMouseDown={() => startRecording('circle')} 
                       onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                       onMouseUp={() => stopRecording(false)} 
@@ -418,7 +417,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign && "rounded-full bg-card/40 backdrop-blur-xl border border-white/20")} 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle rounded-full" : "rounded-full")} 
                       onMouseDown={() => startRecording('voice')} 
                       onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                       onMouseUp={() => stopRecording(false)} 
@@ -449,12 +448,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 }
 
 function ForwardDialog({ open, onOpenChange, currentUser, onForward }: { open: boolean, onOpenChange: (o: boolean) => void, message: Message, currentUser: AuthenticatedUser, onForward: (chatId: string) => Promise<void> }) {
-    const db = useFirestore(); const { t } = useLanguage();
+    const db = useFirestore(); const { t } = useLanguage(); const { experimentalDesign } = useTheme();
     const q = useMemo(() => db ? query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid)) : null, [db, currentUser.uid]);
     const { data: chats, loading } = useCollection<Chat>(q);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md rounded-[2rem] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+            <DialogContent className={cn("max-w-md rounded-[2rem] p-0 overflow-hidden flex flex-col max-h-[80vh]", experimentalDesign && "glass-panel")}>
                 <div className="p-6 border-b font-bold text-lg">{t('forward_to')}</div>
                 <ScrollArea className="flex-1 p-4">
                     {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div> : (
