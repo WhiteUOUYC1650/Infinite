@@ -9,7 +9,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, 
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
@@ -84,7 +84,7 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight }: { poll: Poll, 
                 const isVoted = option.votes.includes(currentUserId); const percentage = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
                 return (<button key={index} onClick={() => onVote(index)} className="w-full group/poll relative text-left"><div className="flex justify-between items-center mb-1 text-xs font-bold px-1"><div className="flex items-center gap-1.5 truncate mr-2">{isVoted && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}<span className="truncate">{option.text}</span></div><span className="shrink-0 opacity-70">{percentage}%</span></div><div className={cn("h-2 w-full rounded-full overflow-hidden", alignRight ? "bg-black/20" : "bg-muted")}><div className={cn("h-full transition-all duration-500 rounded-full", alignRight ? "bg-white" : "bg-primary")} style={{ width: `${percentage}%` }} /></div></button>);
             })}</div>
-            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest opacity-60 px-1"><span>{t('poll_vote_count', { count: totalVotes })}</span>{poll.isAnonymous ? <span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> {t('poll_anonymous_label')}</span> : <span>{t('poll_view_results')}</span>}</div>
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest opacity-60 px-1"><span>{t('poll_vote_count', { count: totalVotes })}</span>{poll.isAnonymous ? <span className="flex items-center gap-1"><Info className="h-2.5 w-2.5" /> {t('poll_anonymous_label')}</span> : <span>{t('poll_view_results')}</span>}</div>
         </div>
     );
 }
@@ -273,7 +273,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            {experimentalDesign && <div className="h-24 shrink-0 pointer-events-none" aria-hidden="true" />}
+            {experimentalDesign && <div className="h-20 shrink-0 pointer-events-none" aria-hidden="true" />}
             <div className="h-px shrink-0" />
           </div>
         </div>
@@ -306,9 +306,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     experimentalDesign ? "bg-card/40 backdrop-blur-xl border border-white/20 shadow-inner" : "bg-muted/50"
                 )} 
               />
-              <div className="flex items-center gap-1 shrink-0 h-[40px]">
+              <div className="flex items-center gap-1.5 shrink-0 h-[40px]">
                 <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground"><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign && "rounded-full bg-card/40 backdrop-blur-xl border border-white/20")}
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="w-56 rounded-xl p-1 shadow-2xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -318,13 +327,39 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                
                 <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) { const reader = new FileReader(); reader.readAsDataURL(f); reader.onload = (ev) => setFileToSend({ file: f, previewUrl: ev.target?.result as string, type: 'image' }); } else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
+                
                 {messageContent.trim() || fileToSend ? (
                   <Button type="submit" size="icon" disabled={isSending} className="h-9 w-9 rounded-full transition-transform active:scale-95"><Send className="h-5 w-5" /></Button>
                 ) : (
-                  <div className="flex items-center gap-0.5">
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('circle')} onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Camera className="h-5 w-5" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onMouseDown={() => startRecording('voice')} onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} onMouseUp={() => stopRecording(false)} onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} onMouseLeave={() => stopRecording(true)}><Mic className="h-5 w-5" /></Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign && "rounded-full bg-card/40 backdrop-blur-xl border border-white/20")} 
+                      onMouseDown={() => startRecording('circle')} 
+                      onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
+                      onMouseUp={() => stopRecording(false)} 
+                      onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} 
+                      onMouseLeave={() => stopRecording(true)}
+                    >
+                      <Camera className="h-5 w-5" />
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign && "rounded-full bg-card/40 backdrop-blur-xl border border-white/20")} 
+                      onMouseDown={() => startRecording('voice')} 
+                      onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
+                      onMouseUp={() => stopRecording(false)} 
+                      onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} 
+                      onMouseLeave={() => stopRecording(true)}
+                    >
+                      <Mic className="h-5 w-5" />
+                    </Button>
                   </div>
                 )}
               </div>

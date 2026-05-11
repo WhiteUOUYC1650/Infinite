@@ -14,7 +14,7 @@ import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
@@ -273,7 +273,7 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                         </div>
                     </div>
                     <div className={cn("px-6 space-y-6", experimentalDesign ? "pb-8" : "py-4")}>
-                        {chat.description && (<div className="text-center p-4 bg-muted/50 rounded-2xl"><p className="text-sm italic text-muted-foreground">"{chat.description}"</p></div>)}
+                        {chat.description && (<div className="text-center p-4 bg-muted/50 rounded-2xl"><p className="text-sm italic text-muted-foreground leading-relaxed">"{chat.description}"</p></div>)}
                         {(chat.type === 'group' || chat.type === 'channel') && (<div><h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">{t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: members.length })}</h3>
                                 <div className="space-y-3">{members.slice(0, 10).map(m => (<div key={m.id} className="flex items-center gap-3"><UserAvatarWithStatus user={m} className="w-10 h-10" /><div className="flex-1 truncate"><p className="font-bold text-sm truncate">{m.name}</p><p className="text-xs text-muted-foreground truncate">{m.username}</p></div>{chat.ownerId === m.id && <Badge variant="secondary" className="text-[10px]">{t('owner')}</Badge>}</div>))}</div></div>)}
                     </div>
