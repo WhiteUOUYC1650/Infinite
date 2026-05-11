@@ -193,6 +193,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const getStatusLine = () => {
       if (item.id === currentUser.uid) return null;
+      if (item.id === 'GENERAL_CHAT') return t('public_chat_description');
       if (item.type === 'dm' && otherUser) {
           if (otherUser.isBot) return t('bot_status');
           if (otherUser.status === 'online') return <span className="text-primary font-bold">{t('online')}</span>;
@@ -252,6 +253,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </div>
                 </button>
             </div>
+            {item.id !== 'GENERAL_CHAT' && (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0 ml-2">
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-xl p-1 shadow-2xl">
+                  <DropdownMenuItem onSelect={() => item.type === 'dm' ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                    <Info className="mr-3 h-4 w-4 text-primary" />
+                    <span>{t('view_profile')}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } })); }}>
+                    <Phone className="mr-3 h-4 w-4 text-primary" />
+                    <span>{t('audio_call')}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
         </div>
         <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
             <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-card/60 backdrop-blur-md" : "bg-muted/95")}>
@@ -273,7 +293,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            {experimentalDesign && <div className="h-20 shrink-0 pointer-events-none" aria-hidden="true" />}
+            {experimentalDesign && <div className="h-14 shrink-0 pointer-events-none" aria-hidden="true" />}
             <div className="h-px shrink-0" />
           </div>
         </div>

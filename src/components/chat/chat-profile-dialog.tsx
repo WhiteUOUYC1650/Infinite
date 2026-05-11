@@ -95,7 +95,7 @@ async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<
   });
 }
 
-export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChange, onCloseChat, onJoinDiscussion }: ChatProfileDialogProps) {
+export function ChatProfileDialog({ chat, members: initialMembers, currentUser, open, onOpenChange, onCloseChat, onJoinDiscussion }: ChatProfileDialogProps) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -269,13 +269,11 @@ export function ChatProfileDialog({ chat, members, currentUser, open, onOpenChan
                         <div className={cn("grid gap-3 w-full mt-6 px-6", chat.type === 'channel' ? "grid-cols-3" : "grid-cols-2")}>
                             {chat.type === 'channel' && (<button onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className={cn("flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm transition-all active:scale-95", !chat.discussionChatId ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-md")}><div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight">{t('join_discussion_button')}</span></button>)}
                             <button onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center"><Share2 className="w-5 h-5 text-orange-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span></button>
-                            <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-muted")}>{isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="w-5 h-5 text-muted-foreground" />}</div><span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span></button>
+                            <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-muted")}>{isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="h-5 w-5 text-muted-foreground" />}</div><span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span></button>
                         </div>
                     </div>
                     <div className={cn("px-6 space-y-6", experimentalDesign ? "pb-8" : "py-4")}>
                         {chat.description && (<div className="text-center p-4 bg-muted/50 rounded-2xl"><p className="text-sm italic text-muted-foreground leading-relaxed">"{chat.description}"</p></div>)}
-                        {(chat.type === 'group' || chat.type === 'channel') && (<div><h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">{t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: members.length })}</h3>
-                                <div className="space-y-3">{members.slice(0, 10).map(m => (<div key={m.id} className="flex items-center gap-3"><UserAvatarWithStatus user={m} className="w-10 h-10" /><div className="flex-1 truncate"><p className="font-bold text-sm truncate">{m.name}</p><p className="text-xs text-muted-foreground truncate">{m.username}</p></div>{chat.ownerId === m.id && <Badge variant="secondary" className="text-[10px]">{t('owner')}</Badge>}</div>))}</div></div>)}
                     </div>
                 </ScrollArea>
                 <div className={cn('shrink-0 flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "bg-background")}>
