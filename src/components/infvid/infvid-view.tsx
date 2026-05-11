@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, Heart, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -19,7 +19,7 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, ru } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { VerifiedBadge } from '../ui/verified-badge';
 import { Capacitor } from '@capacitor/core';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile } from '@/lib/cache-utils';
@@ -66,21 +66,10 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   const filteredVideos = useMemo(() => {
       if (!videos) return [];
-      if (!searchQuery.trim()) return videos;
       const q = searchQuery.toLowerCase().trim();
-      
-      if (q.startsWith('/iv/v/')) {
-          const id = q.substring(6);
-          return videos.filter(v => v.id === id);
-      }
-
-      return videos.filter(v => {
-          const author = senders[v.senderId];
-          return v.title.toLowerCase().includes(q) || 
-                 (author?.name || '').toLowerCase().includes(q) || 
-                 (author?.username || '').toLowerCase().includes(q) ||
-                 v.id === q;
-      });
+      if (!q) return videos;
+      if (q.startsWith('/iv/v/')) { const id = q.substring(6); return videos.filter(v => v.id === id); }
+      return videos.filter(v => { const a = senders[v.senderId]; return v.title.toLowerCase().includes(q) || (a?.name || '').toLowerCase().includes(q) || (a?.username || '').toLowerCase().includes(q) || v.id === q; });
   }, [videos, searchQuery, senders]);
 
   useEffect(() => {
@@ -221,7 +210,7 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
     const rootComments = useMemo(() => comments.filter(c => !c.parentId), [comments]);
     const repliesMap = useMemo(() => { const map: Record<string, VideoComment[]> = {}; comments.forEach(c => { if (c.parentId) { if (!map[c.parentId]) map[c.parentId] = []; map[c.parentId].push(c); } }); Object.keys(map).forEach(key => { map[key].sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)); }); return map; }, [comments]);
     const onSubmit = () => { onAddComment(replyingTo || undefined); setReplyingTo(null); };
-    return (<div className="space-y-6"><h3 className="text-lg font-bold flex items-center gap-2">{t('comments')}<Badge variant="secondary" className="font-mono px-2">{comments.length}</Badge></h3><div className="space-y-2">{replyingTo && (<div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg text-xs animate-in slide-in-from-bottom-1"><span className="font-medium text-primary">Ответ пользователю {replyingTo.userName}</span><Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setReplyingTo(null)}><X className="h-3 w-3" /></Button></div>)}<div className="flex gap-3"><Avatar className="h-10 w-10 shrink-0"><AvatarImage src={currentUser.avatar} /><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-2"><Textarea placeholder={t('add_comment_placeholder')} className="min-h-[44px] h-11 py-3 resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 rounded-xl" value={commentText} onChange={(e) => setAddCommentText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSubmit())} /><div className="flex justify-end gap-2 pt-1"><Button variant="ghost" size="sm" onClick={() => { setAddCommentText(''); setReplyingTo(null); }} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button><Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onSubmit} disabled={!commentText.trim()}><Send className="h-3 w-3" />{t('ok')}</Button></div></div></div></div><div className="space-y-6 pt-2">{rootComments.length > 0 ? rootComments.map((comment) => (<CommentItem key={comment.id} comment={comment} replies={repliesMap[comment.id] || []} currentUser={currentUser} onReply={setReplyingTo} videoId={video.id} commentAuthors={commentAuthors} />)) : (<div className="py-12 text-center text-muted-foreground italic text-sm bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">{t('no_comments_yet')}</div>)}</div></div>);
+    return (<div className="space-y-6"><h3 className="text-lg font-bold flex items-center gap-2">{t('comments')}<Badge variant="secondary" className="font-mono px-2">{comments.length}</Badge></h3><div className="space-y-2">{replyingTo && (<div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg text-xs animate-in slide-in-from-bottom-1"><span className="font-medium text-primary">Ответ пользователю {replyingTo.userName}</span><Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setReplyingTo(null)}><X className="h-3 w-3" /></Button></div>)}<div className="flex gap-3"><Avatar className="h-10 w-10 shrink-0"><AvatarImage src={currentUser.avatar} /><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-2"><Textarea placeholder={t('add_comment_placeholder')} className="min-h-[44px] h-11 py-3 resize-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 rounded-xl" value={commentText} onChange={(e) => setAddCommentText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSubmit())} /><div className="flex justify-end gap-2 pt-1"><Button variant="ghost" size="sm" onClick={() => { setAddCommentText(''); setReplyingTo(null); }} className="rounded-full px-4" disabled={!commentText.trim()}>{t('cancel')}</Button><Button size="sm" className="rounded-full px-6 font-bold gap-2" onClick={onSubmit} disabled={!commentText.trim()}>{t('ok')}</Button></div></div></div></div><div className="space-y-6 pt-2">{rootComments.length > 0 ? rootComments.map((comment) => (<CommentItem key={comment.id} comment={comment} replies={repliesMap[comment.id] || []} currentUser={currentUser} onReply={setReplyingTo} videoId={video.id} commentAuthors={commentAuthors} />)) : (<div className="py-12 text-center text-muted-foreground italic text-sm bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">{t('no_comments_yet')}</div>)}</div></div>);
 }
 
 function CommentItem({ comment, replies, currentUser, onReply, videoId, commentAuthors }: { comment: VideoComment, replies: VideoComment[], currentUser: AuthenticatedUser, onReply: (c: VideoComment) => void, videoId: string, commentAuthors: Record<string, User> }) {
@@ -239,7 +228,7 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent hideCloseButton className="max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden rounded-[2rem] border-none shadow-2xl relative p-0 flex flex-col items-stretch">
+            <DialogContent hideCloseButton className="max-w-5xl w-[95vw] h-[90vh] overflow-hidden rounded-[2rem] border-none shadow-2xl relative p-0 flex flex-col items-stretch outline-none">
                 <DialogHeader className="relative flex-row items-center justify-center p-6 border-b shrink-0 h-20">
                     <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute left-6 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
                     <DialogTitle className="text-2xl font-bold font-headline">{t('infvid_upload_title')}</DialogTitle>
