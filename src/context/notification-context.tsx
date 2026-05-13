@@ -95,7 +95,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           if (chat.id === activeChatId) return;
           if (notifiedMessageIds.current.has(lastMessage.id)) return;
           const messageTime = lastMessage.timestamp?.toMillis() || 0;
-          if (messageTime < (appLoadedAt.current - 30000)) return;
+          if (messageTime < (appLoadedAt.current - 15000)) return;
 
           notifiedMessageIds.current.add(lastMessage.id);
           showNotification(chat, lastMessage);
@@ -131,6 +131,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               schedule: { at: new Date(Date.now() + 100) },
               extra: { chatId: chat.id },
               smallIcon: "ic_stat_notification",
+              color: "#FF8C00",
             }
           ]
         });
@@ -169,6 +170,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               extra: { chatId, isCall: true },
               ongoing: true,
               smallIcon: "ic_stat_notification",
+              color: "#FF8C00",
             }
           ]
         });

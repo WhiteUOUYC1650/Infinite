@@ -13,6 +13,7 @@ import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } fr
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
@@ -243,6 +244,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isDM = item.type === 'dm';
   const isSavedMessages = item.id === currentUser.uid;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
+  const canWrite = item.type !== 'channel' || isOwner || isAdmin;
 
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -252,7 +254,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <div className="flex-1 flex items-center min-w-0 h-12">
                 <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                     <div className='shrink-0 h-10 w-10'>
-                        {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-6 w-6 text-primary" /> : <InfiniteLogo />}</AvatarFallback></Avatar>)}
+                        {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-6 w-6 text-primary" /> : (item.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />)}</AvatarFallback></Avatar>)}
                     </div>
                     <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
                         <div className="flex items-center gap-2">
@@ -343,12 +345,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            {experimentalDesign && <div className="h-6 shrink-0 pointer-events-none" aria-hidden="true" />}
+            {experimentalDesign && <div className="h-10 shrink-0 pointer-events-none" aria-hidden="true" />}
             <div className="h-px shrink-0" />
           </div>
         </div>
       </div>
-      {isMember && <footer className={cn(
+      {isMember && canWrite && <footer className={cn(
           "flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300",
           experimentalDesign ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
       )}>
