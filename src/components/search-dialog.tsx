@@ -158,7 +158,7 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-2xl h-[70vh] flex flex-col p-0 overflow-hidden", experimentalDesign && "glass-panel rounded-[2rem] border-none shadow-2xl")}>
+      <DialogContent hideCloseButton className={cn("max-w-2xl h-[70vh] flex flex-col p-0 overflow-hidden rounded-lg")}>
         <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
             <DialogTitle>{t('search_dialog_title')}</DialogTitle>
@@ -173,7 +173,7 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     render={({ field }) => (
                         <FormItem className="flex-1">
                         <FormControl>
-                            <Input placeholder={t('search_placeholder')} {...field} className={cn(experimentalDesign && "bg-card/40 backdrop-blur-md rounded-xl border-white/20")} />
+                            <Input placeholder={t('search_placeholder')} {...field} className={cn(experimentalDesign && "glass-panel")} />
                         </FormControl>
                         <FormMessage className="absolute" />
                         </FormItem>

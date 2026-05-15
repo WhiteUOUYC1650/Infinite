@@ -584,6 +584,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             <PopoverTrigger asChild>
                 <button className={cn(
                   "flex items-center gap-2 flex-1 truncate p-1.5 rounded-xl hover:bg-sidebar-accent text-left transition-all",
+                  experimentalDesign && "experimental-glow",
                   experimentalDesign ? "glass-panel" : "bg-sidebar-background border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
@@ -595,7 +596,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     </div>
                 </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh] border-none shadow-2xl", experimentalDesign ? "glass-panel" : "rounded-xl")}>
+            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh] border-none shadow-2xl rounded-xl")}>
                 <UserProfileCard 
                     user={currentUser} 
                     onEditProfile={() => {
@@ -759,7 +760,8 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
 function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
   const { t } = useLanguage();
   const lastMessage = item.lastMessage;
-  const Icon = (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : null);
+  const isGeneralChat = item.id === 'GENERAL_CHAT';
+  const Icon = isGeneralChat ? Globe : (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : (item.type === 'group' ? Users : Megaphone));
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
