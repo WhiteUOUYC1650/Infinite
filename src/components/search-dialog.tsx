@@ -13,8 +13,8 @@ import {
   Form,
   FormControl,
   FormField,
-  FormItem,
   FormMessage,
+  FormItem,
 } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -173,13 +173,13 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     render={({ field }) => (
                         <FormItem className="flex-1">
                         <FormControl>
-                            <Input placeholder={t('search_placeholder')} {...field} className={cn(experimentalDesign && "glass-panel")} />
+                            <Input placeholder={t('search_placeholder')} {...field} className={cn(experimentalDesign && "bg-card/45 backdrop-blur-xl border-white/20")} />
                         </FormControl>
                         <FormMessage className="absolute" />
                         </FormItem>
                     )}
                     />
-                    <Button type="submit" size="icon" disabled={isLoading} className={cn(experimentalDesign && "glass-circle rounded-xl")}>
+                    <Button type="submit" size="icon" disabled={isLoading} className={cn(experimentalDesign && "bg-card/45 backdrop-blur-xl border border-white/20 rounded-xl")}>
                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                     </Button>
                 </form>
@@ -191,7 +191,7 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                         <div className='space-y-2'>
                         {results.map((result) => (
                             <div key={result.type + '-' + result.data.id} className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent">
-                            {result.type === 'user' ? (<UserAvatarWithStatus user={result.data} />) : (<Avatar><AvatarFallback>{result.data.type === 'group' ? <Users /> : <Megaphone />}</AvatarFallback></Avatar>)}
+                            {result.type === 'user' ? (<UserAvatarWithStatus user={result.data} />) : (<Avatar><AvatarFallback>{result.data.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />}</AvatarFallback></Avatar>)}
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold flex items-center gap-2 truncate">{result.data.name}{result.type === 'user' && (result.data as User).isBot && <Badge variant="secondary" className="text-[9px] h-4">BOT</Badge>}</p>
                                 <p className="text-xs text-muted-foreground truncate">{result.type === 'user' ? (result.data as User).username : result.data.link}</p>

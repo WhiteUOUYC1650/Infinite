@@ -26,7 +26,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Preload ringtone for web
     ringtoneRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1351/1351-preview.mp3');
     ringtoneRef.current.loop = true;
   }, []);
@@ -108,16 +107,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const showNotification = async (chat: Chat, message: any) => {
     const senderName = message.senderName || 'User';
-    
-    // Group/Channel title is chat name, DM title is sender nickname
-    const title = chat.type === 'dm' 
-      ? senderName
-      : (chat.name || 'Chat');
-    
+    const title = chat.type === 'dm' ? senderName : (chat.name || 'Chat');
     let body = chat.type === 'dm' 
       ? (message.content || t('image_attachment_placeholder'))
       : `${senderName}: ${message.content || t('image_attachment_placeholder')}`;
-    
     if (body.length > 150) body = body.substring(0, 147) + '...';
 
     if (Capacitor.isNativePlatform()) {
@@ -165,7 +158,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             {
               title: title || "Incoming Call",
               body: body || "",
-              id: 999, // Unique ID for calls
+              id: 999,
               schedule: { at: new Date(Date.now() + 100) },
               extra: { chatId, isCall: true },
               ongoing: true,
@@ -210,7 +203,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  // Listen for call end to stop ringtone
   useEffect(() => {
     const handleStopRingtone = () => stopRingtone();
     window.addEventListener('stop-ringtone', handleStopRingtone);

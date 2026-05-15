@@ -90,36 +90,11 @@ body {
   }
 }
 
-/* Glass Design Utilities */
-[data-experimental-design="true"] .glass-panel {
-  background-color: hsla(var(--card) / 0.45) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-[data-experimental-design="true"] .glass-circle {
-  background-color: hsla(var(--card) / 0.45) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-[data-experimental-design="true"] .glass-send {
-  background-color: hsla(var(--primary) / 0.45) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
 /* Modal Glass Backdrop */
 [data-experimental-design="true"] div[data-state="open"] > div.fixed.inset-0.bg-black\/80 {
   background-color: hsla(0, 0%, 0%, 0.2) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
 }
 
 @keyframes snowfall {

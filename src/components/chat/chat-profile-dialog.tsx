@@ -263,9 +263,9 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"><Pencil className="h-4 w-4" /></button>
                                 <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                             </div></div>
-                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>{chat.type === 'group' ? t('group_name_label') : t('channel_name_label')}</FormLabel><FormControl><Input {...field} className={cn(experimentalDesign && "glass-panel")} /></FormControl><FormMessage /></FormItem>)} />
-                            {(chat.type === 'channel' || chat.type === 'group') && (<FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('description_label')}</FormLabel><FormControl><Textarea {...field} className={cn("resize-none", experimentalDesign && "glass-panel")} /></FormControl><FormMessage /></FormItem>)} />)}
-                            {chat.type === 'channel' && (<FormField control={form.control} name="discussionChatId" render={({ field }) => (<FormItem><FormLabel>{t('discussion_chat_label')}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger disabled={isLoadingGroups} className={cn(experimentalDesign && "glass-panel")}><SelectValue placeholder={t('select_discussion_chat_placeholder')} /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">{t('none_label')}</SelectItem>{ownedGroups.map(g => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />)}
+                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>{chat.type === 'group' ? t('group_name_label') : t('channel_name_label')}</FormLabel><FormControl><Input {...field} className={cn(experimentalDesign && "bg-card/45 backdrop-blur-xl border-white/20")} /></FormControl><FormMessage /></FormItem>)} />
+                            {(chat.type === 'channel' || chat.type === 'group') && (<FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('description_label')}</FormLabel><FormControl><Textarea {...field} className={cn("resize-none", experimentalDesign && "bg-card/45 backdrop-blur-xl border-white/20")} /></FormControl><FormMessage /></FormItem>)} />)}
+                            {chat.type === 'channel' && (<FormField control={form.control} name="discussionChatId" render={({ field }) => (<FormItem><FormLabel>{t('discussion_chat_label')}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger disabled={isLoadingGroups} className={cn(experimentalDesign && "bg-card/45 backdrop-blur-xl border-white/20")}><SelectValue placeholder={t('select_discussion_chat_placeholder')} /></SelectTrigger></FormControl><SelectContent><SelectItem value="none">{t('none_label')}</SelectItem>{ownedGroups.map(g => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />)}
                             <div className="space-y-3"><div className="flex items-center gap-2"><SmilePlus className="h-4 w-4 text-muted-foreground" /><FormLabel>{t('manage_reactions_label')}</FormLabel></div><div className="grid grid-cols-5 gap-2 p-3 bg-muted/30 rounded-xl border">{COMMON_EMOJIS.map(emoji => (<FormField key={emoji} control={form.control} name="allowedReactions" render={({ field }) => (<FormItem className="flex flex-col items-center gap-1 space-y-0"><FormControl><button type="button" onClick={() => { const cur = field.value || []; if (cur.includes(emoji)) { field.onChange(cur.filter(e => e !== emoji)); } else { field.onChange([...cur, emoji]); } }} className={cn("w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all", field.value?.includes(emoji) ? "bg-primary/20 border-primary" : "bg-background border border-border/50 opacity-50 grayscale hover:opacity-100 hover:grayscale-0")}>{emoji}</button></FormControl></FormItem>)} />))}</div></div>
                     </div></div>
                     <DialogFooter className="shrink-0 mt-auto p-6 border-t gap-2"><Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button><Button type="submit" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t('save')}</Button></DialogFooter>
@@ -299,11 +299,55 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                     {chat.id !== 'GENERAL_CHAT' && (<div className="flex gap-2 w-full">
                         {isOwner && chat.type !== 'dm' && (<Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl"><Pencil className="mr-2 h-4 w-4" />{t('edit')}</Button>)}
                         {(isOwner || isAdmin || chat.type === 'dm') && (
-                            <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" disabled={isClearing} className="flex-1 rounded-xl text-destructive border-destructive/20 hover:bg-destructive/5"><Eraser className="mr-2 h-4 w-4" />{isClearing ? t('loading') : t('clear_history')}</Button></AlertDialogTrigger><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('clear_history_confirm_desc')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleClearHistory} disabled={isClearing} className="rounded-xl bg-destructive hover:bg-destructive/90">{t('ok')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" disabled={isClearing} className="flex-1 rounded-xl text-destructive border-destructive/20 hover:bg-destructive/5"><Eraser className="mr-2 h-4 w-4" />{isClearing ? t('loading') : t('clear_history')}</Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="rounded-2xl">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                  <AlertDialogDescription>{t('clear_history_confirm_desc')}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleClearHistory} disabled={isClearing} className="rounded-xl bg-destructive hover:bg-destructive/90">{t('ok')}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                         )}
                         {isOwner || isAdmin ? (
-                            <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" disabled={isDeleting} className="flex-1 rounded-xl"><Trash2 className="mr-2 h-4 w-4" />{isDeleting ? t('deleting') : t('delete')}</Button></AlertDialogTrigger><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className="rounded-xl">{t('delete')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-                        ) : (<AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" disabled={isLeaving} className="flex-1 rounded-xl"><LogOut className="mr-2 h-4 w-4" />{isLeaving ? t('leaving') : t('leave')}</Button></AlertDialogTrigger><AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving} className="rounded-xl">{t('leave')}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isDeleting} className="flex-1 rounded-xl"><Trash2 className="mr-2 h-4 w-4" />{isDeleting ? t('deleting') : t('delete')}</Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="rounded-2xl">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                  <AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className="rounded-xl">{t('delete')}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                        ) : (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isLeaving} className="flex-1 rounded-xl"><LogOut className="mr-2 h-4 w-4" />{isLeaving ? t('leaving') : t('leave')}</Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="rounded-2xl">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                  <AlertDialogDescription>{t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving} className="rounded-xl">{t('leave')}</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                     </div>)}
                 </div>
             </div>
