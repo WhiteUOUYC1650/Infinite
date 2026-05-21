@@ -8,7 +8,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,9 +73,13 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.4.4 Beta');
+  const [newVersion, setNewVersion] = useState('0.4.5 Beta');
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
+
+  // Branding State
+  const [remoteIconBase64, setRemoteIconBase64] = useState('');
+  const [isUpdatingBranding, setIsUpdatingBranding] = useState(false);
 
   // Broadcast State
   const [broadcastText, setBroadcastText] = useState('');
@@ -157,7 +161,6 @@ function AdminPage() {
   const handleRename = async () => {
     if (!db || !renameTarget || !newVal.trim() || isRenaming) return;
     
-    // Stricter regex for English only (letters, numbers, underscores)
     const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
     const cleanVal = newVal.trim().replace(/^@/, '').replace(/^\/G\//, '').replace(/^\/C\//, '');
     
@@ -233,23 +236,27 @@ function AdminPage() {
     }
   };
 
+  const handleUpdateBranding = async () => {
+    if (!db || !remoteIconBase64) return;
+    setIsUpdatingBranding(true);
+    try {
+        const configRef = doc(db, 'info', 'ver');
+        await updateDoc(configRef, { 
+            appIcon: remoteIconBase64,
+            appIconType: 'image'
+        });
+        toast({ title: t('dm_success'), description: "Remote app icon updated for all users." });
+        setRemoteIconBase64('');
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsUpdatingBranding(false);
+    }
+  };
+
   const handleBanUser = async (userToBan: User) => {
-    if (!db || !userToBan.id || !userToBan.username) {
-        toast({
-            variant: 'destructive',
-            title: t('admin_toast_error_title'),
-            description: t('admin_toast_delete_user_no_username_desc'),
-        });
-        return;
-    }
-    if (userToBan.username === '@Infinite' || userToBan.username === '@InfiniteBot') {
-        toast({
-            variant: 'destructive',
-            title: t('admin_toast_action_not_allowed_title'),
-            description: t('admin_toast_cannot_delete_admin_desc'),
-        });
-        return;
-    }
+    if (!db || !userToBan.id || !userToBan.username) return;
+    if (userToBan.username === '@Infinite' || userToBan.username === '@InfiniteBot') return;
 
     const userDocRef = doc(db, 'users', userToBan.id);
     const usernameDocRef = doc(db, 'usernames', userToBan.username);
@@ -369,7 +376,7 @@ function AdminPage() {
         }
 
         const verRef = doc(db, 'info', 'ver');
-        await setDoc(verRef, {
+        await updateDoc(verRef, {
             latest: newVersion.trim(),
             apkChunkIds: chunkIds,
             updatedAt: serverTimestamp(),
@@ -428,8 +435,7 @@ function AdminPage() {
                 <TabsTrigger value="groups" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_groups_tab')}</TabsTrigger>
                 <TabsTrigger value="channels" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_channels_tab')}</TabsTrigger>
                 <TabsTrigger value="broadcast" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_broadcast_tab')}</TabsTrigger>
-                <TabsTrigger value="update" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Update</TabsTrigger>
-                <TabsTrigger value="resources" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Icon</TabsTrigger>
+                <TabsTrigger value="update" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">System</TabsTrigger>
             </TabsList>
           </div>
           <ScrollArea className="flex-1">
@@ -494,7 +500,7 @@ function AdminPage() {
                         </div>
                     </div>
                 </TabsContent>
-                <TabsContent value="update" className="mt-0 outline-none">
+                <TabsContent value="update" className="mt-0 outline-none space-y-6">
                     <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
                         <div className="text-center space-y-2">
                             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -540,27 +546,43 @@ function AdminPage() {
                             </Button>
                         </div>
                     </div>
-                </TabsContent>
-                <TabsContent value="resources" className="mt-0 outline-none">
+
                     <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
                         <div className="text-center space-y-2">
                             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <ImageIcon className="h-8 w-8 text-primary" />
+                                <Sparkles className="h-8 w-8 text-primary" />
                             </div>
-                            <h2 className="text-2xl font-bold font-headline">Android App Icon Preview</h2>
+                            <h2 className="text-2xl font-bold font-headline">Remote Branding</h2>
+                            <p className="text-sm text-muted-foreground">Change the app icon and logo globally via Firestore.</p>
                         </div>
-                        <div className="flex flex-col items-center gap-6 p-10 bg-muted/20 rounded-[2.5rem] border">
-                            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Icon Mockup</div>
-                            <div className="w-24 h-24 bg-[#FF8C00] rounded-[1.75rem] shadow-xl flex items-center justify-center border-2 border-white/10 relative overflow-hidden">
-                                <div className="absolute inset-0 bg-black/5" />
-                                <svg width="72" height="72" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
-                                    <g transform="translate(4, 4)">
-                                        <path d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" />
-                                        <path d="M 20 78 L 10 90 L 25 78" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M 80 22 L 90 10 L 75 22" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </g>
-                                </svg>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>New App Icon (Image)</Label>
+                                <div 
+                                    className="border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50"
+                                    onClick={() => {
+                                        const input = document.createElement('input');
+                                        input.type = 'file';
+                                        input.accept = 'image/*';
+                                        input.onchange = (e: any) => {
+                                            const file = e.target.files[0];
+                                            const reader = new FileReader();
+                                            reader.readAsDataURL(file);
+                                            reader.onload = () => setRemoteIconBase64(reader.result as string);
+                                        };
+                                        input.click();
+                                    }}
+                                >
+                                    {remoteIconBase64 ? (
+                                        <img src={remoteIconBase64} alt="Preview" className="w-16 h-16 rounded-xl object-cover" />
+                                    ) : (
+                                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                    )}
+                                </div>
                             </div>
+                            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUpdateBranding} disabled={!remoteIconBase64 || isUpdatingBranding}>
+                                {isUpdatingBranding ? <Loader2 className="animate-spin" /> : "Update App Icon Everywhere"}
+                            </Button>
                         </div>
                     </div>
                 </TabsContent>

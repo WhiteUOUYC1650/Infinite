@@ -1,10 +1,11 @@
+
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, Trash, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -244,7 +245,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isDM = item.type === 'dm';
   const isSavedMessages = item.id === currentUser.uid;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
-  const canWrite = item.type !== 'channel' || isOwner || isAdmin;
+  const canWrite = item.type !== 'channel' || isOwner;
 
   return (
     <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -272,7 +273,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "bg-card/85 backdrop-blur-2xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
+                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "bg-card/85 backdrop-blur-xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
                   {!isSavedMessages && (
                       <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                         <Info className="mr-3 h-4 w-4 text-primary" />
@@ -345,8 +346,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            {experimentalDesign && <div className="h-10 shrink-0 pointer-events-none" aria-hidden="true" />}
-            <div className="h-px shrink-0" />
+            <div className="h-10 shrink-0 pointer-events-none" aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -361,7 +361,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
               <span className="text-xs text-muted-foreground ml-2 font-bold uppercase tracking-widest">{isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}</span>
             </div>
-            <div className="flex items-center gap-2"><Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button><div className="text-[9px] font-bold text-muted-foreground animate-pulse mr-2">HOLDING...</div></div>
+            <div className="flex items-center gap-2"><Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button></div>
           </div>
         )}
         <div className="max-w-3xl mx-auto w-full h-full flex items-center">
@@ -390,7 +390,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <Paperclip className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "bg-card/85 backdrop-blur-2xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
+                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "bg-card/85 backdrop-blur-xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -400,7 +400,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   </DropdownMenuContent>
                 </DropdownMenu>
                 
-                <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) { const f = e.target.files[0]; if (f.type.startsWith('image/')) { const reader = new FileReader(); reader.readAsDataURL(f); reader.onload = (ev) => setFileToSend({ file: f, previewUrl: ev.target?.result as string, type: 'image' }); } else setFileToSend({ file: f, previewUrl: '', type: 'file' as any }); } }} />
+                <input type="file" ref={fileInputRef} className="hidden" />
                 
                 {messageContent.trim() || fileToSend ? (
                   <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}><Send className="h-5 w-5" /></Button>
@@ -415,7 +415,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                       onMouseUp={() => stopRecording(false)} 
                       onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} 
-                      onMouseLeave={() => stopRecording(true)}
                     >
                       <Camera className="h-5 w-5" />
                     </Button>
@@ -428,7 +427,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                       onMouseUp={() => stopRecording(false)} 
                       onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} 
-                      onMouseLeave={() => stopRecording(true)}
                     >
                       <Mic className="h-5 w-5" />
                     </Button>
@@ -441,37 +439,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </footer>}
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
-      {forwardingMessage && <ForwardDialog open={!!forwardingMessage} onOpenChange={(o) => !o && setForwardingMessage(null)} message={forwardingMessage} currentUser={currentUser} onForward={async (targetChatId) => {
-          if (!db) return; const msgRef = doc(collection(db, 'chats', targetChatId, 'messages'));
-          const data: any = { senderId: currentUser.uid, content: forwardingMessage.content || '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username };
-          if (forwardingMessage.imageUrl) data.imageUrl = forwardingMessage.imageUrl;
-          await setDoc(msgRef, data); await updateDoc(doc(db, 'chats', targetChatId), { lastMessage: { ...data, id: msgRef.id, timestamp: Timestamp.now() } });
-          setForwardingMessage(null); toast({ title: t('message_forwarded_success') });
-      }} />}
-      {previewImage && <Dialog open={!!previewImage} onOpenChange={(o) => !o && setPreviewImage(null)}><DialogContent className="max-w-[95vw] h-auto p-0 border-none bg-transparent shadow-none"><img src={previewImage} className="w-full h-auto object-contain rounded-xl" /></DialogContent></Dialog>}
     </div>
   );
-}
-
-function ForwardDialog({ open, onOpenChange, currentUser, onForward }: { open: boolean, onOpenChange: (o: boolean) => void, message: Message, currentUser: AuthenticatedUser, onForward: (chatId: string) => Promise<void> }) {
-    const db = useFirestore(); const { t } = useLanguage(); const { experimentalDesign } = useTheme();
-    const q = useMemo(() => db ? query(collection(db, 'chats'), where('members', 'array-contains', currentUser.uid)) : null, [db, currentUser.uid]);
-    const { data: chats, loading } = useCollection<Chat>(q);
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent hideCloseButton className={cn("max-w-md rounded-[2rem] p-0 overflow-hidden flex flex-col max-h-[80vh]", experimentalDesign && "border-none")}>
-                <div className="p-6 border-b font-bold text-lg">{t('forward_to')}</div>
-                <ScrollArea className="flex-1 p-4">
-                    {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div> : (
-                        <div className="space-y-2">{chats?.map(c => (
-                            <button key={c.id} onClick={() => onForward(c.id)} className="w-full p-3 rounded-2xl hover:bg-muted flex items-center gap-3 text-left transition-colors">
-                                <Avatar className="h-10 w-10"><AvatarFallback>{c.avatar ? <AvatarImage src={c.avatar} /> : (c.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />)}</AvatarFallback></Avatar>
-                                <div className="flex-1 min-w-0"><p className="font-bold truncate">{c.name || "Chat"}</p><p className="text-xs text-muted-foreground truncate">{c.link || c.type}</p></div>
-                            </button>
-                        ))}</div>
-                    )}
-                </ScrollArea>
-            </DialogContent>
-        </Dialog>
-    );
 }

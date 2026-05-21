@@ -5,8 +5,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@/types";
 import { cn } from "@/lib/utils";
 import { Bookmark, Ghost, User as UserIcon } from "lucide-react";
-import { useState, useLayoutEffect } from "react";
+import { useState, useLayoutEffect, useEffect } from "react";
 import { fetchAndCacheImage, getCachedFile, cacheFile } from "@/lib/cache-utils";
+import { useFirestore } from "@/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 interface UserAvatarWithStatusProps {
   user?: User | null;
@@ -21,33 +23,51 @@ const statusColors = {
   offline: "bg-gray-400",
 };
 
-// Standard Infinite Logo for Fallbacks
-export const InfiniteLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className={cn("w-full h-full p-1.5 opacity-90", className)}>
-    <path
-        d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="8"
-    />
-    <path
-        d="M 20 78 L 10 90 L 25 78"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    />
-     <path
-        d="M 80 22 L 90 10 L 75 22"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    />
-  </svg>
-);
+// Standard Infinite Logo for Fallbacks - NOW DYNAMIC
+export const InfiniteLogo = ({ className }: { className?: string }) => {
+  const db = useFirestore();
+  const [remoteIcon, setRemoteIcon] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!db) return;
+    return onSnapshot(doc(db, 'info', 'ver'), (snap) => {
+        if (snap.exists() && snap.data().appIcon) {
+            setRemoteIcon(snap.data().appIcon);
+        }
+    });
+  }, [db]);
+
+  if (remoteIcon) {
+      return <img src={remoteIcon} alt="Logo" className={cn("w-full h-full object-contain p-1", className)} />;
+  }
+
+  return (
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className={cn("w-full h-full p-1.5 opacity-90", className)}>
+        <path
+            d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+        />
+        <path
+            d="M 20 78 L 10 90 L 25 78"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M 80 22 L 90 10 L 75 22"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </svg>
+  );
+};
 
 export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelected }: UserAvatarWithStatusProps) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -71,7 +91,6 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
       }
 
       if (user.avatar && isMounted) {
-        // fetchAndCacheImage returns a Blob URL and ensures data is stored in IndexedDB
         const url = await fetchAndCacheImage(cacheId, user.avatar);
         if (url && isMounted) {
             setImgSrc(url);
@@ -156,4 +175,3 @@ export function UserAvatarWithStatus({ user, className, isSavedMessages, isSelec
     </div>
   );
 }
-

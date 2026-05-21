@@ -1,10 +1,13 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
+import { useFirestore } from '@/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
-const Logo = () => (
+const DefaultLogo = () => (
   <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <path
         d="M 25 50 C 25 25, 40 25, 50 50 C 60 75, 75 75, 75 50 C 75 25, 60 25, 50 50 C 40 75, 25 75, 25 50 Z"
@@ -36,12 +39,22 @@ export function SplashScreen() {
   const [isVisible, setIsVisible] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const { t } = useLanguage();
+  const db = useFirestore();
+  const [remoteIcon, setRemoteIcon] = useState<string | null>(null);
 
   useEffect(() => {
     const handleStatus = () => setIsOnline(navigator.onLine);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
     setIsOnline(navigator.onLine);
+
+    if (db) {
+        onSnapshot(doc(db, 'info', 'ver'), (snap) => {
+            if (snap.exists() && snap.data().appIcon) {
+                setRemoteIcon(snap.data().appIcon);
+            }
+        });
+    }
 
     const timer = setTimeout(() => {
       setIsVisible(false);
@@ -52,7 +65,7 @@ export function SplashScreen() {
         window.removeEventListener('online', handleStatus);
         window.removeEventListener('offline', handleStatus);
     };
-  }, []);
+  }, [db]);
 
   if (!isVisible) {
     return null;
@@ -64,7 +77,11 @@ export function SplashScreen() {
       style={{ backgroundColor: '#FF8C00', opacity: isVisible ? 1 : 0 }}
     >
       <div className="flex flex-col items-center gap-6">
-        <Logo />
+        {remoteIcon ? (
+            <img src={remoteIcon} alt="App Icon" className="w-24 h-24 object-contain animate-in zoom-in duration-500" />
+        ) : (
+            <DefaultLogo />
+        )}
         {!isOnline && (
             <p className="text-white font-bold font-headline text-xl animate-pulse">
                 {t('searching')}

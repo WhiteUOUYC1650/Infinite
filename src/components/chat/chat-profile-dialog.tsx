@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -17,7 +18,6 @@ import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDo
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
-import { Badge } from '../ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,30 +150,6 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     }
   }, [chat, form, open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleSystemBack = () => {
-      if (imageToCrop) {
-        setImageToCrop('');
-      } else if (isEditing) {
-        setIsEditing(false);
-      } else {
-        onOpenChange(false);
-      }
-    };
-    let backListener: any;
-    if (Capacitor.isNativePlatform()) {
-      import('@capacitor/app').then(({ App }) => {
-        backListener = App.addListener('backButton', handleSystemBack);
-      });
-    }
-    return () => {
-      if (backListener) {
-        backListener.then((l: any) => l.remove());
-      }
-    };
-  }, [open, imageToCrop, isEditing, onOpenChange]);
-  
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.[0]) {
       const file = event.target.files[0];

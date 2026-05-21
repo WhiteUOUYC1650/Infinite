@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "AppConfig": {
@@ -8,6 +9,15 @@
             "latest": {
                 "type": "string",
                 "description": "The latest available version of the app (e.g., '0.2')."
+            },
+            "appIcon": {
+                "type": "string",
+                "description": "Base64 or URL of the remote app icon."
+            },
+            "appIconType": {
+                "type": "string",
+                "enum": ["svg", "image"],
+                "description": "The format of the remote icon."
             }
         },
         "required": ["latest"]
@@ -108,34 +118,6 @@
             "type": "string",
             "description": "URL to an image attachment, in Base64 data URI format."
         },
-        "videoMimeType": {
-            "type": "string",
-            "description": "MIME type of the video attachment."
-        },
-        "videoStatus": {
-            "type": "string",
-            "enum": ["uploading", "complete", "failed"],
-            "description": "The upload status of the video attachment."
-        },
-        "videoChunkIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of document IDs for the video chunks in the global 'videoChunks' collection."
-        },
-        "musicMimeType": {
-            "type": "string",
-            "description": "MIME type of the music attachment."
-        },
-        "musicStatus": {
-            "type": "string",
-            "enum": ["uploading", "complete", "failed"],
-            "description": "The upload status of the music attachment."
-        },
-        "musicChunkIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of document IDs for the music chunks in the global 'musicChunks' collection."
-        },
         "timestamp": {
           "type": "object",
           "description": "The server timestamp when the message was created."
@@ -147,65 +129,17 @@
         "type": {
           "type": "string",
           "enum": ["user", "announcement"],
-          "description": "The type of message. 'user' is a standard message, 'announcement' is a system message styled as from a bot."
+          "description": "The type of message."
         },
-        "senderName": {
-            "type": "string",
-            "description": "Display name of the sender, used for bot messages."
-        },
-        "senderAvatar": {
-            "type": "string",
-            "description": "Avatar URL of the sender, used for bot messages."
-        },
-        "readBy": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of user IDs who have read the message."
-        },
-        "replyTo": {
+        "reactions": {
             "type": "object",
-            "description": "Information about the message being replied to.",
-            "properties": {
-                "messageId": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "senderName": {
-                    "type": "string"
-                }
-            },
-            "required": ["messageId", "content", "senderName"]
+            "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string" }
+            }
         }
       },
       "required": ["senderId", "timestamp"]
-    },
-    "VideoChunk": {
-      "title": "Video Chunk",
-      "description": "A single chunk of a video file, stored separately to avoid document size limits.",
-      "type": "object",
-      "properties": {
-        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
-        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
-        "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
-        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
-        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
-      },
-      "required": ["chatId", "messageId", "data", "part", "senderId"]
-    },
-    "MusicChunk": {
-      "title": "Music Chunk",
-      "description": "A single chunk of a music file, stored separately to avoid document size limits.",
-      "type": "object",
-      "properties": {
-        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
-        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
-        "data": { "type": "string", "description": "Base64 encoded data of the music chunk." },
-        "part": { "type": "number", "description": "The order of this chunk in the music sequence." },
-        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
-      },
-      "required": ["chatId", "messageId", "data", "part", "senderId"]
     },
     "Chat": {
       "title": "Chat",
@@ -237,57 +171,10 @@
         },
         "avatar": {
             "type": "string",
-            "description": "URL to the chat's avatar image, in Base64 data URI format."
-        },
-        "description": {
-            "type": "string",
-            "description": "Description for a channel."
-        },
-        "lastMessage": {
-            "type": "object",
-            "description": "The last message sent in the chat for display in the sidebar."
-        },
-        "unreadCounts": {
-            "type": "object",
-            "description": "Map of user IDs to their unread message count for this chat.",
-            "additionalProperties": {
-                "type": "number"
-            }
-        },
-        "link": {
-          "type": "string",
-          "description": "Unique link for a group or channel."
-        },
-        "discussionChatId": {
-          "type": "string",
-          "description": "The ID of the group chat linked to this channel for discussions."
+            "description": "URL to the chat's avatar image."
         }
       },
       "required": ["type", "members"]
-    },
-    "ChatLink": {
-      "title": "Chat Link",
-      "description": "Maps a unique chat link to a chat ID to enforce uniqueness.",
-      "type": "object",
-      "properties": {
-          "chatId": {
-              "type": "string",
-              "description": "The chat ID associated with this link."
-          }
-      },
-      "required": ["chatId"]
-    },
-    "BotLink": {
-      "title": "Bot Link",
-      "description": "Maps a unique bot link to a user ID to enforce uniqueness.",
-      "type": "object",
-      "properties": {
-          "botId": {
-              "type": "string",
-              "description": "The user ID of the bot associated with this link."
-          }
-      },
-      "required": ["botId"]
     }
   },
   "auth": {
@@ -298,7 +185,7 @@
       "schema": {
         "$ref": "#/backend/entities/AppConfig"
       },
-      "description": "Stores global application configuration like the latest version."
+      "description": "Stores global application configuration like the latest version and remote icon."
     },
     "/users/{userId}": {
       "schema": {
@@ -323,30 +210,6 @@
         "$ref": "#/backend/entities/Message"
       },
       "description": "Stores messages for a specific chat."
-    },
-    "/videoChunks/{chunkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/VideoChunk"
-      },
-      "description": "Stores individual chunks of uploaded video files."
-    },
-    "/musicChunks/{chunkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MusicChunk"
-      },
-      "description": "Stores individual chunks of uploaded music files."
-    },
-    "/chatLinks/{linkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/ChatLink"
-      },
-      "description": "Used to enforce unique links for groups and channels."
-    },
-    "/botLinks/{linkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/BotLink"
-      },
-      "description": "Used to enforce unique links for bots."
     }
   }
 }
