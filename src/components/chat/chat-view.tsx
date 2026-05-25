@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -360,7 +361,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            <div className="h-8 shrink-0 pointer-events-none" aria-hidden="true" />
+            <div className={cn("shrink-0 pointer-events-none", experimentalDesign ? "h-20" : "h-2")} aria-hidden="true" />
           </div>
         </div>
       </div>
