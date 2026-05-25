@@ -253,13 +253,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
+  const handleClearHistory = async () => {
+    if (!db || item.id === 'GENERAL_CHAT') return;
+    try {
+        const snap = await getDocs(collection(db, 'chats', item.id, 'messages'));
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() });
+        toast({ title: t('dm_success') });
+    } catch(e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' });
+    }
+  };
+
   const isOwner = item.ownerId === currentUser.uid;
   const isAdmin = currentUser.username === '@Infinite';
   const isDM = item.type === 'dm';
   const isSavedMessages = item.id === currentUser.uid;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
   
-  // Strict Channel Access: Only owner or admin can write
   const canWrite = item.type !== 'channel' || isOwner || isAdmin;
 
   return (
@@ -319,7 +333,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <span>{t('broadcast_title')}</span>
                     </DropdownMenuItem>
                   )}
-                  {(isOwner || isAdmin || isDM) && (
+                  {(isOwner || isAdmin || isDM || isSavedMessages) && (
                       <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
                         <Eraser className="mr-3 h-4 w-4" />
                         <span>{t('clear_history')}</span>
@@ -457,3 +471,4 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     </div>
   );
 }
+

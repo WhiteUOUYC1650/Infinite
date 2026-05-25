@@ -331,3 +331,4 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     </Dialog>
   );
 }
+
