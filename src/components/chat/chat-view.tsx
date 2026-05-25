@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight } from 'lucide-react';
 import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -50,7 +50,7 @@ import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
 
 export const COMMON_EMOJIS = [
-    '👍', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨', 
+    '👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨', 
     '🤔', '🤯', '🤩', '🥳', '🤮', '💩', '🤡', '👻', '👽', '👾', 
     '🤖', '🎃', '😺', '🤟', '🤘'
 ];
@@ -138,20 +138,34 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("w-64 p-1.5 shadow-2xl border-none rounded-[1.5rem] z-[100] max-h-[80vh] flex flex-col", experimentalDesign ? "bg-card/85 backdrop-blur-2xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
-                        <div className="px-2 py-2 mb-1 flex flex-wrap items-center gap-1 bg-muted/40 rounded-2xl border border-border/20 shadow-inner shrink-0 max-h-[160px] overflow-y-auto no-scrollbar">
-                            {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg shrink-0", sel && "bg-primary/30 scale-110 shadow-inner")}>{emoji}</button>); })}
-                        </div>
-                        <ScrollArea className="flex-1">
-                          <div className="p-1 space-y-0.5">
-                            <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Reply className="mr-3 h-4 w-4 text-primary" /><span>{t('reply')}</span></DropdownMenuItem>
-                            {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Copy className="mr-3 h-4 w-4 text-primary" /><span>{t('copy_text')}</span></DropdownMenuItem>}
-                            <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Forward className="mr-3 h-4 w-4 text-primary" /><span>{t('forward')}</span></DropdownMenuItem>
-                            {mediaUrl && <DropdownMenuItem onSelect={handleSaveToGallery} className="h-10 rounded-xl px-3 focus:bg-primary/10"><FileIcon className="mr-3 h-4 w-4 text-primary" /><span>{t('save_to_device')}</span></DropdownMenuItem>}
-                            {canEdit && <DropdownMenuItem onSelect={() => setEditingMessage(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10"><Edit className="mr-3 h-4 w-4 text-primary" /><span>{t('edit_message')}</span></DropdownMenuItem>}
-                            {canDelete && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3 focus:bg-destructive/10"><Trash2 className="mr-3 h-4 w-4" /><span>{t('delete_message')}</span></DropdownMenuItem></>}
-                          </div>
-                        </ScrollArea>
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", experimentalDesign ? "bg-card/85 backdrop-blur-2xl border-white/10 rounded-[1.5rem]" : "bg-popover rounded-xl", experimentalDesign ? "w-auto flex flex-row gap-1" : "w-56 flex flex-col")}>
+                        {experimentalDesign ? (
+                            <>
+                                <div className="grid grid-cols-5 gap-1 p-2 bg-muted/20 rounded-2xl border border-white/5 shrink-0 w-[180px]">
+                                    {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg", sel && "bg-primary/30 scale-110")}>{emoji}</button>); })}
+                                </div>
+                                <div className="w-[180px] flex flex-col gap-0.5">
+                                    <div className="flex items-center justify-between px-3 h-10 bg-primary text-white rounded-xl mb-1 font-bold text-sm">
+                                        <div className="flex items-center gap-2"><Smile className="h-4 w-4" />{t('reactions')}</div>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </div>
+                                    <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Reply className="mr-3 h-4 w-4 text-primary" />{t('reply')}</DropdownMenuItem>
+                                    {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Copy className="mr-3 h-4 w-4 text-primary" />{t('copy_text')}</DropdownMenuItem>}
+                                    <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Forward className="mr-3 h-4 w-4 text-primary" />{t('forward')}</DropdownMenuItem>
+                                    {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3 focus:bg-destructive/10 font-bold"><Trash2 className="mr-3 h-4 w-4" />{t('delete_message')}</DropdownMenuItem>}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="px-2 py-2 mb-1 flex flex-wrap items-center gap-1 bg-muted/40 rounded-lg border border-border/20 shadow-inner max-h-[120px] overflow-y-auto no-scrollbar">
+                                    {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-7 w-7 flex items-center justify-center rounded-md text-base", sel && "bg-primary/20")}>{emoji}</button>); })}
+                                </div>
+                                <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" />{t('reply')}</DropdownMenuItem>
+                                {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }}><Copy className="mr-2 h-4 w-4" />{t('copy_text')}</DropdownMenuItem>}
+                                <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" />{t('forward')}</DropdownMenuItem>
+                                {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />{t('delete_message')}</DropdownMenuItem>}
+                            </>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
