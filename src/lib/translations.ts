@@ -561,6 +561,7 @@ export const translations = {
       'choose_file': 'Choose File',
       'file_selected': 'File selected',
       'is_recording_locked_placeholder': 'Recording is active...',
+      'android_9_plus_only': 'Android 9+',
     },
     ru: {
       'settings': 'Настройки',
@@ -1076,8 +1077,8 @@ export const translations = {
       'sent': 'Отправлено',
       'received': 'Получено',
       'no_transfers': 'История пуста.',
-      'block_message': 'Сообщение',
-      'block_start': 'СТАРТ',
+      'block_message': 'Message',
+      'block_start': 'START',
       'faq_bot_prog_q': 'Как запрограммировать бота?',
       'faq_bot_prog_a': 'Создание ботов в Infinite происходит с помощью визуальных блоков логики. Вы можете настроить автоответы, работу с переменными и условия.',
       'open_full_guide': 'Открыть полный гид',
@@ -1123,6 +1124,7 @@ export const translations = {
       'file_selected': 'Файл выбран',
       'is_recording_locked_placeholder': 'Идет запись...',
       'clear_history_confirm_desc': 'Вы уверены, что хотите полностью очистить историю сообщений в этом чате?',
+      'android_9_plus_only': 'Android 9+',
     }
   };
 

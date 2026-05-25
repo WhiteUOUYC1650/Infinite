@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,8 +14,15 @@
   }
 }
 
+:root {
+  --app-height: 100%;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
+  height: 100vh;
+  height: var(--app-height);
+  overflow: hidden;
 }
 
 @layer base {
@@ -90,7 +98,7 @@ body {
   }
 }
 
-/* Modal Glass Backdrop */
+/* Modal Glass Backdrop for Experimental Design on modern Androids */
 [data-experimental-design="true"] div[data-state="open"] > div.fixed.inset-0.bg-black\/80 {
   background-color: hsla(0, 0%, 0%, 0.2) !important;
   backdrop-filter: blur(16px) !important;
@@ -126,4 +134,32 @@ body {
 /* Player color stability */
 audio, video {
   filter: none !important;
+}
+
+/* Glass UI Elements - Restricted to Experimental */
+[data-experimental-design="true"] .glass-input {
+  @apply bg-card/40 backdrop-blur-xl border border-white/20 shadow-inner;
+}
+
+[data-experimental-design="true"] .glass-circle {
+  @apply bg-card/40 backdrop-blur-xl border border-white/20 rounded-full shadow-lg;
+}
+
+[data-experimental-design="true"] .glass-panel {
+  @apply bg-card/45 backdrop-blur-xl border border-white/10 shadow-2xl;
+}
+
+[data-experimental-design="true"] .glass-menu {
+  @apply bg-card/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl;
+}
+
+/* Global Layout Fixes for Older Android */
+.h-full-safe {
+  height: 100vh;
+  height: var(--app-height);
+}
+
+.min-h-full-safe {
+  min-height: 100vh;
+  min-height: var(--app-height);
 }

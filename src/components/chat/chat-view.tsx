@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -131,14 +132,14 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && !isCircleComplete && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} />}
-                {message.content && !message.poll && !isCircleComplete && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a> }}>{message.content}</ReactMarkdown></div>)}
+                {message.content && !message.poll && !isCircleComplete && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a> }}>{message.children || message.content}</ReactMarkdown></div>)}
                 {message.reactions && Object.keys(message.reactions).length > 0 && !isCircleComplete && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
                 {!isCircleComplete && (<div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>)}
             </div>
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", experimentalDesign ? "bg-card/85 backdrop-blur-2xl border-white/10 rounded-[1.5rem]" : "bg-popover rounded-xl", experimentalDesign ? "w-auto flex flex-row gap-1" : "w-56 flex flex-col")}>
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", experimentalDesign ? "glass-menu flex flex-row gap-1 w-auto" : "bg-popover rounded-xl flex flex-col w-56")}>
                         {experimentalDesign ? (
                             <>
                                 <div className="grid grid-cols-5 gap-1 p-2 bg-muted/20 rounded-2xl border border-white/5 shrink-0 w-[180px]">
@@ -261,7 +262,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const canWrite = item.type !== 'channel' || isOwner;
 
   return (
-    <div className={cn("relative flex flex-col h-full bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+    <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
       <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
         <div className="flex items-center p-2 h-14">
             <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
@@ -286,7 +287,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "bg-card/85 backdrop-blur-xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
+                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
                   {!isSavedMessages && (
                       <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                         <Info className="mr-3 h-4 w-4 text-primary" />
@@ -340,7 +341,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             )}
         </div>
         <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "bg-card/45 backdrop-blur-xl border-white/20" : "bg-muted/95")}>
+            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "glass-panel" : "bg-muted/95")}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
         </div>
@@ -359,7 +360,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            <div className="h-10 shrink-0 pointer-events-none" aria-hidden="true" />
+            <div className="h-14 shrink-0 pointer-events-none" aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -368,7 +369,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           experimentalDesign ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
       )}>
         {(isRecordingVoice || isRecordingCircle) && (
-          <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", experimentalDesign ? "bg-card/45 backdrop-blur-xl border-none shadow-none rounded-none" : "bg-background/95 backdrop-blur-md")}>
+          <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", experimentalDesign ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md")}>
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
               <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
@@ -388,7 +389,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                 className={cn(
                     "min-h-[40px] h-[40px] max-h-32 resize-none border-none rounded-2xl transition-all duration-300",
-                    experimentalDesign ? "bg-card/45 backdrop-blur-xl border border-white/20 shadow-inner" : "bg-muted/50"
+                    experimentalDesign ? "glass-input" : "bg-muted/50"
                 )} 
               />
               <div className="flex items-center gap-1.5 shrink-0 h-[40px]">
@@ -398,12 +399,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "bg-card/45 backdrop-blur-xl border border-white/20 rounded-full" : "rounded-full")}
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle" : "rounded-full")}
                     >
                       <Paperclip className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "bg-card/85 backdrop-blur-xl border-white/10" : "bg-popover/95 backdrop-blur-xl")}>
+                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -423,7 +424,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "bg-card/45 backdrop-blur-xl border border-white/20 rounded-full" : "rounded-full")} 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle" : "rounded-full")} 
                       onMouseDown={() => startRecording('circle')} 
                       onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                       onMouseUp={() => stopRecording(false)} 
@@ -435,7 +436,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "bg-card/45 backdrop-blur-xl border border-white/20 rounded-full" : "rounded-full")} 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle" : "rounded-full")} 
                       onMouseDown={() => startRecording('voice')} 
                       onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                       onMouseUp={() => stopRecording(false)} 

@@ -126,6 +126,20 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
   const [isUpdatingPrem, setIsUpdatingPrem] = useState(false);
   
+  // Android Version Detection
+  const [androidVersion, setAndroidVersion] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+        const ua = navigator.userAgent;
+        const match = ua.match(/Android\s([0-9\.]+)/);
+        if (match) {
+            setAndroidVersion(parseFloat(match[1]));
+        }
+    }
+  }, []);
+
+  const isExperimentalRestricted = androidVersion !== null && androidVersion < 9;
+
   // Daily Bonus State
   const [isSpinning, setSpinning] = useState(false);
   const [wheelRotation, setWheelRotation] = useState(0);
@@ -672,10 +686,11 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         <SettingsSwitchItem id="snow-switch" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} />
         <SettingsSwitchItem 
             id="exp-design-switch" 
-            label={t('experimental_design_label')} 
+            label={`${t('experimental_design_label')} (${t('android_9_plus_only')})`}
             checked={experimentalDesign} 
             onCheckedChange={toggleExperimentalDesign} 
-            description={t('experimental_design_desc')} 
+            description={isExperimentalRestricted ? 'Restricted for your Android version.' : t('experimental_design_desc')} 
+            disabled={isExperimentalRestricted}
         />
         <SettingsSwitchItem 
             id="show-feed-switch" 
@@ -1123,7 +1138,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   return (
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
-      <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
+      <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2">
             <ArrowLeft />
@@ -1195,7 +1210,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     onChange={(e) => setCloudPassword(e.target.value)}
                     disabled={isUpdatingPrivacy}
                     autoFocus
-                    className="text-center text-lg tracking-widest"
+                    className="text-center text-lg tracking-widest glass-input"
                 />
                 <p className="text-[10px] text-muted-foreground text-center italic">{t('cloud_password_desc')}</p>
             </div>
