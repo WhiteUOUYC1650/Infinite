@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -251,7 +250,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
-  const handleClearHistory = async () => { if (!db || item.id === 'GENERAL_CHAT') return; try { const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit(); await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); toast({ title: t('dm_success') }); } catch(e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
   const isOwner = item.ownerId === currentUser.uid;
@@ -259,7 +257,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isDM = item.type === 'dm';
   const isSavedMessages = item.id === currentUser.uid;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
-  const canWrite = item.type !== 'channel' || isOwner;
+  
+  // Strict Channel Access: Only owner or admin can write
+  const canWrite = item.type !== 'channel' || isOwner || isAdmin;
 
   return (
     <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
@@ -360,7 +360,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </React.Fragment>
                 );
             })}
-            <div className="h-14 shrink-0 pointer-events-none" aria-hidden="true" />
+            <div className="h-8 shrink-0 pointer-events-none" aria-hidden="true" />
           </div>
         </div>
       </div>
@@ -388,8 +388,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onChange={(e) => setMessageContent(e.target.value)} 
                 onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                 className={cn(
-                    "min-h-[40px] h-[40px] max-h-32 resize-none border-none rounded-2xl transition-all duration-300",
-                    experimentalDesign ? "glass-input" : "bg-muted/50"
+                    "min-h-[40px] h-[40px] max-h-32 resize-none border rounded-2xl transition-all duration-300",
+                    experimentalDesign ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                 )} 
               />
               <div className="flex items-center gap-1.5 shrink-0 h-[40px]">
@@ -399,12 +399,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle" : "rounded-full")}
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
                     >
                       <Paperclip className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
+                  <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl")}>
                     <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -424,7 +424,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle" : "rounded-full")} 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                       onMouseDown={() => startRecording('circle')} 
                       onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                       onMouseUp={() => stopRecording(false)} 
@@ -436,7 +436,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       type="button" 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle" : "rounded-full")} 
+                      className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                       onMouseDown={() => startRecording('voice')} 
                       onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                       onMouseUp={() => stopRecording(false)} 

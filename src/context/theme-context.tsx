@@ -390,9 +390,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setMinimizeCallOnClose(storedMinimizeCall === 'true');
     }
 
-    if (storedExperimental) {
-      setExperimentalDesign(storedExperimental === 'true');
+    // Android Version Check & Experimental Design Logic
+    let isExpEnabled = storedExperimental === 'true';
+    if (typeof navigator !== 'undefined') {
+        const ua = navigator.userAgent;
+        const match = ua.match(/Android\s([0-9\.]+)/);
+        const version = match ? parseFloat(match[1]) : null;
+        if (version !== null && version < 9) {
+            isExpEnabled = false;
+            localStorage.setItem('app-experimental-design', 'false');
+        }
     }
+    setExperimentalDesign(isExpEnabled);
 
     if (storedGlassEffect) {
       setGlassEffect(storedGlassEffect === 'true');
