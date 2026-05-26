@@ -101,17 +101,39 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
 }
 
 const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean }) => {
-    const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); const alignRight = isCurrentUser && message.type !== 'announcement' && chatType !== 'channel'; const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite'; const showSenderAvatar = chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm')); const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
+    const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); 
+    
+    // Logic for channel posts in discussions
+    const isChannelPost = !!message.fromChannelId;
+    const alignRight = !isChannelPost && isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
+    
+    const isOfficialBotChat = chat.link === '/B/Infinite' || chat.name === 'Infinite';
+    const showSenderAvatar = isChannelPost || (chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm')));
+    
+    const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
     const isCircleComplete = message.circleStatus === 'complete';
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
+    
     useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
-    const handleSaveToGallery = async () => { if (!mediaUrl) return; if (Capacitor.isNativePlatform()) { try { const { Filesystem, Directory } = await import('@capacitor/filesystem'); const cleanBase64 = mediaUrl.split(',')[1]; const ext = message.imageUrl ? 'jpg' : (message.videoStatus ? 'mp4' : (message.musicStatus ? 'mp3' : 'bin')); const fileName = `Infinite_${message.id}_${Date.now()}.${ext}`; await Filesystem.writeFile({ path: fileName, data: cleanBase64, directory: Directory.Documents }); toast({ title: t('dm_success'), description: t('save_to_device') }); } catch (e) { console.error(e); toast({ variant: 'destructive', title: 'Error', description: 'Failed to save file.' }); } } else { const link = document.createElement('a'); link.href = mediaUrl; link.download = message.fileName || `Infinite_${message.id}`; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast({ title: t('dm_success') }); } };
+    
     const canCopy = message.content && !message.poll; const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
     const isLikedByMe = (emoji: string) => message.reactions?.[emoji]?.includes(currentUser.uid);
+
+    // Identity for the post
+    const displayName = isChannelPost ? message.senderName : (message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name));
+    const displayAvatar = isChannelPost ? message.senderAvatar : (message.type === 'announcement' ? message.senderAvatar : sender?.avatar);
+
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
-            {showSenderAvatar ? (<div className="w-10 h-10 flex-shrink-0"><button onClick={() => sender && onAvatarClick(sender)} disabled={isCurrentUser || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={message.type === 'announcement' ? { id: 'bot', name: message.senderName || 'Infinite', avatar: message.senderAvatar, isBot: true } as any : sender!} /></button></div>) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
+            {showSenderAvatar ? (
+                <div className="w-10 h-10 flex-shrink-0">
+                    <button onClick={() => !isChannelPost && sender && onAvatarClick(sender)} disabled={isCurrentUser || isChannelPost || (sender && !!sender.isDeleted)}>
+                        <UserAvatarWithStatus user={isChannelPost ? ({ id: 'channel', name: displayName, avatar: displayAvatar } as any) : (message.type === 'announcement' ? { id: 'bot', name: displayName, avatar: displayAvatar, isBot: true } as any : sender!)} />
+                    </button>
+                </div>
+            ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
+            
             <div className={cn(
                 "min-w-0 flex flex-col relative transition-all duration-300",
                 isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-white shadow-sm" : "bg-card text-card-foreground shadow-sm"),
@@ -119,7 +141,19 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 !isCircleComplete && "px-2 pb-1 pt-1.5",
                 "max-w-[85%] md:max-w-[70%]"
             )}>
-                {((chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name)}</span>{sender?.username === '@InfiniteBot' && <VerifiedBadge className='w-3 h-3 shrink-0' />}</div>)}
+                {isChannelPost && (
+                    <Badge variant="outline" className="absolute -top-2 -right-2 bg-background/50 backdrop-blur-sm text-[8px] h-4 px-1 font-black uppercase tracking-tighter opacity-70 border-primary/20 pointer-events-none">
+                        {t('channel_badge')}
+                    </Badge>
+                )}
+
+                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (
+                    <div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5">
+                        <span className="truncate">{displayName}</span>
+                        {(isChannelPost || sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3 shrink-0' />}
+                    </div>
+                )}
+                
                 {message.replyTo && !isCircleComplete && (
                     <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
                         <p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
@@ -133,7 +167,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {message.poll && !isCircleComplete && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} />}
                 {message.content && !message.poll && !isCircleComplete && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a> }}>{message.children || message.content}</ReactMarkdown></div>)}
                 {message.reactions && Object.keys(message.reactions).length > 0 && !isCircleComplete && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
-                {!isCircleComplete && (<div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>)}
+                {!isCircleComplete && (<div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && !isChannelPost && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>)}
             </div>
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
