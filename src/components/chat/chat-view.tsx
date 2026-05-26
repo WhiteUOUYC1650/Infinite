@@ -208,7 +208,8 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
 ChatMessage.displayName = 'ChatMessage';
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme(); const isMobile = useIsMobile();
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme(); 
+  const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   
   const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null); const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);

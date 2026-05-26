@@ -879,7 +879,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                                             className="w-full h-12 rounded-xl mt-4 font-bold border-primary/20 hover:bg-primary/5 gap-2"
                                             onClick={() => navigateTo('botGuide')}
                                         >
-                                            <BookOpen className="h-5 w-5 text-primary" />
+                                            < BookOpen className="h-5 w-5 text-primary" />
                                             {t('open_full_guide')}
                                         </Button>
                                     );
@@ -1048,12 +1048,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_legacy_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Type className="h-4 w-4 text-primary" /> {t('whats_new_font_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_font_desc')}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
           <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('whats_new_ui_title')}</h3>
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_ui_desc')}</p>
+        </div>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> {t('whats_new_optimization_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_optimization_desc')}</p>
+        </div>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Type className="h-4 w-4 text-primary" /> {t('whats_new_font_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_font_desc')}</p>
         </div>
       </div>
     </div>

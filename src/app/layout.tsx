@@ -13,11 +13,24 @@ import { OrientationManager } from '@/components/OrientationManager';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
-function LayoutContent({ children }: { children: React.ReactNode }) {
+function FontManager() {
   const { useSystemFont } = useTheme();
   
+  useEffect(() => {
+    if (useSystemFont) {
+      document.body.classList.add('use-system-font');
+    } else {
+      document.body.classList.remove('use-system-font');
+    }
+  }, [useSystemFont]);
+
+  return null;
+}
+
+function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className={cn("min-h-svh font-body antialiased", useSystemFont && "use-system-font")}>
+    <div className="min-h-svh h-full flex flex-col relative antialiased">
+      <FontManager />
       <OrientationManager />
       <LanguageProvider>
           <Snowfall />
