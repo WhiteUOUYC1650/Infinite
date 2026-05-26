@@ -25,8 +25,13 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-body.use-system-font {
-  font-family: system-ui, -apple-system, sans-serif !important;
+/* Global Font Override for System Font Setting */
+body.use-system-font,
+body.use-system-font *,
+body.use-system-font .font-headline,
+body.use-system-font .font-body,
+body.use-system-font .font-mono {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 @layer base {
