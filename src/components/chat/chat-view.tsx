@@ -150,7 +150,8 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (
                     <div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5">
                         <span className="truncate">{displayName}</span>
-                        {((isChannelPost && chat.link === '/C/Infinite') || sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3 shrink-0' />}
+                        {((isChannelPost && chat.link === '/C/Infinite')) && <VerifiedBadge className='w-3 h-3 shrink-0' />}
+                        {(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3 shrink-0' />}
                     </div>
                 )}
                 

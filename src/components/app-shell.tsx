@@ -256,15 +256,11 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
       <SidebarInset className="min-h-0 bg-background relative overflow-hidden">
         {populatedUser && (
           <div className="flex h-full w-full overflow-hidden relative">
-            {/* 
-               Mobile optimized navigation: 
-               We keep the list view mounted but push it aside when a chat is open.
-            */}
             <div className={cn(
               "absolute inset-0 z-10 transition-transform duration-300 ease-in-out",
               isMobile && selectedItem ? "-translate-x-full" : "translate-x-0"
             )}>
-              <div className="h-full w-full bg-sidebar text-sidebar-foreground">
+              <div className="h-full w-full bg-sidebar text-sidebar-foreground overflow-y-auto">
                 <SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} />
               </div>
             </div>
