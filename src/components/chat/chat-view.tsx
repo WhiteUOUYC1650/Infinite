@@ -150,7 +150,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (
                     <div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5">
                         <span className="truncate">{displayName}</span>
-                        {(isChannelPost || sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3 shrink-0' />}
+                        {((isChannelPost && chat.link === '/C/Infinite') || sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3 shrink-0' />}
                     </div>
                 )}
                 
@@ -284,22 +284,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
+  const handleClearHistory = async () => { if (!db || item.id === 'GENERAL_CHAT') return; try { const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit(); await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); toast({ title: t('dm_success') }); } catch(e) { console.error(e); toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' }); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
-
-  const handleClearHistory = async () => {
-    if (!db || item.id === 'GENERAL_CHAT') return;
-    try {
-        const snap = await getDocs(collection(db, 'chats', item.id, 'messages'));
-        const batch = writeBatch(db);
-        snap.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() });
-        toast({ title: t('dm_success') });
-    } catch(e) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' });
-    }
-  };
 
   const isOwner = item.ownerId === currentUser.uid;
   const isAdmin = currentUser.username === '@Infinite';
@@ -504,3 +490,4 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     </div>
   );
 }
+

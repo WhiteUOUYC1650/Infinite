@@ -25,6 +25,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import React, { useState, useEffect, useRef } from 'react';
@@ -330,3 +331,4 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     </Dialog>
   );
 }
+

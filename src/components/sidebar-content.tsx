@@ -38,7 +38,7 @@ import { Skeleton } from './ui/skeleton';
 import { VerifiedBadge } from './ui/verified-badge';
 import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { StoriesBar } from './stories/stories-bar';
@@ -582,10 +582,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <Separator className="shrink-0" />
 
-      {/* 
-         Android 7 fix: Robust solid background for SidebarFooter.
-         Using fixed height and solid bg to prevent layering issues.
-      */}
       <SidebarFooter className={cn(
         "p-2 h-[56px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-[100] bg-sidebar border-t",
         experimentalDesign ? "bg-sidebar/95 backdrop-blur-xl" : "bg-sidebar"
@@ -817,7 +813,7 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
                 <AvatarImage src={item.avatar} alt={item.name} />
             ) : (
                 <AvatarFallback className={cn(isSelected && "bg-sidebar-primary text-sidebar-primary-foreground")}>
-                    {Icon ? <Icon className="h-4 w-4" /> : <InfiniteLogo />}
+                    {Icon ? <Icon className="h-4 w-4" /> : <Megaphone className="h-4 w-4 text-muted-foreground" />}
                 </AvatarFallback>
             )}
         </Avatar>
@@ -857,3 +853,4 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
   );
 });
 ChatItemComponent.displayName = 'ChatItemComponent';
+
