@@ -235,7 +235,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                             <div className="flex justify-center"><div className="relative">
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-full overflow-hidden"><Avatar className="h-24 w-24"><AvatarImage src={avatarPreview || undefined} /><AvatarFallback><Icon className="h-12 w-12" /></AvatarFallback></Avatar></button>
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"><Pencil className="h-4 w-4" /></button>
-                                <Input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                             </div></div>
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>{chat.type === 'group' ? t('group_name_label') : t('channel_name_label')}</FormLabel><FormControl><Input {...field} className={cn(experimentalDesign && "glass-input")} /></FormControl><FormMessage /></FormItem>)} />
                             {(chat.type === 'channel' || chat.type === 'group') && (<FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('description_label')}</FormLabel><FormControl><Textarea {...field} className={cn("resize-none", experimentalDesign && "glass-input")} /></FormControl><FormMessage /></FormItem>)} />)}
@@ -275,7 +275,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                         {(isOwner || isAdmin || chat.type === 'dm') && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="outline" disabled={isClearing} className="flex-1 rounded-xl text-destructive border-destructive/20 hover:bg-destructive/5"><Eraser className="mr-2 h-4 w-4" />{isClearing ? t('loading') : t('clear_history')}</Button>
+                                <Button variant="outline" disabled={isClearing} className="flex-1 rounded-xl text-destructive border-destructive/20 hover:bg-destructive/5"><Eraser className="mr-3 h-4 w-4" />{isClearing ? t('loading') : t('clear_history')}</Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="rounded-2xl">
                                 <AlertDialogHeader>

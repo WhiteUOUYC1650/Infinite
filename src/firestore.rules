@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -19,7 +18,10 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(botId)).data.botOwnerId == request.auth.uid;
     }
 
-    // Информация о версии
+    function isChatOwner(chatId) {
+      return isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid;
+    }
+
     match /info/ver {
       allow get: if true;
       allow write: if isAdmin();
@@ -30,22 +32,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Чтение сообщений админом (для модерации)
     match /{path=**}/messages/{messageId} {
         allow read: if isAdmin();
     }
     
-    // Звонки и трансляции
     match /calls/{callId} {
       allow read, write: if isSignedIn();
     }
 
-    // Профили пользователей
     match /users/{userId} {
       allow read: if true; 
       allow list: if true; 
       allow create: if isOwner(userId) || (isSignedIn() && request.resource.data.isBot == true && request.resource.data.botOwnerId == request.auth.uid);
-      // Разрешаем обновление системных полей, включая активную сессию
       allow update: if isAdmin() || isOwner(userId) || isBotOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge', 'activeSessionId']));
       allow delete: if isOwner(userId) || isAdmin() || isBotOwner(userId);
 
@@ -55,7 +53,6 @@ service cloud.firestore {
       }
     }
 
-    // Реестр имен
     match /usernames/{username} {
         allow get: if true;
         allow list: if isAdmin();
@@ -64,12 +61,11 @@ service cloud.firestore {
         allow delete: if isAdmin() || resource.data.uid == request.auth.uid || isBotOwner(resource.data.uid);
     }
 
-    // Чаты (ЛС, Группы, Каналы)
     match /chats/{chatId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() || isAdmin();
-      allow update: if isSignedIn() || isAdmin();
-      allow delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.ownerId);
+      allow update: if isAdmin() || isChatOwner(chatId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadCounts', 'typingStatus', 'lastMessage', 'members']));
+      allow delete: if isAdmin() || isChatOwner(chatId);
 
       match /messages/{messageId} {
         allow read: if isSignedIn();
@@ -86,7 +82,7 @@ service cloud.firestore {
         allow update: if isAdmin() || (
           isSignedIn() && (
             request.auth.uid == resource.data.senderId ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'videoStatus', 'musicStatus', 'fileStatus', 'videoChunkIds', 'musicChunkIds', 'fileChunkIds', 'voiceStatus', 'voiceChunkIds', 'circleStatus', 'circleChunkIds', 'editedAt', 'content', 'poll'])
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'editedAt', 'content'])
           )
         );
         
@@ -102,7 +98,6 @@ service cloud.firestore {
       }
     }
     
-    // Истории (Stories)
     match /stories/{storyId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -110,7 +105,6 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
     
-    // InfVid
     match /videos/{videoId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
@@ -125,7 +119,6 @@ service cloud.firestore {
       }
     }
     
-    // Custom Bot Logic (Bot Studio)
     match /customBots/{botId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
@@ -137,26 +130,22 @@ service cloud.firestore {
       }
     }
 
-    // История переводов
     match /transfers/{transferId} {
         allow read, list: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
     
-    // Чанки файлов
     match /videoChunks/{chunkId} { allow create, read: if true; }
     match /musicChunks/{chunkId} { allow create, read: if true; }
     match /fileChunks/{chunkId} { allow create, read: if true; }
     match /voiceChunks/{chunkId} { allow create, read: if true; }
     match /circleChunks/{chunkId} { allow create, read: if true; }
     
-    // Чанки APK (только админ может загружать)
     match /apkChunks/{chunkId} { 
       allow read: if true; 
       allow create, delete: if isAdmin();
     }
     
-    // Ссылки
     match /chatLinks/{linkId} {
       allow get: if true;
       allow list: if isAdmin();

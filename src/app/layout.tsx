@@ -13,25 +13,23 @@ import { OrientationManager } from '@/components/OrientationManager';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
-function BodyContent({ children }: { children: React.ReactNode }) {
+function LayoutContent({ children }: { children: React.ReactNode }) {
   const { useSystemFont } = useTheme();
   
   return (
-    <body className={cn("font-body antialiased", useSystemFont && "use-system-font")}>
-      <FirebaseClientProvider>
-        <OrientationManager />
-        <LanguageProvider>
-            <Snowfall />
-            <NotificationProvider>
-              <UpdatePromptProvider>
-                <SplashScreen />
-                {children}
-                <Toaster />
-              </UpdatePromptProvider>
-            </NotificationProvider>
-        </LanguageProvider>
-      </FirebaseClientProvider>
-    </body>
+    <div className={cn("min-h-svh font-body antialiased", useSystemFont && "use-system-font")}>
+      <OrientationManager />
+      <LanguageProvider>
+          <Snowfall />
+          <NotificationProvider>
+            <UpdatePromptProvider>
+              <SplashScreen />
+              {children}
+              <Toaster />
+            </UpdatePromptProvider>
+          </NotificationProvider>
+      </LanguageProvider>
+    </div>
   );
 }
 
@@ -41,7 +39,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   useEffect(() => {
-    // Optimization for old Android WebViews to handle 100vh correctly
     const setAppHeight = () => {
       document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
     };
@@ -60,9 +57,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
       </head>
-      <ThemeProvider>
-        <BodyContent>{children}</BodyContent>
-      </ThemeProvider>
+      <body>
+        <FirebaseClientProvider>
+          <ThemeProvider>
+            <LayoutContent>{children}</LayoutContent>
+          </ThemeProvider>
+        </FirebaseClientProvider>
+      </body>
     </html>
   );
 }
