@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APKs
 
 on:
   push:
@@ -46,16 +46,25 @@ jobs:
         echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'" >> android/app/build.gradle
         echo "}" >> android/app/build.gradle
 
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
+    - name: Build Standard APK
+      run: |
+        chmod +x ./gradlew
+        ./gradlew assembleDebug -x test --no-daemon
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-standard.apk
       working-directory: ./android
 
-    - name: Build with Gradle
-      run: ./gradlew clean assembleDebug -x test --no-daemon
+    - name: Build Legacy APK (Android 4.1+)
+      run: |
+        # Patch build.gradle to lower minSdkVersion for Legacy edition
+        sed -i 's/minSdkVersion .*/minSdkVersion 16/' app/build.gradle
+        ./gradlew assembleDebug -x test --no-daemon
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-legacy.apk
       working-directory: ./android
 
-    - name: Upload APK
+    - name: Upload APKs
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        name: infinite-apks
+        path: |
+          android/app/build/outputs/apk/debug/app-standard.apk
+          android/app/build/outputs/apk/debug/app-legacy.apk

@@ -37,7 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu, Check, MousePointer2, Image as ImageIcon, Globe } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu, Check, MousePointer2, Image as ImageIcon, Globe, Type } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -64,7 +64,7 @@ import { format } from 'date-fns';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'prem' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide';
 
-const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-smooth-scroll', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect', 'app-show-feed'];
+const SETTINGS_KEYS = ['app-color-theme', 'app-theme-mode', 'app-snowflakes-mode', 'app-send-on-enter', 'app-smooth-scroll', 'app-minimize-call', 'app-experimental-design', 'app-lang', 'app-glass-effect', 'app-show-feed', 'app-use-system-font'];
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
@@ -107,7 +107,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
   const { isUpdateAvailable, promptUpdate } = useUpdatePrompt();
   
   const auth = useAuth();
@@ -675,6 +675,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       <div className='divide-y'>
         <SettingsSwitchItem id="dark-mode-switch" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
         <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('theme')} />
+        <SettingsSwitchItem id="system-font-switch" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} />
         <SettingsSwitchItem 
             id="glass-effect-switch" 
             label={t('glass_effect_label')} 
@@ -1043,16 +1044,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </div>
       <div className="space-y-4 text-sm">
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><ArrowLeft className="h-4 w-4 text-primary" /> {t('whats_new_back_button_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_back_button_desc')}</p>
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_legacy_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_legacy_desc')}</p>
+        </div>
+        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
+          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Type className="h-4 w-4 text-primary" /> {t('whats_new_font_title')}</h3>
+          <p className="text-muted-foreground leading-relaxed">{t('whats_new_font_desc')}</p>
         </div>
         <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
           <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('whats_new_ui_title')}</h3>
           <p className="text-muted-foreground leading-relaxed">{t('whats_new_ui_desc')}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-card border shadow-sm hover:shadow-md transition-all">
-          <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Cpu className="h-4 w-4 text-primary" /> {t('whats_new_bug_fix_title')}</h3>
-          <p className="text-muted-foreground leading-relaxed">{t('whats_new_bug_fix_desc')}</p>
         </div>
       </div>
     </div>

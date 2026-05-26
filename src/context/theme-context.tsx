@@ -337,6 +337,8 @@ interface ThemeContextType {
   glassIntensity: number;
   showFeed: boolean;
   toggleShowFeed: () => void;
+  useSystemFont: boolean;
+  toggleSystemFont: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -351,6 +353,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [experimentalDesign, setExperimentalDesign] = useState(false);
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
+  const [useSystemFont, setUseSystemFont] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -363,6 +366,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedExperimental = localStorage.getItem('app-experimental-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
     const storedShowFeed = localStorage.getItem('app-show-feed');
+    const storedSystemFont = localStorage.getItem('app-use-system-font');
 
     if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
@@ -409,6 +413,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (storedShowFeed) {
       setShowFeed(storedShowFeed === 'true');
+    }
+
+    if (storedSystemFont !== null) {
+      setUseSystemFont(storedSystemFont === 'true');
     }
 
     setIsMounted(true);
@@ -554,6 +562,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const toggleSystemFont = () => {
+    setUseSystemFont(prev => {
+      const newState = !prev;
+      localStorage.setItem('app-use-system-font', String(newState));
+      return newState;
+    });
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
@@ -574,6 +590,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     glassIntensity: glassEffect ? 70 : 0,
     showFeed,
     toggleShowFeed,
+    useSystemFont,
+    toggleSystemFont,
   };
 
   if (!isMounted) {

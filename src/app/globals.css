@@ -18,11 +18,15 @@
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "PT Sans", Arial, Helvetica, sans-serif;
   height: 100vh;
   height: var(--app-height);
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+body.use-system-font {
+  font-family: system-ui, -apple-system, sans-serif !important;
 }
 
 @layer base {
