@@ -87,7 +87,7 @@ async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<
     canvas.toBlob((blob) => {
       if (!blob) { reject(new Error('Canvas is empty')); return; }
       const reader = new FileReader();
-      reader.addEventListener('load', () => resolve(reader.result as string));
+      reader.onloadend = () => resolve(reader.result as string);
       reader.readAsDataURL(blob);
     }, 'image/jpeg');
   });
@@ -331,4 +331,3 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     </Dialog>
   );
 }
-

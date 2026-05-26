@@ -490,4 +490,3 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     </div>
   );
 }
-
