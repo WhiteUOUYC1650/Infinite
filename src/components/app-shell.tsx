@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -27,6 +26,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
+import { cn } from '@/lib/utils';
 
 const iconMap = {
     Users,
@@ -240,22 +240,53 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const handleDeclineCall = () => { if (!db || !incomingCall) return; updateDoc(doc(db, 'calls', incomingCall.id), { status: 'ended' }); setIncomingCall(null); window.dispatchEvent(new CustomEvent('stop-ringtone')); };
   const handleAcceptIncoming = () => { if (incomingCall) window.dispatchEvent(new CustomEvent('answer-call', { detail: { chatId: incomingCall.id } })); };
 
-  const renderMainView = () => {
-    if (!populatedUser) return <div className="flex h-svh items-center justify-center">Loading...</div>;
+  const renderSelectedContent = () => {
+    if (!populatedUser) return null;
     if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null)} onSelectChat={handleSelect} />;
     if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null)} initialVideoId={infVidInitialVideoId || undefined} />;
     if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
-    if (isMobile) return <div className="h-svh w-screen flex flex-col bg-sidebar text-sidebar-foreground"><SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} /></div>;
-    return <div className="relative flex h-full flex-col items-center justify-center bg-background p-4"><div className="flex flex-col items-center text-center"><MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} /><h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2></div></div>;
+    return null;
   };
 
   return (
     <>
       {!isMobile && populatedUser && <Sidebar><SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} /></Sidebar>}
-      <SidebarInset className="min-h-0">
-        {renderMainView()}
+      <SidebarInset className="min-h-0 bg-background relative overflow-hidden">
+        {populatedUser && (
+          <div className="flex h-full w-full overflow-hidden relative">
+            {/* 
+               Mobile optimized navigation: 
+               We keep the list view mounted but push it aside when a chat is open.
+            */}
+            <div className={cn(
+              "absolute inset-0 z-10 transition-transform duration-300 ease-in-out",
+              isMobile && selectedItem ? "-translate-x-full" : "translate-x-0"
+            )}>
+              <div className="h-full w-full bg-sidebar text-sidebar-foreground">
+                <SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} />
+              </div>
+            </div>
+
+            <div className={cn(
+              "absolute inset-0 z-20 transition-transform duration-300 ease-in-out bg-background",
+              isMobile ? (selectedItem ? "translate-x-0" : "translate-x-full") : "relative translate-x-0 flex-1"
+            )}>
+              {selectedItem ? renderSelectedContent() : (
+                !isMobile && (
+                  <div className="relative flex h-full flex-col items-center justify-center bg-background p-4">
+                    <div className="flex flex-col items-center text-center">
+                      <MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} />
+                      <h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
         {incomingCall && (
           <div className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500 cursor-pointer" onClick={handleAcceptIncoming}>
               <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-sm border border-white/10 backdrop-blur-md">
@@ -265,7 +296,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
               </div>
           </div>
         )}
-        {activeCall && <CallDialog open={showCallDialog} onOpenChange={(open) => { setShowCallDialog(open); if (!open) setActiveCall(null); }} chat={activeCall.chat} otherUser={activeCall.otherUser} currentUser={populatedUser} isCaller={activeCall.isCaller} isVideo={activeCall.isVideo} />}
+        {activeCall && <CallDialog open={showCallDialog} onOpenChange={(open) => { setShowCallDialog(open); if (!open) setActiveCall(null); }} chat={activeCall.chat} otherUser={activeCall.otherUser} currentUser={populatedUser!} isCaller={activeCall.isCaller} isVideo={activeCall.isVideo} />}
         <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
           <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
             <DialogHeader className="items-center text-center space-y-4">

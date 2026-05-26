@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -121,12 +121,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
   useEffect(() => {
     const handleStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleStatus);
-    window.addEventListener('offline', handleStatus);
-    setIsOnline(navigator.onLine);
+    if (typeof window !== 'undefined') {
+        window.addEventListener('online', handleStatus);
+        window.addEventListener('offline', handleStatus);
+        setIsOnline(navigator.onLine);
+    }
     return () => {
-        window.removeEventListener('online', handleStatus);
-        window.removeEventListener('offline', handleStatus);
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('online', handleStatus);
+            window.removeEventListener('offline', handleStatus);
+        }
     };
   }, []);
 
@@ -356,7 +360,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   );
 
   return (
-    <>
+    <div className="flex flex-col h-full bg-sidebar">
       <SidebarHeader className="p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -375,7 +379,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         </div>
       </SidebarHeader>
 
-      <SidebarBody className="px-2">
+      <SidebarBody className="px-2 flex-1 overflow-y-auto no-scrollbar">
           <StoriesBar currentUser={currentUser} />
           
           <HolidayBanner />
@@ -576,9 +580,16 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         )}
       </SidebarBody>
       
-      <Separator />
+      <Separator className="shrink-0" />
 
-      <SidebarFooter className={cn("p-2 h-[54px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))]", experimentalDesign && "bg-transparent")}>
+      {/* 
+         Android 7 fix: Robust solid background for SidebarFooter.
+         Using fixed height and solid bg to prevent layering issues.
+      */}
+      <SidebarFooter className={cn(
+        "p-2 h-[56px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-[100] bg-sidebar border-t",
+        experimentalDesign ? "bg-sidebar/95 backdrop-blur-xl" : "bg-sidebar"
+      )}>
         <div className="flex items-center gap-2 w-full h-full">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
@@ -647,8 +658,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           onOpenChange={setShowSettingsDialog}
           currentUser={currentUser}
       />
-
-    </>
+    </div>
   );
 }
 
@@ -666,7 +676,7 @@ function DMChatItemSkeleton() {
     )
 }
 
-function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUserId }: { item: Chat, otherUser: User, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
+const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId, currentUserId }: { item: Chat, otherUser: User, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) => {
   const { t } = useLanguage();
   
   const isSavedMessages = otherUser?.id === currentUserId;
@@ -677,12 +687,10 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
   const isBetaTester = !isSavedMessages && otherUser.isBetaTester;
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
   
-  // Hide unread badge for the official bot
   const isOfficialBot = otherUser?.username === '@InfiniteBot' || item.link === '/B/Infinite' || otherUser?.username === '@Infinite';
   const showBadge = unreadCount > 0 && !isOfficialBot;
 
   const lastMessage = item.lastMessage;
-  
   const lastMessageSenderIsCurrentUser = lastMessage?.senderId === currentUserId;
   const otherUserIdInDM = item.members.find(id => id !== currentUserId);
 
@@ -755,9 +763,10 @@ function DMChatItemComponent({ item, otherUser, onSelect, selectedId, currentUse
         )}
     </Button>
   );
-}
+});
+DMChatItemComponent.displayName = 'DMChatItemComponent';
 
-function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) {
+const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserId }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string }) => {
   const { t } = useLanguage();
   const lastMessage = item.lastMessage;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
@@ -766,7 +775,6 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
   const isSelected = selectedId === item.id;
   const senderIsCurrentUser = lastMessage?.senderId === currentUserId;
 
-  // Hide unread badge for the official bot
   const isOfficialBot = item.link === '/B/Infinite' || item.name === 'Infinite';
   const showBadge = unreadCount > 0 && !isOfficialBot;
 
@@ -847,4 +855,5 @@ function ChatItemComponent({ item, onSelect, selectedId, currentUserId }: { item
       )}
     </Button>
   );
-}
+});
+ChatItemComponent.displayName = 'ChatItemComponent';

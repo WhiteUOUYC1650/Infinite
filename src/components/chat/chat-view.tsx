@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -471,4 +470,3 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     </div>
   );
 }
-

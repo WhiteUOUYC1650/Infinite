@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -331,4 +330,3 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     </Dialog>
   );
 }
-
