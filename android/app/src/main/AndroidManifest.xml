@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.infinite.chat">
 
+    <uses-sdk tools:overrideLibrary="com.getcapacitor.android, com.capacitorjs.plugins.app, com.capacitorjs.plugins.filesystem, com.capacitorjs.plugins.localnotifications, com.capacitorjs.plugins.screenorientation" />
+
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
