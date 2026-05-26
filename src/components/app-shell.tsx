@@ -260,7 +260,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
               "absolute inset-0 z-10 transition-transform duration-300 ease-in-out",
               isMobile && selectedItem ? "-translate-x-full" : "translate-x-0"
             )}>
-              <div className="h-full w-full bg-sidebar text-sidebar-foreground overflow-y-auto">
+              <div className="h-full w-full bg-sidebar text-sidebar-foreground overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} />
               </div>
             </div>

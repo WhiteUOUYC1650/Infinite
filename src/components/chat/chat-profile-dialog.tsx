@@ -47,7 +47,6 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
 import { COMMON_EMOJIS } from './chat-view';
-import { Capacitor } from '@capacitor/core';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
