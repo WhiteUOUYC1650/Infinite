@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -49,6 +49,7 @@ import { UserAvatarWithStatus, InfiniteLogo } from './chat/user-avatar-with-stat
 import { VerifiedBadge } from './ui/verified-badge';
 import { clearCacheDB, calculateCacheSize as getRealCacheSize } from '@/lib/cache-utils';
 import { Capacitor } from '@capacitor/core';
+import { useRouter } from 'next/navigation';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide';
 
@@ -89,6 +90,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const [showEditProfile, setShowEditProfile] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
@@ -243,6 +245,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>
         )}
         <div className={cn("border-t", experimentalDesign && "mt-2")}>
+          {currentUser.isAdmin && (
+            <SettingsItem 
+              icon={Shield} 
+              label={t('admin_panel_title')} 
+              onClick={() => router.push('/admin')} 
+              showExpColors={experimentalDesign} 
+              iconBg="bg-red-600/20" 
+              iconColor="text-red-600" 
+              isGlow={experimentalDesign}
+            />
+          )}
           <SettingsItem icon={Paintbrush} label={t('appearance')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
           <SettingsItem icon={MessageSquare} label={t('chat_settings')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign} iconBg="bg-green-500/15" iconColor="text-green-500" />
           <SettingsItem icon={ShieldCheck} label={t('privacy_security')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
