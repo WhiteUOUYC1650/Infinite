@@ -418,7 +418,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedSystemFont !== null) {
       setUseSystemFont(storedSystemFont === 'true');
     } else {
-      setUseSystemFont(true); // Default to true
+      setUseSystemFont(true); // Default to true for 0.5 Beta
       localStorage.setItem('app-use-system-font', 'true');
     }
 

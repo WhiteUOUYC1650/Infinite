@@ -28,7 +28,7 @@ function FontManager() {
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-svh h-full flex flex-col relative antialiased">
+    <>
       <FontManager />
       <OrientationManager />
       <LanguageProvider>
@@ -41,7 +41,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             </UpdatePromptProvider>
           </NotificationProvider>
       </LanguageProvider>
-    </div>
+    </>
   );
 }
 
@@ -72,7 +72,9 @@ export default function RootLayout({
       <body>
         <FirebaseClientProvider>
           <ThemeProvider>
-            <LayoutContent>{children}</LayoutContent>
+            <div className="min-h-svh h-full flex flex-col relative antialiased">
+              <LayoutContent>{children}</LayoutContent>
+            </div>
           </ThemeProvider>
         </FirebaseClientProvider>
       </body>
