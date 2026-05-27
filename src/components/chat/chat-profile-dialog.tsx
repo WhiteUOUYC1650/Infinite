@@ -139,7 +139,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
         };
         fetchOwnedGroups();
     }
-  }, [isEditing, chat.type, db, currentUser.uid]);
+  }, [isEditing, chat.type, db, currentUser.uid, toast]);
 
   useEffect(() => {
     if (open) {
@@ -220,7 +220,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                     <Button variant="ghost" size="icon" onClick={() => setImageToCrop('')} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
                     <DialogTitle>Crop your new avatar</DialogTitle>
                 </DialogHeader>
-                <div className="flex-1 flex items-center justify-center my-4 overflow-hidden"><ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={1} minWidth={100}><img ref={imgRef} src={imageToCrop} onLoad={e => setCrop(centerAspectCrop(e.currentTarget.width, e.currentTarget.height, 1))} className="max-h-full max-w-full" /></ReactCrop></div>
+                <div className="flex-1 flex items-center justify-center my-4 overflow-hidden"><ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={1} minWidth={100}><img ref={imgRef} src={imageToCrop} onLoad={e => setCrop(centerAspectCrop(e.currentTarget.width, e.currentTarget.height, 1))} className="max-h-full max-w-full" alt="Crop Preview" /></ReactCrop></div>
                 <DialogFooter className="gap-2"><Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button><Button onClick={handleCropConfirm} disabled={isCropping}>{isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Set Avatar</Button></DialogFooter>
             </div>
         ) : isEditing ? (

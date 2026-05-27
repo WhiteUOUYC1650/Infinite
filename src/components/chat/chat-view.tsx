@@ -356,18 +356,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         </DropdownMenuItem>
                     </>
                   )}
-                  {(isOwner || isAdmin) && item.type === 'group' && (
-                    <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
-                      <Video className="mr-3 h-4 w-4 text-primary" />
-                      <span>{t('video_chat_title')}</span>
-                    </DropdownMenuItem>
-                  )}
-                  {(isOwner || isAdmin) && item.type === 'channel' && (
-                    <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
-                      <Radio className="mr-3 h-4 w-4 text-primary" />
-                      <span>{t('broadcast_title')}</span>
-                    </DropdownMenuItem>
-                  )}
                   {(isOwner || isAdmin || isDM || isSavedMessages) && (
                       <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
                         <Eraser className="mr-3 h-4 w-4" />
@@ -378,12 +366,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
                         <Trash2 className="mr-3 h-4 w-4" />
                         <span>{t('delete_chat')}</span>
-                      </DropdownMenuItem>
-                  )}
-                  {!isSavedMessages && !isOwner && !isAdmin && (item.type === 'group' || item.type === 'channel') && (
-                      <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
-                        <LogOut className="mr-3 h-4 w-4" />
-                        <span>{t('leave')}</span>
                       </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
