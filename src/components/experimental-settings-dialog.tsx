@@ -83,7 +83,6 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
   </button>
 );
 
-
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean }) => (
     <div className="flex items-start justify-between w-full p-4">
         <div className="flex flex-col flex-1 mr-4 min-w-0">
@@ -93,7 +92,6 @@ const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, 
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" disabled={disabled} />
     </div>
 );
-
 
 export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
   const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']);
@@ -105,20 +103,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
-  const { isUpdateAvailable, promptUpdate } = useUpdatePrompt();
   
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   const [cloudPassword, setCloudPassword] = useState('');
   const [recoveryCodeToShow, setRecoveryCodeToShow] = useState<string | null>(null);
   const [isPasswordSet, setIsPasswordSet] = useState(false);
-  const [showCloudPasswordDialog, setShowCloudPasswordDialog] = useState(false);
   
   const [androidVersion, setAndroidVersion] = useState<number | null>(null);
   useEffect(() => {
@@ -131,7 +126,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   }, []);
 
-  const isExperimentalRestricted = androidVersion !== null && androidVersion < 9;
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
 
   const transfersQuery = useMemo(() => {
@@ -198,11 +192,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   }, [page, db, currentUser.uid]);
 
-
   useEffect(() => {
     if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0;
   }, [page]);
-
 
   const navigateTo = (newPage: SettingsPage) => {
     setAnimationDirection('forward');
@@ -253,27 +245,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         auth.signOut();
     }
   };
-  
-  const handleDeleteAccount = async () => {
-    if (!auth || !db || !currentUser?.username) return;
-    setIsDeleting(true);
-    sessionStorage.setItem('isDeletingAccount', 'true');
-    const userToDelete = auth.currentUser;
-    if (!userToDelete) { setIsDeleting(false); sessionStorage.removeItem('isDeletingAccount'); return; }
-    try {
-        await runTransaction(db, async (transaction) => {
-            const userDocRef = doc(db, 'users', userToDelete.uid);
-            const usernameDocRef = doc(db, 'usernames', currentUser.username!);
-            transaction.update(userDocRef, { name: 'Deleted Account', username: `@deleted_${userToDelete.uid}`, avatar: '', status: 'offline', isDeleted: true, });
-            transaction.delete(usernameDocRef);
-        });
-        await deleteUser(userToDelete);
-        router.push('/goodbye');
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: t('delete_account_error') });
-        setIsDeleting(false);
-    }
-  };
 
   const handleToggleLoginProtection = async (enabled: boolean) => {
     if (!db || !currentUser.uid) return;
@@ -281,25 +252,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     try {
         await updateDoc(doc(db, 'users', currentUser.uid), { loginProtectionEnabled: enabled });
         toast({ title: t('dm_success') });
-    } finally { setIsUpdatingPrivacy(false); }
-  };
-
-  const handleUpdateStoryExpiration = async (duration: string) => {
-    if (!db || !currentUser.uid) return;
-    setIsUpdatingPrivacy(true);
-    try {
-        await updateDoc(doc(db, 'users', currentUser.uid), { storyExpirationDuration: parseInt(duration) });
-        toast({ title: t('dm_success') });
-    } finally { setIsUpdatingPrivacy(false); }
-  };
-
-  const handleSaveCloudPassword = async () => {
-    if (!db || !currentUser.uid || !cloudPassword.trim()) return;
-    setIsUpdatingPrivacy(true);
-    try {
-        const recoveryCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-        await setDoc(doc(db, 'users', currentUser.uid, 'private', 'security'), { cloudPassword: cloudPassword.trim(), recoveryCode }, { merge: true });
-        setIsPasswordSet(true); setRecoveryCodeToShow(recoveryCode); setShowCloudPasswordDialog(false); setCloudPassword('');
     } finally { setIsUpdatingPrivacy(false); }
   };
 
@@ -382,8 +334,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           case 'privacy': return <div className='divide-y'><SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} /></div>;
           case 'dataStorage': return <div className='p-4 space-y-2'><div className='flex justify-between'><span className='font-medium'>{t('cache_usage')}</span><span>{currentCacheSize}</span></div><Button variant="outline" className='w-full' onClick={handleClearCache}>{t('clear_cache')}</Button></div>;
           case 'infGold': return <div className='p-8 flex flex-col items-center text-center gap-4'><InfGoldIcon className='h-12 w-12 text-amber-600' /><h2 className='text-3xl font-black'>{Math.round(currentUser.infGoldBalance || 0)}</h2><Button className='w-full' onClick={() => navigateTo('dailyBonus')}>{t('daily_bonus')}</Button></div>;
-          case 'dailyBonus': return <div className='p-6'><DailyBonusWheel onSpin={async () => { const userRef = doc(db!, 'users', currentUser.uid); await updateDoc(userRef, { infGoldBalance: increment(10), lastDailyBonusClaimed: serverTimestamp() }); }} isSpinning={false} setSpinning={() => {}} canSpin={isBonusAvailable} rotation={0} /></div>;
-          case 'whatsNew': return <div className='p-6 space-y-4'><h2 className='text-xl font-bold'>{t('whats_new')}</h2><p className='text-sm text-muted-foreground'>• {t('whats_new_legacy_title')}<br/>• {t('whats_new_font_title')}<br/>• {t('whats_new_ui_title')}</p></div>;
+          case 'dailyBonus': return <div className='p-6'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
+          case 'whatsNew': return <div className='p-6 space-y-4'><h2 className='text-xl font-bold'>{t('whats_new')}</h2><p className='text-sm text-muted-foreground'>• {t('whats_new_legacy_title')}<br/>• {t('whats_new_font_title')}<br/>• {t('whats_new_ui_title')}<br/>• {t('whats_new_optimization_title')}</p></div>;
           case 'help': return <Accordion type="single" collapsible className="w-full">{faqs.map((f, i) => (<AccordionItem value={`f-${i}`} key={i} className="px-4"><AccordionTrigger>{f.question}</AccordionTrigger><AccordionContent>{f.answer === '[BOT_GUIDE_BUTTON]' ? <Button variant="outline" onClick={() => navigateTo('botGuide')}>{t('open_full_guide')}</Button> : <ReactMarkdown>{f.answer}</ReactMarkdown>}</AccordionContent></AccordionItem>))}</Accordion>;
           case 'botGuide': return botGuidePageContent;
           case 'account': return <div className='p-4 space-y-2'><Button variant="outline" className='w-full' onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>{t('edit_profile')}</Button><Button variant="destructive" className='w-full' onClick={handleLogout}>{t('logout')}</Button></div>;
