@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight } from 'lucide-react';
-import { UserAvatarWithStatus, InfiniteLogo } from './user-avatar-with-status';
+import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch } from 'firebase/firestore';
