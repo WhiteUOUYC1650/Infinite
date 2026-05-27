@@ -25,12 +25,21 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Global Font Override for System Font Setting */
+/* Global Font Override for System Font Setting - FORCED TOTAL OVERRIDE */
 body.use-system-font,
 body.use-system-font *,
 body.use-system-font .font-headline,
 body.use-system-font .font-body,
-body.use-system-font .font-mono {
+body.use-system-font .font-mono,
+body.use-system-font button,
+body.use-system-font input,
+body.use-system-font textarea,
+body.use-system-font span,
+body.use-system-font p,
+body.use-system-font h1,
+body.use-system-font h2,
+body.use-system-font h3,
+body.use-system-font h4 {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
