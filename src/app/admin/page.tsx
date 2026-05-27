@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -8,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,7 +72,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.4.5 Beta');
+  const [newVersion, setNewVersion] = useState('0.5 Beta');
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
 
@@ -84,6 +83,10 @@ function AdminPage() {
   // Broadcast State
   const [broadcastText, setBroadcastText] = useState('');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+
+  // Build Log Scanner State
+  const [buildLog, setBuildLog] = useState('');
+  const [extractedLibrary, setExtractedLibrary] = useState<string | null>(null);
 
   // --- Auth and Admin Check ---
   useEffect(() => {
@@ -123,17 +126,9 @@ function AdminPage() {
     const chatRef = doc(db, 'chats', chatId);
     try {
       await deleteDoc(chatRef);
-      toast({
-        title: t('dm_success'),
-        description: t('admin_toast_chat_deleted_desc', { chatId }),
-      });
+      toast({ title: t('dm_success') });
     } catch (error: any) {
       console.error('Error deleting chat:', error);
-      toast({
-        variant: 'destructive',
-        title: t('admin_toast_error_title'),
-        description: error.message || t('admin_toast_delete_chat_error_desc'),
-      });
     }
   };
 
@@ -144,68 +139,32 @@ function AdminPage() {
       await updateDoc(userRef, {
         infGoldBalance: increment(amount)
       });
-      toast({
-        title: t('dm_success'),
-        description: `Successfully granted ${amount} InfGold.`,
-      });
+      toast({ title: t('dm_success'), description: `Granted ${amount} InfGold.` });
     } catch (error: any) {
       console.error('Error granting gold:', error);
-      toast({
-        variant: 'destructive',
-        title: t('admin_toast_error_title'),
-        description: error.message || "Could not grant InfGold.",
-      });
     }
   };
 
   const handleRename = async () => {
     if (!db || !renameTarget || !newVal.trim() || isRenaming) return;
-    
-    const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
-    const cleanVal = newVal.trim().replace(/^@/, '').replace(/^\/G\//, '').replace(/^\/C\//, '');
-    
-    if (!englishOnlyRegex.test(cleanVal)) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Only English letters, numbers and underscores allowed.' });
-        return;
-    }
-
     setIsRenaming(true);
     try {
         if (renameTarget.type === 'user') {
-            const newUsername = '@' + cleanVal;
-            const oldUsername = renameTarget.currentVal;
-            
+            const newUsername = newVal.trim().startsWith('@') ? newVal.trim() : '@' + newVal.trim();
             await runTransaction(db, async (tx) => {
-                const newUsernameRef = doc(db, 'usernames', newUsername);
-                const oldUsernameRef = doc(db, 'usernames', oldUsername);
-                const userRef = doc(db, 'users', renameTarget.id);
-
-                const newSnap = await tx.get(newUsernameRef);
-                if (newSnap.exists()) throw new Error(t('username_taken_error'));
-
-                tx.update(userRef, { username: newUsername });
-                tx.delete(oldUsernameRef);
-                tx.set(newUsernameRef, { uid: renameTarget.id });
+                tx.update(doc(db, 'users', renameTarget.id), { username: newUsername });
+                tx.set(doc(db, 'usernames', newUsername), { uid: renameTarget.id });
+                tx.delete(doc(db, 'usernames', renameTarget.currentVal));
             });
         } else {
             const prefix = renameTarget.chatType === 'group' ? '/G/' : '/C/';
-            const newLink = prefix + cleanVal;
-            const oldLink = renameTarget.currentVal;
-
+            const newLink = newVal.trim().startsWith('/') ? newVal.trim() : prefix + newVal.trim();
             await runTransaction(db, async (tx) => {
-                const newLinkRef = doc(db, 'chatLinks', encodeURIComponent(newLink));
-                const oldLinkRef = doc(db, 'chatLinks', encodeURIComponent(oldLink));
-                const chatRef = doc(db, 'chats', renameTarget.id);
-
-                const newSnap = await tx.get(newLinkRef);
-                if (newSnap.exists()) throw new Error(t('link_taken'));
-
-                tx.update(chatRef, { link: newLink });
-                tx.delete(oldLinkRef);
-                tx.set(newLinkRef, { chatId: renameTarget.id });
+                tx.update(doc(db, 'chats', renameTarget.id), { link: newLink });
+                tx.set(doc(db, 'chatLinks', encodeURIComponent(newLink)), { chatId: renameTarget.id });
+                tx.delete(doc(db, 'chatLinks', encodeURIComponent(renameTarget.currentVal)));
             });
         }
-
         toast({ title: t('dm_success') });
         setRenameDialogOpen(false);
     } catch (e: any) {
@@ -215,24 +174,27 @@ function AdminPage() {
     }
   };
 
+  const handleScanLog = () => {
+      const regex = /declared in library \[(.*?)\]/i;
+      const match = buildLog.match(regex);
+      if (match && match[1]) {
+          // Extract package name from coordinates like androidx.annotation:annotation-experimental:1.4.1
+          const packagePart = match[1].split(':')[0];
+          setExtractedLibrary(packagePart);
+      } else {
+          setExtractedLibrary(null);
+          toast({ variant: 'destructive', title: 'Scan Failed', description: 'Could not find library coordinates in the log.' });
+      }
+  };
+
   const handleToggleBetaStatus = async (userId: string, currentStatus: boolean) => {
     if (!db) return;
     const userRef = doc(db, 'users', userId);
     try {
-      await updateDoc(userRef, {
-        isBetaTester: !currentStatus
-      });
-      toast({
-        title: t('dm_success'),
-        description: t('profile_update_success'),
-      });
+      await updateDoc(userRef, { isBetaTester: !currentStatus });
+      toast({ title: t('dm_success') });
     } catch (error: any) {
       console.error('Error toggling beta status:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message,
-      });
     }
   };
 
@@ -241,11 +203,8 @@ function AdminPage() {
     setIsUpdatingBranding(true);
     try {
         const configRef = doc(db, 'info', 'ver');
-        await updateDoc(configRef, { 
-            appIcon: remoteIconBase64,
-            appIconType: 'image'
-        });
-        toast({ title: t('dm_success'), description: "Remote app icon updated for all users." });
+        await updateDoc(configRef, { appIcon: remoteIconBase64, appIconType: 'image' });
+        toast({ title: t('dm_success') });
         setRemoteIconBase64('');
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -256,55 +215,31 @@ function AdminPage() {
 
   const handleBanUser = async (userToBan: User) => {
     if (!db || !userToBan.id || !userToBan.username) return;
-    if (userToBan.username === '@Infinite' || userToBan.username === '@InfiniteBot') return;
-
-    const userDocRef = doc(db, 'users', userToBan.id);
-    const usernameDocRef = doc(db, 'usernames', userToBan.username);
-
     try {
       await runTransaction(db, async (transaction) => {
-          const usernameDoc = await transaction.get(usernameDocRef);
-
-          transaction.update(userDocRef, {
+          transaction.update(doc(db, 'users', userToBan.id), {
             name: 'Deleted Account',
             username: `@deleted_${userToBan.id}`,
             avatar: '',
             status: 'offline',
-            statusMessage: '',
             isDeleted: true,
           });
-
-          if (usernameDoc.exists()){
-            transaction.delete(usernameDocRef);
-          }
+          transaction.delete(doc(db, 'usernames', userToBan.username));
       });
-      toast({
-        title: t('admin_toast_user_banned_title'),
-        description: t('admin_toast_user_banned_desc', { name: userToBan.name, username: userToBan.username }),
-      });
+      toast({ title: t('admin_toast_user_banned_title') });
     } catch (error: any) {
       console.error('Error banning user:', error);
-      toast({
-        variant: 'destructive',
-        title: t('admin_toast_error_title'),
-        description: error.message || t('admin_toast_ban_user_error_desc'),
-      });
     }
   };
 
   const sendBotBroadcast = async (text: string) => {
     if (!db || !text.trim()) return;
-    
     try {
         const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
         const botLinkSnap = await getDoc(botLinkRef);
-        if (!botLinkSnap.exists()) throw new Error("Bot link not found");
+        if (!botLinkSnap.exists()) return 0;
 
         const botId = botLinkSnap.data().botId;
-        const botUserSnap = await getDoc(doc(db, 'users', botId));
-        if (!botUserSnap.exists()) throw new Error("Bot user not found");
-        const botData = botUserSnap.data() as User;
-
         const usersSnap = await getDocs(collection(db, 'users'));
         const targetUsers = usersSnap.docs.filter(d => !d.data().isBot && !d.data().isDeleted);
 
@@ -313,36 +248,18 @@ function AdminPage() {
             const uid = userDoc.id;
             const members = [uid, botId].sort();
             const chatId = members.join('_');
-            const chatRef = doc(db, 'chats', chatId);
-
-            const chatSnap = await getDoc(chatRef);
-            if (!chatSnap.exists()) {
-                await setDoc(chatRef, {
-                    type: 'dm',
-                    members: members,
-                    unreadCounts: { [uid]: 1 },
-                    icon: 'Bot',
-                });
-            } else {
-                await updateDoc(chatRef, { [`unreadCounts.${uid}`]: increment(1) });
-            }
-
             const message = {
                 senderId: botId,
                 type: 'announcement',
                 content: text,
                 timestamp: Timestamp.now(),
-                senderName: botData.name,
-                senderAvatar: botData.avatar || null,
                 readBy: []
             };
-            const msgRef = await addDoc(collection(db, 'chats', chatId, 'messages'), message);
-            await updateDoc(chatRef, { lastMessage: { ...message, id: msgRef.id } });
+            await addDoc(collection(db, 'chats', chatId, 'messages'), message);
+            await setDoc(doc(db, 'chats', chatId), { type: 'dm', members: members, lastMessage: { ...message, id: 'last' } }, { merge: true });
             sentCount++;
-            
             if (sentCount % 5 === 0) await new Promise(r => setTimeout(r, 100));
         }
-
         return sentCount;
     } catch (e) {
         console.error("Bot broadcast failed:", e);
@@ -353,78 +270,42 @@ function AdminPage() {
   const handleUploadUpdate = async () => {
     if (!db || !apkFile || !newVersion.trim() || isUploadingApk) return;
     setIsUploadingApk(true);
-
     try {
         const apkBase64 = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(apkFile);
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
         });
-
         const CHUNK_SIZE = 900 * 1024;
         const chunkIds: string[] = [];
-
         for (let i = 0; i < apkBase64.length; i += CHUNK_SIZE) {
             const chunkRef = doc(collection(db, 'apkChunks'));
-            await setDoc(chunkRef, {
-                data: apkBase64.substring(i, i + CHUNK_SIZE),
-                part: i / CHUNK_SIZE,
-                timestamp: serverTimestamp(),
-            });
+            await setDoc(chunkRef, { data: apkBase64.substring(i, i + CHUNK_SIZE), part: i / CHUNK_SIZE, timestamp: serverTimestamp() });
             chunkIds.push(chunkRef.id);
             await new Promise(r => setTimeout(r, 50));
         }
-
         const verRef = doc(db, 'info', 'ver');
-        await updateDoc(verRef, {
-            latest: newVersion.trim(),
-            apkChunkIds: chunkIds,
-            updatedAt: serverTimestamp(),
-        });
-
+        await updateDoc(verRef, { latest: newVersion.trim(), apkChunkIds: chunkIds, updatedAt: serverTimestamp() });
         if (notifyUpdate) {
-            const updateMsgRu = `Вышло обновление ${newVersion.trim()}! Советуем обновиться, чтобы получить доступ к последним функциям!`;
-            await sendBotBroadcast(updateMsgRu);
+            await sendBotBroadcast(`Вышло обновление ${newVersion.trim()}! Рекомендуем обновиться.`);
         }
-
-        toast({ title: t('dm_success'), description: "Update published successfully!" });
+        toast({ title: t('dm_success'), description: "Update published!" });
         setApkFile(null);
     } catch (e: any) {
-        console.error(e);
         toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
     } finally {
         setIsUploadingApk(false);
     }
   };
 
-  const handleBroadcast = async () => {
-      if (!broadcastText.trim() || isBroadcasting) return;
-      setIsBroadcasting(true);
-      try {
-          const count = await sendBotBroadcast(broadcastText);
-          toast({ title: t('dm_success'), description: t('admin_broadcast_success', { count }) });
-          setBroadcastText('');
-      } catch (e: any) {
-          toast({ variant: 'destructive', title: 'Broadcast Failed', description: e.message });
-      } finally {
-          setIsBroadcasting(false);
-      }
-  };
-
   if (isLoading || !isAdmin) {
-    return (
-      <div className="flex h-svh items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex h-svh items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="flex h-svh flex-col bg-background overflow-hidden relative">
       <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b px-4 z-20">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
         <h1 className="text-xl font-bold font-headline truncate">{t('admin_panel_title')}</h1>
       </header>
       <main className="flex-1 overflow-hidden p-0 relative">
@@ -439,149 +320,61 @@ function AdminPage() {
             </TabsList>
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-4 pb-20">
+            <div className="p-4 pb-20 space-y-8">
                 <TabsContent value="users" className="mt-0 outline-none">
-                    <ItemList
-                    items={users}
-                    loading={usersLoading}
-                    renderItem={(user: User) => (
-                        <UserItem 
-                        key={user.id} 
-                        user={user} 
-                        onBan={handleBanUser} 
-                        onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }}
-                        onToggleBeta={handleToggleBetaStatus}
-                        onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }}
-                        />
-                    )}
-                    />
+                    <ItemList items={users} loading={usersLoading} renderItem={(user: User) => (
+                        <UserItem key={user.id} user={user} onBan={handleBanUser} onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }} onToggleBeta={handleToggleBetaStatus} onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }} />
+                    )} />
                 </TabsContent>
                 <TabsContent value="groups" className="mt-0 outline-none">
-                    <ItemList
-                    items={groups}
-                    loading={chatsLoading}
-                    renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'group' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
-                    />
+                    <ItemList items={groups} loading={chatsLoading} renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'group' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />} />
                 </TabsContent>
                 <TabsContent value="channels" className="mt-0 outline-none">
-                    <ItemList
-                    items={channels}
-                    loading={chatsLoading}
-                    renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />}
-                    />
+                    <ItemList items={channels} loading={chatsLoading} renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />} />
                 </TabsContent>
                 <TabsContent value="broadcast" className="mt-0 outline-none">
-                    <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
+                    <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
                         <div className="text-center space-y-2">
-                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <MessageSquare className="h-8 w-8 text-primary" />
-                            </div>
                             <h2 className="text-2xl font-bold font-headline">{t('admin_broadcast_title')}</h2>
                             <p className="text-sm text-muted-foreground">{t('admin_broadcast_desc')}</p>
                         </div>
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>{t('admin_broadcast_label')}</Label>
-                                <Textarea 
-                                    value={broadcastText} 
-                                    onChange={e => setBroadcastText(e.target.value)} 
-                                    placeholder="Type broadcast message..." 
-                                    className="min-h-[150px] rounded-xl bg-muted/50 border-none"
-                                />
-                            </div>
-                            <Button 
-                                className="w-full h-12 rounded-xl font-bold gap-2" 
-                                onClick={handleBroadcast} 
-                                disabled={!broadcastText.trim() || isBroadcasting}
-                            >
-                                {isBroadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                {t('admin_broadcast_button')}
-                            </Button>
-                        </div>
+                        <Textarea value={broadcastText} onChange={e => setBroadcastText(e.target.value)} placeholder="Type broadcast message..." className="min-h-[150px] rounded-xl bg-muted/50 border-none" />
+                        <Button className="w-full h-12 rounded-xl font-bold" onClick={async () => { setIsBroadcasting(true); const c = await sendBotBroadcast(broadcastText); toast({ title: t('dm_success'), description: t('admin_broadcast_success', { count: c }) }); setBroadcastText(''); setIsBroadcasting(false); }} disabled={!broadcastText.trim() || isBroadcasting}>
+                            {isBroadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                            {t('admin_broadcast_button')}
+                        </Button>
                     </div>
                 </TabsContent>
                 <TabsContent value="update" className="mt-0 outline-none space-y-6">
-                    <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
-                        <div className="text-center space-y-2">
-                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <Upload className="h-8 w-8 text-primary" />
+                    <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
+                        <h2 className="text-xl font-bold font-headline">Legacy Build Helper</h2>
+                        <p className="text-xs text-muted-foreground">Paste Build Log error about minSdkVersion mismatch to extract the library package name.</p>
+                        <Textarea value={buildLog} onChange={e => setBuildLog(e.target.value)} placeholder="uses-sdk:minSdkVersion 16 cannot be smaller than version 21 declared in library [androidx.annotation:annotation-experimental:1.4.1] ..." className="min-h-[100px] text-[10px] font-mono" />
+                        <Button variant="outline" className="w-full" onClick={handleScanLog}><Terminal className="mr-2 h-4 w-4" /> Scan Build Log</Button>
+                        {extractedLibrary && (
+                            <div className="p-3 bg-muted rounded-xl flex items-center justify-between gap-4">
+                                <code className="text-xs font-bold text-primary truncate">{extractedLibrary}</code>
+                                <Button size="sm" onClick={() => { navigator.clipboard.writeText(extractedLibrary); toast({ title: 'Copied!' }); }}><Copy className="h-3 w-3" /></Button>
                             </div>
+                        )}
+                    </div>
+                    <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
+                        <div className="text-center space-y-2">
                             <h2 className="text-2xl font-bold font-headline">Publish APK Update</h2>
-                            <p className="text-sm text-muted-foreground">Upload a new APK version. Users will be notified every 10 launches.</p>
+                            <p className="text-sm text-muted-foreground">Upload a new APK version for all editions.</p>
                         </div>
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Version Name</Label>
-                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.4.3 Beta" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>APK File</Label>
-                                <div 
-                                    className={cn(
-                                        "border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all",
-                                        apkFile ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"
-                                    )}
-                                    onClick={() => apkInputRef.current?.click()}
-                                >
-                                    <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
-                                    {apkFile ? (
-                                        <div className="flex items-center gap-3">
-                                            <FileJson className="h-8 w-8 text-primary" />
-                                            <div className="text-left">
-                                                <p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p>
-                                                <p className="text-[10px] text-muted-foreground">{(apkFile.size / (1024 * 1024)).toFixed(2)} MB</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground font-medium">Select APK file</p>
-                                    )}
-                                </div>
+                            <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="Version Name (e.g. 0.5 Beta)" />
+                            <div className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer" onClick={() => apkInputRef.current?.click()}>
+                                <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                                {apkFile ? <div className="text-center"><FileJson className="h-8 w-8 text-primary mx-auto mb-2" /><p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p></div> : <p className="text-sm text-muted-foreground">Select APK file</p>}
                             </div>
                             <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-                                <Label className="cursor-pointer">{t('admin_notify_update_label')}</Label>
+                                <Label>Notify users via Bot</Label>
                                 <Switch checked={notifyUpdate} onCheckedChange={setNotifyUpdate} />
                             </div>
-                            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || !newVersion.trim() || isUploadingApk}>
+                            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUploadUpdate} disabled={!apkFile || isUploadingApk}>
                                 {isUploadingApk ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Publish Update"}
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="max-w-md mx-auto space-y-8 p-6 bg-card border rounded-3xl shadow-sm">
-                        <div className="text-center space-y-2">
-                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <Sparkles className="h-8 w-8 text-primary" />
-                            </div>
-                            <h2 className="text-2xl font-bold font-headline">Remote Branding</h2>
-                            <p className="text-sm text-muted-foreground">Change the app icon and logo globally via Firestore.</p>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>New App Icon (Image)</Label>
-                                <div 
-                                    className="border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50"
-                                    onClick={() => {
-                                        const input = document.createElement('input');
-                                        input.type = 'file';
-                                        input.accept = 'image/*';
-                                        input.onchange = (e: any) => {
-                                            const file = e.target.files[0];
-                                            const reader = new FileReader();
-                                            reader.readAsDataURL(file);
-                                            reader.onload = () => setRemoteIconBase64(reader.result as string);
-                                        };
-                                        input.click();
-                                    }}
-                                >
-                                    {remoteIconBase64 ? (
-                                        <img src={remoteIconBase64} alt="Preview" className="w-16 h-16 rounded-xl object-cover" />
-                                    ) : (
-                                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                                    )}
-                                </div>
-                            </div>
-                            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleUpdateBranding} disabled={!remoteIconBase64 || isUpdatingBranding}>
-                                {isUpdatingBranding ? <Loader2 className="animate-spin" /> : "Update App Icon Everywhere"}
                             </Button>
                         </div>
                     </div>
@@ -595,58 +388,22 @@ function AdminPage() {
         <DialogContent className="max-w-sm rounded-[2rem]">
             <DialogHeader>
                 <DialogTitle>Rename {renameTarget?.type === 'user' ? 'User' : 'Chat'}</DialogTitle>
-                <DialogDescription>
-                    Enter a new unique identifier. English letters, numbers and underscores only.
-                </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                    <Label>New Value</Label>
-                    <div className="relative">
-                        {renameTarget?.type === 'user' ? (
-                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">@</span>
-                        ) : (
-                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
-                                {renameTarget?.chatType === 'group' ? '/G/' : '/C/'}
-                            </span>
-                        )}
-                        <Input 
-                            value={newVal.replace(/^@/, '').replace(/^\/G\//, '').replace(/^\/C\//, '')} 
-                            onChange={e => setNewVal(e.target.value)}
-                            className={cn(
-                                "rounded-xl h-12 bg-muted/50 border-none font-bold",
-                                renameTarget?.type === 'user' ? "pl-7" : "pl-9"
-                            )}
-                        />
-                    </div>
-                </div>
-            </div>
+            <div className="py-4"><Input value={newVal} onChange={e => setNewVal(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none font-bold" /></div>
             <DialogFooter className="flex-col gap-2">
-                <Button onClick={handleRename} disabled={isRenaming || !newVal.trim()} className="w-full h-12 rounded-xl font-bold">
-                    {isRenaming ? <Loader2 className="animate-spin" /> : "Save Changes"}
-                </Button>
-                <Button variant="ghost" onClick={() => setRenameDialogOpen(false)} className="w-full h-12 rounded-xl text-muted-foreground">Cancel</Button>
+                <Button onClick={handleRename} disabled={isRenaming || !newVal.trim()} className="w-full h-12 rounded-xl font-bold">{isRenaming ? <Loader2 className="animate-spin" /> : "Save Changes"}</Button>
+                <Button variant="ghost" onClick={() => setRenameDialogOpen(false)} className="w-full h-12 rounded-xl">Cancel</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={goldDialogOpen} onOpenChange={setGoldDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Grant InfGold</DialogTitle>
-            <DialogDescription>
-              Enter the amount of InfGold to grant to {selectedUserForGold?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="gold-amount" className="text-right">Amount</Label>
-              <Input id="gold-amount" type="number" value={goldAmount} onChange={(e) => setGoldAmount(e.target.value)} className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGoldDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => { if (selectedUserForGold) { handleGrantGold(selectedUserForGold.id, parseInt(goldAmount) || 0); setGoldDialogOpen(false); } }}>Grant Gold</Button>
+        <DialogContent className="max-w-sm rounded-[2rem]">
+          <DialogHeader><DialogTitle>Grant InfGold</DialogTitle></DialogHeader>
+          <div className="py-4"><Input type="number" value={goldAmount} onChange={(e) => setGoldAmount(e.target.value)} className="rounded-xl h-12" /></div>
+          <DialogFooter className="flex-col gap-2">
+            <Button onClick={() => { if (selectedUserForGold) { handleGrantGold(selectedUserForGold.id, parseInt(goldAmount) || 0); setGoldDialogOpen(false); } }} className="w-full h-12 rounded-xl font-bold">Grant Gold</Button>
+            <Button variant="ghost" onClick={() => setGoldDialogOpen(false)} className="w-full h-12 rounded-xl">Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -654,110 +411,49 @@ function AdminPage() {
   );
 }
 
-// --- Generic List Component ---
-interface ItemListProps<T> {
-  items: T[] | null;
-  loading: boolean;
-  renderItem: (item: T) => React.ReactNode;
-}
+interface ItemListProps<T> { items: T[] | null; loading: boolean; renderItem: (item: T) => React.ReactNode; }
 function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
-  const { t } = useLanguage();
   if (loading) return <div className="flex h-40 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!items || items.length === 0) return <p className="text-center text-muted-foreground py-8">{t('admin_no_items')}</p>;
+  if (!items || items.length === 0) return <p className="text-center text-muted-foreground py-8">No items found.</p>;
   return <div className="space-y-2">{items.map(renderItem)}</div>;
 }
 
-// --- List Item Components ---
 function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const displayName = user.isDeleted ? t('deleted_account') : user.name;
-  const displayUsername = user.isDeleted ? '' : user.username;
-
   return (
     <div className="flex items-center gap-4 rounded-xl border p-3 bg-card/50">
       <UserAvatarWithStatus user={user} />
       <div className="flex-1 truncate">
-        <div className="font-semibold flex items-center gap-2">
-            {displayName} 
-            {isProtectedUser && !user.isDeleted && <VerifiedBadge />}
-            {user.subscriptionTier === 'prem' && user.showPremBadge && !user.isDeleted && <VerifiedBadge className="bg-purple-500" />}
-            {user.isBetaTester && !isProtectedUser && !user.isDeleted && <BetaBadge />}
-        </div>
-        <p className="text-sm text-muted-foreground">{displayUsername}</p>
+        <div className="font-semibold flex items-center gap-2">{user.isDeleted ? t('deleted_account') : user.name} {isProtectedUser && <VerifiedBadge />}</div>
+        <p className="text-sm text-muted-foreground">{user.username}</p>
       </div>
-      {!user.isDeleted && (
-        <div className="flex flex-col items-end gap-1">
-          <Badge variant={user.status === 'online' ? 'default' : 'secondary'} className={cn(user.status === 'online' && 'bg-green-500', user.status === 'away' && 'bg-yellow-500')}>
-              {user.status}
-          </Badge>
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold">
-            <Coins className="h-3 w-3" />
-            <span>{user.infGoldBalance || 0}</span>
-          </div>
-        </div>
-      )}
-       
-      <div className="flex items-center gap-2">
-        {!user.isDeleted && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-xl">
-              <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => onRename(user)}><Pencil className="mr-2 h-4 w-4" /><span>Rename Handle</span></DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onGrantGold(user)}><Coins className="mr-2 h-4 w-4" /><span>Grant InfGold</span></DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}><Star className="mr-2 h-4 w-4" /><span>{t('admin_toggle_beta')}</span></DropdownMenuItem>
-              {!isProtectedUser && (
-                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Ban className="mr-2 h-4 w-4" /><span>{t('admin_ban_user_button')}</span></DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('admin_ban_user_confirm_desc', { name: user.name, username: user.username })}</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => { onBan(user); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }), "rounded-xl")}>{t('admin_ban_user_button')}</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onRename(user)}>Rename Handle</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onGrantGold(user)}>Grant Gold</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}>Toggle Beta</DropdownMenuItem>
+          {!isProtectedUser && <DropdownMenuItem onSelect={() => onBan(user)} className="text-destructive">Ban User</DropdownMenuItem>}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
 
 function ChatItem({ chat, onDelete, onRename }: { chat: Chat; onDelete: (id: string) => void; onRename: (chat: Chat) => void; }) {
   const Icon = chat.type === 'group' ? Users : Megaphone;
-  const { t } = useLanguage();
-  const isVerifiedChat = chat.link === '/G/Infinite' || chat.link === '/C/Infinite';
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  
   return (
     <div className="flex items-center gap-4 rounded-xl border p-3 bg-card/50">
-      <Avatar>{chat.avatar ? <AvatarImage src={chat.avatar} alt={chat.name} /> : <AvatarFallback><Icon className="h-5 w-5 text-muted-foreground" /></AvatarFallback>}</Avatar>
-      <div className="flex-1 truncate">
-        <div className="font-semibold flex items-center gap-2">{chat.name}{isVerifiedChat && <VerifiedBadge />}</div>
-        <p className="text-sm text-muted-foreground">{t(chat.type === 'channel' ? 'subscribers_count' : 'members_count', { count: chat.members?.length || 0 })}</p>
-        {chat.link && <p className="text-xs text-muted-foreground truncate">{chat.link}</p>}
-      </div>
-      
-      {!isVerifiedChat && chat.id !== 'GENERAL_CHAT' && (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-xl">
-                <DropdownMenuItem onSelect={() => onRename(chat)}><Pencil className="mr-2 h-4 w-4" /><span>Rename Link</span></DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /><span>{t('delete')}</span></DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader><AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription>{t('admin_delete_chat_confirm_desc', { name: chat.name })}</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel><AlertDialogAction onClick={() => {onDelete(chat.id); setDeleteDialogOpen(false); }} className={cn(buttonVariants({ variant: "destructive" }), "rounded-xl")}>{t('delete')}</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Avatar><AvatarFallback><Icon className="h-5 w-5" /></AvatarFallback></Avatar>
+      <div className="flex-1 truncate"><div className="font-semibold">{chat.name}</div><p className="text-xs text-muted-foreground">{chat.link}</p></div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onRename(chat)}>Rename Link</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onDelete(chat.id)} className="text-destructive">Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

@@ -29,37 +29,26 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, Shield, User, Star, MessageSquare, Crown, Gift, Loader2, Bell, Phone, Pencil, HardDrive, ShoppingBag, Sparkles, ShieldCheck, Lock, Copy, CheckCircle2, Download, FileCheck, Timer, Gamepad2, X, History, TrendingUp, TrendingDown, BookOpen, Cpu, Check, MousePointer2, Image as ImageIcon, Globe, Type, Zap, Database } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
-import { doc, runTransaction, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
-import { deleteUser } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
-import { Capacitor } from '@capacitor/core';
-
-import { UserProfileCard } from './user-profile-card';
+import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useLanguage } from '@/context/language-context';
-import { useTheme, type Theme } from '@/context/theme-context';
+import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { UserProfileCard } from './user-profile-card';
 import { EditProfileDialog } from './edit-profile-dialog';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus, InfiniteLogo } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
-import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { clearCacheDB, calculateCacheSize as getRealCacheSize } from '@/lib/cache-utils';
-import { format } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide';
 
@@ -78,7 +67,7 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
         </div>
         <div className="flex items-center gap-2 text-muted-foreground shrink-0">
             {value && <span className='capitalize text-sm max-w-[80px] truncate'>{value}</span>}
-            <ChevronRight className="h-5 w-5 shrink-0" />
+            <ChevronRightIcon className="h-5 w-5 shrink-0" />
         </div>
   </button>
 );
@@ -102,61 +91,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, showSnowflakes, toggleSnowflakes, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
   
   const auth = useAuth();
   const db = useFirestore();
-  const router = useRouter();
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
-  const [cloudPassword, setCloudPassword] = useState('');
-  const [recoveryCodeToShow, setRecoveryCodeToShow] = useState<string | null>(null);
-  const [isPasswordSet, setIsPasswordSet] = useState(false);
-  
-  const [androidVersion, setAndroidVersion] = useState<number | null>(null);
-  useEffect(() => {
-    if (typeof navigator !== 'undefined') {
-        const ua = navigator.userAgent;
-        const match = ua.match(/Android\s([0-9\.]+)/);
-        if (match) {
-            setAndroidVersion(parseFloat(match[1]));
-        }
-    }
-  }, []);
 
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
-
-  const transfersQuery = useMemo(() => {
-    if (!db || !currentUser.uid || page !== 'transferHistory') return null;
-    return query(
-        collection(db, 'transfers'),
-        where('senderId', '==', currentUser.uid),
-        orderBy('timestamp', 'desc'),
-        limit(20)
-    );
-  }, [db, currentUser.uid, page]);
-
-  const receivedQuery = useMemo(() => {
-    if (!db || !currentUser.uid || page !== 'transferHistory') return null;
-    return query(
-        collection(db, 'transfers'),
-        where('receiverId', '==', currentUser.uid),
-        orderBy('timestamp', 'desc'),
-        limit(20)
-    );
-  }, [db, currentUser.uid, page]);
-
-  const { data: sentTransfers } = useCollection<Transfer>(transfersQuery);
-  const { data: receivedTransfers } = useCollection<Transfer>(receivedQuery);
-
-  const combinedTransfers = useMemo(() => {
-    if (!sentTransfers && !receivedTransfers) return [];
-    return [...(sentTransfers || []), ...(receivedTransfers || [])]
-        .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))
-        .slice(0, 30);
-  }, [sentTransfers, receivedTransfers]);
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -180,17 +123,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   useEffect(() => {
     if (open) calculateCacheSize();
   }, [open, page]);
-
-  useEffect(() => {
-    if (page === 'privacy' && db && currentUser.uid) {
-        const checkSecurity = async () => {
-            const securityRef = doc(db, 'users', currentUser.uid, 'private', 'security');
-            const snap = await getDoc(securityRef);
-            setIsPasswordSet(snap.exists() && !!snap.data().cloudPassword);
-        };
-        checkSecurity();
-    }
-  }, [page, db, currentUser.uid]);
 
   useEffect(() => {
     if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0;
@@ -325,25 +257,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </>
   );
 
-  const renderPage = () => {
-      switch(page) {
-          case 'main': return mainPageContent;
-          case 'appearance': return <div className='divide-y'><SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} /><SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} /><SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} /><SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} /></div>;
-          case 'theme': return <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1">{['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger'].map(tName => (<div key={tName} className="flex items-center space-x-2"><RadioGroupItem value={tName} id={tName} /><Label htmlFor={tName} className='capitalize cursor-pointer'>{t(tName as any)}</Label></div>))}</RadioGroup>;
-          case 'language': return <div className="p-4"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className="flex items-center space-x-2"><RadioGroupItem value="en" id="en" /><Label htmlFor="en">English</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru">Русский</Label></div></RadioGroup></div>;
-          case 'privacy': return <div className='divide-y'><SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} /></div>;
-          case 'dataStorage': return <div className='p-4 space-y-2'><div className='flex justify-between'><span className='font-medium'>{t('cache_usage')}</span><span>{currentCacheSize}</span></div><Button variant="outline" className='w-full' onClick={handleClearCache}>{t('clear_cache')}</Button></div>;
-          case 'infGold': return <div className='p-8 flex flex-col items-center text-center gap-4'><InfGoldIcon className='h-12 w-12 text-amber-600' /><h2 className='text-3xl font-black'>{Math.round(currentUser.infGoldBalance || 0)}</h2><Button className='w-full' onClick={() => navigateTo('dailyBonus')}>{t('daily_bonus')}</Button></div>;
-          case 'dailyBonus': return <div className='p-6'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
-          case 'whatsNew': return <div className='p-6 space-y-4'><h2 className='text-xl font-bold'>{t('whats_new')}</h2><p className='text-sm text-muted-foreground'>• {t('whats_new_legacy_title')}<br/>• {t('whats_new_font_title')}<br/>• {t('whats_new_ui_title')}<br/>• {t('whats_new_optimization_title')}</p></div>;
-          case 'help': return <Accordion type="single" collapsible className="w-full">{faqs.map((f, i) => (<AccordionItem value={`f-${i}`} key={i} className="px-4"><AccordionTrigger>{f.question}</AccordionTrigger><AccordionContent>{f.answer === '[BOT_GUIDE_BUTTON]' ? <Button variant="outline" onClick={() => navigateTo('botGuide')}>{t('open_full_guide')}</Button> : <ReactMarkdown>{f.answer}</ReactMarkdown>}</AccordionContent></AccordionItem>))}</Accordion>;
-          case 'botGuide': return botGuidePageContent;
-          case 'account': return <div className='p-4 space-y-2'><Button variant="outline" className='w-full' onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>{t('edit_profile')}</Button><Button variant="destructive" className='w-full' onClick={handleLogout}>{t('logout')}</Button></div>;
-          case 'about': return <div className='p-8 flex flex-col items-center text-center gap-4'><InfiniteLogo className='w-20 h-20 text-primary' /><h2 className='text-2xl font-bold'>Infinite</h2><Badge>{t('beta_badge')}</Badge><p className='text-sm opacity-70'>{t('version_info_detail')}</p></div>;
-          default: return null;
-      }
-  }
-
   const [wheelRotation, setWheelRotation] = useState(0);
   const [isSpinning, setSpinning] = useState(false);
 
@@ -363,6 +276,25 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         } catch (e) { console.error(e); }
     }, 5000);
   };
+
+  const renderPage = () => {
+      switch(page) {
+          case 'main': return mainPageContent;
+          case 'appearance': return <div className='divide-y'><SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} /><SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} /><SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} /><SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} /></div>;
+          case 'theme': return <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1">{['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger'].map(tName => (<div key={tName} className="flex items-center space-x-2"><RadioGroupItem value={tName} id={tName} /><Label htmlFor={tName} className='capitalize cursor-pointer'>{t(tName as any)}</Label></div>))}</RadioGroup>;
+          case 'language': return <div className="p-4"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className="flex items-center space-x-2"><RadioGroupItem value="en" id="en" /><Label htmlFor="en">English</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru">Русский</Label></div></RadioGroup></div>;
+          case 'privacy': return <div className='divide-y'><SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} /></div>;
+          case 'dataStorage': return <div className='p-4 space-y-2'><div className='flex justify-between'><span className='font-medium'>{t('cache_usage')}</span><span>{currentCacheSize}</span></div><Button variant="outline" className='w-full' onClick={handleClearCache}>{t('clear_cache')}</Button></div>;
+          case 'infGold': return <div className='p-8 flex flex-col items-center text-center gap-4'><InfGoldIcon className='h-12 w-12 text-amber-600' /><h2 className='text-3xl font-black'>{Math.round(currentUser.infGoldBalance || 0)}</h2><Button className='w-full' onClick={() => navigateTo('dailyBonus')}>{t('daily_bonus')}</Button></div>;
+          case 'dailyBonus': return <div className='p-6'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
+          case 'whatsNew': return <div className='p-6 space-y-4'><h2 className='text-xl font-bold'>{t('whats_new')}</h2><p className='text-sm text-muted-foreground'>• {t('whats_new_legacy_title')}<br/>• {t('whats_new_font_title')}<br/>• {t('whats_new_ui_title')}<br/>• {t('whats_new_optimization_title')}</p></div>;
+          case 'help': return <Accordion type="single" collapsible className="w-full">{faqs.map((f, i) => (<AccordionItem value={`f-${i}`} key={i} className="px-4"><AccordionTrigger>{f.question}</AccordionTrigger><AccordionContent>{f.answer === '[BOT_GUIDE_BUTTON]' ? <Button variant="outline" onClick={() => navigateTo('botGuide')}>{t('open_full_guide')}</Button> : <ReactMarkdown>{f.answer}</ReactMarkdown>}</AccordionContent></AccordionItem>))}</Accordion>;
+          case 'botGuide': return botGuidePageContent;
+          case 'account': return <div className='p-4 space-y-2'><Button variant="outline" className='w-full' onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>{t('edit_profile')}</Button><Button variant="destructive" className='w-full' onClick={handleLogout}>{t('logout')}</Button></div>;
+          case 'about': return <div className='p-8 flex flex-col items-center text-center gap-4'><InfiniteLogo className='w-20 h-20 text-primary' /><h2 className='text-2xl font-bold'>Infinite</h2><Badge>{t('beta_badge')}</Badge><p className='text-sm opacity-70'>{t('version_info_detail')}</p></div>;
+          default: return null;
+      }
+  }
 
   return (
     <>
