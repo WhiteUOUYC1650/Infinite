@@ -53,6 +53,12 @@ jobs:
         mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-standard.apk
       working-directory: ./android
 
+    - name: Upload Standard APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: infinite-standard-apk
+        path: android/app/build/outputs/apk/debug/app-standard.apk
+
     - name: Build Legacy APK (Android 4.1+)
       run: |
         # Patch build.gradle to lower minSdkVersion for Legacy edition
@@ -61,10 +67,8 @@ jobs:
         mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-legacy.apk
       working-directory: ./android
 
-    - name: Upload APKs
+    - name: Upload Legacy APK
       uses: actions/upload-artifact@v4
       with:
-        name: infinite-apks
-        path: |
-          android/app/build/outputs/apk/debug/app-standard.apk
-          android/app/build/outputs/apk/debug/app-legacy.apk
+        name: infinite-legacy-apk
+        path: android/app/build/outputs/apk/debug/app-legacy.apk
