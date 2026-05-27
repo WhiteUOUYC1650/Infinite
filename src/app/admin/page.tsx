@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -7,7 +8,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,7 +73,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.5 Beta');
+  const [newVersion, setNewVersion] = useState('0.5.1 Beta');
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,7 +179,6 @@ function AdminPage() {
       const regex = /declared in library \[(.*?)\]/i;
       const match = buildLog.match(regex);
       if (match && match[1]) {
-          // Extract package name from coordinates like androidx.annotation:annotation-experimental:1.4.1
           const packagePart = match[1].split(':')[0];
           setExtractedLibrary(packagePart);
       } else {
@@ -204,7 +204,7 @@ function AdminPage() {
     try {
         const configRef = doc(db, 'info', 'ver');
         await updateDoc(configRef, { appIcon: remoteIconBase64, appIconType: 'image' });
-        toast({ title: t('dm_success') });
+        toast({ title: t('dm_success'), description: "App icon updated globally!" });
         setRemoteIconBase64('');
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -347,6 +347,26 @@ function AdminPage() {
                 </TabsContent>
                 <TabsContent value="update" className="mt-0 outline-none space-y-6">
                     <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
+                        <h2 className="text-xl font-bold font-headline flex items-center gap-2">
+                            <Palette className="h-5 w-5 text-primary" /> Branding
+                        </h2>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Remote App Icon (Base64 or URL)</Label>
+                                <Textarea 
+                                    value={remoteIconBase64} 
+                                    onChange={e => setRemoteIconBase64(e.target.value)} 
+                                    placeholder="data:image/png;base64,..." 
+                                    className="min-h-[100px] text-[10px] font-mono"
+                                />
+                            </div>
+                            <Button className="w-full" onClick={handleUpdateBranding} disabled={!remoteIconBase64.trim() || isUpdatingBranding}>
+                                {isUpdatingBranding ? <Loader2 className="animate-spin h-4 w-4" /> : "Update Global Icon"}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
                         <h2 className="text-xl font-bold font-headline">Legacy Build Helper</h2>
                         <p className="text-xs text-muted-foreground">Paste Build Log error about minSdkVersion mismatch to extract the library package name.</p>
                         <Textarea value={buildLog} onChange={e => setBuildLog(e.target.value)} placeholder="uses-sdk:minSdkVersion 16 cannot be smaller than version 21 declared in library [androidx.annotation:annotation-experimental:1.4.1] ..." className="min-h-[100px] text-[10px] font-mono" />
@@ -358,13 +378,14 @@ function AdminPage() {
                             </div>
                         )}
                     </div>
+                    
                     <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
                         <div className="text-center space-y-2">
                             <h2 className="text-2xl font-bold font-headline">Publish APK Update</h2>
                             <p className="text-sm text-muted-foreground">Upload a new APK version for all editions.</p>
                         </div>
                         <div className="space-y-4">
-                            <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="Version Name (e.g. 0.5 Beta)" />
+                            <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="Version Name (e.g. 0.5.1 Beta)" />
                             <div className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer" onClick={() => apkInputRef.current?.click()}>
                                 <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
                                 {apkFile ? <div className="text-center"><FileJson className="h-8 w-8 text-primary mx-auto mb-2" /><p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p></div> : <p className="text-sm text-muted-foreground">Select APK file</p>}

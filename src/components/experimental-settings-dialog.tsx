@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -22,7 +23,6 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AccordionHeader,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -42,6 +42,7 @@ import { useLanguage } from '@/context/language-context';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { UserProfileCard } from './user-profile-card';
 import { EditProfileDialog } from './edit-profile-dialog';
 import { InfGoldIcon } from './ui/inf-gold-icon';
@@ -285,25 +286,25 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <div className='space-y-2'>
                   <h3 className='font-bold text-primary flex items-center gap-2'><Zap className='h-4 w-4' /> {t('bot_guide_events')}</h3>
                   <div className='space-y-2 text-xs text-muted-foreground leading-relaxed'>
-                      <ReactMarkdown>{t('bot_guide_event_start')}</ReactMarkdown>
-                      <ReactMarkdown>{t('bot_guide_event_msg')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_event_start')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_event_msg')}</ReactMarkdown>
                   </div>
               </div>
               <div className='space-y-2'>
                   <h3 className='font-bold text-primary flex items-center gap-2'><MessageSquare className='h-4 w-4' /> {t('bot_guide_actions')}</h3>
                   <div className='space-y-2 text-xs text-muted-foreground leading-relaxed'>
-                      <ReactMarkdown>{t('bot_guide_action_send')}</ReactMarkdown>
-                      <ReactMarkdown>{t('bot_guide_action_reply')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_action_send')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_action_reply')}</ReactMarkdown>
                   </div>
               </div>
               <div className='space-y-2'>
                   <h3 className='font-bold text-primary flex items-center gap-2'><Database className='h-4 w-4' /> {t('bot_guide_vars')}</h3>
                   <p className='text-[11px] font-bold text-muted-foreground/80'>{t('bot_guide_var_intro')}</p>
                   <div className='space-y-1 text-xs font-mono bg-muted/50 p-3 rounded-xl border'>
-                      <ReactMarkdown>{t('bot_guide_var_user')}</ReactMarkdown>
-                      <ReactMarkdown>{t('bot_guide_var_msg')}</ReactMarkdown>
-                      <ReactMarkdown>{t('bot_guide_var_bot')}</ReactMarkdown>
-                      <ReactMarkdown>{t('bot_guide_var_time')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_user')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_msg')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_bot')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_time')}</ReactMarkdown>
                   </div>
               </div>
           </div>

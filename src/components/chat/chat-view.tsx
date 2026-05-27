@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -230,21 +231,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
   useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, scrollToBottom]);
 
-  const handleClearHistory = async () => { 
-    if (!db || item.id === 'GENERAL_CHAT') return; 
-    try { 
-      const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); 
-      const batch = writeBatch(db); 
-      snap.forEach(d => batch.delete(d.ref)); 
-      await batch.commit(); 
-      await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); 
-      toast({ title: t('dm_success') }); 
-    } catch(e) { 
-      console.error(e); 
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' }); 
-    } 
-  };
-
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
       const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
@@ -273,16 +259,120 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       return null;
   };
 
+  const handleClearHistory = async () => { 
+    if (!db || item.id === 'GENERAL_CHAT') return; 
+    try { 
+      const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); 
+      const batch = writeBatch(db); 
+      snap.forEach(d => batch.delete(d.ref)); 
+      await batch.commit(); 
+      await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); 
+      toast({ title: t('dm_success') }); 
+    } catch(e) { 
+      console.error(e); 
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' }); 
+    } 
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      if (file.size > maxSizeInBytes) {
+        toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) });
+        return;
+      }
+      const type = file.type.startsWith('image/') ? 'image' : 
+                   file.type.startsWith('video/') ? 'video' : 
+                   file.type.startsWith('audio/') ? 'music' : 'file';
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+          setFileToSend({ 
+              file, 
+              previewUrl: reader.result as string,
+              type 
+          });
+      };
+      if (type === 'image') reader.readAsDataURL(file);
+      else setFileToSend({ file, previewUrl: '', type });
+    }
+  };
+
   const handleSendMessage = async (customC?: string, immediateFile?: any) => {
-    const finalC = customC !== undefined ? customC : messageContent; const finalF = immediateFile || fileToSend; if ((!finalC.trim() && !finalF) || !db) return;
+    const finalC = customC !== undefined ? customC : messageContent; 
+    const finalF = immediateFile || fileToSend; 
+    if ((!finalC.trim() && !finalF) || !db) return;
+    
     setIsSending(true); setMessageContent(''); setFileToSend(null); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    
     try {
-        const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
-        const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
-        if (finalF?.type === 'image') data.imageUrl = finalF.previewUrl; await setDoc(mref, data);
-        await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: finalC.trim() || t('image_attachment_placeholder'), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+        const mref = doc(collection(db, 'chats', item.id, 'messages')); 
+        const ts = serverTimestamp();
+        const data: any = { 
+            senderId: currentUser.uid, 
+            content: finalC.trim(), 
+            timestamp: ts, 
+            readBy: [], 
+            senderName: currentUser.name || currentUser.username, 
+            ...(replyToMessage && { 
+                replyTo: { 
+                    messageId: replyToMessage.id, 
+                    content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), 
+                    senderName: memberDetails[replyToMessage.senderId]?.name || 'User' 
+                } 
+            }) 
+        };
+
+        if (finalF) {
+            if (finalF.type === 'image') {
+                data.imageUrl = finalF.previewUrl;
+                await setDoc(mref, data);
+            } else {
+                // Chunked upload for video/music/file
+                const reader = new FileReader();
+                reader.readAsDataURL(finalF.file);
+                await new Promise<void>((resolve, reject) => {
+                    reader.onload = async () => {
+                        try {
+                            const base64 = (reader.result as string).split(',')[1];
+                            const CHUNK_SIZE = 900 * 1024;
+                            const chunkIds: string[] = [];
+                            const col = finalF.type === 'video' ? 'videoChunks' : finalF.type === 'music' ? 'musicChunks' : 'fileChunks';
+                            
+                            for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+                                const cref = doc(collection(db, col));
+                                await setDoc(cref, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
+                                chunkIds.push(cref.id);
+                            }
+                            
+                            data.fileName = finalF.file.name;
+                            data.fileMimeType = finalF.file.type;
+                            if (finalF.type === 'video') { data.videoStatus = 'complete'; data.videoChunkIds = chunkIds; data.videoMimeType = finalF.file.type; }
+                            else if (finalF.type === 'music') { data.musicStatus = 'complete'; data.musicChunkIds = chunkIds; data.musicMimeType = finalF.file.type; }
+                            else { data.fileStatus = 'complete'; data.fileChunkIds = chunkIds; }
+                            
+                            await setDoc(mref, data);
+                            resolve();
+                        } catch(e) { reject(e); }
+                    };
+                });
+            }
+        } else {
+            await setDoc(mref, data);
+        }
+
+        await updateDoc(doc(db, 'chats', item.id), { 
+            lastMessage: { 
+                id: mref.id, 
+                content: finalC.trim() || (finalF?.type === 'image' ? t('photo') : t('file')), 
+                senderId: currentUser.uid, 
+                senderName: currentUser.name || currentUser.username, 
+                timestamp: Timestamp.now() 
+            } 
+        });
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
+
   const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
     if (!db) return; setIsSending(true);
     try {
@@ -297,6 +387,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       };
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
+
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
@@ -308,7 +399,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isDM = item.type === 'dm';
   const isSavedMessages = item.id === currentUser.uid;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
-  
   const canWrite = item.type !== 'channel' || isOwner;
 
   return (
@@ -411,10 +501,31 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               <div className="flex items-center gap-2"><Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button></div>
             </div>
           )}
-          <div className="max-w-3xl mx-auto w-full h-full flex items-center">
-            <div className="flex flex-col gap-2 w-full">
-              {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-md"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs">{replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file'))}</div><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
-              <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
+          <div className="max-w-3xl mx-auto w-full h-full flex flex-col">
+            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs mx-2 flex-1">{replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file'))}</div><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+            
+            {fileToSend && (
+              <div className="flex items-center justify-between bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  {fileToSend.type === 'image' ? (
+                      <img src={fileToSend.previewUrl} className="w-10 h-10 rounded-lg object-cover border" />
+                  ) : (
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border">
+                          <FileIcon className="h-5 w-5 text-primary" />
+                      </div>
+                  )}
+                  <div className="min-w-0 flex flex-col justify-center">
+                      <p className="text-xs font-bold truncate max-w-[200px]">{fileToSend.file.name}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-medium">{(fileToSend.file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setFileToSend(null)}>
+                    <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
                 <Textarea 
                   placeholder={t('message_placeholder')} 
                   value={messageContent} 
@@ -447,10 +558,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </DropdownMenuContent>
                   </DropdownMenu>
                   
-                  <input type="file" ref={fileInputRef} className="hidden" />
+                  <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
                   
                   {messageContent.trim() || fileToSend ? (
-                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}><Send className="h-5 w-5" /></Button>
+                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <Button 
@@ -481,7 +592,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   )}
                 </div>
               </form>
-            </div>
           </div>
         </footer>
       ) : (
