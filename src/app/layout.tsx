@@ -11,7 +11,6 @@ import { Snowfall } from '@/components/ui/snowfall';
 import { NotificationProvider } from '@/context/notification-context';
 import { OrientationManager } from '@/components/OrientationManager';
 import { useEffect } from 'react';
-import { cn } from '@/lib/utils';
 
 function FontManager() {
   const { useSystemFont } = useTheme();

@@ -140,9 +140,9 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 "max-w-[85%] md:max-w-[70%]"
             )}>
                 {isChannelPost && (
-                    <Badge variant="outline" className="absolute -top-2 -right-2 bg-background/50 backdrop-blur-sm text-[8px] h-4 px-1 font-black uppercase tracking-tighter opacity-70 border-primary/20 pointer-events-none">
-                        {t('channel_badge')}
-                    </Badge>
+                    <div className="absolute -top-3 -right-1 z-10 flex items-center bg-background/50 backdrop-blur-md px-1.5 rounded-full border border-primary/20 shadow-sm pointer-events-none">
+                        <span className="text-[8px] font-black uppercase tracking-tighter text-primary/80">{t('channel_badge')}</span>
+                    </div>
                 )}
 
                 {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (
@@ -230,6 +230,21 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
   useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, scrollToBottom]);
 
+  const handleClearHistory = async () => { 
+    if (!db || item.id === 'GENERAL_CHAT') return; 
+    try { 
+      const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); 
+      const batch = writeBatch(db); 
+      snap.forEach(d => batch.delete(d.ref)); 
+      await batch.commit(); 
+      await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); 
+      toast({ title: t('dm_success') }); 
+    } catch(e) { 
+      console.error(e); 
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' }); 
+    } 
+  };
+
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
       const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
@@ -274,11 +289,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const reader = new FileReader(); reader.readAsDataURL(blob);
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        const mref = doc(collection(db, 'chats', item.id, 'messages')); const chunkRef = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks')); await setDoc(chunkRef, { data: base64, part: 0, senderId: currentUser.uid });
+        const mref = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks')); await setDoc(mref, { data: base64, part: 0, senderId: currentUser.uid });
         const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
-        if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [chunkRef.id]; msgData.voiceDuration = recordingDuration; } 
-        else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [chunkRef.id]; msgData.circleDuration = recordingDuration; }
-        await setDoc(mref, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...msgData, id: mref.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', timestamp: Timestamp.now() } });
+        if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [mref.id]; msgData.voiceDuration = recordingDuration; } 
+        else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [mref.id]; msgData.circleDuration = recordingDuration; }
+        const msgRef = doc(collection(db, 'chats', item.id, 'messages')); await setDoc(msgRef, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...msgData, id: msgRef.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', timestamp: Timestamp.now() } });
       };
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
@@ -286,21 +301,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   
-  const handleClearHistory = async () => { 
-    if (!db || item.id === 'GENERAL_CHAT') return; 
-    try { 
-      const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); 
-      const batch = writeBatch(db); 
-      snap.forEach(d => batch.delete(d.ref)); 
-      await batch.commit(); 
-      await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); 
-      toast({ title: t('dm_success') }); 
-    } catch(e) { 
-      console.error(e); 
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to clear history.' }); 
-    } 
-  };
-
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
   const isOwner = item.ownerId === currentUser.uid;
