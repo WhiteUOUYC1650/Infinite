@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -328,7 +327,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 data.imageUrl = finalF.previewUrl;
                 await setDoc(mref, data);
             } else {
-                // Chunked upload for video/music/file
                 const reader = new FileReader();
                 reader.readAsDataURL(finalF.file);
                 await new Promise<void>((resolve, reject) => {
@@ -555,6 +553,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   

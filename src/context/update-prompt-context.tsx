@@ -7,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "0.5.1 Beta";
+const CURRENT_APP_VERSION = "0.5.2 Beta";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
@@ -97,7 +97,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           const blob = new Blob([bytes], { type: 'application/vnd.android.package-archive' });
           const url = URL.createObjectURL(blob);
           
-          const link = document.createElement('a');
+          const link = new (window as any).HTMLAnchorElement();
           link.href = url;
           link.download = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
           document.body.appendChild(link);
