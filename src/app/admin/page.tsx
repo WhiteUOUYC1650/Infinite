@@ -316,7 +316,7 @@ function AdminPage() {
                 <TabsTrigger value="groups" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_groups_tab')}</TabsTrigger>
                 <TabsTrigger value="channels" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_channels_tab')}</TabsTrigger>
                 <TabsTrigger value="broadcast" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_broadcast_tab')}</TabsTrigger>
-                <TabsTrigger value="update" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">System</TabsTrigger>
+                <TabsTrigger value="update" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_system_tab')}</TabsTrigger>
             </TabsList>
           </div>
           <ScrollArea className="flex-1">
