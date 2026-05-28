@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, setDoc, collection } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload } from 'lucide-react';
@@ -280,6 +280,8 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                                 onUpdate={updateBlockParam}
                                 onDelete={removeBlock}
                                 onMove={moveBlock}
+                                db={db}
+                                botId={bot.id}
                             />
                         ))}
                     </div>
@@ -425,26 +427,65 @@ function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: stri
     );
 }
 
-function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDelete, onMove }: { block: BotBlock, sIdx: number, bIdx: number, isFirst: boolean, isLast: boolean, onUpdate: any, onDelete: any, onMove: any }) {
+function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDelete, onMove, db, botId }: { block: BotBlock, sIdx: number, bIdx: number, isFirst: boolean, isLast: boolean, onUpdate: any, onDelete: any, onMove: any, db: any, botId: string }) {
     const { t } = useLanguage();
     const Icon = BLOCK_ICONS[block.type];
     const isTrigger = bIdx === 0;
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
             const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                onUpdate(sIdx, bIdx, 'mediaData', reader.result);
-                onUpdate(sIdx, bIdx, 'fileName', file.name);
-                onUpdate(sIdx, bIdx, 'mimeType', file.type);
-            };
+            setIsUploading(true);
+            try {
+                if (block.type === 'action_send_image') {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => {
+                        onUpdate(sIdx, bIdx, 'imageUrl', reader.result);
+                        onUpdate(sIdx, bIdx, 'fileName', file.name);
+                        setIsUploading(false);
+                    };
+                } else {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = async () => {
+                        try {
+                            const base64 = (reader.result as string).split(',')[1];
+                            const CHUNK_SIZE = 900 * 1024;
+                            const chunkIds: string[] = [];
+                            const typePrefix = block.type.replace('action_send_', '');
+                            const col = typePrefix === 'video' ? 'videoChunks' : typePrefix === 'music' ? 'musicChunks' : 'fileChunks';
+                            
+                            for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+                                const cref = doc(collection(db, col));
+                                await setDoc(cref, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: botId });
+                                chunkIds.push(cref.id);
+                            }
+                            
+                            onUpdate(sIdx, bIdx, `${typePrefix}ChunkIds`, chunkIds);
+                            onUpdate(sIdx, bIdx, `${typePrefix}MimeType`, file.type);
+                            onUpdate(sIdx, bIdx, `${typePrefix}Status`, 'complete');
+                            onUpdate(sIdx, bIdx, 'fileName', file.name);
+                        } catch (err) {
+                            console.error("Bot media upload failed:", err);
+                        } finally {
+                            setIsUploading(false);
+                        }
+                    };
+                }
+            } catch (err) {
+                console.error(err);
+                setIsUploading(false);
+            }
         }
     };
 
     const renderParams = () => {
+        const typePrefix = block.type.replace('action_send_', '');
+        const chunkIds = block.params?.[`${typePrefix}ChunkIds`];
+
         switch (block.type) {
             case 'action_send':
             case 'action_reply':
@@ -459,11 +500,12 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
+                                disabled={isUploading}
                                 className="h-9 flex-1 bg-black/10 hover:bg-black/20 text-white font-bold text-xs rounded-xl"
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <Upload className="mr-2 h-3 w-3" />
-                                {block.params?.mediaData ? t('file_selected') : t('choose_file')}
+                                {isUploading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Upload className="mr-2 h-3 w-3" />}
+                                {block.params?.fileName ? t('file_selected') : t('choose_file')}
                             </Button>
                             <input 
                                 type="file" 
@@ -475,6 +517,11 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                         </div>
                         {block.params?.fileName && (
                             <p className="text-[9px] font-bold opacity-60 truncate px-2">{block.params.fileName}</p>
+                        )}
+                        {chunkIds && (
+                             <div className="px-2 py-1 bg-black/20 rounded-lg border border-white/10 mt-1">
+                                <p className="text-[7px] font-mono opacity-50 truncate uppercase">Chunks: {chunkIds.slice(0, 2).join(', ')}...</p>
+                             </div>
                         )}
                         <Input placeholder="Описание (необязательно)..." value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1" />
                     </div>

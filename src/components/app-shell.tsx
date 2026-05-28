@@ -158,7 +158,13 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                     case 'logic_if': ifStack.push(resolveVars(block.params?.condition, vars).includes('==')); break;
                     case 'variable_set': vars[block.params?.name] = resolveVars(block.params?.value, vars); break;
                     case 'action_send':
-                    case 'action_reply': await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? message : undefined), vars); break;
+                    case 'action_reply': 
+                    case 'action_send_image':
+                    case 'action_send_video':
+                    case 'action_send_music':
+                    case 'action_send_file':
+                        await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? message : undefined), vars); 
+                        break;
                     case 'action_wait': await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000)); break;
                 }
                 i++;
@@ -170,7 +176,33 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     const sendBotMessage = async (bot: CustomBot, block: BotBlock, chatId: string, replyTo?: any, vars?: Record<string, string>) => {
         const msgRef = doc(collection(db, 'chats', chatId, 'messages'));
         const text = resolveVars(block.params?.text, vars || {});
-        const msgData: any = { senderId: bot.id, content: text || '', timestamp: serverTimestamp(), type: 'user', readBy: [], ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || 'User' } }) };
+        const msgData: any = { 
+            senderId: bot.id, 
+            content: text || '', 
+            timestamp: serverTimestamp(), 
+            type: 'user', 
+            readBy: [], 
+            ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || 'User' } }),
+            
+            // Media support for bots
+            ...(block.params?.imageUrl && { imageUrl: block.params.imageUrl }),
+            ...(block.params?.videoStatus === 'complete' && { 
+                videoStatus: 'complete', 
+                videoChunkIds: block.params.videoChunkIds,
+                videoMimeType: block.params.videoMimeType 
+            }),
+            ...(block.params?.musicStatus === 'complete' && { 
+                musicStatus: 'complete', 
+                musicChunkIds: block.params.musicChunkIds,
+                musicMimeType: block.params.musicMimeType,
+                fileName: block.params.fileName
+            }),
+            ...(block.params?.fileStatus === 'complete' && { 
+                fileStatus: 'complete', 
+                fileChunkIds: block.params.fileChunkIds,
+                fileName: block.params.fileName
+            }),
+        };
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), { lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, timestamp: Timestamp.now() } });
     };
@@ -284,7 +316,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         )}
 
         {incomingCall && (
-          <div className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500 cursor-pointer" onClick={handleAcceptIncoming}>
+          <div className="fixed top-[env(safe-area-inset-top))] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500 cursor-pointer" onClick={handleAcceptIncoming}>
               <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-sm border border-white/10 backdrop-blur-md">
                   <div className="w-12 h-12 flex-shrink-0 bg-primary rounded-full flex items-center justify-center text-white font-bold"><Phone className="h-6 w-6" /></div>
                   <div className="flex-1 min-w-0"><p className="font-bold truncate">{t('incoming_call')}</p><p className="text-xs text-white/60">{incomingCall.isVideo ? t('video_call') : t('audio_call')}</p></div>
