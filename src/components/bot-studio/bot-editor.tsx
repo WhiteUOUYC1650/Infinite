@@ -229,7 +229,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
       )}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
                 <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3 min-w-0 flex-1">

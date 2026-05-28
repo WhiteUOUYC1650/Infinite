@@ -556,33 +556,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <h2 className='text-3xl font-black font-headline text-primary'>What's New</h2>
                     <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{t('beta_badge')}</p>
                   </div>
-                  <div className="space-y-6">
-                      <div className="bg-card border rounded-3xl p-6 space-y-4 shadow-sm">
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                                  <Star className="h-6 w-6 text-primary" />
-                              </div>
-                              <h3 className="font-black text-lg leading-none">{t('whats_new_legacy_title')}</h3>
+                  <div className="space-y-4">
+                      <div className="bg-card border rounded-3xl p-6 shadow-sm">
+                          <div className="flex flex-col gap-2 text-sm font-bold leading-relaxed">
+                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> {language === 'ru' ? 'Исправление отвалов' : 'Fixing crashes'}</div>
+                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> {language === 'ru' ? 'Обновление Bot Studio' : 'Bot Studio update'}</div>
+                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> {language === 'ru' ? 'Исправление багов' : 'Bug fixes'}</div>
                           </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{t('whats_new_legacy_desc')}</p>
-                      </div>
-                      <div className="bg-card border rounded-3xl p-6 space-y-4 shadow-sm">
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                                  <Sparkles className="h-6 w-6 text-blue-500" />
-                              </div>
-                              <h3 className="font-black text-lg leading-none">{t('whats_new_ui_title')}</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{t('whats_new_ui_desc')}</p>
-                      </div>
-                      <div className="bg-card border rounded-3xl p-6 space-y-4 shadow-sm">
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                                  <Cpu className="h-6 w-6 text-green-500" />
-                              </div>
-                              <h3 className="font-black text-lg leading-none">{t('whats_new_optimization_title')}</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{t('whats_new_optimization_desc')}</p>
                       </div>
                   </div>
               </div>
