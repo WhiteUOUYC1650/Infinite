@@ -188,40 +188,33 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     const script = { ...newScripts[sIdx] };
     const blocks = [...script.blocks];
     
-    // Don't move trigger blocks (index 0)
     if (bIdx === 0) return;
 
     if (direction === 'up') {
         if (bIdx > 1) {
-            // Standard swap within script
             const temp = blocks[bIdx];
             blocks[bIdx] = blocks[bIdx - 1];
             blocks[bIdx - 1] = temp;
             newScripts[sIdx] = { ...script, blocks };
         } else if (sIdx > 0) {
-            // Move to end of previous script
             const prevScript = { ...newScripts[sIdx - 1] };
             const prevBlocks = [...prevScript.blocks];
             const blockToMove = blocks.splice(bIdx, 1)[0];
             prevBlocks.push(blockToMove);
-            
             newScripts[sIdx - 1] = { ...prevScript, blocks: prevBlocks };
             newScripts[sIdx] = { ...script, blocks };
         }
-    } else { // direction === 'down'
+    } else {
         if (bIdx < blocks.length - 1) {
-            // Standard swap within script
             const temp = blocks[bIdx];
             blocks[bIdx] = blocks[bIdx + 1];
             blocks[bIdx + 1] = temp;
             newScripts[sIdx] = { ...script, blocks };
         } else if (sIdx < newScripts.length - 1) {
-            // Move to start (after trigger) of next script
             const nextScript = { ...newScripts[sIdx + 1] };
             const nextBlocks = [...nextScript.blocks];
             const blockToMove = blocks.splice(bIdx, 1)[0];
             nextBlocks.splice(1, 0, blockToMove);
-            
             newScripts[sIdx + 1] = { ...nextScript, blocks: nextBlocks };
             newScripts[sIdx] = { ...script, blocks };
         }
@@ -250,7 +243,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                     </div>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                     <h1 className="text-base font-black font-headline truncate leading-tight">{botName}</h1>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.1</p>
                 </div>
@@ -304,7 +297,6 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         </div>
       </main>
 
-      {/* Floating Action Button */}
       <div className="absolute bottom-8 right-8 z-[30]">
           <Button 
             onClick={() => setBlockSelectorOpen(true)}

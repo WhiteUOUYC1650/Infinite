@@ -105,7 +105,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  // Transfers logic
   const transfersQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'transfers'), 
