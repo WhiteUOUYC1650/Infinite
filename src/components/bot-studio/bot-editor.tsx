@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -23,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
@@ -334,22 +334,22 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                       <TabsContent value="actions" className="mt-0 space-y-2">
                           <PaletteItem type="action_send" label={t('block_action_send')} onClick={onAddFromFab} />
                           <PaletteItem type="action_reply" label={t('block_action_reply')} onClick={onAddFromFab} />
-                          <PaletteItem type="action_send_image" label="Отправить фото" onClick={onAddFromFab} />
+                          <PaletteItem type="action_send_image" label={t('action_send_image')} onClick={onAddFromFab} />
                           <PaletteItem type="action_send_video" label={t('action_send_video')} onClick={onAddFromFab} />
                           <PaletteItem type="action_send_music" label={t('action_send_music')} onClick={onAddFromFab} />
                           <PaletteItem type="action_send_file" label={t('action_send_file')} onClick={onAddFromFab} />
-                          <PaletteItem type="action_stop" label="Прервать скрипт" onClick={onAddFromFab} />
+                          <PaletteItem type="action_stop" label={t('action_stop_script')} onClick={onAddFromFab} />
                       </TabsContent>
                       <TabsContent value="logic" className="mt-0 space-y-2">
-                          <PaletteItem type="logic_if" label="Если" onClick={onAddFromFab} />
-                          <PaletteItem type="logic_else" label="Иначе" onClick={onAddFromFab} />
-                          <PaletteItem type="logic_end_if" label="Конец если" onClick={onAddFromFab} />
-                          <PaletteItem type="action_wait" label="Подождать" onClick={onAddFromFab} />
+                          <PaletteItem type="logic_if" label={t('block_if')} onClick={onAddFromFab} />
+                          <PaletteItem type="logic_else" label={t('block_else')} onClick={onAddFromFab} />
+                          <PaletteItem type="logic_end_if" label={t('block_end_if')} onClick={onAddFromFab} />
+                          <PaletteItem type="action_wait" label={t('block_action_wait', { seconds: '' })} onClick={onAddFromFab} />
                       </TabsContent>
                       <TabsContent value="vars" className="mt-0 space-y-2">
-                          <PaletteItem type="variable_set" label="Установить переменную" onClick={onAddFromFab} />
-                          <PaletteItem type="variable_math" label="Математика (+/-)" onClick={onAddFromFab} />
-                          <PaletteItem type="variable_clear" label="Очистить переменную" onClick={onAddFromFab} />
+                          <PaletteItem type="variable_set" label={t('block_variable_set')} onClick={onAddFromFab} />
+                          <PaletteItem type="variable_math" label={t('block_math')} onClick={onAddFromFab} />
+                          <PaletteItem type="variable_clear" label={t('block_clear')} onClick={onAddFromFab} />
                       </TabsContent>
                   </ScrollArea>
               </Tabs>
@@ -557,7 +557,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                                 <SelectContent className="bg-zinc-800 text-white border-none rounded-xl">
                                     <SelectItem value="add">Прибавить (+)</SelectItem>
                                     <SelectItem value="sub">Вычесть (-)</SelectItem>
-                                    <SelectItem value="set">Умножить (*)</SelectItem>
+                                    <SelectItem value="mul">Умножить (*)</SelectItem>
                                 </SelectContent>
                              </Select>
                              <Input type="number" placeholder="Число" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white font-bold text-xs" />
@@ -577,7 +577,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
             <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="p-1.5 bg-black/10 rounded-xl shrink-0"><Icon className="h-4 w-4" /></div>
-                    <span className="font-black uppercase tracking-widest text-[10px] truncate">{t(`block_${block.type.replace('action_', '').replace('event_', '').replace('logic_', '').replace('variable_', '')}` as any) || block.type}</span>
+                    <span className="font-black uppercase tracking-widest text-[10px] truncate">{t(`block_${block.type}` as any) || block.type}</span>
                 </div>
                 
                 {!isTrigger && (
@@ -617,4 +617,3 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
         </div>
     );
 }
-

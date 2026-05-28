@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -384,8 +383,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           case 'main': return mainPageContent;
           case 'appearance': return (
               <div className='divide-y'>
-                <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} />
-                <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} />
+                <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} description={t('light_mode')} />
+                <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} />
                 <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} />
                 <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={isExperimentalDesignRestricted ? t('android_9_plus_only') : t('experimental_design_desc')} disabled={isExperimentalDesignRestricted} />
                 <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} />
@@ -414,9 +413,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           case 'language': return <div className="p-4"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className="flex items-center space-x-2 p-2"><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div><div className="flex items-center space-x-2 p-2"><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div></RadioGroup></div>;
           case 'chat': return (
               <div className='divide-y'>
-                  <SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} />
+                  <SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} />
                   <SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} />
-                  <SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} />
+                  <SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} />
               </div>
           );
           case 'privacy': return (
@@ -616,7 +615,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{t('beta_badge')}</Badge>
                   </div>
                   <p className='text-sm text-muted-foreground leading-relaxed max-w-xs font-medium'>{t('version_info_detail')}</p>
-                  <p className="text-[10px] text-muted-foreground/40 font-black uppercase tracking-[0.2em] mt-8">Infinite Studio • 2024</p>
               </div>
           );
           default: return null;
@@ -666,4 +664,3 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     </>
   );
 }
-
