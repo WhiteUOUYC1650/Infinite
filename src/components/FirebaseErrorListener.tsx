@@ -10,8 +10,16 @@ export function FirebaseErrorListener() {
 
   useEffect(() => {
     const handleError = (error: FirestorePermissionError) => {
-      console.error(error); // Also log to console for debugging
+      // Quietly log to console instead of showing a toast to the user
+      // unless specifically in development mode or needed for debugging.
+      console.warn('Firestore Permission Denied:', {
+          path: error.context?.path,
+          operation: error.context?.operation,
+          details: error.context
+      });
 
+      // Toasts for permission errors are now disabled by default for a better UX.
+      /*
       const description = (
         <div className="w-full">
           <p className="mb-2 text-sm">
@@ -31,8 +39,9 @@ export function FirebaseErrorListener() {
         variant: 'destructive',
         title: 'Permission Denied',
         description: description,
-        duration: 300000, // 5 minutes, long enough to inspect
+        duration: 5000,
       });
+      */
     };
 
     const unsubscribe = errorEmitter.on('permission-error', handleError);

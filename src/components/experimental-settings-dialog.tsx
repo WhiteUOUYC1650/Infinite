@@ -323,27 +323,29 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>
         )}
         <div className={cn("border-t", experimentalDesign && "mt-2")}>
-          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('whats_new_ui_desc')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
-          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('smooth_scroll_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign} iconBg="bg-green-500/15" iconColor="text-green-500" />
-          <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('login_protection_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
-          <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('clear_cache_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign} iconBg="bg-orange-500/15" iconColor="text-orange-500" />
-          <SettingsItem icon={Languages} label={t('language')} description={language === 'ru' ? 'Выбрать русский или английский' : 'Select English or Russian'} value={language.toUpperCase()} onClick={() => navigateTo('language')} showExpColors={experimentalDesign} iconBg="bg-purple-500/15" iconColor="text-purple-500" />
-          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('faq_infgold_q')} onClick={() => navigateTo('infGold')} showExpColors={experimentalDesign} iconBg="bg-amber-500/15" iconColor="text-amber-600" isGlow={experimentalDesign} />
+          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
+          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign} iconBg="bg-green-500/15" iconColor="text-green-500" />
+          <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('privacy_security_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
+          <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('data_storage_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign} iconBg="bg-orange-500/15" iconColor="text-orange-500" />
+          <SettingsItem icon={Languages} label={t('language')} description={t('language_desc')} value={language.toUpperCase()} onClick={() => navigateTo('language')} showExpColors={experimentalDesign} iconBg="bg-purple-500/15" iconColor="text-purple-500" />
+          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('infgold_desc')} onClick={() => navigateTo('infGold')} showExpColors={experimentalDesign} iconBg="bg-amber-500/15" iconColor="text-amber-600" isGlow={experimentalDesign} />
           <SettingsItem icon={User} label={t('profile')} description={t('edit_profile_desc')} onClick={() => navigateTo('account')} showExpColors={experimentalDesign} iconBg="bg-teal-500/15" iconColor="text-teal-500" />
           <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} showExpColors={experimentalDesign} iconBg="bg-yellow-500/15" iconColor="text-yellow-600" />
           <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} showExpColors={experimentalDesign} iconBg="bg-pink-500/15" iconColor="text-pink-500" />
-          <SettingsItem icon={Info} label={t('version')} description={t('version_info_detail')} value={t('beta_badge')} onClick={() => navigateTo('about')} showExpColors={experimentalDesign} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
+          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={t('beta_badge')} onClick={() => navigateTo('about')} showExpColors={experimentalDesign} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
           {currentUser.isAdmin && (
-            <SettingsItem 
-              icon={Shield} 
-              label={t('admin_panel_title')} 
-              description="Управление пользователями и контентом"
-              onClick={() => router.push('/admin')} 
-              showExpColors={experimentalDesign} 
-              iconBg="bg-red-600/20" 
-              iconColor="text-red-600" 
-              isGlow={experimentalDesign}
-            />
+            <div className='border-t mt-4'>
+                <SettingsItem 
+                    icon={Shield} 
+                    label={t('admin_panel_title')} 
+                    description={t('admin_panel_desc')}
+                    onClick={() => router.push('/admin')} 
+                    showExpColors={experimentalDesign} 
+                    iconBg="bg-red-600/20" 
+                    iconColor="text-red-600" 
+                    isGlow={experimentalDesign}
+                />
+            </div>
           )}
         </div>
       </>
