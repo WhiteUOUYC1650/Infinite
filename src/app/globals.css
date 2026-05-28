@@ -23,6 +23,10 @@ body {
   height: var(--app-height);
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
+  /* Optimization for older devices */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Global Font Override for System Font Setting - FORCED TOTAL OVERRIDE */
@@ -116,6 +120,17 @@ body.use-system-font h4 {
   }
 }
 
+/* Legacy Device Fixes */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch !important;
+  backface-visibility: hidden;
+}
+
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Modal Glass Backdrop for Experimental Design on modern Androids */
 [data-experimental-design="true"] div[data-state="open"] > div.fixed.inset-0.bg-black\/80 {
   background-color: hsla(0, 0%, 0%, 0.2) !important;
@@ -180,8 +195,4 @@ audio, video {
 .min-h-full-safe {
   min-height: 100vh;
   min-height: var(--app-height);
-}
-
-.overflow-y-auto {
-  -webkit-overflow-scrolling: touch !important;
 }
