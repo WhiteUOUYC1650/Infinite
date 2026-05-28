@@ -1,4 +1,5 @@
 
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -504,6 +505,9 @@ export const translations = {
       'block_else': 'Else',
       'block_end_if': 'End If',
       'block_variable_set': 'Set Variable',
+      'block_math': 'Math (+/-)',
+      'block_clear': 'Clear Var',
+      'block_stop': 'Stop Script',
       'block_action_reaction': 'Add Reaction {emoji}',
       'bot_active': 'Active',
       'bot_inactive': 'Inactive',
@@ -1069,6 +1073,9 @@ export const translations = {
       'block_else': 'Иначе',
       'block_end_if': 'Конец условия',
       'block_variable_set': 'Установить переменную',
+      'block_math': 'Математика (+/-)',
+      'block_clear': 'Очистить переменную',
+      'block_stop': 'Прервать скрипт',
       'block_action_reaction': 'Добавить реакцию {emoji}',
       'bot_active': 'Активен',
       'bot_inactive': 'Неактивен',
@@ -1096,7 +1103,7 @@ export const translations = {
       'bot_guide_action_image': '**Отправить фото**: Отправляет изображение по ссылке или Base64.',
       'bot_guide_logic': 'Logic',
       'bot_guide_logic_if': '**Если**: Проверка условия (например, если сообщение содержит определенное слово).',
-      'bot_guide_logic_wait': '**Подождать**: Пауза в выполнении на несколько секунд.',
+      'bot_guide_logic_wait': '**Wait**: Пауза в выполнении на несколько секунд.',
       'bot_guide_vars': 'Memory (Variables)',
       'bot_guide_var_intro': 'Используйте фигурные скобки для вставки динамических данных:',
       'bot_guide_var_user': '- `{user_name}`: Имя пользователя, общающегося с ботом.',
@@ -1173,3 +1180,4 @@ export function interpolate(str: string, values: Record<string, any>, lang: Lang
     return values[key] !== undefined ? String(values[key]) : match;
   });
 }
+

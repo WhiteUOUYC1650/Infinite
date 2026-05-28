@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -148,15 +149,35 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         const triggerType = isStartCommand ? 'event_start' : 'event_message';
         for (const script of bot.scripts) {
             const blocks = script.blocks; if (!blocks || blocks.length === 0 || blocks[0].type !== triggerType) continue;
-            let i = 1; const ifStack: boolean[] = [];
-            while (i < blocks.length) {
+            let i = 1; const ifStack: boolean[] = []; let stopped = false;
+            while (i < blocks.length && !stopped) {
                 const block = blocks[i];
                 if (block.type === 'logic_end_if') { ifStack.pop(); i++; continue; }
                 if (block.type === 'logic_else') { if (ifStack.length > 0) { ifStack[ifStack.length - 1] = !ifStack[ifStack.length - 1]; } i++; continue; }
                 if (ifStack.some(val => val === false)) { if (block.type === 'logic_if') ifStack.push(false); i++; continue; }
                 switch (block.type) {
-                    case 'logic_if': ifStack.push(resolveVars(block.params?.condition, vars).includes('==')); break;
+                    case 'logic_if': 
+                        const cond = resolveVars(block.params?.condition, vars);
+                        if (cond.includes('==')) {
+                            const [left, right] = cond.split('==').map(s => s.trim());
+                            ifStack.push(left === right);
+                        } else if (cond.includes('!=')) {
+                            const [left, right] = cond.split('!=').map(s => s.trim());
+                            ifStack.push(left !== right);
+                        } else {
+                            ifStack.push(vars['msg_text'].includes(cond));
+                        }
+                        break;
                     case 'variable_set': vars[block.params?.name] = resolveVars(block.params?.value, vars); break;
+                    case 'variable_math':
+                        const val = parseInt(vars[block.params?.name] || '0');
+                        const delta = parseInt(resolveVars(block.params?.value, vars) || '0');
+                        if (block.params?.op === 'sub') vars[block.params?.name] = (val - delta).toString();
+                        else if (block.params?.op === 'mul') vars[block.params?.name] = (val * delta).toString();
+                        else vars[block.params?.name] = (val + delta).toString();
+                        break;
+                    case 'variable_clear': delete vars[block.params?.name]; break;
+                    case 'action_stop': stopped = true; break;
                     case 'action_send':
                     case 'action_reply': 
                     case 'action_send_image':
