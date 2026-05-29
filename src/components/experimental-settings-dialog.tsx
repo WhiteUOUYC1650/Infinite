@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -271,34 +271,103 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     { question: t('faq_poll_q'), answer: t('faq_poll_a') },
     { question: t('faq_story_q'), answer: t('faq_story_a') },
     { question: t('faq_security_q'), answer: t('faq_security_a') },
-    { question: t('faq_bot_prog_q'), answer: '[BOT_GUIDE_BUTTON]' },
+    { question: t('faq_bot_prog_q'), answer: t('faq_bot_prog_a') },
   ];
 
   const botGuidePageContent = (
-      <div className='p-6 space-y-6'>
+      <div className='p-6 space-y-8'>
           <div className='space-y-4'>
-              <h2 className='text-2xl font-bold font-headline'>{t('bot_guide_title')}</h2>
-              <p className='text-muted-foreground text-sm leading-relaxed'>{t('bot_guide_intro')}</p>
+              <h2 className='text-3xl font-black font-headline text-primary'>{t('bot_guide_title')}</h2>
+              <p className='text-muted-foreground text-sm leading-relaxed font-medium'>{t('bot_guide_intro')}</p>
           </div>
-          <div className='space-y-6'>
-              <div className='space-y-2'>
-                  <h3 className='font-bold text-primary flex items-center gap-2'><Zap className='h-4 w-4' /> {t('bot_guide_events')}</h3>
-                  <div className='space-y-2 text-xs text-muted-foreground leading-relaxed'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_event_start')}</ReactMarkdown>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_event_msg')}</ReactMarkdown>
+          
+          <div className='space-y-8'>
+              {/* Trigger Events */}
+              <div className='space-y-3'>
+                  <h3 className='font-black text-sm uppercase tracking-widest text-primary flex items-center gap-2'>
+                    <Zap className='h-4 w-4 fill-primary/20' /> {t('bot_guide_events')}
+                  </h3>
+                  <div className='grid gap-3'>
+                    <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                        {t('bot_guide_event_start')}
+                      </ReactMarkdown>
+                    </div>
+                    <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                        {t('bot_guide_event_msg')}
+                      </ReactMarkdown>
+                    </div>
                   </div>
               </div>
-              <div className='space-y-2'>
-                  <h3 className='font-bold text-primary flex items-center gap-2'><MessageSquare className='h-4 w-4' /> {t('bot_guide_actions')}</h3>
-                  <div className='space-y-2 text-xs text-muted-foreground leading-relaxed'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_action_send')}</ReactMarkdown>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_action_reply')}</ReactMarkdown>
+
+              {/* Actions */}
+              <div className='space-y-3'>
+                  <h3 className='font-black text-sm uppercase tracking-widest text-blue-500 flex items-center gap-2'>
+                    <MessageSquare className='h-4 w-4 fill-blue-500/20' /> {t('bot_guide_actions')}
+                  </h3>
+                  <div className='grid gap-3'>
+                    <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                        {t('bot_guide_action_send')}
+                      </ReactMarkdown>
+                    </div>
+                    <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                        {t('bot_guide_action_reply')}
+                      </ReactMarkdown>
+                    </div>
+                    <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                        {t('bot_guide_action_wait')}
+                      </ReactMarkdown>
+                    </div>
                   </div>
               </div>
-              <div className='space-y-2'>
-                  <h3 className='font-bold text-primary flex items-center gap-2'><Database className='h-4 w-4' /> {t('bot_guide_vars')}</h3>
-                  <p className='text-[11px] font-bold text-muted-foreground/80'>{t('bot_guide_var_intro')}</p>
-                  <div className='space-y-1 text-xs font-mono bg-muted/50 p-3 rounded-xl border'>
+
+              {/* Logic */}
+              <div className='space-y-3'>
+                  <h3 className='font-black text-sm uppercase tracking-widest text-purple-500 flex items-center gap-2'>
+                    <Split className='h-4 w-4' /> {t('bot_guide_logic')}
+                  </h3>
+                  <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      {t('bot_guide_logic_if')}
+                    </ReactMarkdown>
+                    <div className='mt-2 p-2 bg-black/5 rounded-lg font-mono text-[10px] opacity-70'>
+                      {'Example: {msg_text} == ping -> Action: Send "pong"'}
+                    </div>
+                  </div>
+                  <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      {t('bot_guide_logic_math')}
+                    </ReactMarkdown>
+                  </div>
+              </div>
+
+              {/* Media */}
+              <div className='space-y-3'>
+                  <h3 className='font-black text-sm uppercase tracking-widest text-emerald-500 flex items-center gap-2'>
+                    <ImageIcon className='h-4 w-4' /> {t('bot_guide_media')}
+                  </h3>
+                  <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
+                    <p className='text-xs leading-relaxed'>{t('bot_guide_media_desc')}</p>
+                    <div className='flex gap-2 mt-4'>
+                      <div className='p-2 bg-muted rounded-lg'><ImageIcon className='h-3 w-3' /></div>
+                      <div className='p-2 bg-muted rounded-lg'><Video className='h-3 w-3' /></div>
+                      <div className='p-2 bg-muted rounded-lg'><Music className='h-3 w-3' /></div>
+                      <div className='p-2 bg-muted rounded-lg'><FileText className='h-3 w-3' /></div>
+                    </div>
+                  </div>
+              </div>
+
+              {/* Variables */}
+              <div className='space-y-3'>
+                  <h3 className='font-black text-sm uppercase tracking-widest text-rose-500 flex items-center gap-2'>
+                    <Database className='h-4 w-4 fill-rose-500/20' /> {t('bot_guide_vars')}
+                  </h3>
+                  <p className='text-[11px] font-bold text-muted-foreground/80 pl-1'>{t('bot_guide_var_intro')}</p>
+                  <div className='space-y-1 text-xs font-mono bg-muted/60 p-4 rounded-2xl border border-rose-500/10'>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_user')}</ReactMarkdown>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_msg')}</ReactMarkdown>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_bot')}</ReactMarkdown>
@@ -569,7 +638,29 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
           );
-          case 'help': return <Accordion type="single" collapsible className="w-full">{faqs.map((f, i) => (<AccordionItem value={`f-${i}`} key={i} className="px-4"><AccordionTrigger className="text-left font-bold">{f.question}</AccordionTrigger><AccordionContent><div className="prose prose-sm dark:prose-invert max-w-none">{f.answer === '[BOT_GUIDE_BUTTON]' ? <Button variant="outline" className="w-full rounded-xl h-12 mt-2 font-bold" onClick={() => navigateTo('botGuide')}>{t('open_full_guide')}</Button> : <ReactMarkdown remarkPlugins={[remarkGfm]}>{f.answer}</ReactMarkdown>}</div></AccordionContent></AccordionItem>))}</Accordion>;
+          case 'help': return (
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((f, i) => (
+                <AccordionItem value={`f-${i}`} key={i} className="px-4">
+                  <AccordionTrigger className="text-left font-bold">{f.question}</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      {f.answer.includes('[BOT_GUIDE_BUTTON]') ? (
+                        <>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{f.answer.replace('[BOT_GUIDE_BUTTON]', '')}</ReactMarkdown>
+                          <Button variant="outline" className="w-full rounded-xl h-12 mt-4 font-bold border-primary/20 hover:bg-primary/5" onClick={() => navigateTo('botGuide')}>
+                            <Info className='mr-2 h-4 w-4 text-primary' /> {t('open_full_guide')}
+                          </Button>
+                        </>
+                      ) : (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{f.answer}</ReactMarkdown>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          );
           case 'botGuide': return botGuidePageContent;
           case 'account': return (
               <div className='p-6 space-y-4'>
