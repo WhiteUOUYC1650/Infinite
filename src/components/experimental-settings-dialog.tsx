@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, CheckCircle2, Download } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -187,31 +187,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
-  useEffect(() => {
-    if (!open) return;
-    const handleSystemBack = () => {
-      if (pageHistory.length > 1) {
-        setAnimationDirection('backward');
-        setPageHistory(prev => prev.slice(0, -1));
-      } else {
-        onOpenChange(false);
-      }
-    };
-    let backListener: any;
-    if (Capacitor.isNativePlatform()) {
-      import('@capacitor/app').then(({ App }) => {
-        backListener = App.addListener('backButton', handleSystemBack);
-      });
-    }
-    return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
-  }, [open, pageHistory, onOpenChange]);
+  const handleClearCache = async () => {
+      await clearCacheDB();
+      calculateCacheSize();
+      toast({ title: t('dm_success'), description: t('cache_cleared_success') });
+  };
 
-  const resetState = () => {
-    setPageHistory(['main']);
-    setAnimationDirection('forward');
-    setHasCheckedUpdates(false);
-  }
-  
   const handleLogout = async () => {
     if (auth && db && currentUser) {
       const userRef = doc(db, 'users', currentUser.uid);
@@ -793,4 +774,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     </AlertDialog>
     </>
   );
+
+  function resetState() {
+    setPageHistory(['main']);
+    setAnimationDirection('forward');
+    setHasCheckedUpdates(false);
+  }
 }
