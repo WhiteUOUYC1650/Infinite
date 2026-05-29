@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, CheckCircle2 } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -52,8 +52,9 @@ import { clearCacheDB, calculateCacheSize as getRealCacheSize } from '@/lib/cach
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useUpdatePrompt } from '@/context/update-prompt-context';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates';
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
@@ -97,6 +98,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
+  const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
   
   const auth = useAuth();
   const db = useFirestore();
@@ -104,6 +106,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B');
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Update check states
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);
 
   const transfersQuery = useMemo(() => {
     if (!db) return null;
@@ -150,10 +156,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     setCurrentCacheSize(formatSize(dbSize));
   };
 
-  const handleClearCache = async () => {
-      await clearCacheDB();
-      calculateCacheSize();
-      toast({ title: t('dm_success'), description: t('cache_cleared_success') });
+  const handleManualCheckUpdates = () => {
+    setIsCheckingUpdates(true);
+    setHasCheckedUpdates(false);
+    setTimeout(() => {
+        setIsCheckingUpdates(false);
+        setHasCheckedUpdates(true);
+    }, 2000);
   };
 
   useEffect(() => {
@@ -200,6 +209,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const resetState = () => {
     setPageHistory(['main']);
     setAnimationDirection('forward');
+    setHasCheckedUpdates(false);
   }
   
   const handleLogout = async () => {
@@ -335,7 +345,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                       {t('bot_guide_logic_if')}
                     </ReactMarkdown>
                     <div className='mt-2 p-2 bg-black/5 rounded-lg font-mono text-[10px] opacity-70'>
-                      {'Example: {msg_text} == ping -> Action: Send "pong"'}
+                      Example: {"{msg_text} == ping"} {'->'} Action: Send "pong"
                     </div>
                   </div>
                   <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
@@ -401,7 +411,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <SettingsItem icon={User} label={t('profile')} description={t('edit_profile_desc')} onClick={() => navigateTo('account')} showExpColors={experimentalDesign} iconBg="bg-teal-500/15" iconColor="text-teal-500" />
           <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} showExpColors={experimentalDesign} iconBg="bg-yellow-500/15" iconColor="text-yellow-600" />
           <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} showExpColors={experimentalDesign} iconBg="bg-pink-500/15" iconColor="text-pink-500" />
-          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={t('beta_badge')} onClick={() => navigateTo('about')} showExpColors={experimentalDesign} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
+          <SettingsItem icon={RefreshCcw} label={t('check_updates')} description={t('check_updates_desc')} onClick={() => navigateTo('checkUpdates')} showExpColors={experimentalDesign} iconBg="bg-indigo-500/15" iconColor="text-indigo-600" />
+          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={currentVersion} onClick={() => navigateTo('about')} showExpColors={experimentalDesign} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
+          
           {currentUser.isAdmin && (
             <div className='border-t mt-4'>
                 <SettingsItem 
@@ -662,6 +674,52 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </Accordion>
           );
           case 'botGuide': return botGuidePageContent;
+          case 'checkUpdates': return (
+              <div className='p-12 flex flex-col items-center text-center gap-8'>
+                  <div className={cn(
+                      "w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000",
+                      isCheckingUpdates && "rotate-180"
+                  )}>
+                      {isCheckingUpdates ? (
+                          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                      ) : (
+                          <RefreshCcw className="h-10 w-10 text-primary" />
+                      )}
+                  </div>
+                  
+                  <div className="space-y-4">
+                      <h2 className="text-2xl font-black font-headline">
+                          {isCheckingUpdates ? t('checking_updates_progress') : (
+                              hasCheckedUpdates 
+                                ? (isUpdateAvailable ? t('update_available_title') : t('latest_version_installed')) 
+                                : t('check_updates')
+                          )}
+                      </h2>
+                      {hasCheckedUpdates && (
+                          <p className="text-sm text-muted-foreground font-medium">
+                              {isUpdateAvailable 
+                                ? t('update_available_status', { version: updateInfo?.latest })
+                                : `${t('version')}: ${currentVersion}`
+                              }
+                          </p>
+                      )}
+                  </div>
+
+                  {!isCheckingUpdates && (
+                      <div className="w-full max-w-xs pt-4">
+                          {isUpdateAvailable && hasCheckedUpdates ? (
+                              <Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={promptUpdate}>
+                                  <Download className="mr-2 h-5 w-5" /> {t('download')}
+                              </Button>
+                          ) : (
+                              <Button variant="outline" className="w-full h-14 rounded-2xl font-bold text-lg" onClick={handleManualCheckUpdates}>
+                                  {t('check_updates')}
+                              </Button>
+                          )}
+                      </div>
+                  )}
+              </div>
+          );
           case 'account': return (
               <div className='p-6 space-y-4'>
                   <Button variant="outline" className='w-full h-14 rounded-2xl font-bold text-lg' onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>

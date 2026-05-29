@@ -18,13 +18,16 @@ interface UpdatePromptDialogProps {
     isUpdateAvailable?: boolean;
     onUpdate?: () => void;
     isDownloading?: boolean;
+    targetVersion?: string;
 }
 
-export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = false, onUpdate, isDownloading = false }: UpdatePromptDialogProps) {
+export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = false, onUpdate, isDownloading = false, targetVersion }: UpdatePromptDialogProps) {
     const { t } = useLanguage();
     
     const title = isUpdateAvailable ? t('update_available_title') : t('update_required_title');
-    const description = isUpdateAvailable ? t('update_available_description') : t('update_required_description');
+    const description = isUpdateAvailable 
+        ? (targetVersion ? t('update_available_status', { version: targetVersion }) : t('update_available_description'))
+        : t('update_required_description');
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,7 +42,7 @@ export function UpdatePromptDialog({ open, onOpenChange, isUpdateAvailable = fal
                     </div>
                     <div className="space-y-2">
                         <DialogTitle className="text-2xl font-bold font-headline">{title}</DialogTitle>
-                        <DialogDescription className="text-muted-foreground leading-relaxed">
+                        <DialogDescription className="text-muted-foreground leading-relaxed font-bold">
                             {description}
                         </DialogDescription>
                     </div>

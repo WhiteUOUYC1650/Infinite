@@ -441,6 +441,11 @@ export const translations = {
       'file': 'File',
       'max_file_size_label': 'Max size: {size}',
       'frutiger_aero_label': 'Frutiger Aero',
+      'check_updates': 'Check for Updates',
+      'check_updates_desc': 'Check if a new version is available',
+      'latest_version_installed': 'Latest version is installed',
+      'update_available_status': 'New version available: {version}',
+      'checking_updates_progress': 'Checking for updates...',
     },
     ru: {
       'settings': 'Настройки',
@@ -882,6 +887,11 @@ export const translations = {
       'file': 'Файл',
       'max_file_size_label': 'Макс. размер: {size}',
       'frutiger_aero_label': 'Фрутигер Аэро',
+      'check_updates': 'Проверка обновлений',
+      'check_updates_desc': 'Проверить наличие новой версии',
+      'latest_version_installed': 'Установлена последняя версия',
+      'update_available_status': 'Доступно обновление: {version}',
+      'checking_updates_progress': 'Проверка наличия обновлений...',
     }
   };
 

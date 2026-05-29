@@ -12,7 +12,9 @@ const CURRENT_APP_VERSION = "0.5.2 Beta";
 interface UpdatePromptContextType {
   promptUpdate: () => void;
   isUpdateAvailable: boolean;
+  updateInfo: any;
   downloadUpdate: () => Promise<void>;
+  currentVersion: string;
 }
 
 const UpdatePromptContext = createContext<UpdatePromptContextType | undefined>(undefined);
@@ -97,7 +99,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           const blob = new Blob([bytes], { type: 'application/vnd.android.package-archive' });
           const url = URL.createObjectURL(blob);
           
-          const link = new (window as any).HTMLAnchorElement();
+          const link = document.createElement('a');
           link.href = url;
           link.download = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
           document.body.appendChild(link);
@@ -123,7 +125,9 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
   const value = {
     promptUpdate,
     isUpdateAvailable,
+    updateInfo,
     downloadUpdate,
+    currentVersion: CURRENT_APP_VERSION,
   };
 
   return (
@@ -135,6 +139,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
             isUpdateAvailable={isUpdateAvailable}
             onUpdate={downloadUpdate}
             isDownloading={isDownloading}
+            targetVersion={updateInfo?.latest}
         />
     </UpdatePromptContext.Provider>
   );
