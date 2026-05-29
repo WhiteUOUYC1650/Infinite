@@ -82,13 +82,24 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           const { Filesystem, Directory } = await import('@capacitor/filesystem');
           const fileName = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
           
+          // Final Final 0.5.2 logic: Save to /Documents/Infinite
+          try {
+            await Filesystem.mkdir({
+              path: 'Infinite',
+              directory: Directory.Documents,
+              recursive: true,
+            });
+          } catch (e) {
+            // Already exists or ignore
+          }
+
           await Filesystem.writeFile({
-            path: fileName,
+            path: `Infinite/${fileName}`,
             data: assembledBase64,
             directory: Directory.Documents,
           });
           
-          toast({ title: "Success", description: "Update saved to Documents. Please install it manually." });
+          toast({ title: "Success", description: "Update saved to Documents/Infinite. Please install it manually." });
         } else {
           const binaryString = window.atob(assembledBase64);
           const bytes = new Uint8Array(binaryString.length);

@@ -622,10 +622,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="space-y-4">
                       <div className="bg-card border rounded-3xl p-6 shadow-sm">
-                          <div className="flex flex-col gap-2 text-sm font-bold leading-relaxed">
-                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> {language === 'ru' ? 'Исправление отвалов' : 'Fixing crashes'}</div>
-                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> {language === 'ru' ? 'Обновление Bot Studio' : 'Bot Studio update'}</div>
-                            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> {language === 'ru' ? 'Исправление багов' : 'Bug fixes'}</div>
+                          <div className="flex flex-col gap-3 text-sm font-bold leading-relaxed">
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>небольшие изменения в экспериментальном дизайне</span></div>
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>исправление FAQ</span></div>
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>добавление проверки обновлений</span></div>
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>небольшое изменение сохранения на устройство</span></div>
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>оптимизация</span></div>
                           </div>
                       </div>
                   </div>

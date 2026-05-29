@@ -893,7 +893,7 @@ export const translations = {
       'update_available_status': 'Доступно обновление: {version}',
       'checking_updates_progress': 'Проверка наличия обновлений...',
     }
-  };
+};
 
 export type TranslationKey = keyof typeof translations.en;
 

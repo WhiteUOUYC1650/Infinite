@@ -158,12 +158,21 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
           const cleanBase64 = currentStory.mediaUrl.split(',')[1];
           const fileName = `infinite_story_${currentStory.id}.jpg`;
           
+          // Ensure folder Infinite exists in Documents (standard user-accessible folder)
+          try {
+              await Filesystem.mkdir({
+                  path: 'Infinite',
+                  directory: Directory.Documents,
+                  recursive: true
+              });
+          } catch (e) {}
+
           await Filesystem.writeFile({
-            path: fileName,
+            path: `Infinite/${fileName}`,
             data: cleanBase64,
             directory: Directory.Documents,
           });
-          toast({ title: t('dm_success'), description: "Saved to Documents" });
+          toast({ title: t('dm_success'), description: "Saved to Documents/Infinite" });
         } catch (e) {
           console.error(e);
           toast({ variant: 'destructive', title: 'Error', description: "Failed to save story natively." });
