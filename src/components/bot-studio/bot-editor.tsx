@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot, setDoc, collection } from 'firebase/firestore';
-import type { CustomBot, BotBlock, BotBlockType, BotScript } from '@/types';
+import type { CustomBot, BotBlock, BotBlockType, BotScript, BotMiniApp } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -102,6 +102,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   const { theme: colorTheme } = useTheme();
   
   const [scripts, setScripts] = useState<BotScript[]>(bot.scripts || []);
+  const [miniApps, setMiniApps] = useState<BotMiniApp[]>(bot.miniApps || []);
   const [botAvatar, setBotAvatar] = useState<string | undefined>(bot.avatar);
   const [botName, setBotName] = useState(bot.name);
   const [botDescription, setBotDescription] = useState(bot.description || '');
@@ -123,6 +124,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         if (snap.exists()) {
             const data = snap.data();
             setScripts(data.scripts || []);
+            setMiniApps(data.miniApps || []);
             setBotAvatar(data.avatar);
             setBotName(data.name);
             setBotDescription(data.description || '');
@@ -136,7 +138,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     try {
         const botRef = doc(db, 'customBots', bot.id);
         const userRef = doc(db, 'users', bot.id);
-        const updateData = { scripts, avatar: botAvatar || null, name: botName, description: botDescription };
+        const updateData = { scripts, miniApps, avatar: botAvatar || null, name: botName, description: botDescription };
         await updateDoc(botRef, updateData);
         await updateDoc(userRef, { avatar: botAvatar || null, name: botName, statusMessage: botDescription });
         toast({ title: t('dm_success'), description: t('chat_update_success') });
@@ -222,6 +224,19 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
     setScripts(newScripts);
   };
 
+  const addMiniApp = () => {
+    const newApp: BotMiniApp = { id: Math.random().toString(36).substr(2, 9), name: 'My Mini-app', url: '' };
+    setMiniApps([...miniApps, newApp]);
+  };
+
+  const updateMiniApp = (id: string, key: keyof BotMiniApp, value: string) => {
+    setMiniApps(miniApps.map(app => app.id === id ? { ...app, [key]: value } : app));
+  };
+
+  const removeMiniApp = (id: string) => {
+    setMiniApps(miniApps.filter(app => app.id !== id));
+  };
+
   return (
     <div className="flex flex-col h-svh bg-background overflow-hidden relative">
       <header className={cn(
@@ -245,7 +260,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 </div>
                 <div className="min-w-0 flex-1">
                     <h1 className="text-base font-black font-headline truncate leading-tight">{botName}</h1>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.2</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.3</p>
                 </div>
             </div>
         </div>
@@ -349,29 +364,52 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </Dialog>
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl border-none shadow-2xl">
-              <DialogHeader className="items-center text-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                      <Settings className="h-8 w-8 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                      <DialogTitle className="text-2xl font-bold font-headline">Bot Settings</DialogTitle>
-                      <DialogDescription>Manage your bot's public identity.</DialogDescription>
-                  </div>
+          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[80vh]">
+              <DialogHeader className="items-center text-center p-6 border-b shrink-0 h-16">
+                  <DialogTitle className="text-xl font-bold font-headline">Bot Settings</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
-                      <Input value={botName} onChange={e => setBotName(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary font-bold" />
-                  </div>
-                  <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">About Bot / Status</Label>
-                      <Textarea value={botDescription} onChange={e => setBotDescription(e.target.value)} className="rounded-xl bg-muted/50 border-none focus-visible:ring-primary min-h-[100px]" />
-                  </div>
-              </div>
-              <DialogFooter className="gap-2">
-                  <Button variant="ghost" onClick={() => setIsSettingsOpen(false)} className="rounded-xl flex-1">{t('cancel')}</Button>
-                  <Button onClick={() => setIsSettingsOpen(false)} className="rounded-xl flex-[2] font-bold">Apply Changes</Button>
+              <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
+                <TabsList className="mx-6 mt-4 grid grid-cols-2 bg-muted/50 p-1 rounded-xl">
+                    <TabsTrigger value="general" className="rounded-lg text-xs font-bold">General</TabsTrigger>
+                    <TabsTrigger value="mini_apps" className="rounded-lg text-xs font-bold">{t('mini_apps')}</TabsTrigger>
+                </TabsList>
+                <ScrollArea className="flex-1 p-6">
+                    <TabsContent value="general" className="mt-0 space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
+                            <Input value={botName} onChange={e => setBotName(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary font-bold" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">About Bot / Status</Label>
+                            <Textarea value={botDescription} onChange={e => setBotDescription(e.target.value)} className="rounded-xl bg-muted/50 border-none focus-visible:ring-primary min-h-[100px]" />
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="mini_apps" className="mt-0 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('mini_apps')}</Label>
+                            <Button variant="ghost" size="sm" onClick={addMiniApp} className="text-primary font-bold text-[10px] uppercase h-8"><Plus className="h-3 w-3 mr-1" /> {t('add_mini_app')}</Button>
+                        </div>
+                        <div className="space-y-3">
+                            {miniApps.map(app => (
+                                <div key={app.id} className="p-4 bg-muted/40 rounded-2xl border border-white/5 space-y-3 relative group">
+                                    <Button variant="ghost" size="icon" onClick={() => removeMiniApp(app.id)} className="absolute top-2 right-2 h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="h-3 w-3" /></Button>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold uppercase opacity-50 ml-1">{t('mini_app_name')}</Label>
+                                        <Input value={app.name} onChange={e => updateMiniApp(app.id, 'name', e.target.value)} className="h-9 bg-background/50 border-none rounded-lg text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold uppercase opacity-50 ml-1">{t('mini_app_url')}</Label>
+                                        <Input value={app.url} onChange={e => updateMiniApp(app.id, 'url', e.target.value)} placeholder="https://example.com" className="h-9 bg-background/50 border-none rounded-lg text-xs" />
+                                    </div>
+                                </div>
+                            ))}
+                            {miniApps.length === 0 && <p className="text-center py-8 text-xs text-muted-foreground italic">{t('no_mini_apps')}</p>}
+                        </div>
+                    </TabsContent>
+                </ScrollArea>
+              </Tabs>
+              <DialogFooter className="p-6 border-t bg-muted/20 shrink-0">
+                  <Button onClick={() => setIsSettingsOpen(false)} className="w-full h-12 rounded-xl font-bold">Apply Changes</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -529,7 +567,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                     </div>
                 );
             case 'logic_if':
-                return <Textarea placeholder="Условие (напр. {msg_text} == привет)" value={block.params?.condition || ''} onChange={e => onUpdate(sIdx, bIdx, 'condition', e.target.value)} className="h-10 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none" />;
+                return <Textarea placeholder="Условие (напр. {msg_text} == привет)" value={block.params?.condition || ''} onChange={e => onUpdate(sIdx, bIdx, 'condition', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none" />;
             case 'variable_set':
                 return (
                     <div className="flex flex-col gap-2 mt-1 w-full">

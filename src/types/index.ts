@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -106,6 +105,9 @@ export type BotBlockType =
   | 'logic_else'
   | 'logic_end_if'
   | 'variable_set'
+  | 'variable_math'
+  | 'variable_clear'
+  | 'action_stop'
   | 'action_send_image'
   | 'action_send_video'
   | 'action_send_music'
@@ -122,6 +124,13 @@ export type BotScript = {
   blocks: BotBlock[];
 };
 
+export type BotMiniApp = {
+  id: string;
+  name: string;
+  url: string;
+  icon?: string;
+};
+
 export type CustomBot = {
   id: string;
   name: string;
@@ -130,6 +139,7 @@ export type CustomBot = {
   avatar?: string;
   description?: string;
   scripts: BotScript[]; 
+  miniApps?: BotMiniApp[];
   isActive: boolean;
   createdAt: Timestamp;
 };
