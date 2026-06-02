@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, doc, setDoc, deleteDoc, Timestamp, runTransaction, updateDoc } from 'firebase/firestore';
 import type { AuthenticatedUser, CustomBot } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost, X } from 'lucide-react';
+import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost, X, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -207,7 +206,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                                 </CardHeader>
                                 <CardFooter className="bg-muted/30 gap-2 p-4">
                                     <Button variant="outline" size="sm" className="flex-1 rounded-xl font-bold h-10 border-none bg-background hover:bg-primary/5" onClick={() => setSelectedBot(bot)}>
-                                        <Pencil className="h-4 w-4 mr-2" /> {t('edit_logic')}
+                                        <Pencil className="h-4 w-4 mr-2" /> {t('manage_bot')}
                                     </Button>
                                     <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 border-none bg-background hover:bg-primary/5" onClick={() => handleToggleActive(bot)}>
                                         {bot.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}

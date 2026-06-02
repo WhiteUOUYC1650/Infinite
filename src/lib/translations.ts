@@ -452,6 +452,9 @@ export const translations = {
       'mini_app_url': 'URL (https://...)',
       'open_mini_app': 'Open App',
       'no_mini_apps': 'No mini-apps created.',
+      'manage_bot': 'Bot Management',
+      'bot_logic': 'Logic & Scripts',
+      'bot_miniapps': 'Mini-apps',
     },
     ru: {
       'settings': 'Настройки',
@@ -904,6 +907,9 @@ export const translations = {
       'mini_app_url': 'URL (https://...)',
       'open_mini_app': 'Открыть',
       'no_mini_apps': 'Приложения не созданы.',
+      'manage_bot': 'Управление ботом',
+      'bot_logic': 'Логика и Скрипты',
+      'bot_miniapps': 'Мини-приложения',
     }
 };
 

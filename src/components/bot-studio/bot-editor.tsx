@@ -5,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot, setDoc, collection } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript, BotMiniApp } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid, ChevronRight, Sparkles, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -101,6 +101,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
   const { toast } = useToast();
   const { theme: colorTheme } = useTheme();
   
+  const [view, setView] = useState<'menu' | 'scripts' | 'miniapps'>('menu');
   const [scripts, setScripts] = useState<BotScript[]>(bot.scripts || []);
   const [miniApps, setMiniApps] = useState<BotMiniApp[]>(bot.miniApps || []);
   const [botAvatar, setBotAvatar] = useState<string | undefined>(bot.avatar);
@@ -146,6 +147,14 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         console.error(e); 
         toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally { setIsSaving(false); }
+  };
+
+  const handleBack = () => {
+      if (view !== 'menu') {
+          setView('menu');
+      } else {
+          onBack();
+      }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,7 +253,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
           colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
       )}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
-            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+            <Button variant="ghost" size="icon" onClick={handleBack} className="shrink-0">
                 <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -278,48 +287,157 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       <main className="flex-1 overflow-y-auto relative bg-muted/5">
         <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: '32px 32px' }} />
         
-        <div className="w-full px-4 py-8 md:px-8 md:py-16 space-y-12 pb-32">
-            {scripts.map((script, sIdx) => (
-                <div key={script.id} className="relative flex flex-col items-stretch bg-card/30 rounded-3xl p-3 sm:p-6 border-2 border-dashed border-muted-foreground/10 w-full">
-                    <div className="absolute -top-3 left-6 bg-muted px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
-                    
-                    <div className="w-full flex flex-col items-stretch gap-3 overflow-hidden">
-                        {script.blocks.map((block, bIdx) => (
-                            <BotBlockComponent 
-                                key={block.id}
-                                block={block} 
-                                sIdx={sIdx} 
-                                bIdx={bIdx}
-                                isFirst={bIdx === 1 && sIdx === 0}
-                                isLast={bIdx === script.blocks.length - 1 && sIdx === scripts.length - 1}
-                                onUpdate={updateBlockParam}
-                                onDelete={removeBlock}
-                                onMove={moveBlock}
-                                db={db}
-                                botId={bot.id}
-                            />
-                        ))}
-                    </div>
+        {view === 'menu' && (
+            <div className="w-full max-w-lg mx-auto px-4 py-12 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="text-center space-y-2 mb-8">
+                    <h2 className="text-2xl font-black font-headline text-primary">{t('manage_bot')}</h2>
+                    <p className="text-sm text-muted-foreground">{t('bot_studio_desc')}</p>
                 </div>
-            ))}
 
-            {scripts.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4 opacity-40">
-                    <ListTree className="h-16 w-16" />
-                    <p className="font-bold text-sm uppercase tracking-[0.2em]">Рабочее поле пусто</p>
+                <button 
+                    onClick={() => setView('scripts')}
+                    className="w-full p-6 bg-card border rounded-[2rem] shadow-sm hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-left group flex items-center gap-6"
+                >
+                    <div className="w-16 h-16 rounded-3xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                        <Code2 className="h-8 w-8" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-xl font-bold font-headline mb-1">{t('bot_logic')}</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{t('bot_guide_intro').substring(0, 80)}...</p>
+                    </div>
+                    <ChevronRight className="h-6 w-6 text-muted-foreground/30" />
+                </button>
+
+                <button 
+                    onClick={() => setView('miniapps')}
+                    className="w-full p-6 bg-card border rounded-[2rem] shadow-sm hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-left group flex items-center gap-6"
+                >
+                    <div className="w-16 h-16 rounded-3xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                        <LayoutGrid className="h-8 w-8" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-xl font-bold font-headline mb-1">{t('mini_apps')}</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{t('no_mini_apps')}</p>
+                    </div>
+                    <ChevronRight className="h-6 w-6 text-muted-foreground/30" />
+                </button>
+            </div>
+        )}
+
+        {view === 'scripts' && (
+            <div className="w-full px-4 py-8 md:px-8 md:py-16 space-y-12 pb-32 animate-in fade-in slide-in-from-right-4 duration-500">
+                {scripts.map((script, sIdx) => (
+                    <div key={script.id} className="relative flex flex-col items-stretch bg-card/30 rounded-3xl p-3 sm:p-6 border-2 border-dashed border-muted-foreground/10 w-full">
+                        <div className="absolute -top-3 left-6 bg-muted px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-muted-foreground">Script #{sIdx + 1}</div>
+                        
+                        <div className="w-full flex flex-col items-stretch gap-3 overflow-hidden">
+                            {script.blocks.map((block, bIdx) => (
+                                <BotBlockComponent 
+                                    key={block.id}
+                                    block={block} 
+                                    sIdx={sIdx} 
+                                    bIdx={bIdx}
+                                    isFirst={bIdx === 1 && sIdx === 0}
+                                    isLast={bIdx === script.blocks.length - 1 && sIdx === scripts.length - 1}
+                                    onUpdate={updateBlockParam}
+                                    onDelete={removeBlock}
+                                    onMove={moveBlock}
+                                    db={db}
+                                    botId={bot.id}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                ))}
+
+                {scripts.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-4 opacity-40">
+                        <ListTree className="h-16 w-16" />
+                        <p className="font-bold text-sm uppercase tracking-[0.2em]">Рабочее поле пусто</p>
+                    </div>
+                )}
+            </div>
+        )}
+
+        {view === 'miniapps' && (
+            <div className="w-full max-w-lg mx-auto px-4 py-8 space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 pb-32">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-black font-headline uppercase tracking-widest text-primary">{t('mini_apps')}</h2>
+                    <Button variant="outline" size="sm" onClick={addMiniApp} className="rounded-xl font-bold h-10 border-primary/20 bg-primary/5 text-primary">
+                        <Plus className="h-4 w-4 mr-2" /> {t('add_mini_app')}
+                    </Button>
                 </div>
-            )}
-        </div>
+
+                <div className="grid gap-4">
+                    {miniApps.map(app => (
+                        <div key={app.id} className="p-6 bg-card border rounded-3xl shadow-sm space-y-4 relative group animate-in zoom-in duration-300">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => removeMiniApp(app.id)} 
+                                className="absolute top-4 right-4 h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                            
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <LayoutGrid className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50 mb-1">{t('mini_app_name')}</p>
+                                    <Input 
+                                        value={app.name} 
+                                        onChange={e => updateMiniApp(app.id, 'name', e.target.value)} 
+                                        className="h-11 bg-muted/50 border-none rounded-xl font-bold text-lg focus-visible:ring-primary" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-50 mb-1">{t('mini_app_url')}</p>
+                                <div className="relative">
+                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                                    <Input 
+                                        value={app.url} 
+                                        onChange={e => updateMiniApp(app.id, 'url', e.target.value)} 
+                                        placeholder="https://example.com" 
+                                        className="h-11 pl-10 bg-muted/50 border-none rounded-xl text-sm font-medium focus-visible:ring-primary" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-2 flex justify-end">
+                                <Button variant="ghost" size="sm" className="text-[10px] uppercase font-black tracking-widest opacity-60 hover:opacity-100 h-8" asChild>
+                                    <a href={app.url} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="h-3 w-3 mr-1.5" /> TEST LINK
+                                    </a>
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+
+                    {miniApps.length === 0 && (
+                        <div className="text-center py-20 bg-card/40 rounded-[2.5rem] border-2 border-dashed opacity-40">
+                            <Sparkles className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                            <p className="font-bold uppercase tracking-widest text-xs text-muted-foreground">{t('no_mini_apps')}</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
       </main>
 
-      <div className="absolute bottom-8 right-8 z-[30]">
-          <Button 
-            onClick={() => setBlockSelectorOpen(true)}
-            className="h-16 w-16 rounded-full font-black shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all p-0 flex items-center justify-center"
-          >
-            <Plus className="h-8 w-8" strokeWidth={3} />
-          </Button>
-      </div>
+      {view === 'scripts' && (
+          <div className="absolute bottom-8 right-8 z-[30]">
+              <Button 
+                onClick={() => setBlockSelectorOpen(true)}
+                className="h-16 w-16 rounded-full font-black shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all p-0 flex items-center justify-center"
+              >
+                <Plus className="h-8 w-8" strokeWidth={3} />
+              </Button>
+          </div>
+      )}
 
       <Dialog open={blockSelectorOpen} onOpenChange={setBlockSelectorOpen}>
           <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl p-0 overflow-hidden flex flex-col h-[70vh]">
@@ -364,50 +482,22 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       </Dialog>
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[80vh]">
+          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-3xl border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[60vh]">
               <DialogHeader className="items-center text-center p-6 border-b shrink-0 h-16">
                   <DialogTitle className="text-xl font-bold font-headline">Bot Settings</DialogTitle>
               </DialogHeader>
-              <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="mx-6 mt-4 grid grid-cols-2 bg-muted/50 p-1 rounded-xl">
-                    <TabsTrigger value="general" className="rounded-lg text-xs font-bold">General</TabsTrigger>
-                    <TabsTrigger value="mini_apps" className="rounded-lg text-xs font-bold">{t('mini_apps')}</TabsTrigger>
-                </TabsList>
-                <ScrollArea className="flex-1 p-6">
-                    <TabsContent value="general" className="mt-0 space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
-                            <Input value={botName} onChange={e => setBotName(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary font-bold" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">About Bot / Status</Label>
-                            <Textarea value={botDescription} onChange={e => setBotDescription(e.target.value)} className="rounded-xl bg-muted/50 border-none focus-visible:ring-primary min-h-[100px]" />
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="mini_apps" className="mt-0 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('mini_apps')}</Label>
-                            <Button variant="ghost" size="sm" onClick={addMiniApp} className="text-primary font-bold text-[10px] uppercase h-8"><Plus className="h-3 w-3 mr-1" /> {t('add_mini_app')}</Button>
-                        </div>
-                        <div className="space-y-3">
-                            {miniApps.map(app => (
-                                <div key={app.id} className="p-4 bg-muted/40 rounded-2xl border border-white/5 space-y-3 relative group">
-                                    <Button variant="ghost" size="icon" onClick={() => removeMiniApp(app.id)} className="absolute top-2 right-2 h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="h-3 w-3" /></Button>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold uppercase opacity-50 ml-1">{t('mini_app_name')}</Label>
-                                        <Input value={app.name} onChange={e => updateMiniApp(app.id, 'name', e.target.value)} className="h-9 bg-background/50 border-none rounded-lg text-xs" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-bold uppercase opacity-50 ml-1">{t('mini_app_url')}</Label>
-                                        <Input value={app.url} onChange={e => updateMiniApp(app.id, 'url', e.target.value)} placeholder="https://example.com" className="h-9 bg-background/50 border-none rounded-lg text-xs" />
-                                    </div>
-                                </div>
-                            ))}
-                            {miniApps.length === 0 && <p className="text-center py-8 text-xs text-muted-foreground italic">{t('no_mini_apps')}</p>}
-                        </div>
-                    </TabsContent>
-                </ScrollArea>
-              </Tabs>
+              <ScrollArea className="flex-1 p-6">
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('bot_name_label')}</Label>
+                        <Input value={botName} onChange={e => setBotName(e.target.value)} className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">About Bot / Status</Label>
+                        <Textarea value={botDescription} onChange={e => setBotDescription(e.target.value)} className="rounded-xl bg-muted/50 border-none focus-visible:ring-primary min-h-[100px]" />
+                    </div>
+                </div>
+              </ScrollArea>
               <DialogFooter className="p-6 border-t bg-muted/20 shrink-0">
                   <Button onClick={() => setIsSettingsOpen(false)} className="w-full h-12 rounded-xl font-bold">Apply Changes</Button>
               </DialogFooter>
