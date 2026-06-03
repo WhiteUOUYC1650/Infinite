@@ -96,6 +96,7 @@ export type Message = {
 export type BotBlockType = 
   | 'event_start' 
   | 'event_message'
+  | 'event_button_click'
   | 'action_send' 
   | 'action_reply' 
   | 'action_wait' 
@@ -111,7 +112,11 @@ export type BotBlockType =
   | 'action_send_image'
   | 'action_send_video'
   | 'action_send_music'
-  | 'action_send_file';
+  | 'action_send_file'
+  | 'ui_header'
+  | 'ui_text'
+  | 'ui_button'
+  | 'ui_separator';
 
 export type BotBlock = {
   id: string;
@@ -127,8 +132,7 @@ export type BotScript = {
 export type BotMiniApp = {
   id: string;
   name: string;
-  url: string;
-  icon?: string;
+  blocks: BotBlock[]; // UI Definition
 };
 
 export type CustomBot = {

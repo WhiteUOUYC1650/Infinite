@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -111,8 +110,14 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
   }, [selectedItem]);
 
+  // Bot Logic Engine
   useEffect(() => {
     if (!db || !currentUser || !userData) return;
+    
+    // Helper to resolve variables in text
+    const resolveVars = (text: string = '', vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
+
+    // Main Bot Messaging Handler
     const chatsRef = collection(db, 'chats');
     const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -133,22 +138,54 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                     if (memberDoc.exists() && memberDoc.data().isCustomBot) {
                         botDetectionCache.current[memberId] = true;
                         const botLogicSnap = await getDoc(doc(db, 'customBots', memberId));
-                        if (botLogicSnap.exists() && botLogicSnap.data().isActive) { executeBotLogic(botLogicSnap.data() as CustomBot, lastMsg, change.doc.id); }
+                        if (botLogicSnap.exists() && botLogicSnap.data().isActive) { 
+                            executeBotLogic(botLogicSnap.data() as CustomBot, { type: 'event_message', message: lastMsg }, change.doc.id); 
+                        }
                     } else { botDetectionCache.current[memberId] = false; }
                 }
             }
         });
     });
-    const resolveVars = (text: string = '', vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
-    const executeBotLogic = async (bot: CustomBot, message: any, chatId: string) => {
+
+    // Handle Button Click Event from Mini-apps
+    const handleBotButtonClick = (event: any) => {
+        const { botId, buttonId } = event.detail;
+        if (!botId || !buttonId) return;
+
+        getDoc(doc(db, 'customBots', botId)).then(async (botLogicSnap) => {
+            if (botLogicSnap.exists() && botLogicSnap.data().isActive) {
+                const members = [currentUser.uid, botId].sort();
+                const chatId = members.join('_');
+                executeBotLogic(botLogicSnap.data() as CustomBot, { type: 'event_button_click', buttonId }, chatId);
+            }
+        });
+    };
+    window.addEventListener('bot-button-click', handleBotButtonClick);
+
+    const executeBotLogic = async (bot: CustomBot, event: { type: 'event_message' | 'event_button_click', message?: any, buttonId?: string }, chatId: string) => {
         const stateRef = doc(db, 'customBots', bot.id, 'userStates', currentUser.uid);
         const stateSnap = await getDoc(stateRef);
         const memory = stateSnap.exists() ? stateSnap.data().vars || {} : {};
-        const vars: Record<string, string> = { ...memory, 'user_name': userData.name || currentUser.displayName || 'User', 'msg_text': message.content || '', 'bot_name': bot.name, 'time': new Date().toLocaleTimeString() };
-        const isStartCommand = message.content === '/start';
-        const triggerType = isStartCommand ? 'event_start' : 'event_message';
+        const vars: Record<string, string> = { 
+            ...memory, 
+            'user_name': userData.name || currentUser.displayName || 'User', 
+            'msg_text': event.message?.content || '', 
+            'bot_name': bot.name, 
+            'time': new Date().toLocaleTimeString() 
+        };
+
+        const isStartCommand = event.message?.content === '/start';
+        const triggerType = isStartCommand ? 'event_start' : event.type;
+
         for (const script of bot.scripts) {
-            const blocks = script.blocks; if (!blocks || blocks.length === 0 || blocks[0].type !== triggerType) continue;
+            const blocks = script.blocks; 
+            if (!blocks || blocks.length === 0) continue;
+            
+            // Check if the script matches the trigger
+            const trigger = blocks[0];
+            if (trigger.type !== triggerType) continue;
+            if (triggerType === 'event_button_click' && trigger.params?.buttonId !== event.buttonId) continue;
+
             let i = 1; const ifStack: boolean[] = []; let stopped = false;
             while (i < blocks.length && !stopped) {
                 const block = blocks[i];
@@ -184,7 +221,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                     case 'action_send_video':
                     case 'action_send_music':
                     case 'action_send_file':
-                        await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? message : undefined), vars); 
+                        await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? event.message : undefined), vars); 
                         break;
                     case 'action_wait': await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000)); break;
                 }
@@ -194,6 +231,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         const { user_name, msg_text, bot_name, time, ...persistentOnly } = vars;
         await setDoc(stateRef, { vars: persistentOnly, updatedAt: serverTimestamp() }, { merge: true });
     };
+
     const sendBotMessage = async (bot: CustomBot, block: BotBlock, chatId: string, replyTo?: any, vars?: Record<string, string>) => {
         const msgRef = doc(collection(db, 'chats', chatId, 'messages'));
         const text = resolveVars(block.params?.text, vars || {});
@@ -227,7 +265,11 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), { lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, timestamp: Timestamp.now() } });
     };
-    return () => unsubscribe();
+
+    return () => {
+        unsubscribe();
+        window.removeEventListener('bot-button-click', handleBotButtonClick);
+    };
   }, [db, currentUser, userData, sessionId]);
 
   useEffect(() => {

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { User, CustomBot } from '@/types';
+import type { User, CustomBot, BotMiniApp } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -22,7 +22,7 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink } from 'lucide-react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, runTransaction, increment, getDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
 import { Capacitor } from '@capacitor/core';
+import { Separator } from './ui/separator';
 
 interface UserProfileDialogProps {
   user: User;
@@ -52,7 +53,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const [sendAmount, setSendAmount] = useState('10');
   const [isSendingGold, setIsSendingGold] = useState(false);
   const [botData, setBotData] = useState<CustomBot | null>(null);
-  const [activeMiniApp, setActiveMiniApp] = useState<{name: string, url: string} | null>(null);
+  const [activeMiniApp, setActiveMiniApp] = useState<BotMiniApp | null>(null);
 
   useEffect(() => { 
     if (open) { 
@@ -136,6 +137,18 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     finally { setIsSendingGold(false); }
   };
 
+  const handleButtonClick = (buttonId: string) => {
+      if (!buttonId) return;
+      window.dispatchEvent(new CustomEvent('bot-button-click', { 
+          detail: { 
+              botId: user.id, 
+              buttonId: buttonId 
+          } 
+      }));
+      // Close the app dialog if needed, or keep it open if it's an interactive menu
+      // For now we keep it open so they can click more buttons
+  };
+
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
   const displayUsername = user.isDeleted ? '' : user.username;
   const birthdayText = useMemo(() => {
@@ -148,22 +161,40 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
       <DialogContent hideCloseButton className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-lg")}>
         {activeMiniApp ? (
             <div className="flex flex-col h-full bg-background animate-in slide-in-from-right duration-300">
-                <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md">
+                <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md pt-[calc(0.5rem+env(safe-area-inset-top))]">
                     <Button variant="ghost" size="icon" onClick={() => setActiveMiniApp(null)} className="shrink-0"><ArrowLeft /></Button>
                     <div className="ml-3 flex-1 min-w-0">
                         <p className="font-bold truncate text-sm">{activeMiniApp.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{activeMiniApp.url}</p>
+                        <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest font-black">Native Mini-App</p>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => setActiveMiniApp(null)} className="shrink-0 ml-2"><X /></Button>
                 </header>
-                <div className="flex-1 bg-white">
-                    <iframe 
-                        src={activeMiniApp.url} 
-                        className="w-full h-full border-none" 
-                        allow="camera; microphone; geolocation; notifications"
-                        sandbox="allow-scripts opacity-0 allow-same-origin allow-forms allow-modals allow-popups"
-                    />
-                </div>
+                <ScrollArea className="flex-1 bg-muted/5">
+                    <div className="p-6 space-y-4">
+                        {activeMiniApp.blocks?.map((block) => {
+                            switch (block.type) {
+                                case 'ui_header':
+                                    return <h3 key={block.id} className="text-xl font-black font-headline text-primary border-b pb-2">{block.params?.text}</h3>;
+                                case 'ui_text':
+                                    return <p key={block.id} className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{block.params?.text}</p>;
+                                case 'ui_button':
+                                    return (
+                                        <Button 
+                                            key={block.id} 
+                                            className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/10 transition-all active:scale-95" 
+                                            onClick={() => handleButtonClick(block.params?.buttonId)}
+                                        >
+                                            {block.params?.text}
+                                        </Button>
+                                    );
+                                case 'ui_separator':
+                                    return <Separator key={block.id} className="my-4" />;
+                                default:
+                                    return null;
+                            }
+                        })}
+                    </div>
+                </ScrollArea>
             </div>
         ) : (
             <div className="flex flex-col h-full overflow-hidden relative">
