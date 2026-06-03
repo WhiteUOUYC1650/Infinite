@@ -108,6 +108,7 @@ export type BotBlockType =
   | 'variable_set'
   | 'variable_math'
   | 'variable_clear'
+  | 'variable_random'
   | 'action_stop'
   | 'action_send_image'
   | 'action_send_video'

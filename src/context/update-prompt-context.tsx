@@ -82,7 +82,6 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           const { Filesystem, Directory } = await import('@capacitor/filesystem');
           const fileName = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
           
-          // Final Final 0.5.2 logic: Save to /Documents/Infinite
           try {
             await Filesystem.mkdir({
               path: 'Infinite',
@@ -90,7 +89,6 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
               recursive: true,
             });
           } catch (e) {
-            // Already exists or ignore
           }
 
           await Filesystem.writeFile({

@@ -5,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot, setDoc, collection } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript, BotMiniApp } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid, ChevronRight, Sparkles, ExternalLink, Type, MousePointer2, Minus } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid, ChevronRight, Sparkles, ExternalLink, Type, MousePointer2, Minus, HelpCircle, Dice5 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +42,7 @@ const BLOCK_COLORS: Record<BotBlockType, string> = {
   variable_set: 'bg-rose-500 border-rose-600',
   variable_math: 'bg-rose-600 border-rose-700',
   variable_clear: 'bg-rose-400 border-rose-500',
+  variable_random: 'bg-rose-700 border-rose-800',
   action_stop: 'bg-red-600 border-red-700',
   action_send_image: 'bg-cyan-500 border-cyan-600',
   action_send_video: 'bg-slate-500 border-slate-600',
@@ -68,6 +69,7 @@ const BLOCK_ICONS: Record<BotBlockType, any> = {
   variable_set: Database,
   variable_math: PlusCircle,
   variable_clear: MinusCircle,
+  variable_random: Dice5,
   action_stop: Ban,
   action_send_image: ImageIcon,
   action_send_video: Video,
@@ -573,6 +575,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                             <TabsContent value="vars" className="mt-0 space-y-2">
                                 <PaletteItem type="variable_set" label={t('block_variable_set')} onClick={onAddFromFab} />
                                 <PaletteItem type="variable_math" label={t('block_math')} onClick={onAddFromFab} />
+                                <PaletteItem type="variable_random" label={t('block_variable_random')} onClick={onAddFromFab} />
                                 <PaletteItem type="variable_clear" label={t('block_clear')} onClick={onAddFromFab} />
                             </TabsContent>
                           </>
@@ -651,7 +654,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
 }
 
 function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: string, onClick: (t: BotBlockType) => void }) {
-    const Icon = BLOCK_ICONS[type];
+    const Icon = BLOCK_ICONS[type] || HelpCircle;
     return (
         <button 
             onClick={() => onClick(type)}
@@ -668,7 +671,7 @@ function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: stri
 
 function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDelete, onMove, db, botId, isMiniApp = false }: { block: BotBlock, sIdx: number, bIdx: number, isFirst: boolean, isLast: boolean, onUpdate: any, onDelete: any, onMove: any, db: any, botId: string, isMiniApp?: boolean }) {
     const { t } = useLanguage();
-    const Icon = BLOCK_ICONS[block.type];
+    const Icon = BLOCK_ICONS[block.type] || HelpCircle;
     const isTrigger = !isMiniApp && bIdx === 0;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -744,11 +747,12 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                         {block.type === 'ui_button' && (
                             <div className="space-y-1">
                                 <Label className="text-[8px] font-black uppercase opacity-50 ml-1">{t('button_id_label')}</Label>
-                                <Input 
+                                <Textarea 
                                     placeholder="main_menu_btn" 
                                     value={block.params?.buttonId || ''} 
                                     onChange={e => onUpdate(sIdx, bIdx, 'buttonId', e.target.value.toLowerCase().replace(/\s/g, '_'))}
-                                    className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 font-mono text-[10px]"
+                                    className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 font-mono text-[10px] resize-none overflow-hidden"
+                                    rows={1}
                                 />
                             </div>
                         )}
@@ -758,11 +762,12 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                 return (
                     <div className="space-y-1 mt-1 w-full">
                         <Label className="text-[8px] font-black uppercase opacity-50 ml-1">{t('button_id_label')}</Label>
-                        <Input 
+                        <Textarea 
                             placeholder="my_button_id" 
                             value={block.params?.buttonId || ''} 
                             onChange={e => onUpdate(sIdx, bIdx, 'buttonId', e.target.value.toLowerCase().replace(/\s/g, '_'))}
-                            className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-mono text-xs"
+                            className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-mono text-xs resize-none overflow-hidden"
+                            rows={1}
                         />
                     </div>
                 );
@@ -799,22 +804,23 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                                 <p className="text-[7px] font-mono opacity-50 truncate uppercase">Chunks: {chunkIds.slice(0, 2).join(', ')}...</p>
                              </div>
                         )}
-                        <Textarea placeholder="Описание (необязательно)..." value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none" />
+                        <Textarea placeholder="Описание (необязательно)..." value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                     </div>
                 );
             case 'logic_if':
-                return <Textarea placeholder="Условие (напр. {msg_text} == привет)" value={block.params?.condition || ''} onChange={e => onUpdate(sIdx, bIdx, 'condition', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none" />;
+                return <Textarea placeholder="Условие (напр. {msg_text} == привет)" value={block.params?.condition || ''} onChange={e => onUpdate(sIdx, bIdx, 'condition', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />;
             case 'variable_set':
+            case 'variable_random':
                 return (
                     <div className="flex flex-col gap-2 mt-1 w-full">
-                        <Input placeholder="Имя переменной" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs" />
-                        <Textarea placeholder="Значение" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs w-full whitespace-pre-wrap" />
+                        <Textarea placeholder="Имя переменной" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
+                        <Textarea placeholder={block.type === 'variable_random' ? "Макс. число (напр. 100)" : "Значение"} value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs w-full whitespace-pre-wrap resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                     </div>
                 );
             case 'variable_math':
                 return (
                     <div className="flex flex-col gap-2 mt-1 w-full">
-                        <Input placeholder="Имя (напр. score)" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs" />
+                        <Textarea placeholder="Имя (напр. score)" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                         <div className="flex gap-2">
                              <Select onValueChange={(v) => onUpdate(sIdx, bIdx, 'op', v)} value={block.params?.op || 'add'}>
                                 <SelectTrigger className="h-9 bg-black/10 border-none text-white text-xs font-bold w-32">
@@ -826,12 +832,12 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                                     <SelectItem value="mul">Умножить (*)</SelectItem>
                                 </SelectContent>
                              </Select>
-                             <Input type="number" placeholder="Число" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white font-bold text-xs" />
+                             <Textarea placeholder="Число" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white font-bold text-xs resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                         </div>
                     </div>
                 );
             case 'variable_clear':
-                return <Input placeholder="Имя переменной для удаления" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full" />;
+                return <Textarea placeholder="Имя переменной для удаления" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />;
             case 'action_wait':
                 return <div className="flex items-center gap-2 mt-1"><Input type="number" min="1" max="60" value={block.params?.seconds || 1} onChange={e => onUpdate(sIdx, bIdx, 'seconds', parseInt(e.target.value))} className="w-20 h-9 bg-black/10 border-none text-white font-bold text-xs" /><span className="text-[10px] font-bold opacity-60">секунд</span></div>;
             case 'ui_separator':
@@ -879,10 +885,9 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                     </div>
                 )}
             </div>
-            <div className="w-full">
+            <div className="w-full whitespace-pre-wrap">
                 {renderParams()}
             </div>
         </div>
     );
 }
-
