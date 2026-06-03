@@ -145,8 +145,6 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
               buttonId: buttonId 
           } 
       }));
-      // Close the app dialog if needed, or keep it open if it's an interactive menu
-      // For now we keep it open so they can click more buttons
   };
 
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
@@ -159,6 +157,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent hideCloseButton className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2rem] border-none shadow-2xl" : "rounded-lg")}>
+        <DialogTitle className="sr-only">{activeMiniApp ? activeMiniApp.name : displayName}</DialogTitle>
         {activeMiniApp ? (
             <div className="flex flex-col h-full bg-background animate-in slide-in-from-right duration-300">
                 <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md pt-[calc(0.5rem+env(safe-area-inset-top))]">
@@ -269,6 +268,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         )}
         <Dialog open={showSendGold} onOpenChange={setShowSendGold}>
             <DialogContent hideCloseButton className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl relative">
+                <DialogTitle className="sr-only">{t('send_gold')}</DialogTitle>
                 <Button variant="ghost" size="icon" onClick={() => setShowSendGold(false)} className="absolute left-4 top-4 rounded-full"><ArrowLeft className="h-5 w-5" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setShowSendGold(false)} className="absolute right-4 top-4 rounded-full"><X className="h-5 w-5" /></Button>
                 <DialogHeader className="items-center text-center space-y-4">

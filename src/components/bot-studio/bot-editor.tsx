@@ -5,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot, setDoc, collection } from 'firebase/firestore';
 import type { CustomBot, BotBlock, BotBlockType, BotScript, BotMiniApp } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid, ChevronRight, Sparkles, ExternalLink, Type, MousePointer2, Minus, HelpCircle, Dice5 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, MessageSquare, Clock, Ghost, Code2, ChevronDown, ChevronUp, Wand2, Split, Database, Image as ImageIcon, Check, Zap, Pencil, Bot, Settings, Loader2, ListTree, X, Video, Music, FileText, Upload, PlusCircle, MinusCircle, Ban, Globe, LayoutGrid, ChevronRight, Sparkles, ExternalLink, Type, MousePointer2, Minus, HelpCircle, Dice5, CircleHelp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -654,7 +654,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
 }
 
 function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: string, onClick: (t: BotBlockType) => void }) {
-    const Icon = BLOCK_ICONS[type] || HelpCircle;
+    const Icon = BLOCK_ICONS[type] || CircleHelp;
     return (
         <button 
             onClick={() => onClick(type)}
@@ -671,7 +671,7 @@ function PaletteItem({ type, label, onClick }: { type: BotBlockType, label: stri
 
 function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDelete, onMove, db, botId, isMiniApp = false }: { block: BotBlock, sIdx: number, bIdx: number, isFirst: boolean, isLast: boolean, onUpdate: any, onDelete: any, onMove: any, db: any, botId: string, isMiniApp?: boolean }) {
     const { t } = useLanguage();
-    const Icon = BLOCK_ICONS[block.type] || HelpCircle;
+    const Icon = BLOCK_ICONS[block.type] || CircleHelp;
     const isTrigger = !isMiniApp && bIdx === 0;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);

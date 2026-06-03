@@ -184,7 +184,13 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             // Check if the script matches the trigger
             const trigger = blocks[0];
             if (trigger.type !== triggerType) continue;
-            if (triggerType === 'event_button_click' && trigger.params?.buttonId !== event.buttonId) continue;
+            
+            // Fixed button click ID matching (case-insensitive and trimmed)
+            if (triggerType === 'event_button_click') {
+                const targetId = String(trigger.params?.buttonId || '').trim().toLowerCase();
+                const clickedId = String(event.buttonId || '').trim().toLowerCase();
+                if (targetId !== clickedId) continue;
+            }
 
             let i = 1; const ifStack: boolean[] = []; let stopped = false;
             while (i < blocks.length && !stopped) {
@@ -212,6 +218,10 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                         if (block.params?.op === 'sub') vars[block.params?.name] = (val - delta).toString();
                         else if (block.params?.op === 'mul') vars[block.params?.name] = (val * delta).toString();
                         else vars[block.params?.name] = (val + delta).toString();
+                        break;
+                    case 'variable_random':
+                        const max = parseInt(resolveVars(block.params?.value, vars) || '100');
+                        vars[block.params?.name] = Math.floor(Math.random() * (max + 1)).toString();
                         break;
                     case 'variable_clear': delete vars[block.params?.name]; break;
                     case 'action_stop': stopped = true; break;
