@@ -172,8 +172,10 @@ export default function Home() {
     const handleBeforeUnload = () => { decrementSession(); };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
+    // Heartbeat for online status (2 minutes)
+    // Optimization: only run when tab is visible to save battery
     const interval = setInterval(() => {
-      if (auth.currentUser) {
+      if (auth.currentUser && document.visibilityState === 'visible') {
         setDoc(userRef, { status: 'online', lastSeen: serverTimestamp(), activeSessionId: sessionId }, { merge: true });
       }
     }, 120000);
