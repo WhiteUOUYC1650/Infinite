@@ -73,7 +73,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
             chunkIds.map((id: string) => getDoc(doc(db, 'apkChunks', id)))
         );
 
-        const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string });
+        const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string });
         chunksData.sort((a, b) => a.part - b.part);
 
         const assembledBase64 = chunksData.map(c => c.data).join('');

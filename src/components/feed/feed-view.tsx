@@ -19,11 +19,6 @@ import { Badge } from '../ui/badge';
 import { useTheme } from '@/context/theme-context';
 import { cacheFile, getCachedFile, fetchAndCacheImage } from '@/lib/cache-utils';
 
-const iconMap = {
-    Users,
-    Megaphone,
-};
-
 const STANDARD_COLORS: Record<string, string> = {
   '0': '#000000',
   '1': '#0000AA',
@@ -75,6 +70,25 @@ const ColoredText = ({ text }: { text: string }) => {
       })}
     </>
   );
+};
+
+const processMarkdownChildren = (children: any): any => {
+    return React.Children.map(children, child => {
+        if (typeof child === 'string') {
+            return <ColoredText text={child} />;
+        }
+        if (React.isValidElement(child) && child.props.children) {
+            return React.cloneElement(child, {
+                children: processMarkdownChildren(child.props.children)
+            } as any);
+        }
+        return child;
+    });
+};
+
+const iconMap = {
+    Users,
+    Megaphone,
 };
 
 export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: AuthenticatedUser, onClose: () => void, onSelectChat: (chat: PopulatedChat) => void }) {
@@ -270,9 +284,12 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
             <ReactMarkdown 
               remarkPlugins={[remarkGfm]}
               components={{
-                p: ({children}) => <p className="mb-0 leading-relaxed text-base">{children}</p>,
-                a: ({href, children}) => <span className="text-primary font-bold">{children}</span>,
-                text: ({ value }) => <ColoredText text={value} />
+                p: ({children}) => <p className="mb-0 leading-relaxed text-base">{processMarkdownChildren(children)}</p>,
+                li: ({children}) => <li>{processMarkdownChildren(children)}</li>,
+                h1: ({children}) => <h1 className="text-xl font-bold">{processMarkdownChildren(children)}</h1>,
+                h2: ({children}) => <h2 className="text-lg font-bold">{processMarkdownChildren(children)}</h2>,
+                h3: ({children}) => <h3 className="text-base font-bold">{processMarkdownChildren(children)}</h3>,
+                a: ({href, children}) => <span className="text-primary font-bold">{children}</span>
               }}
             >
               {message.content}

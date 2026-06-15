@@ -53,8 +53,76 @@ import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
+import React from 'react';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates';
+
+const STANDARD_COLORS: Record<string, string> = {
+  '0': '#000000',
+  '1': '#0000AA',
+  '2': '#00AA00',
+  '3': '#00AAAA',
+  '4': '#AA0000',
+  '5': '#AA00AA',
+  '6': '#FFAA00',
+  '7': '#AAAAAA',
+  '8': '#555555',
+  '9': '#5555FF',
+  'a': '#55FF55',
+  'b': '#55FFFF',
+  'c': '#FF5555',
+  'd': '#FF55FF',
+  'e': '#FFFF55',
+  'f': '#FFFFFF',
+};
+
+const ColoredText = ({ text }: { text: string }) => {
+  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+  const parts = text.split(regex);
+  
+  if (parts.length === 1) return <>{text}</>;
+
+  let currentColor: string | undefined = undefined;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        
+        if (part.startsWith('§')) {
+          if (part.startsWith('§[')) {
+            const hex = part.slice(2, -1);
+            currentColor = `#${hex}`;
+          } else {
+            const code = part[1].toLowerCase();
+            currentColor = STANDARD_COLORS[code];
+          }
+          return null; 
+        }
+        
+        return (
+          <span key={i} style={{ color: currentColor }}>
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
+const processMarkdownChildren = (children: any): any => {
+    return React.Children.map(children, child => {
+        if (typeof child === 'string') {
+            return <ColoredText text={child} />;
+        }
+        if (React.isValidElement(child) && child.props.children) {
+            return React.cloneElement(child, {
+                children: processMarkdownChildren(child.props.children)
+            } as any);
+        }
+        return child;
+    });
+};
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
@@ -278,12 +346,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </h3>
                   <div className='grid gap-3'>
                     <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                         {t('bot_guide_event_start')}
                       </ReactMarkdown>
                     </div>
                     <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                         {t('bot_guide_event_msg')}
                       </ReactMarkdown>
                     </div>
@@ -296,17 +364,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </h3>
                   <div className='grid gap-3'>
                     <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                         {t('bot_guide_action_send')}
                       </ReactMarkdown>
                     </div>
                     <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                         {t('bot_guide_action_reply')}
                       </ReactMarkdown>
                     </div>
                     <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                         {t('bot_guide_action_wait')}
                       </ReactMarkdown>
                     </div>
@@ -318,7 +386,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <Split className='h-4 w-4' /> {t('bot_guide_logic')}
                   </h3>
                   <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                       {t('bot_guide_logic_if')}
                     </ReactMarkdown>
                     <div className='mt-2 p-2 bg-black/5 rounded-lg font-mono text-[10px] opacity-70'>
@@ -326,7 +394,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     </div>
                   </div>
                   <div className='p-4 bg-muted/40 rounded-2xl border border-border/50'>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{children}</p> }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p className='text-xs leading-relaxed'>{processMarkdownChildren(children)}</p> }}>
                       {t('bot_guide_logic_math')}
                     </ReactMarkdown>
                   </div>
@@ -353,10 +421,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </h3>
                   <p className='text-[11px] font-bold text-muted-foreground/80 pl-1'>{t('bot_guide_var_intro')}</p>
                   <div className='space-y-1 text-xs font-mono bg-muted/60 p-4 rounded-2xl border border-rose-500/10'>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_user')}</ReactMarkdown>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_msg')}</ReactMarkdown>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_bot')}</ReactMarkdown>
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{t('bot_guide_var_time')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{t('bot_guide_var_user')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{t('bot_guide_var_msg')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{t('bot_guide_var_bot')}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{t('bot_guide_var_time')}</ReactMarkdown>
                   </div>
               </div>
           </div>
@@ -619,8 +687,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           <div className="flex flex-col gap-3 text-sm font-bold leading-relaxed">
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Цветной Markdown (§ коды)</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Добавление мини-приложений для ботов</span></div>
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Оптимизация</span></div>
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Исправления</span></div>
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Оптимизация производительности</span></div>
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Исправления критических ошибок</span></div>
                           </div>
                       </div>
                   </div>
@@ -635,13 +703,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       {f.answer.includes('[BOT_GUIDE_BUTTON]') ? (
                         <>
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ text: ({ value }) => <ColoredText text={value} /> }}>{f.answer.replace('[BOT_GUIDE_BUTTON]', '')}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{f.answer.replace('[BOT_GUIDE_BUTTON]', '')}</ReactMarkdown>
                           <Button variant="outline" className="w-full rounded-xl h-12 mt-4 font-bold border-primary/20 hover:bg-primary/5" onClick={() => navigateTo('botGuide')}>
                             <Info className='mr-2 h-4 w-4 text-primary' /> {t('open_full_guide')}
                           </Button>
                         </>
                       ) : (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ text: ({ value }) => <ColoredText text={value} /> }}>{f.answer}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{f.answer}</ReactMarkdown>
                       )}
                     </div>
                   </AccordionContent>
@@ -776,37 +844,3 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     setHasCheckedUpdates(false);
   }
 }
-
-const ColoredText = ({ text }: { text: string }) => {
-  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
-  const parts = text.split(regex);
-  
-  if (parts.length === 1) return <>{text}</>;
-
-  let currentColor: string | undefined = undefined;
-
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (!part) return null;
-        
-        if (part.startsWith('§')) {
-          if (part.startsWith('§[')) {
-            const hex = part.slice(2, -1);
-            currentColor = `#${hex}`;
-          } else {
-            const code = part[1].toLowerCase();
-            currentColor = STANDARD_COLORS[code];
-          }
-          return null; 
-        }
-        
-        return (
-          <span key={i} style={{ color: currentColor }}>
-            {part}
-          </span>
-        );
-      })}
-    </>
-  );
-};

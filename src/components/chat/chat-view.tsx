@@ -108,6 +108,20 @@ const ColoredText = ({ text }: { text: string }) => {
   );
 };
 
+const processMarkdownChildren = (children: any): any => {
+    return React.Children.map(children, child => {
+        if (typeof child === 'string') {
+            return <ColoredText text={child} />;
+        }
+        if (React.isValidElement(child) && child.props.children) {
+            return React.cloneElement(child, {
+                children: processMarkdownChildren(child.props.children)
+            } as any);
+        }
+        return child;
+    });
+};
+
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
 function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, rawDate: string, experimentalDesign: boolean }) {
@@ -166,7 +180,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const isCircleComplete = message.circleStatus === 'complete';
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     
-    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : 'voiceStatus' === 'complete' ? 'voiceChunks' : 'circleStatus' === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
+    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
     
     const canCopy = message.content && !message.poll; const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
@@ -223,10 +237,14 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                       remarkPlugins={[remarkGfm]} 
                       components={{ 
                         a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a>,
-                        text: ({ value }) => <ColoredText text={value} />
+                        p: ({children}) => <p>{processMarkdownChildren(children)}</p>,
+                        li: ({children}) => <li>{processMarkdownChildren(children)}</li>,
+                        h1: ({children}) => <h1 className="text-xl font-bold">{processMarkdownChildren(children)}</h1>,
+                        h2: ({children}) => <h2 className="text-lg font-bold">{processMarkdownChildren(children)}</h2>,
+                        h3: ({children}) => <h3 className="text-base font-bold">{processMarkdownChildren(children)}</h3>,
                       }}
                     >
-                      {message.children || message.content}
+                      {message.content}
                     </ReactMarkdown>
                   </div>
                 )}
@@ -638,7 +656,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => toast({ title: t('placeholder_title'), description: t('placeholder_description') })}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleSendMessage('', { file: { name: 'Poll' }, type: 'poll' })}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   

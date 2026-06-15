@@ -743,7 +743,7 @@ export const translations = {
       'subscribe': 'Подписаться',
       'subscribed': 'Вы подписаны',
       'not_enough_gold': 'Недостаточно баланса.',
-      'spin_the_wheel': 'Крутить колесо',
+      'spin_the_wheel': 'Spin the Wheel',
       'spinning': 'Вращение...',
       'come_back_tomorrow': 'Возвращайтесь завтра!',
       'you_won': 'Вы выиграли!',
@@ -845,7 +845,7 @@ export const translations = {
       'block_action_send_image': 'Отправить фото',
       'block_action_send_video': 'Отправить видео',
       'block_action_send_music': 'Аудиозапись',
-      'block_action_send_file': 'Отправить файл',
+      'block_action_send_file': 'Файл',
       'block_event_received': 'При сообщении',
       'block_event_start': 'При СТАРТ',
       'block_action_send': 'Послать сообщ.',
@@ -953,43 +953,34 @@ export const translations = {
     }
 };
 
-export type TranslationKey = keyof typeof translations.en;
-
-export function interpolate(str: string, values: Record<string, any>, lang: Language = 'en'): string {
-  if (!str) return '';
-  
-  const result = str.replace(/\{(\w+),\s*plural,\s*([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, key, optionsStr) => {
-    const count = Number(values[key]);
-    if (isNaN(count)) return match;
-
-    const options: Record<string, string> = {};
-    
-    const optionRegex = /(\w+)\s*\{([^}]+)\}/g;
-    let optionMatch;
-    while ((optionMatch = optionRegex.exec(optionsStr)) !== null) {
-      options[optionMatch[1]] = optionMatch[2];
-    }
-
-    let category = 'other';
-    if (lang === 'ru') {
-      const mod10 = count % 10;
-      const mod100 = count % 100;
-      if (mod10 === 1 && mod100 !== 11) {
-        category = 'one';
-      } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-        category = 'few';
-      } else {
-        category = 'other';
+export const interpolate = (str: string, values: Record<string, any>, lang: Language): string => {
+  let result = str;
+  for (const [key, value] of Object.entries(values)) {
+    // Handle plural rules like {count, plural, one {# member} other {# members}}
+    const pluralRegex = new RegExp(`\\{${key},\\s*plural,\\s*(.*?)\\}`, 'g');
+    result = result.replace(pluralRegex, (_, pluralConfig) => {
+      const parts: Record<string, string> = {};
+      const partMatches = pluralConfig.matchAll(/(\w+)\s*\{(.*?)\}/g);
+      for (const match of partMatches) {
+        parts[match[1]] = match[2];
       }
-    } else {
-      if (count === 1) category = 'one';
-    }
 
-    const template = options[category] || options['other'] || '';
-    return template.replace(/#/g, String(count));
-  });
+      const count = Number(value);
+      let form = 'other';
+      if (lang === 'ru') {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod10 === 1 && mod100 !== 11) form = 'one';
+        else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) form = 'few';
+      } else {
+        if (count === 1) form = 'one';
+      }
 
-  return result.replace(/\{(\w+)\}/g, (match, key) => {
-    return values[key] !== undefined ? String(values[key]) : match;
-  });
-}
+      return (parts[form] || parts['other'] || '').replace('#', value.toString());
+    });
+
+    // Handle simple interpolation like {name}
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value.toString());
+  }
+  return result;
+};
