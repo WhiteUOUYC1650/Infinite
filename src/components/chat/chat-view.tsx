@@ -55,6 +55,59 @@ export const COMMON_EMOJIS = [
     '🤖', '🎃', '😺', '🤟', '🤘'
 ];
 
+const STANDARD_COLORS: Record<string, string> = {
+  '0': '#000000',
+  '1': '#0000AA',
+  '2': '#00AA00',
+  '3': '#00AAAA',
+  '4': '#AA0000',
+  '5': '#AA00AA',
+  '6': '#FFAA00',
+  '7': '#AAAAAA',
+  '8': '#555555',
+  '9': '#5555FF',
+  'a': '#55FF55',
+  'b': '#55FFFF',
+  'c': '#FF5555',
+  'd': '#FF55FF',
+  'e': '#FFFF55',
+  'f': '#FFFFFF',
+};
+
+const ColoredText = ({ text }: { text: string }) => {
+  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+  const parts = text.split(regex);
+  
+  if (parts.length === 1) return <>{text}</>;
+
+  let currentColor: string | undefined = undefined;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        
+        if (part.startsWith('§')) {
+          if (part.startsWith('§[')) {
+            const hex = part.slice(2, -1);
+            currentColor = `#${hex}`;
+          } else {
+            const code = part[1].toLowerCase();
+            currentColor = STANDARD_COLORS[code];
+          }
+          return null; 
+        }
+        
+        return (
+          <span key={i} style={{ color: currentColor }}>
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
 function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, rawDate: string, experimentalDesign: boolean }) {
@@ -164,7 +217,19 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.poll && !isCircleComplete && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} />}
-                {message.content && !message.poll && !isCircleComplete && (<div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a> }}>{message.children || message.content}</ReactMarkdown></div>)}
+                {message.content && !message.poll && !isCircleComplete && (
+                  <div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]} 
+                      components={{ 
+                        a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a>,
+                        text: ({ value }) => <ColoredText text={value} />
+                      }}
+                    >
+                      {message.children || message.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
                 {message.reactions && Object.keys(message.reactions).length > 0 && !isCircleComplete && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
                 {!isCircleComplete && (<div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && !isChannelPost && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>)}
             </div>
@@ -244,7 +309,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
   
-  // Mini-apps support in ChatView
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef);
   const botApps = botConfig?.miniApps || [];

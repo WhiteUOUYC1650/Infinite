@@ -187,7 +187,6 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
       const newBlock: BotBlock = { id: Math.random().toString(36).substr(2, 9), type, params: {} };
 
       if (editingAppId) {
-          // Add to current Mini-app UI
           setMiniApps(miniApps.map(app => 
               app.id === editingAppId ? { ...app, blocks: [...(app.blocks || []), newBlock] } : app
           ));
@@ -326,7 +325,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 </div>
                 <div className="min-w-0 flex-1">
                     <h1 className="text-base font-black font-headline truncate leading-tight">{botName}</h1>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.3</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.4</p>
                 </div>
             </div>
         </div>

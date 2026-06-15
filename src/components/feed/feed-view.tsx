@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -23,6 +22,59 @@ import { cacheFile, getCachedFile, fetchAndCacheImage } from '@/lib/cache-utils'
 const iconMap = {
     Users,
     Megaphone,
+};
+
+const STANDARD_COLORS: Record<string, string> = {
+  '0': '#000000',
+  '1': '#0000AA',
+  '2': '#00AA00',
+  '3': '#00AAAA',
+  '4': '#AA0000',
+  '5': '#AA00AA',
+  '6': '#FFAA00',
+  '7': '#AAAAAA',
+  '8': '#555555',
+  '9': '#5555FF',
+  'a': '#55FF55',
+  'b': '#55FFFF',
+  'c': '#FF5555',
+  'd': '#FF55FF',
+  'e': '#FFFF55',
+  'f': '#FFFFFF',
+};
+
+const ColoredText = ({ text }: { text: string }) => {
+  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+  const parts = text.split(regex);
+  
+  if (parts.length === 1) return <>{text}</>;
+
+  let currentColor: string | undefined = undefined;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        
+        if (part.startsWith('§')) {
+          if (part.startsWith('§[')) {
+            const hex = part.slice(2, -1);
+            currentColor = `#${hex}`;
+          } else {
+            const code = part[1].toLowerCase();
+            currentColor = STANDARD_COLORS[code];
+          }
+          return null; 
+        }
+        
+        return (
+          <span key={i} style={{ color: currentColor }}>
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
 };
 
 export function FeedView({ currentUser, onClose, onSelectChat }: { currentUser: AuthenticatedUser, onClose: () => void, onSelectChat: (chat: PopulatedChat) => void }) {
@@ -219,7 +271,8 @@ function FeedItem({ message, channel, sender, onOpenChannel }: { message: Messag
               remarkPlugins={[remarkGfm]}
               components={{
                 p: ({children}) => <p className="mb-0 leading-relaxed text-base">{children}</p>,
-                a: ({href, children}) => <span className="text-primary font-bold">{children}</span>
+                a: ({href, children}) => <span className="text-primary font-bold">{children}</span>,
+                text: ({ value }) => <ColoredText text={value} />
               }}
             >
               {message.content}

@@ -107,7 +107,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  // Update check states
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);
 
@@ -273,7 +272,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           </div>
           
           <div className='space-y-8'>
-              {/* Trigger Events */}
               <div className='space-y-3'>
                   <h3 className='font-black text-sm uppercase tracking-widest text-primary flex items-center gap-2'>
                     <Zap className='h-4 w-4 fill-primary/20' /> {t('bot_guide_events')}
@@ -292,7 +290,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
 
-              {/* Actions */}
               <div className='space-y-3'>
                   <h3 className='font-black text-sm uppercase tracking-widest text-blue-500 flex items-center gap-2'>
                     <MessageSquare className='h-4 w-4 fill-blue-500/20' /> {t('bot_guide_actions')}
@@ -316,7 +313,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
 
-              {/* Logic */}
               <div className='space-y-3'>
                   <h3 className='font-black text-sm uppercase tracking-widest text-purple-500 flex items-center gap-2'>
                     <Split className='h-4 w-4' /> {t('bot_guide_logic')}
@@ -336,7 +332,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
 
-              {/* Media */}
               <div className='space-y-3'>
                   <h3 className='font-black text-sm uppercase tracking-widest text-emerald-500 flex items-center gap-2'>
                     <ImageIcon className='h-4 w-4' /> {t('bot_guide_media')}
@@ -352,7 +347,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
 
-              {/* Variables */}
               <div className='space-y-3'>
                   <h3 className='font-black text-sm uppercase tracking-widest text-rose-500 flex items-center gap-2'>
                     <Database className='h-4 w-4 fill-rose-500/20' /> {t('bot_guide_vars')}
@@ -623,6 +617,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   <div className="space-y-4">
                       <div className="bg-card border rounded-3xl p-6 shadow-sm">
                           <div className="flex flex-col gap-3 text-sm font-bold leading-relaxed">
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Цветной Markdown (§ коды)</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Добавление мини-приложений для ботов</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Оптимизация</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Исправления</span></div>
@@ -640,13 +635,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       {f.answer.includes('[BOT_GUIDE_BUTTON]') ? (
                         <>
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{f.answer.replace('[BOT_GUIDE_BUTTON]', '')}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ text: ({ value }) => <ColoredText text={value} /> }}>{f.answer.replace('[BOT_GUIDE_BUTTON]', '')}</ReactMarkdown>
                           <Button variant="outline" className="w-full rounded-xl h-12 mt-4 font-bold border-primary/20 hover:bg-primary/5" onClick={() => navigateTo('botGuide')}>
                             <Info className='mr-2 h-4 w-4 text-primary' /> {t('open_full_guide')}
                           </Button>
                         </>
                       ) : (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{f.answer}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ text: ({ value }) => <ColoredText text={value} /> }}>{f.answer}</ReactMarkdown>
                       )}
                     </div>
                   </AccordionContent>
@@ -781,3 +776,37 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     setHasCheckedUpdates(false);
   }
 }
+
+const ColoredText = ({ text }: { text: string }) => {
+  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+  const parts = text.split(regex);
+  
+  if (parts.length === 1) return <>{text}</>;
+
+  let currentColor: string | undefined = undefined;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        
+        if (part.startsWith('§')) {
+          if (part.startsWith('§[')) {
+            const hex = part.slice(2, -1);
+            currentColor = `#${hex}`;
+          } else {
+            const code = part[1].toLowerCase();
+            currentColor = STANDARD_COLORS[code];
+          }
+          return null; 
+        }
+        
+        return (
+          <span key={i} style={{ color: currentColor }}>
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+};
