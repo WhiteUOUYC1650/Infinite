@@ -454,7 +454,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                       <Cpu className="h-4 w-4 text-muted-foreground" />
                       <div className="flex items-center gap-2">
                          <p className="font-semibold text-sm">{t('bot_studio_title')}</p>
-                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
                       </div>
                   </div>
               </Button>
@@ -853,4 +852,3 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
   );
 });
 ChatItemComponent.displayName = 'ChatItemComponent';
-

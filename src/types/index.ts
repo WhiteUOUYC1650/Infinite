@@ -246,6 +246,7 @@ export type SharedVideo = {
   thumbnailUrl?: string;
   views?: number;
   likedBy?: string[]; // Array of user IDs who liked the video
+  isShort?: number; // 1 for Short, 0 for regular video
 };
 
 export type VideoComment = {

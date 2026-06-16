@@ -273,7 +273,7 @@ export const translations = {
       'come_back_tomorrow': 'Come back tomorrow!',
       'you_won': 'You won!',
       'whats_new': "What's New",
-      'whats_new_desc': "Colored Markdown, Optimization, Fixes.",
+      'whats_new_desc': "InfShort (Beta), Colored Markdown, Optimization, Fixes.",
       'whats_new_legacy_title': 'Legacy Edition',
       'whats_new_legacy_desc': 'Optimized for Android 4.1+.',
       'whats_new_ui_title': 'Glass UI',
@@ -475,6 +475,7 @@ export const translations = {
       'holiday_russia_day': 'Russia Day',
       'holiday_unity_day': 'Unity Day',
       'holiday_new_year_eve': "New Year's Eve",
+      'infshorts_title': 'InfShort',
     },
     ru: {
       'settings': 'Настройки',
@@ -748,7 +749,7 @@ export const translations = {
       'come_back_tomorrow': 'Возвращайтесь завтра!',
       'you_won': 'Вы выиграли!',
       'whats_new': "Что нового",
-      'whats_new_desc': "Цветной Markdown, Оптимизация, Исправления.",
+      'whats_new_desc': "InfShort (Beta), Цветной Markdown, Оптимизация, Исправления.",
       'whats_new_legacy_title': 'Legacy Edition',
       'whats_new_legacy_desc': 'Оптимизация для Android 4.1+.',
       'whats_new_ui_title': 'Эффект стекла',
@@ -950,6 +951,7 @@ export const translations = {
       'holiday_russia_day': 'День России',
       'holiday_unity_day': 'День народного единства',
       'holiday_new_year_eve': 'Канун Нового года',
+      'infshorts_title': 'InfShort',
     }
 };
 
@@ -972,8 +974,10 @@ export const interpolate = (str: string, values: Record<string, any>, lang: Lang
         const mod100 = count % 100;
         if (mod10 === 1 && mod100 !== 11) form = 'one';
         else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) form = 'few';
+        else form = 'other';
       } else {
         if (count === 1) form = 'one';
+        else form = 'other';
       }
 
       return (parts[form] || parts['other'] || '').replace('#', value.toString());

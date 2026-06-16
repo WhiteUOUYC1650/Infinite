@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -7,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, increment, onSnapshot, arrayUnion, arrayRemove, writeBatch, where } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -23,6 +22,7 @@ import { VerifiedBadge } from '../ui/verified-badge';
 import { Capacitor } from '@capacitor/core';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile } from '@/lib/cache-utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -57,20 +57,33 @@ const InfVidIcon = ({ className }: { className?: string }) => (
 export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUser: AuthenticatedUser, onClose: () => void, initialVideoId?: string }) {
   const { t } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const { theme: colorTheme } = useTheme();
   const [isUploadOpen, setIsUploadOpen] = useState(false); const [isUploading, setIsUploading] = useState(false); const [searchQuery, setSearchQuery] = useState(''); const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null); const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'shorts'>('all');
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
 
-  const videosQuery = useMemo(() => { if (!db) return null; return query(collection(db, 'videos'), orderBy('timestamp', 'desc'), limit(50)); }, [db]);
+  const videosQuery = useMemo(() => { 
+    if (!db) return null; 
+    let baseQuery = collection(db, 'videos');
+    return query(baseQuery, orderBy('timestamp', 'desc'), limit(100)); 
+  }, [db]);
   const { data: videos, loading: videosLoading } = useCollection<SharedVideo>(videosQuery);
   const senderIds = useMemo(() => { const ids = new Set(videos?.map(v => v.senderId) || []); if (fetchedExternalVideo) ids.add(fetchedExternalVideo.senderId); return Array.from(ids); }, [videos, fetchedExternalVideo]);
   const { users: senders } = useBatchUsers(senderIds);
 
   const filteredVideos = useMemo(() => {
       if (!videos) return [];
+      let list = videos;
+      
+      if (activeTab === 'shorts') {
+          list = list.filter(v => v.isShort === 1);
+      } else {
+          list = list.filter(v => !v.isShort || v.isShort !== 1);
+      }
+
       const q = searchQuery.toLowerCase().trim();
-      if (!q) return videos;
-      if (q.startsWith('/iv/v/')) { const id = q.substring(6); return videos.filter(v => v.id === id); }
-      return videos.filter(v => { const a = senders[v.senderId]; return v.title.toLowerCase().includes(q) || (a?.name || '').toLowerCase().includes(q) || (a?.username || '').toLowerCase().includes(q) || v.id === q; });
-  }, [videos, searchQuery, senders]);
+      if (!q) return list;
+      if (q.startsWith('/iv/v/')) { const id = q.substring(6); return list.filter(v => v.id === id); }
+      return list.filter(v => { const a = senders[v.senderId]; return v.title.toLowerCase().includes(q) || (a?.name || '').toLowerCase().includes(q) || (a?.username || '').toLowerCase().includes(q) || v.id === q; });
+  }, [videos, searchQuery, senders, activeTab]);
 
   useEffect(() => {
     const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); } else { onClose(); } };
@@ -92,12 +105,12 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
     if (!videosLoading) { checkAndLoadVideo(); }
   }, [initialVideoId, db, videosLoading, videos, t, toast]);
 
-  const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string) => {
+  const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string, isShort: number) => {
     if (!db) return; setIsUploading(true);
     try {
         const videoDocRef = doc(collection(db, 'videos')); const timestamp = Timestamp.now();
         let thumbnailUrl = ''; if (thumbnailFile) { thumbnailUrl = await compressImage(thumbnailFile); }
-        const videoData: Omit<SharedVideo, 'id'> = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl };
+        const videoData: Omit<SharedVideo, 'id'> = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort };
         await setDoc(videoDocRef, videoData);
         const videoBase64 = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve((reader.result as string).split(',')[1]); reader.onerror = (error) => reject(error); });
         const CHUNK_SIZE = 900 * 1024;
@@ -118,25 +131,62 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   return (
     <div className="flex flex-col h-svh bg-background overflow-hidden relative">
-      <header className={cn("flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md')}>
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-            <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
-            <div className="flex items-center gap-2 overflow-hidden">
-                <InfVidIcon className="h-8 w-8 shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infvid_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
+      <header className={cn("flex-shrink-0 flex flex-col border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] bg-background/95 backdrop-blur-md", colorTheme === 'frutiger' && 'bg-white/85 dark:bg-black/80')}>
+        <div className="flex items-center p-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <InfVidIcon className="h-8 w-8 shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infvid_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
+                </div>
             </div>
+            <div className="flex-1 max-w-sm mx-4 hidden md:block"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
+            <div className="flex items-center gap-2 shrink-0"><Button onClick={() => setIsUploadOpen(true)} className="gap-2 rounded-full h-10 px-4"><PlusCircle className="h-4 w-4" /><span className="hidden sm:inline">{t('infvid_upload_title')}</span></Button></div>
         </div>
-        <div className="flex-1 max-w-md mx-4"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
-        <div className="flex items-center gap-2 shrink-0"><Button onClick={() => setIsUploadOpen(true)} className="gap-2 rounded-full h-10 px-4"><PlusCircle className="h-4 w-4" /><span className="hidden sm:inline">{t('infvid_upload_title')}</span></Button></div>
+        <div className="px-4 pb-2">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+                <TabsList className="bg-muted/50 p-1 rounded-xl">
+                    <TabsTrigger value="all" className="rounded-lg font-bold text-xs uppercase tracking-widest">{t('infvid_title')}</TabsTrigger>
+                    <TabsTrigger value="shorts" className="rounded-lg font-bold text-xs uppercase tracking-widest gap-2 flex items-center">
+                        <Zap className="h-3.5 w-3.5 text-primary fill-primary" /> {t('infshorts_title')}
+                    </TabsTrigger>
+                </TabsList>
+            </Tabs>
+        </div>
       </header>
-      <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{t('infvid_no_videos')}</h3></div>)}</div></main>
+      <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
       {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} />)}
       <UploadDialog open={isUploadOpen} onOpenChange={setIsUploadOpen} onUpload={handleUploadVideo} isUploading={isUploading} maxSizeText={maxSizeText} maxSizeInBytes={maxSizeInBytes} />
     </div>
   );
 }
 
-function VideoCard({ video, sender, onClick }: { video: SharedVideo, sender?: User, onClick: () => void }) {
+function VideoCard({ video, sender, onClick, isShortMode }: { video: SharedVideo, sender?: User, onClick: () => void, isShortMode?: boolean }) {
     const { t, language } = useLanguage(); const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
+    
+    if (isShortMode) {
+        return (
+            <div className="flex flex-col gap-2 group cursor-pointer animate-in zoom-in duration-300" onClick={onClick}>
+                <div className="relative aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-lg border border-white/5 transition-transform hover:scale-[1.03] duration-300">
+                    {video.thumbnailUrl ? (
+                        <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-primary/5">
+                            <Zap className="h-12 w-12 text-primary/30" />
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                        <p className="text-xs font-bold line-clamp-2 drop-shadow-md">{video.title}</p>
+                        <p className="text-[9px] font-bold opacity-80 mt-1 uppercase tracking-widest">{t('infvid_views', { count: video.views || 0 })}</p>
+                    </div>
+                    <div className="absolute top-3 right-3 bg-primary text-white p-1 rounded-full shadow-lg">
+                        <Zap className="h-3 w-3 fill-white" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (<div className="flex flex-col gap-3 group cursor-pointer" onClick={onClick}><div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-sm transition-transform hover:scale-[1.02] duration-200">{video.thumbnailUrl ? (<img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />) : (<div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors"><Play className="h-12 w-12 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>)}<div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">HD</div></div><div className="flex gap-3"><Avatar className="h-9 w-9 shrink-0 border border-border/50"><AvatarImage src={sender?.avatar} /><AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback></Avatar><div className="flex-1 min-w-0"><h4 className="font-bold line-clamp-2 leading-snug text-sm group-hover:text-primary transition-colors">{video.title}</h4><p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sender?.name || '...'}</p><div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5"><span className="font-black text-primary">{t('infvid_views', { count: video.views || 0 })}</span><span className='w-1 h-1 rounded-full bg-muted-foreground/30' /><span>{timeAgo}</span></div></div></div></div>);
 }
 
@@ -181,7 +231,11 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button>
             </header>
             <div className="flex-1 overflow-y-auto">
-                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden h-[60vh]"><div className="h-full flex items-center justify-center w-full">{isLoading ? (<div className="text-center space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><div className="space-y-2"><p className="text-white/60 text-sm font-medium animate-pulse">{video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...</p><p className="text-primary text-xs font-black">{assemblyProgress}%</p></div></div>) : videoUrl ? (<video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />) : (<p className="text-destructive font-bold">{t('infvid_assembly_failed')}</p>)}</div></section>
+                <section className={cn("w-full bg-black flex items-center justify-center relative overflow-hidden", video.isShort === 1 ? "h-[85vh]" : "h-[60vh]")}>
+                    <div className="h-full flex items-center justify-center w-full">
+                        {isLoading ? (<div className="text-center space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><div className="space-y-2"><p className="text-white/60 text-sm font-medium animate-pulse">{video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...</p><p className="text-primary text-xs font-black">{assemblyProgress}%</p></div></div>) : videoUrl ? (<video src={videoUrl} controls autoPlay className={cn("h-full max-h-full max-w-full", video.isShort === 1 ? "aspect-[9/16] object-cover" : "object-contain")} />) : (<p className="text-destructive font-bold">{t('infvid_assembly_failed')}</p>)}
+                    </div>
+                </section>
                 <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
                     <div className="flex-1 space-y-6">
                         <div className="space-y-4">
@@ -220,11 +274,40 @@ function CommentItem({ comment, replies, currentUser, onReply, videoId, commentA
     return (<div className="space-y-3"><div className="flex gap-3"><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={displayAvatar || undefined} /><AvatarFallback>{displayName?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><span className="font-bold text-sm leading-none">{displayName}</span><span className="text-[10px] text-muted-foreground font-medium">{comment.timestamp?.seconds ? formatDistanceToNow(new Date(comment.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}</span></div><p className="text-sm leading-relaxed text-foreground/90">{comment.text}</p><div className="flex items-center gap-4 mt-1"><button onClick={() => handleToggleCommentLike(comment)} className={cn("flex items-center gap-1.5 transition-colors", isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary")}><ThumbsUp className={cn("h-3.5 w-3.5", isLikedByMe && "fill-current")} /><span className="text-[10px] font-bold">{comment.likedBy?.length || 0}</span></button><button onClick={() => onReply(comment)} className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button></div></div></div>{replies.length > 0 && (<div className="ml-12 space-y-3"><button onClick={() => setShowReplies(!showReplies)} className="flex items-center gap-2 text-[11px] font-bold text-primary hover:underline">{showReplies ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}{t('answers_button')} ({replies.length})</button>{showReplies && (<div className="space-y-4 pt-1 animate-in slide-in-from-top-1">{replies.map((reply) => { const isReplyLikedByMe = reply.likedBy?.includes(currentUser.uid); const replyAuthor = commentAuthors[reply.userId]; const replyDisplayName = replyAuthor?.name || reply.userName; const replyDisplayAvatar = replyAuthor?.avatar || reply.userAvatar; return (<div key={reply.id} className="flex gap-3"><Avatar className="h-7 w-7 shrink-0"><AvatarImage src={replyDisplayAvatar || undefined} /><AvatarFallback className="text-[10px]">{replyDisplayName?.charAt(0)}</AvatarFallback></Avatar><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><span className="font-bold text-xs leading-none">{replyDisplayName}</span><span className="text-[9px] text-muted-foreground">{reply.timestamp?.seconds ? formatDistanceToNow(new Date(reply.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : ''}</span></div><p className="text-xs text-foreground/90"><span className="text-primary font-bold mr-1">{reply.replyTo?.userName}</span>{reply.text}</p><div className="flex items-center gap-3 mt-1"><button onClick={() => handleToggleCommentLike(reply)} className={cn("flex items-center gap-1 transition-colors", isReplyLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary")}><ThumbsUp className={cn("h-3.5 w-3.5", isReplyLikedByMe && "fill-current")} /><span className="text-[9px] font-bold">{reply.likedBy?.length || 0}</span></button><button onClick={() => onReply(reply)} className="text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button></div></div></div>); })}</div>)}</div>)}</div>);
 }
 
-function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, maxSizeInBytes }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, thumbnailFile: File | null, title: string, description: string) => Promise<void>, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number }) {
-    const { t } = useLanguage(); const { toast } = useToast(); const [file, setFile] = useState<File | null>(null); const [thumbnail, setThumbnail] = useState<File | null>(null); const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null); const [title, setTitle] = useState(''); const [description, setDescription] = useState(''); const fileInputRef = useRef<HTMLInputElement>(null); const thumbnailInputRef = useRef<HTMLInputElement>(null);
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { const selectedFile = e.target.files[0]; if (selectedFile.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('video_too_large', { size: maxSizeText }) }); return; } setFile(selectedFile); if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); } };
+function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, maxSizeInBytes }: { open: boolean, onOpenChange: (open: boolean) => void, onUpload: (file: File, thumbnailFile: File | null, title: string, description: string, isShort: number) => Promise<void>, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number }) {
+    const { t } = useLanguage(); const { toast } = useToast(); const [file, setFile] = useState<File | null>(null); const [thumbnail, setThumbnail] = useState<File | null>(null); const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null); const [title, setTitle] = useState(''); const [description, setDescription] = useState(''); 
+    const [isVideoVertical, setIsVideoVertical] = useState(0);
+    const [videoDuration, setVideoDuration] = useState(0);
+    const fileInputRef = useRef<HTMLInputElement>(null); const thumbnailInputRef = useRef<HTMLInputElement>(null);
+    
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { 
+        if (e.target.files?.[0]) { 
+            const selectedFile = e.target.files[0]; 
+            if (selectedFile.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('video_too_large', { size: maxSizeText }) }); return; } 
+            
+            // Check orientation and duration
+            const videoElement = document.createElement('video');
+            videoElement.preload = 'metadata';
+            videoElement.onloadedmetadata = () => {
+                window.URL.revokeObjectURL(videoElement.src);
+                const isVertical = videoElement.videoHeight > videoElement.videoWidth;
+                setIsVideoVertical(isVertical ? 1 : 0);
+                setVideoDuration(videoElement.duration);
+            };
+            videoElement.src = URL.createObjectURL(selectedFile);
+            
+            setFile(selectedFile); 
+            if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); 
+        } 
+    };
+    
     const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { const selectedFile = e.target.files[0]; setThumbnail(selectedFile); setThumbnailPreview(URL.createObjectURL(selectedFile)); } };
-    const handleSubmit = async () => { if (!file || !title.trim()) return; await onUpload(file, thumbnail, title, description); setFile(null); setThumbnail(null); setThumbnailPreview(null); setTitle(''); setDescription(''); };
+    const handleSubmit = async () => { 
+        if (!file || !title.trim()) return; 
+        const isShort = (isVideoVertical === 1 && videoDuration < 180) ? 1 : 0;
+        await onUpload(file, thumbnail, title, description, isShort); 
+        setFile(null); setThumbnail(null); setThumbnailPreview(null); setTitle(''); setDescription(''); setIsVideoVertical(0); setVideoDuration(0);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -239,7 +322,24 @@ function UploadDialog({ open, onOpenChange, onUpload, isUploading, maxSizeText, 
                     <div className="space-y-10 p-10 max-w-4xl mx-auto">
                         <div className={cn("border-4 border-dashed rounded-[2.5rem] p-16 flex flex-col items-center justify-center cursor-pointer transition-all", file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30")} onClick={() => !isUploading && fileInputRef.current?.click()}>
                             <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />
-                            {file ? (<div className="text-center"><PlayCircle className="h-20 w-20 text-primary mx-auto mb-4" /><p className="font-black text-xl truncate max-w-[400px]">{file.name}</p><p className="text-sm text-muted-foreground mt-2 font-bold uppercase tracking-widest">{(file.size / (1024 * 1024)).toFixed(2)} MB</p></div>) : (<div className="text-center"><Upload className="h-20 w-20 text-muted-foreground/40 mx-auto mb-4" /><p className="text-2xl font-black text-muted-foreground">{t('video')}</p><p className="text-sm text-muted-foreground mt-2 font-bold uppercase tracking-widest">{t('infvid_video_limits', { size: maxSizeText })}</p></div>)}
+                            {file ? (<div className="text-center">
+                                <div className="relative inline-block">
+                                    <PlayCircle className="h-20 w-20 text-primary mx-auto mb-4" />
+                                    {isVideoVertical === 1 && videoDuration < 180 && (
+                                        <div className="absolute -top-2 -right-2 bg-primary text-white p-1 rounded-full animate-bounce">
+                                            <Zap className="h-5 w-5 fill-white" />
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="font-black text-xl truncate max-w-[400px]">{file.name}</p>
+                                <div className="flex items-center justify-center gap-3 mt-2">
+                                    <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                    <p className="text-sm text-primary font-bold uppercase tracking-widest">
+                                        {(isVideoVertical === 1 && videoDuration < 180) ? t('infshorts_title') : t('video')}
+                                    </p>
+                                </div>
+                            </div>) : (<div className="text-center"><Upload className="h-20 w-20 text-muted-foreground/40 mx-auto mb-4" /><p className="text-2xl font-black text-muted-foreground">{t('video')}</p><p className="text-sm text-muted-foreground mt-2 font-bold uppercase tracking-widest">{t('infvid_video_limits', { size: maxSizeText })}</p></div>)}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                             <div className="space-y-4">
