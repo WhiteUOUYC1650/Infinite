@@ -851,7 +851,7 @@ export const translations = {
       'block_event_start': 'При СТАРТ',
       'block_action_send': 'Послать сообщ.',
       'block_action_reply': 'Ответить',
-      'block_action_wait': 'Ждать {seconds}с',
+      'block_action_wait': 'Wait {seconds}s',
       'block_if': 'Если',
       'block_else': 'Иначе',
       'block_end_if': 'Конец услов.',
@@ -958,13 +958,12 @@ export const translations = {
 export const interpolate = (str: string, values: Record<string, any>, lang: Language): string => {
   let result = str;
   for (const [key, value] of Object.entries(values)) {
-    // Handle plural rules like {count, plural, one {# member} other {# members}}
     const pluralRegex = new RegExp(`\\{${key},\\s*plural,\\s*(.*?)\\}`, 'g');
     result = result.replace(pluralRegex, (_, pluralConfig) => {
       const parts: Record<string, string> = {};
-      const partMatches = pluralConfig.matchAll(/(\w+)\s*\{(.*?)\}/g);
+      const partMatches = Array.from(pluralConfig.matchAll(/(\w+)\s*\{(.*?)\}/g));
       for (const match of partMatches) {
-        parts[match[1]] = match[2];
+        parts[(match as any)[1]] = (match as any)[2];
       }
 
       const count = Number(value);
@@ -983,7 +982,6 @@ export const interpolate = (str: string, values: Record<string, any>, lang: Lang
       return (parts[form] || parts['other'] || '').replace('#', value.toString());
     });
 
-    // Handle simple interpolation like {name}
     result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value.toString());
   }
   return result;
