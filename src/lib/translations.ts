@@ -273,7 +273,7 @@ export const translations = {
       'come_back_tomorrow': 'Come back tomorrow!',
       'you_won': 'You won!',
       'whats_new': "What's New",
-      'whats_new_desc': "InfShort (Beta), Colored Markdown, Optimization, Fixes.",
+      'whats_new_desc': "InfShort (Beta), Colored Markdown, Оптимизация, Исправления.",
       'whats_new_legacy_title': 'Legacy Edition',
       'whats_new_legacy_desc': 'Optimized for Android 4.1+.',
       'whats_new_ui_title': 'Glass UI',
@@ -958,30 +958,62 @@ export const translations = {
 export const interpolate = (str: string, values: Record<string, any>, lang: Language): string => {
   let result = str;
   for (const [key, value] of Object.entries(values)) {
-    const pluralRegex = new RegExp(`\\{${key},\\s*plural,\\s*(.*?)\\}`, 'g');
-    result = result.replace(pluralRegex, (_, pluralConfig) => {
-      const parts: Record<string, string> = {};
-      const partMatches = Array.from(pluralConfig.matchAll(/(\w+)\s*\{(.*?)\}/g));
-      for (const match of partMatches) {
-        parts[(match as any)[1]] = (match as any)[2];
+    // 1. Плюрализация (логика баланса скобок)
+    const pluralMarker = `{${key}, plural,`;
+    let startIdx = result.indexOf(pluralMarker);
+    
+    while (startIdx !== -1) {
+      let braceCount = 0;
+      let endIdx = -1;
+      
+      // Ищем закрывающую скобку всего блока плюрализации
+      for (let i = startIdx; i < result.length; i++) {
+        if (result[i] === '{') braceCount++;
+        else if (result[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            endIdx = i;
+            break;
+          }
+        }
       }
 
-      const count = Number(value);
-      let form = 'other';
-      if (lang === 'ru') {
-        const mod10 = count % 10;
-        const mod100 = count % 100;
-        if (mod10 === 1 && mod100 !== 11) form = 'one';
-        else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) form = 'few';
-        else form = 'other';
+      if (endIdx !== -1) {
+        const fullPluralBlock = result.substring(startIdx, endIdx + 1);
+        const configContent = result.substring(startIdx + pluralMarker.length, endIdx);
+        
+        // Парсим категории: one {текст} few {текст} other {текст}
+        const categories: Record<string, string> = {};
+        const categoryRegex = /(\w+)\s*\{([^}]*)\}/g;
+        let match;
+        while ((match = categoryRegex.exec(configContent)) !== null) {
+          categories[match[1]] = match[2];
+        }
+
+        const count = Number(value);
+        let form = 'other';
+        if (lang === 'ru') {
+          const mod10 = count % 10;
+          const mod100 = count % 100;
+          if (mod10 === 1 && mod100 !== 11) form = 'one';
+          else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) form = 'few';
+          else form = 'other';
+        } else {
+          form = count === 1 ? 'one' : 'other';
+        }
+
+        const template = categories[form] || categories['other'] || '';
+        const finalValue = template.replace('#', value.toString());
+        
+        result = result.replace(fullPluralBlock, finalValue);
+        // Сбрасываем поиск на начало обновленной строки
+        startIdx = result.indexOf(pluralMarker);
       } else {
-        if (count === 1) form = 'one';
-        else form = 'other';
+        break;
       }
+    }
 
-      return (parts[form] || parts['other'] || '').replace('#', value.toString());
-    });
-
+    // 2. Обычные переменные {var}
     result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value.toString());
   }
   return result;
