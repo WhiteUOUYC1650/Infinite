@@ -445,7 +445,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>
         )}
         <div className={cn("border-t", experimentalDesign && "mt-2")}>
-          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme === 'frutiger' ? 'frutiger_aero' : (theme as any))} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
+          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
           <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign} iconBg="bg-green-500/15" iconColor="text-green-500" />
           <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('privacy_security_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
           <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('data_storage_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign} iconBg="bg-orange-500/15" iconColor="text-orange-500" />
@@ -518,15 +518,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'theme': return (
               <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1">
-                  {['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'frutiger', 'shining_gold'].map(tName => {
+                  {['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'].map(tName => {
                       const isPremTheme = tName === 'shining_gold';
-                      const isFrutiger = tName === 'frutiger';
                       return (
                         <div key={tName} className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors">
                             <div className="flex items-center space-x-3">
                                 <RadioGroupItem value={tName} id={tName} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
                                 <Label htmlFor={tName} className='capitalize cursor-pointer font-bold'>
-                                    {isFrutiger ? t('frutiger_aero_label') : t(tName as any)}
+                                    {t(tName as any)}
                                 </Label>
                             </div>
                             {isPremTheme && <Badge className="bg-purple-500 text-white text-[9px]">PREM</Badge>}
@@ -685,9 +684,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   <div className="space-y-4">
                       <div className="bg-card border rounded-3xl p-6 shadow-sm">
                           <div className="flex flex-col gap-3 text-sm font-bold leading-relaxed">
+                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Мульти-вложения в сообщениях</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Цветной Markdown (§ коды)</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Добавление мини-приложений для ботов</span></div>
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Оптимизация производительности</span></div>
                             <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Исправления критических ошибок</span></div>
                           </div>
                       </div>

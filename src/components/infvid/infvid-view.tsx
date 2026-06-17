@@ -126,7 +126,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
     <div className="flex flex-col h-svh bg-background overflow-hidden relative">
       {!isUploadOpen ? (
           <>
-            <header className={cn("flex-shrink-0 flex flex-col border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] bg-background/95 backdrop-blur-md", colorTheme === 'frutiger' && 'bg-white/85 dark:bg-black/80')}>
+            <header className="flex-shrink-0 flex flex-col border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] bg-background">
                 <div className="flex items-center p-4">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
@@ -185,14 +185,23 @@ function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInByte
     const handleSubmit = async () => { if (!file || !title.trim()) return; const isShort = (isVideoVertical === 1 && videoDuration < 180) ? 1 : 0; await onUpload(file, thumbnail, title, description, isShort); };
 
     return (
-        <div className="flex flex-col h-full bg-background animate-in slide-in-from-right duration-300">
-            <header className="h-16 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md pt-[calc(1rem+env(safe-area-inset-top))]">
+        <div className="flex flex-col h-full bg-background animate-in slide-in-from-right duration-300 relative">
+            {isUploading && (
+                <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mb-8" />
+                    <h3 className="text-3xl font-bold font-headline mb-6">{t('infvid_upload_warning_title')}</h3>
+                    <p className="text-muted-foreground leading-relaxed max-w-md mx-auto mb-8 text-lg">{t('infvid_upload_warning_desc')}</p>
+                    <div className="flex items-center gap-3 text-primary font-black animate-pulse uppercase tracking-widest text-sm">
+                        <AlertCircle className="h-5 w-5" />{t('processing_video')}
+                    </div>
+                </div>
+            )}
+            <header className="h-16 flex items-center px-4 border-b shrink-0 bg-background pt-[calc(1rem+env(safe-area-inset-top))]">
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
                 <div className="ml-4 flex-1"><h2 className="text-xl font-bold font-headline">{t('infvid_upload_title')}</h2></div>
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button>
             </header>
             <ScrollArea className="flex-1">
-                {isUploading && (<div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500"><Loader2 className="h-12 w-12 animate-spin text-primary mb-8" /><h3 className="text-3xl font-bold font-headline mb-6">{t('infvid_upload_warning_title')}</h3><p className="text-muted-foreground leading-relaxed max-w-md mx-auto mb-8 text-lg">{t('infvid_upload_warning_desc')}</p><div className="flex items-center gap-3 text-primary font-black animate-pulse uppercase tracking-widest text-sm"><AlertCircle className="h-5 w-5" />{t('processing_video')}</div></div>)}
                 <div className="space-y-10 p-6 md:p-10 max-w-4xl mx-auto pb-20">
                     <div className={cn("border-4 border-dashed rounded-[2.5rem] p-10 md:p-16 flex flex-col items-center justify-center cursor-pointer transition-all", file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50")} onClick={() => !isUploading && fileInputRef.current?.click()}>
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />

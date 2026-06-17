@@ -194,7 +194,6 @@ export const translations = {
       'red': 'Red',
       'yellow': 'Yellow',
       'pink': 'Pink',
-      'frutiger_aero': 'Frutiger Aero',
       'shining_gold': 'Shining Gold',
       'light_mode': 'Light Mode',
       'dark_mode': 'Dark Mode',
@@ -298,7 +297,7 @@ export const translations = {
       'experimental_design_label': 'Experimental Design',
       'experimental_design_desc': 'New mobile layout (Android 9+)',
       'glass_effect_label': 'Glass Effect (Beta)',
-      'glass_effect_desc': 'Glossy Aero-style look.',
+      'glass_effect_desc': 'Glossy style look.',
       'today_is': 'Today is',
       'yesterday': 'Yesterday',
       'mute': 'Mute',
@@ -441,7 +440,6 @@ export const translations = {
       'music': 'Audio',
       'file': 'File',
       'max_file_size_label': 'Max size: {size}',
-      'frutiger_aero_label': 'Frutiger Aero',
       'check_updates': 'Check for Updates',
       'check_updates_desc': 'Check if a new version is available',
       'latest_version_installed': 'Latest version is installed',
@@ -670,7 +668,6 @@ export const translations = {
       'red': 'Красный',
       'yellow': 'Желтый',
       'pink': 'Розовый',
-      'frutiger_aero': 'Фрутигер Аэро',
       'shining_gold': 'Сияющее золото',
       'light_mode': 'Светлая тема',
       'dark_mode': 'Темная тема',
@@ -774,7 +771,7 @@ export const translations = {
       'experimental_design_label': 'Экспериментальный дизайн',
       'experimental_design_desc': 'Новый макет для Android 9+',
       'glass_effect_label': 'Эффект стекла (Бета)',
-      'glass_effect_desc': 'Глянцевый Aero-стиль.',
+      'glass_effect_desc': 'Глянцевый стиль.',
       'today_is': 'Сегодня',
       'yesterday': 'Вчера',
       'mute': 'Без звука',
@@ -917,7 +914,6 @@ export const translations = {
       'music': 'Аудиозапись',
       'file': 'Файл',
       'max_file_size_label': 'Макс. размер: {size}',
-      'frutiger_aero_label': 'Фрутигер Аэро',
       'check_updates': 'Проверка обновлений',
       'check_updates_desc': 'Проверить наличие новой версии',
       'latest_version_installed': 'Установлена последняя версия',
@@ -958,7 +954,6 @@ export const translations = {
 export const interpolate = (str: string, values: Record<string, any>, lang: Language): string => {
   let result = str;
   for (const [key, value] of Object.entries(values)) {
-    // 1. Плюрализация (логика баланса скобок)
     const pluralMarker = `{${key}, plural,`;
     let startIdx = result.indexOf(pluralMarker);
     
@@ -966,7 +961,6 @@ export const interpolate = (str: string, values: Record<string, any>, lang: Lang
       let braceCount = 0;
       let endIdx = -1;
       
-      // Ищем закрывающую скобку всего блока плюрализации
       for (let i = startIdx; i < result.length; i++) {
         if (result[i] === '{') braceCount++;
         else if (result[i] === '}') {
@@ -982,7 +976,6 @@ export const interpolate = (str: string, values: Record<string, any>, lang: Lang
         const fullPluralBlock = result.substring(startIdx, endIdx + 1);
         const configContent = result.substring(startIdx + pluralMarker.length, endIdx);
         
-        // Парсим категории: one {текст} few {текст} other {текст}
         const categories: Record<string, string> = {};
         const categoryRegex = /(\w+)\s*\{([^}]*)\}/g;
         let match;
@@ -1006,14 +999,12 @@ export const interpolate = (str: string, values: Record<string, any>, lang: Lang
         const finalValue = template.replace('#', value.toString());
         
         result = result.replace(fullPluralBlock, finalValue);
-        // Сбрасываем поиск на начало обновленной строки
         startIdx = result.indexOf(pluralMarker);
       } else {
         break;
       }
     }
 
-    // 2. Обычные переменные {var}
     result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value.toString());
   }
   return result;

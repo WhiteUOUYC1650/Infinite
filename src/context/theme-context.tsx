@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 
-export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'frutiger' | 'shining_gold';
+export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold';
 
 type ThemeColors = { [key: string]: string };
 
@@ -254,37 +254,6 @@ const THEMES: Record<Theme, ThemeConfig> = {
       sidebarAccentForeground: '20 14.3% 4.1%',
     },
   },
-  frutiger: {
-    light: {
-      primary: '205 90% 55%',
-      foreground: '205 50% 98%',
-      background: '205 60% 94% / 0.05',
-      card: '0 0% 100% / 0.85',
-      'sidebar-background': '0 0% 100% / 0.85',
-      popover: '0 0% 100% / 0.9',
-      muted: '205 30% 90% / 0.8',
-      border: '205 20% 85% / 0.7',
-      input: '205 20% 88%',
-      sidebarForeground: '215 25% 25%',
-      sidebarAccent: '205 30% 90% / 0.7',
-      sidebarAccentForeground: '215 25% 25%',
-    },
-    dark: {
-      primary: '205 90% 60%',
-      foreground: '205 50% 98%',
-      background: '205 15% 10% / 0.15',
-      card: '0 0% 0% / 0.85',
-      'sidebar-background': '0 0% 0% / 0.85',
-      popover: '0 0% 0% / 0.9',
-      muted: '205 10% 15% / 0.8',
-      border: '205 10% 20% / 0.7',
-      input: '205 10% 20%',
-      sidebarForeground: '205 20% 95%',
-      sidebarAccent: '205 10% 15% / 0.8',
-      sidebarAccentForeground: '205 20% 95%',
-    },
-    backgroundImage: 'frutiger_aero_background',
-  },
   shining_gold: {
     light: {
       primary: '42 90% 55%',
@@ -394,7 +363,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setMinimizeCallOnClose(storedMinimizeCall === 'true');
     }
 
-    // Android Version Check & Experimental Design Logic
     let isExpEnabled = storedExperimental === 'true';
     if (typeof navigator !== 'undefined') {
         const ua = navigator.userAgent;
@@ -418,7 +386,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedSystemFont !== null) {
       setUseSystemFont(storedSystemFont === 'true');
     } else {
-      setUseSystemFont(true); // Default to true for 0.5 Beta
+      setUseSystemFont(true);
       localStorage.setItem('app-use-system-font', 'true');
     }
 
@@ -437,12 +405,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.setAttribute('data-experimental-design', experimentalDesign ? 'true' : 'false');
       root.style.setProperty('--glass-intensity', glassEffect ? '0.7' : '0');
 
-      if (theme === 'frutiger') {
-        root.classList.add('theme-frutiger');
-      } else {
-        root.classList.remove('theme-frutiger');
-      }
-      
       if (theme === 'shining_gold') {
         root.classList.add('theme-shining-gold');
       } else {
@@ -490,12 +452,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       for (const [property, value] of Object.entries(varsToSet)) {
           if (value) root.style.setProperty(property, value);
-      }
-
-      if (theme === 'frutiger') {
-        body.style.backgroundColor = isDarkMode ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.1)';
-      } else {
-        body.style.backgroundColor = '';
       }
     }
   }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted]);
