@@ -474,6 +474,11 @@ export const translations = {
       'holiday_unity_day': 'Unity Day',
       'holiday_new_year_eve': "New Year's Eve",
       'infshorts_title': 'InfShort',
+      'wn_multi_file': 'Multi-file attachments',
+      'wn_colored_markdown': 'Colored Markdown (§ codes)',
+      'wn_mini_apps': 'Mini-apps for Bots',
+      'wn_optimization': 'Performance Optimization',
+      'wn_bugfixes': 'Bug Fixes & Stability',
     },
     ru: {
       'settings': 'Настройки',
@@ -948,6 +953,11 @@ export const translations = {
       'holiday_unity_day': 'День народного единства',
       'holiday_new_year_eve': 'Канун Нового года',
       'infshorts_title': 'InfShort',
+      'wn_multi_file': 'Мульти-вложения в сообщениях',
+      'wn_colored_markdown': 'Цветной Markdown (§ коды)',
+      'wn_mini_apps': 'Мини-приложения для ботов',
+      'wn_optimization': 'Оптимизация производительности',
+      'wn_bugfixes': 'Исправления ошибок и стабильность',
     }
 };
 

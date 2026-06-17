@@ -304,10 +304,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
 
   return (
     <div className="flex flex-col h-svh bg-background overflow-hidden relative">
-      <header className={cn(
-          "flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]",
-          colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background/95 backdrop-blur-md'
-      )}>
+      <header className="flex-shrink-0 flex items-center p-4 border-b z-20 pt-[calc(1rem+env(safe-area-inset-top))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] bg-background/95 backdrop-blur-md">
         <div className="flex items-center gap-4 flex-1 min-w-0">
             <Button variant="ghost" size="icon" onClick={handleBack} className="shrink-0">
                 <ArrowLeft className="h-5 w-5" />
@@ -325,7 +322,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 </div>
                 <div className="min-w-0 flex-1">
                     <h1 className="text-base font-black font-headline truncate leading-tight">{botName}</h1>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.4</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.5.5</p>
                 </div>
             </div>
         </div>
@@ -799,9 +796,9 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                             <p className="text-[9px] font-bold opacity-60 truncate px-2">{block.params.fileName}</p>
                         )}
                         {chunkIds && (
-                             <div className="px-2 py-1 bg-black/20 rounded-lg border border-white/10 mt-1">
+                            <div className="px-2 py-1 bg-black/20 rounded-lg border border-white/10 mt-1">
                                 <p className="text-[7px] font-mono opacity-50 truncate uppercase">Chunks: {chunkIds.slice(0, 2).join(', ')}...</p>
-                             </div>
+                            </div>
                         )}
                         <Textarea placeholder="Описание (необязательно)..." value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="min-h-[40px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs mt-1 w-full whitespace-pre-wrap resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                     </div>
@@ -821,7 +818,7 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                     <div className="flex flex-col gap-2 mt-1 w-full">
                         <Textarea placeholder="Имя (напр. score)" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                         <div className="flex gap-2">
-                             <Select onValueChange={(v) => onUpdate(sIdx, bIdx, 'op', v)} value={block.params?.op || 'add'}>
+                            <Select onValueChange={(v) => onUpdate(sIdx, bIdx, 'op', v)} value={block.params?.op || 'add'}>
                                 <SelectTrigger className="h-9 bg-black/10 border-none text-white text-xs font-bold w-32">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -830,8 +827,8 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                                     <SelectItem value="sub">Вычесть (-)</SelectItem>
                                     <SelectItem value="mul">Умножить (*)</SelectItem>
                                 </SelectContent>
-                             </Select>
-                             <Textarea placeholder="Число" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white font-bold text-xs resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
+                            </Select>
+                            <Textarea placeholder="Число" value={block.params?.value || ''} onChange={e => onUpdate(sIdx, bIdx, 'value', e.target.value)} className="h-9 flex-1 bg-black/10 border-none text-white font-bold text-xs resize-none overflow-hidden" rows={1} onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                         </div>
                     </div>
                 );

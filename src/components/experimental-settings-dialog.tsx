@@ -676,18 +676,60 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'dailyBonus': return <div className='p-6'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
           case 'whatsNew': return (
-              <div className='p-6 space-y-8'>
-                  <div className="text-center space-y-2">
-                    <h2 className='text-3xl font-black font-headline text-primary'>What's New</h2>
+              <div className='p-6 space-y-6'>
+                  <div className="text-center space-y-2 mb-2">
+                    <h2 className='text-4xl font-black font-headline text-primary'>What's New</h2>
                     <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{t('beta_badge')}</p>
                   </div>
-                  <div className="space-y-4">
-                      <div className="bg-card border rounded-3xl p-6 shadow-sm">
-                          <div className="flex flex-col gap-3 text-sm font-bold leading-relaxed">
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Мульти-вложения в сообщениях</span></div>
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Цветной Markdown (§ коды)</span></div>
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Добавление мини-приложений для ботов</span></div>
-                            <div className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" /> <span className='flex-1'>Исправления критических ошибок</span></div>
+                  
+                  <div className="grid gap-3">
+                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                              <Paperclip className="h-6 w-6" />
+                          </div>
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_multi_file')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Send multiple photos, videos and files in one message.</p>
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                              <Paintbrush className="h-6 w-6" />
+                          </div>
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_colored_markdown')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Use § codes to color your text in messages and feed.</p>
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
+                              <Cpu className="h-6 w-6" />
+                          </div>
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_mini_apps')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Create native UI interfaces for your custom bots.</p>
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
+                              <Zap className="h-6 w-6" />
+                          </div>
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_optimization')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Battery saving and faster loading on legacy devices.</p>
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm opacity-60">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-500/10 flex items-center justify-center text-gray-500 shrink-0">
+                              <CheckCircle2 className="h-6 w-6" />
+                          </div>
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_bugfixes')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Major stability improvements and UI refinements.</p>
                           </div>
                       </div>
                   </div>
