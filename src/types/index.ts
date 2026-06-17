@@ -55,6 +55,16 @@ export type Poll = {
   isMultipleChoice: boolean;
 };
 
+export type MessageAttachment = {
+  id: string;
+  type: 'image' | 'video' | 'music' | 'file';
+  url?: string; // For images (base64)
+  fileName?: string;
+  fileMimeType?: string;
+  chunkIds?: string[];
+  status?: 'complete' | 'failed';
+};
+
 export type Message = {
   id:string;
   senderId: string;
@@ -79,6 +89,7 @@ export type Message = {
   fileSize?: number;
   fileStatus?: 'uploading' | 'complete' | 'failed';
   fileChunkIds?: string[];
+  attachments?: MessageAttachment[]; // New for 0.5.5: Multi-file support
   timestamp: Timestamp;
   sender?: User; // hydrated sender
   senderName?: string;

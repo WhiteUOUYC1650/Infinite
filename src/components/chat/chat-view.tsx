@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -13,7 +13,7 @@ import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } fr
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
@@ -167,6 +167,74 @@ function CustomAudioPlayer({ src, isMusic = false, duration, fileName, hideTime 
     return (<div className={cn("flex items-center gap-3 w-full px-2 py-1.5 rounded-xl transition-all", isMusic ? "max-w-[400px]" : "min-w-[200px]", "bg-black/10 dark:bg-white/10")}><audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={() => setIsPlaying(false)} onLoadedMetadata={() => { onTimeUpdate(); onMediaLoad?.(); }} preload="metadata" /><button onClick={togglePlay} className="w-10 h-10 rounded-full bg-background flex items-center justify-center shadow-sm shrink-0 transition-transform active:scale-95">{isPlaying ? <Pause className="h-5 w-5 text-primary fill-primary" /> : <Play className="h-5 w-5 ml-0.5 text-primary fill-primary" />}</button><div className="flex-1 min-w-0 flex flex-col justify-center">{isMusic && fileName && <div className="text-[10px] font-bold truncate mb-0.5 opacity-80">{fileName}</div>}<div className="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer" onClick={(e) => { e.stopPropagation(); if (audioRef.current && maxTime) { const rect = e.currentTarget.getBoundingClientRect(); audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * maxTime; } }}><div className="absolute h-full bg-primary rounded-full transition-all duration-100" style={{ width: `${(currentTime / (maxTime || 1)) * 100}%` }} /></div>{!hideTime && <div className="flex justify-between items-center text-[9px] font-bold mt-1 opacity-70"><span>{formatTime(currentTime)} / {formatTime(maxTime)}</span></div>}</div></div>);
 }
 
+const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attachment: MessageAttachment, onPreviewImage: (url: string) => void, onMediaLoad: () => void }) => {
+    const db = useFirestore();
+    const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const load = async () => {
+            const cacheId = `att-${attachment.id}`;
+            const cached = await getCachedFile(cacheId);
+            if (cached) {
+                setMediaUrl(cached);
+                onMediaLoad();
+                return;
+            }
+
+            if (attachment.url) {
+                const url = await fetchAndCacheImage(cacheId, attachment.url);
+                setMediaUrl(url);
+                onMediaLoad();
+            } else if (attachment.chunkIds && db) {
+                try {
+                    const colMap = { video: 'videoChunks', music: 'musicChunks', file: 'fileChunks', image: 'fileChunks' };
+                    const col = colMap[attachment.type as keyof typeof colMap] || 'fileChunks';
+                    const chunkSnaps = await Promise.all(attachment.chunkIds.map(id => getDoc(doc(db, col, id))));
+                    const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string });
+                    chunksData.sort((a, b) => a.part - b.part);
+                    const assembled = chunksData.map(c => c.data).join('');
+                    const dataUrl = `data:${attachment.fileMimeType || 'application/octet-stream'};base64,${assembled}`;
+                    await cacheFile(cacheId, dataUrl);
+                    const finalUrl = await getCachedFile(cacheId);
+                    setMediaUrl(finalUrl);
+                    onMediaLoad();
+                } catch (e) {
+                    console.error("Attachment load failed", e);
+                }
+            }
+        };
+        load();
+    }, [attachment, db, onMediaLoad]);
+
+    if (!mediaUrl && attachment.type !== 'file') return <div className="h-20 w-full flex items-center justify-center bg-muted animate-pulse rounded-lg"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+
+    switch (attachment.type) {
+        case 'image':
+            return <img src={mediaUrl!} onClick={() => onPreviewImage(mediaUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer my-1" onLoad={onMediaLoad} />;
+        case 'video':
+            return <video src={mediaUrl!} controls className="max-w-full rounded-lg my-1" onLoadedData={onMediaLoad} />;
+        case 'music':
+            return <div className="my-1"><CustomAudioPlayer src={mediaUrl!} isMusic={true} fileName={attachment.fileName} messageId={attachment.id} onMediaLoad={onMediaLoad} /></div>;
+        case 'file':
+            return (
+                <div className="flex items-center gap-2 p-2 bg-black/10 dark:bg-white/10 rounded-lg my-1">
+                    <FileIcon className="h-5 w-5 text-primary shrink-0" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold truncate">{attachment.fileName}</p>
+                        <p className="text-[9px] opacity-60 uppercase">File</p>
+                    </div>
+                    {mediaUrl && (
+                        <a href={mediaUrl} download={attachment.fileName} className="p-1.5 hover:bg-black/5 rounded-full">
+                            <Clock className="h-4 w-4" />
+                        </a>
+                    )}
+                </div>
+            );
+        default:
+            return null;
+    }
+};
+
 const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean }) => {
     const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); 
     
@@ -226,10 +294,40 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                         <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
                 )}
+                
+                {/* Legacy single-file support rendering */}
                 {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
-                {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
+                {message.fileStatus === 'complete' && mediaUrl && !isCircleComplete && (
+                     <AttachmentRenderer 
+                        attachment={{ 
+                            id: message.id, 
+                            type: 'file', 
+                            fileName: message.fileName, 
+                            fileMimeType: message.fileMimeType,
+                            chunkIds: message.fileChunkIds 
+                        }} 
+                        onPreviewImage={onPreviewImage} 
+                        onMediaLoad={onMediaLoad} 
+                     />
+                )}
+
+                {/* Multi-attachment support rendering */}
+                {message.attachments && message.attachments.length > 0 && (
+                    <div className="flex flex-col gap-1 w-full mb-1">
+                        {message.attachments.map(att => (
+                            <AttachmentRenderer 
+                                key={att.id} 
+                                attachment={att} 
+                                onPreviewImage={onPreviewImage} 
+                                onMediaLoad={onMediaLoad} 
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
                 {message.poll && !isCircleComplete && <PollDisplay poll={message.poll} onVote={onVote} currentUserId={currentUser.uid} alignRight={alignRight} />}
                 {message.content && !message.poll && !isCircleComplete && (
                   <div className={cn("text-sm break-words whitespace-pre-wrap pt-0 px-0.5")}>
@@ -295,7 +393,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   
-  const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); const [fileToSend, setFileToSend] = useState<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'} | null>(null); const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
+  const [filesToSend, setFilesToSend] = useState<Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); const [stickyDate, setStickyDate] = useState<string | null>(null); const [showStickyDate, setShowStickyDate] = useState(false); const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
@@ -361,35 +461,43 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const file = e.target.files[0];
-      if (file.size > maxSizeInBytes) {
-        toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) });
-        return;
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
+      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
+
+      for (const file of selectedFiles) {
+        if (file.size > maxSizeInBytes) {
+            toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) });
+            continue;
+        }
+        
+        const type = file.type.startsWith('image/') ? 'image' : 
+                     file.type.startsWith('video/') ? 'video' : 
+                     file.type.startsWith('audio/') ? 'music' : 'file';
+        
+        if (type === 'image') {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                setFilesToSend(prev => [...prev, { file, previewUrl: reader.result as string, type }]);
+            };
+        } else {
+            newFiles.push({ file, previewUrl: '', type });
+        }
       }
-      const type = file.type.startsWith('image/') ? 'image' : 
-                   file.type.startsWith('video/') ? 'video' : 
-                   file.type.startsWith('audio/') ? 'music' : 'file';
-      
-      const reader = new FileReader();
-      reader.onload = () => {
-          setFileToSend({ 
-              file, 
-              previewUrl: reader.result as string,
-              type 
-          });
-      };
-      if (type === 'image') reader.readAsDataURL(file);
-      else setFileToSend({ file, previewUrl: '', type });
+      if (newFiles.length > 0) setFilesToSend(prev => [...prev, ...newFiles]);
     }
   };
 
-  const handleSendMessage = async (customC?: string, immediateFile?: any) => {
-    const finalC = customC !== undefined ? customC : messageContent; 
-    const finalF = immediateFile || fileToSend; 
-    if ((!finalC.trim() && !finalF) || !db) return;
+  const removeFileToSend = (index: number) => {
+      setFilesToSend(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSendMessage = async () => {
+    const finalC = messageContent; 
+    if ((!finalC.trim() && filesToSend.length === 0) || !db) return;
     
-    setIsSending(true); setMessageContent(''); setFileToSend(null); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    setIsSending(true); setMessageContent(''); setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); 
@@ -400,6 +508,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             timestamp: ts, 
             readBy: [], 
             senderName: currentUser.name || currentUser.username, 
+            attachments: [],
             ...(replyToMessage && { 
                 replyTo: { 
                     messageId: replyToMessage.id, 
@@ -409,20 +518,29 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             }) 
         };
 
-        if (finalF) {
-            if (finalF.type === 'image') {
-                data.imageUrl = finalF.previewUrl;
-                await setDoc(mref, data);
+        // Process all selected files
+        for (const fItem of filesToSend) {
+            const attachment: MessageAttachment = {
+                id: Math.random().toString(36).substring(7),
+                type: fItem.type,
+                fileName: fItem.file.name,
+                fileMimeType: fItem.file.type,
+                status: 'complete'
+            };
+
+            if (fItem.type === 'image') {
+                attachment.url = fItem.previewUrl;
+                data.attachments.push(attachment);
             } else {
                 const reader = new FileReader();
-                reader.readAsDataURL(finalF.file);
+                reader.readAsDataURL(fItem.file);
                 await new Promise<void>((resolve, reject) => {
                     reader.onload = async () => {
                         try {
                             const base64 = (reader.result as string).split(',')[1];
                             const CHUNK_SIZE = 900 * 1024;
                             const chunkIds: string[] = [];
-                            const col = finalF.type === 'video' ? 'videoChunks' : finalF.type === 'music' ? 'musicChunks' : 'fileChunks';
+                            const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
                             
                             for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
                                 const cref = doc(collection(db, col));
@@ -430,26 +548,28 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                                 chunkIds.push(cref.id);
                             }
                             
-                            data.fileName = finalF.file.name;
-                            data.fileMimeType = finalF.file.type;
-                            if (finalF.type === 'video') { data.videoStatus = 'complete'; data.videoChunkIds = chunkIds; data.videoMimeType = finalF.file.type; }
-                            else if (finalF.type === 'music') { data.musicStatus = 'complete'; data.musicChunkIds = chunkIds; data.musicMimeType = finalF.file.type; }
-                            else { data.fileStatus = 'complete'; data.fileChunkIds = chunkIds; }
-                            
-                            await setDoc(mref, data);
+                            attachment.chunkIds = chunkIds;
+                            data.attachments.push(attachment);
                             resolve();
                         } catch(e) { reject(e); }
                     };
                 });
             }
-        } else {
-            await setDoc(mref, data);
+        }
+
+        await setDoc(mref, data);
+
+        let lastMsgContent = finalC.trim();
+        if (!lastMsgContent && data.attachments.length > 0) {
+            lastMsgContent = data.attachments.length === 1 
+                ? t(data.attachments[0].type as any) 
+                : `${t('file')} (${data.attachments.length})`;
         }
 
         await updateDoc(doc(db, 'chats', item.id), { 
             lastMessage: { 
                 id: mref.id, 
-                content: finalC.trim() || (finalF?.type === 'image' ? t('photo') : t('file')), 
+                content: lastMsgContent,
                 senderId: currentUser.uid, 
                 senderName: currentUser.name || currentUser.username, 
                 timestamp: Timestamp.now() 
@@ -605,24 +725,36 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           <div className="max-w-3xl mx-auto w-full h-full flex flex-col">
             {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs mx-2 flex-1">{replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file'))}</div><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
             
-            {fileToSend && (
-              <div className="flex items-center justify-between bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  {fileToSend.type === 'image' ? (
-                      <img src={fileToSend.previewUrl} className="w-10 h-10 rounded-lg object-cover border" />
-                  ) : (
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border">
-                          <FileIcon className="h-5 w-5 text-primary" />
-                      </div>
-                  )}
-                  <div className="min-w-0 flex flex-col justify-center">
-                      <p className="text-xs font-bold truncate max-w-[200px]">{fileToSend.file.name}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase font-medium">{(fileToSend.file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setFileToSend(null)}>
-                    <X className="h-4 w-4" />
-                </Button>
+            {filesToSend.length > 0 && (
+              <div className="bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2">
+                <ScrollArea className="w-full">
+                    <div className="flex items-center gap-3 pb-2">
+                        {filesToSend.map((fItem, idx) => (
+                            <div key={idx} className="relative group shrink-0">
+                                <div className="w-16 h-16 rounded-lg overflow-hidden border bg-background flex items-center justify-center">
+                                    {fItem.type === 'image' ? (
+                                        <img src={fItem.previewUrl} className="w-full h-full object-cover" />
+                                    ) : fItem.type === 'video' ? (
+                                        <VideoIcon className="h-6 w-6 text-orange-500" />
+                                    ) : fItem.type === 'music' ? (
+                                        <MusicIcon className="h-6 w-6 text-purple-500" />
+                                    ) : (
+                                        <FileIcon className="h-6 w-6 text-primary" />
+                                    )}
+                                </div>
+                                <Button 
+                                    variant="destructive" 
+                                    size="icon" 
+                                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full shadow-md" 
+                                    onClick={() => removeFileToSend(idx)}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
               </div>
             )}
 
@@ -660,9 +792,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     </DropdownMenuContent>
                   </DropdownMenu>
                   
-                  <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+                  <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} multiple />
                   
-                  {messageContent.trim() || fileToSend ? (
+                  {messageContent.trim() || filesToSend.length > 0 ? (
                     <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                   ) : (
                     <div className="flex items-center gap-1.5">
