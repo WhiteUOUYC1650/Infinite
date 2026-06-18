@@ -150,11 +150,11 @@ service cloud.firestore {
     }
     
     // Чанки файлов
-    match /videoChunks/{chunkId} { allow create, read: if true; }
-    match /musicChunks/{chunkId} { allow create, read: if true; }
-    match /fileChunks/{chunkId} { allow create, read: if true; }
-    match /voiceChunks/{chunkId} { allow create, read: if true; }
-    match /circleChunks/{chunkId} { allow create, read: if true; }
+    match /videoChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
+    match /musicChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
+    match /fileChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
+    match /voiceChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
+    match /circleChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
     
     // Чанки APK (только админ может загружать)
     match /apkChunks/{chunkId} { 
