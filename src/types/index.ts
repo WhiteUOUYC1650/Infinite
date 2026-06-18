@@ -28,6 +28,7 @@ export type User = {
   isCustomBot?: boolean;
   botOwnerId?: string;
   activeSessionId?: string | null;
+  watchLater?: string[]; // Array of video IDs
   birthday?: {
     day: number;
     month: number;

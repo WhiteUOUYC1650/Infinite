@@ -685,41 +685,41 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   <div className="grid gap-3">
                       <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
                           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              <Paperclip className="h-6 w-6" />
+                              <Zap className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_multi_file')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Send multiple photos, videos and files in one message.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Shorts UI</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('infshorts_ui_desc')}</p>
                           </div>
                       </div>
 
                       <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
                           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                              <Paintbrush className="h-6 w-6" />
+                              <Clock className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_colored_markdown')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Use § codes to color your text in messages and feed.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('watch_later')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Save videos to your personal "Watch Later" list.</p>
                           </div>
                       </div>
 
                       <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
-                              <Cpu className="h-6 w-6" />
+                              <Settings className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_mini_apps')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Create native UI interfaces for your custom bots.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('edit_video')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Authors can now edit title/description or delete videos.</p>
                           </div>
                       </div>
 
                       <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
                           <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
-                              <Zap className="h-6 w-6" />
+                              <RefreshCcw className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_optimization')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Battery saving and faster loading on legacy devices.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('retry_upload')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Reliably retry video uploads if processing fails.</p>
                           </div>
                       </div>
 
