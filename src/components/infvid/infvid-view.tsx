@@ -154,7 +154,10 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         await deleteDoc(doc(db, 'videos', vidId));
         toast({ title: t('dm_success'), description: t('video_deleted') });
         if (selectedVideoId === vidId) setSelectedVideoId(null);
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+        console.error("Video deletion error:", e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete video. Check permissions.' });
+    }
   };
 
   return (
@@ -198,7 +201,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             t={t}
           />
       )}
-      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} />)}
+      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} />)}
     </div>
   );
 }
@@ -277,12 +280,12 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/40 text-white hover:bg-black/60"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                            {!isOwner && <DropdownMenuItem onClick={e => { e.stopPropagation(); onToggleWatchLater(); }} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
-                            <DropdownMenuItem onClick={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
+                            {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
+                            <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
-                                    <DropdownMenuItem onClick={e => e.stopPropagation()} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); onDelete(); }} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
                             )}
                         </DropdownMenuContent>
@@ -307,18 +310,21 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                     </div>
                 )}
                 <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">HD</div>
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className={cn(
+                    "absolute top-2 right-2 transition-opacity",
+                    isOwner ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                            {!isOwner && <DropdownMenuItem onClick={e => { e.stopPropagation(); onToggleWatchLater(); }} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
-                            <DropdownMenuItem onClick={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
+                            {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
+                            <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
-                                    <DropdownMenuItem onClick={e => e.stopPropagation()} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={e => { e.stopPropagation(); onDelete(); }} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
                             )}
                         </DropdownMenuContent>
@@ -333,10 +339,11 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     );
 }
 
-function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser }) {
+function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void }) {
     const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const isSaved = currentUser.watchLater?.includes(video.id);
+    const isOwner = video.senderId === currentUser.uid;
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]); const { users: commentAuthors } = useBatchUsers(commentUserIds);
     const [showComments, setShowComments] = useState(false);
 
@@ -403,6 +410,20 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                         <Button variant="ghost" size="icon" onClick={handleShare} className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md">
                             <Share2 className="h-6 w-6" />
                         </Button>
+                        
+                        {isOwner && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md">
+                                        <MoreVertical className="h-6 w-6" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                    <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
 
                     {/* Bottom Info */}
@@ -470,6 +491,20 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser 
                                     <Button variant={isLiked ? "default" : "secondary"} className={cn("rounded-full gap-2 h-10 px-5 transition-all", isLiked && "bg-primary text-primary-foreground")} onClick={handleToggleLike}><ThumbsUp className={cn("h-4 w-4", isLiked && "fill-current")} /><span className="text-xs font-bold">{t('likes', { count: likedBy.length })}</span></Button>
                                     <Button variant={isSaved ? "default" : "secondary"} className={cn("rounded-full gap-2 h-10 px-5 transition-all", isSaved && "bg-amber-500 text-white")} onClick={toggleWatchLater}><Clock className={cn("h-4 w-4", isSaved && "fill-current")} /><span className="text-xs font-bold">{t('watch_later')}</span></Button>
                                     <Button variant="secondary" className="rounded-full gap-2 h-10 px-5" onClick={handleShare}><Share2 className="h-4 w-4" /><span className="text-xs font-bold">{t('share')}</span></Button>
+                                    
+                                    {isOwner && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-muted">
+                                                    <MoreVertical className="h-5 w-5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                                <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
                             </div>
                             <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner"><div className="flex items-center gap-2 font-bold mb-2"><span className="text-primary text-base font-black">{t('infvid_views', { count: video.views || 0 })}</span><span className="w-1 h-1 rounded-full bg-muted-foreground/30" /><span className="text-muted-foreground">{timeAgo}</span></div><p className="text-foreground/80 whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p></div>

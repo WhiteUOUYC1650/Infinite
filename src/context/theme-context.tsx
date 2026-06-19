@@ -337,7 +337,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
 
-    if (storedTheme && THEMES[storedTheme]) {
+    // Migration: If theme was 'frutiger', switch to 'orange'
+    if (storedTheme === ('frutiger' as any)) {
+      setTheme('orange');
+      localStorage.setItem('app-color-theme', 'orange');
+    } else if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
     }
     
