@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -64,6 +65,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const { t } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const { theme: colorTheme } = useTheme();
   const [isUploadOpen, setIsUploadOpen] = useState(false); const [isUploading, setIsUploading] = useState(false); const [searchQuery, setSearchQuery] = useState(''); const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null); const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'shorts' | 'watch_later'>('all');
+  const [retryVideoId, setRetryVideoId] = useState<string | null>(null);
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
 
   const videosQuery = useMemo(() => { 
@@ -91,7 +93,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [videos, searchQuery, senders, activeTab, currentUser.watchLater]);
 
   useEffect(() => {
-    const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); } else { onClose(); } };
+    const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); setRetryVideoId(null); } else { onClose(); } };
     let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); }
     return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
   }, [selectedVideoId, isUploadOpen, onClose]);
@@ -113,14 +115,25 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string, isShort: number) => {
     if (!db) return; setIsUploading(true);
     try {
-        const videoDocRef = doc(collection(db, 'videos')); const timestamp = Timestamp.now();
+        const videoDocRef = retryVideoId ? doc(db, 'videos', retryVideoId) : doc(collection(db, 'videos')); 
+        const timestamp = Timestamp.now();
         let thumbnailUrl = ''; if (thumbnailFile) { thumbnailUrl = await compressImage(thumbnailFile); }
-        const videoData: Omit<SharedVideo, 'id'> = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort };
-        await setDoc(videoDocRef, videoData);
+        const videoData: any = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort };
+        
+        if (retryVideoId) {
+            await updateDoc(videoDocRef, videoData);
+        } else {
+            await setDoc(videoDocRef, videoData);
+        }
+
         await uploadVideoData(videoDocRef.id, file, currentUser.uid);
-        toast({ title: t('dm_success'), description: t('infvid_upload_success') }); setIsUploadOpen(false);
-    } catch (error) { console.error("Video upload failed:", error); toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload video.' }); }
-    finally { setIsUploading(false); }
+        toast({ title: t('dm_success'), description: t('infvid_upload_success') }); 
+        setIsUploadOpen(false);
+        setRetryVideoId(null);
+    } catch (error) { 
+        console.error("Video upload failed:", error); 
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload video.' }); 
+    } finally { setIsUploading(false); }
   };
 
   const uploadVideoData = async (videoId: string, file: File, senderId: string) => {
@@ -160,6 +173,11 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
     }
   };
 
+  const handleRetryUpload = (vidId: string) => {
+      setRetryVideoId(vidId);
+      setIsUploadOpen(true);
+  };
+
   return (
     <div className="flex flex-col h-svh bg-background overflow-hidden relative">
       {!isUploadOpen ? (
@@ -189,16 +207,17 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                     </Tabs>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => {}} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
+            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => handleRetryUpload(video.id)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
           </>
       ) : (
           <UploadView 
-            onClose={() => setIsUploadOpen(false)} 
+            onClose={() => { setIsUploadOpen(false); setRetryVideoId(null); }} 
             onUpload={handleUploadVideo} 
             isUploading={isUploading} 
             maxSizeText={maxSizeText} 
             maxSizeInBytes={maxSizeInBytes}
             t={t}
+            retryVideoId={retryVideoId}
           />
       )}
       {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} />)}
@@ -206,10 +225,24 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   );
 }
 
-function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInBytes, t }: { onClose: () => void, onUpload: any, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number, t: any }) {
+function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInBytes, t, retryVideoId }: { onClose: () => void, onUpload: any, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number, t: any, retryVideoId?: string | null }) {
     const { toast } = useToast(); const [file, setFile] = useState<File | null>(null); const [thumbnail, setThumbnail] = useState<File | null>(null); const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null); const [title, setTitle] = useState(''); const [description, setDescription] = useState(''); 
     const [isVideoVertical, setIsVideoVertical] = useState(0); const [videoDuration, setVideoDuration] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null); const thumbnailInputRef = useRef<HTMLInputElement>(null);
+    const db = useFirestore();
+
+    useEffect(() => {
+        if (retryVideoId && db) {
+            getDoc(doc(db, 'videos', retryVideoId)).then(snap => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setTitle(data.title || '');
+                    setDescription(data.description || '');
+                    setThumbnailPreview(data.thumbnailUrl || null);
+                }
+            });
+        }
+    }, [retryVideoId, db]);
     
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { 
         if (e.target.files?.[0]) { 
@@ -239,14 +272,14 @@ function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInByte
             )}
             <header className="h-16 flex items-center px-4 border-b shrink-0 bg-background pt-[calc(1rem+env(safe-area-inset-top))]">
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
-                <div className="ml-4 flex-1"><h2 className="text-xl font-bold font-headline">{t('infvid_upload_title')}</h2></div>
+                <div className="ml-4 flex-1"><h2 className="text-xl font-bold font-headline">{retryVideoId ? t('retry_upload') : t('infvid_upload_title')}</h2></div>
                 <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button>
             </header>
             <ScrollArea className="flex-1">
                 <div className="space-y-10 p-6 md:p-10 max-w-4xl mx-auto pb-20">
                     <div className={cn("border-4 border-dashed rounded-[2.5rem] p-10 md:p-16 flex flex-col items-center justify-center cursor-pointer transition-all", file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50")} onClick={() => !isUploading && fileInputRef.current?.click()}>
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />
-                        {file ? (<div className="text-center"><PlayCircle className="h-20 w-20 text-primary mx-auto mb-4" /><p className="font-black text-xl truncate max-w-[400px]">{file.name}</p><div className="flex items-center justify-center gap-3 mt-2"><p className="text-sm text-muted-foreground font-bold">{(file.size / (1024 * 1024)).toFixed(2)} MB</p><span className="text-sm text-primary font-bold uppercase">{(isVideoVertical === 1 && videoDuration < 180) ? t('infshorts_title') : t('video')}</span></div></div>) : (<div className="text-center"><Upload className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" /><p className="text-xl font-black text-muted-foreground">{t('infvid_upload_title')}</p><p className="text-xs text-muted-foreground mt-2 font-bold uppercase">{t('infvid_video_limits', { size: maxSizeText })}</p></div>)}
+                        {file ? (<div className="text-center"><PlayCircle className="h-20 w-20 text-primary mx-auto mb-4" /><p className="font-black text-xl truncate max-w-[400px]">{file.name}</p><div className="flex items-center justify-center gap-3 mt-2"><p className="text-sm text-muted-foreground font-bold">{(file.size / (1024 * 1024)).toFixed(2)} MB</p><span className="text-sm text-primary font-bold uppercase">{(isVideoVertical === 1 && videoDuration < 180) ? t('infshorts_title') : t('video')}</span></div></div>) : (<div className="text-center"><Upload className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" /><p className="text-xl font-black text-muted-foreground">{retryVideoId ? t('choose_file') : t('infvid_upload_title')}</p><p className="text-xs text-muted-foreground mt-2 font-bold uppercase">{t('infvid_video_limits', { size: maxSizeText })}</p></div>)}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-4"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_thumbnail_label')}</label><div className={cn("aspect-video border-4 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-muted/20 relative", thumbnailPreview ? "border-solid border-primary" : "hover:border-primary/50")} onClick={() => !isUploading && thumbnailInputRef.current?.click()}><input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />{thumbnailPreview ? (<img src={thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />) : (<div className="text-center"><ImageIcon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" /><p className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('infvid_select_thumbnail')}</p></div>)}</div></div>
@@ -316,7 +349,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                 )}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80"><MoreVertical className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/60"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
                             {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
