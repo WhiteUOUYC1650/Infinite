@@ -8,12 +8,16 @@ import { doc, setDoc, getDoc, collection, addDoc, Timestamp, updateDoc, incremen
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/context/language-context';
 
 export default function Home() {
   const { user, loading: authLoading } = useUser();
   const router = useRouter();
   const db = useFirestore();
   const auth = useAuth();
+  const { toast } = useToast();
+  const { t } = useLanguage();
   
   const [isVerifying, setIsVerifying] = useState(true);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
@@ -85,6 +89,23 @@ export default function Home() {
             
             if (userDoc.exists()) {
                 const data = userDoc.data();
+                
+                // 0.6 Beta: Verify beta-tester status for existing session
+                const isBetaTester = data.isBetaTester;
+                const isAdmin = data.username === '@Infinite';
+                const isBot = data.isBot || data.isCustomBot;
+
+                if (!isBetaTester && !isAdmin && !isBot) {
+                  await auth.signOut();
+                  toast({
+                    variant: 'destructive',
+                    title: t('sign_in_failed_toast_title'),
+                    description: t('access_denied_beta_only'),
+                  });
+                  router.push('/login');
+                  return;
+                }
+
                 const isVerified = localStorage.getItem('isVerified') === 'true';
                 
                 if (data.loginProtectionEnabled && !isVerified) {
@@ -186,7 +207,7 @@ export default function Home() {
       if (appListener) appListener.remove();
       decrementSession();
     };
-  }, [user, authLoading, router, db, auth, sessionId]);
+  }, [user, authLoading, router, db, auth, sessionId, t, toast]);
 
   if (authLoading || isVerifying || !user) {
     return (

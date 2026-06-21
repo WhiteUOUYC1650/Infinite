@@ -829,6 +829,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <h2 className='text-4xl font-black font-headline'>Infinite</h2>
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{t('beta_badge')}</Badge>
                   </div>
+                  <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-bold text-primary leading-relaxed">
+                    {t('version_notice_06')}
+                  </div>
                   <p className='text-sm text-muted-foreground leading-relaxed max-w-xs font-medium'>{t('version_info_detail')}</p>
               </div>
           );

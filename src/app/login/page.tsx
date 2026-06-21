@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -85,24 +84,48 @@ export default function LoginPage() {
       const userDocRef = doc(db, 'users', uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap.exists() && userDocSnap.data().isDeleted === true) {
-        await auth.signOut();
-        toast({
-          variant: 'destructive',
-          title: t('sign_in_failed_toast_title'),
-          description: t('user_blocked_error'),
-        });
-        setIsLoading(false);
-        return;
-      }
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        
+        if (userData.isDeleted === true) {
+          await auth.signOut();
+          toast({
+            variant: 'destructive',
+            title: t('sign_in_failed_toast_title'),
+            description: t('user_blocked_error'),
+          });
+          setIsLoading(false);
+          return;
+        }
 
-      if (userDocSnap.exists() && userDocSnap.data().loginProtectionEnabled) {
-        setUserId(uid);
-        setNeedsTwoFactor(true);
-        setIsLoading(false);
+        // 0.6 Beta: Beta-tester only access check
+        const isBetaTester = userData.isBetaTester;
+        const isAdmin = userData.username === '@Infinite';
+        const isBot = userData.isBot || userData.isCustomBot;
+
+        if (!isBetaTester && !isAdmin && !isBot) {
+          await auth.signOut();
+          toast({
+            variant: 'destructive',
+            title: t('sign_in_failed_toast_title'),
+            description: t('access_denied_beta_only'),
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (userData.loginProtectionEnabled) {
+          setUserId(uid);
+          setNeedsTwoFactor(true);
+          setIsLoading(false);
+        } else {
+          localStorage.setItem('justLoggedIn', 'true');
+          localStorage.setItem('isVerified', 'true');
+          router.push('/');
+        }
       } else {
-        localStorage.setItem('justLoggedIn', 'true');
-        localStorage.setItem('isVerified', 'true');
+        // Handle case where auth user exists but firestore user doesn't
+        setIsLoading(false);
         router.push('/');
       }
     } catch (error: any) {
