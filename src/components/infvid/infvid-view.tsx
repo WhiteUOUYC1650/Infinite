@@ -220,7 +220,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             retryVideoId={retryVideoId}
           />
       )}
-      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} />)}
+      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} onRetry={() => handleRetryUpload(selectedVideo.id)} />)}
     </div>
   );
 }
@@ -307,9 +307,9 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     if (isShortMode) {
         return (
             <div className="flex flex-col gap-2 group cursor-pointer animate-in zoom-in duration-300 relative" onClick={onClick}>
-                <div className="absolute top-2 right-2 z-10">
+                <div className="absolute top-2 right-2 z-10" onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                        <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/40 text-white hover:bg-black/60"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
@@ -317,7 +317,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
-                                    <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
                             )}
@@ -346,9 +346,9 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                 <div className={cn(
                     "absolute top-2 right-2 transition-opacity",
                     isOwner ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                )}>
+                )} onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                        <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/60"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
@@ -356,7 +356,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
-                                    <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
                             )}
@@ -372,7 +372,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     );
 }
 
-function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void }) {
+function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: () => void }) {
     const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const isSaved = currentUser.watchLater?.includes(video.id);
@@ -452,7 +452,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="rounded-xl w-48">
-                                    <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -533,7 +533,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="rounded-xl w-48">
-                                                <DropdownMenuItem onSelect={() => {}} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
                                                 <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
