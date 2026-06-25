@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -118,7 +117,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         const videoDocRef = retryVideoId ? doc(db, 'videos', retryVideoId) : doc(collection(db, 'videos')); 
         const timestamp = Timestamp.now();
         let thumbnailUrl = ''; if (thumbnailFile) { thumbnailUrl = await compressImage(thumbnailFile); }
-        const videoData: any = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort };
+        const videoData: any = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort, isProcessed: 0 };
         
         if (retryVideoId) {
             await updateDoc(videoDocRef, videoData);
@@ -146,7 +145,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
           chunkIds.push(chunkRef.id);
           await new Promise(res => setTimeout(res, 50));
       }
-      await updateDoc(doc(db!, 'videos', videoId), { videoStatus: 'complete', videoChunkIds: chunkIds });
+      await updateDoc(doc(db!, 'videos', videoId), { videoStatus: 'complete', videoChunkIds: chunkIds, isProcessed: 1 });
   };
 
   const selectedVideo = useMemo(() => { if (!selectedVideoId) return null; return videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null); }, [selectedVideoId, videos, fetchedExternalVideo]);
@@ -176,7 +175,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const handleRetryUpload = (vidId: string) => {
       setRetryVideoId(vidId);
       setIsUploadOpen(true);
-      setSelectedVideoId(null); // IMPORTANT: Close the player overlay so the upload view is visible
+      setSelectedVideoId(null); 
   };
 
   return (
@@ -307,29 +306,35 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
 
     if (isShortMode) {
         return (
-            <div className="flex flex-col gap-2 group cursor-pointer animate-in zoom-in duration-300 relative" onClick={onClick}>
-                <div className="absolute top-2 right-2 z-10" onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/40 text-white hover:bg-black/60"><MoreVertical className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                            {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
-                            <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
-                            {isOwner && (
-                                <>
-                                    <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
+            <div className="flex flex-col gap-2 group cursor-pointer animate-in zoom-in duration-300" onClick={onClick}>
                 <div className="relative aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-lg border border-white/5 transition-transform hover:scale-[1.03] duration-300">
                     {video.thumbnailUrl ? (<img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />) : (<div className="absolute inset-0 flex items-center justify-center bg-primary/5"><Zap className="h-12 w-12 text-primary/30" /></div>)}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-                    <div className="absolute bottom-3 left-3 right-3 text-white"><p className="text-xs font-bold line-clamp-2 drop-shadow-md">{video.title}</p><p className="text-[9px] font-bold opacity-80 mt-1 uppercase tracking-widest">{t('infvid_views', { count: video.views || 0 })}</p></div>
+                    <div className="absolute bottom-3 left-3 right-3 text-white"><p className="text-[9px] font-bold opacity-80 mt-1 uppercase tracking-widest">{t('infvid_views', { count: video.views || 0 })}</p></div>
                     <div className="absolute top-3 left-3 bg-primary text-white p-1 rounded-full shadow-lg"><Zap className="h-3 w-3 fill-white" /></div>
+                </div>
+                <div className="flex items-start justify-between px-1">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold line-clamp-2 leading-tight">{video.title}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 truncate">{sender?.name}</p>
+                    </div>
+                    <div onClick={e => e.stopPropagation()} className="shrink-0">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
+                                {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
+                                <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
+                                {isOwner && (
+                                    <>
+                                        {video.isProcessed === 0 && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                        <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
             </div>
         );
@@ -344,30 +349,31 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                     </div>
                 )}
                 <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">HD</div>
-                <div className={cn(
-                    "absolute top-2 right-2 transition-opacity",
-                    isOwner ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                )} onClick={e => e.stopPropagation()}>
+            </div>
+            <div className="flex gap-3">
+                <Avatar className="h-9 w-9 shrink-0 border border-border/50"><AvatarImage src={sender?.avatar} /><AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold line-clamp-2 leading-snug text-sm group-hover:text-primary transition-colors">{video.title}</h4>
+                    <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sender?.name || '...'}</p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5"><span className="font-black text-primary">{t('infvid_views', { count: video.views || 0 })}</span><span className='w-1 h-1 rounded-full bg-muted-foreground/30' /><span>{timeAgo}</span></div>
+                </div>
+                <div onClick={e => e.stopPropagation()} className="shrink-0">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/60"><MoreVertical className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
                             {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
-                                    <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
+                                    {video.isProcessed === 0 && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-            </div>
-            <div className="flex gap-3">
-                <Avatar className="h-9 w-9 shrink-0 border border-border/50"><AvatarImage src={sender?.avatar} /><AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback></Avatar>
-                <div className="flex-1 min-w-0"><h4 className="font-bold line-clamp-2 leading-snug text-sm group-hover:text-primary transition-colors">{video.title}</h4><p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sender?.name || '...'}</p><div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5"><span className="font-black text-primary">{t('infvid_views', { count: video.views || 0 })}</span><span className='w-1 h-1 rounded-full bg-muted-foreground/30' /><span>{timeAgo}</span></div></div>
             </div>
         </div>
     );
@@ -424,7 +430,6 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                         <video src={videoUrl} controls={false} autoPlay loop playsInline className="h-full w-full object-cover" />
                     )}
 
-                    {/* Compact Shorts Control Overlay */}
                     <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5 z-30">
                         <div className="flex flex-col items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 transition-all active:scale-125", isLiked && "text-red-500")}>
@@ -445,22 +450,24 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                             <Share2 className="h-5.5 w-5.5" />
                         </Button>
                         
-                        {isOwner && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
-                                        <MoreVertical className="h-5.5 w-5.5" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl w-48 z-[110]">
-                                    <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                                    <MoreVertical className="h-5.5 w-5.5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl w-48 z-[110]">
+                                <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
+                                {isOwner && (
+                                    <>
+                                        {video.isProcessed === 0 && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                        <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
-                    {/* Author & Info Bottom Overlay */}
                     <div className="absolute bottom-0 left-0 right-0 p-5 pb-8 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-20 pointer-events-none">
                         <div className="flex items-center gap-2.5 mb-3 pointer-events-auto">
                             <Avatar className="h-9 w-9 border-2 border-white/10 shadow-lg">
@@ -528,19 +535,22 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                     <Button variant="secondary" className={cn("rounded-full gap-2 h-10 px-5 transition-all", isSaved && "bg-amber-500 text-white")} onClick={toggleWatchLater}><Clock className={cn("h-4 w-4", isSaved && "fill-current")} /><span className="text-xs font-bold">{t('watch_later')}</span></Button>
                                     <Button variant="secondary" className="rounded-full gap-2 h-10 px-5" onClick={handleShare}><Share2 className="h-4 w-4" /><span className="text-xs font-bold">{t('share')}</span></Button>
                                     
-                                    {isOwner && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-muted">
-                                                    <MoreVertical className="h-5 w-5" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="rounded-xl w-48">
-                                                <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-muted">
+                                                <MoreVertical className="h-5 w-5" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                            <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
+                                            {isOwner && (
+                                                <>
+                                                    {video.isProcessed === 0 && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
+                                                </>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
                             <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner"><div className="flex items-center gap-2 font-bold mb-2"><span className="text-primary text-base font-black">{t('infvid_views', { count: video.views || 0 })}</span><span className="w-1 h-1 rounded-full bg-muted-foreground/30" /><span className="text-muted-foreground">{timeAgo}</span></div><p className="text-foreground/80 whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p></div>

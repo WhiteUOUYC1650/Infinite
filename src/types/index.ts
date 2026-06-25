@@ -259,6 +259,7 @@ export type SharedVideo = {
   views?: number;
   likedBy?: string[]; // Array of user IDs who liked the video
   isShort?: number; // 1 for Short, 0 for regular video
+  isProcessed?: number; // 1 for complete, 0 for in-progress/failed
 };
 
 export type VideoComment = {
