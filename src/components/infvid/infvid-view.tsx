@@ -176,6 +176,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const handleRetryUpload = (vidId: string) => {
       setRetryVideoId(vidId);
       setIsUploadOpen(true);
+      setSelectedVideoId(null); // IMPORTANT: Close the player overlay so the upload view is visible
   };
 
   return (
