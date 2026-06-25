@@ -413,45 +413,45 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
     if (video.isShort === 1) {
         return (
             <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col items-center justify-center animate-in fade-in duration-300 overflow-hidden">
-                <div className="relative w-full h-full max-w-[500px] bg-zinc-950 flex items-center justify-center">
+                <div className="relative w-full h-full max-w-[480px] bg-zinc-950 flex items-center justify-center shadow-2xl">
                     {isLoading ? (
                         <div className="text-center space-y-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-primary">{assemblyProgress}%</p>
                         </div>
                     ) : videoUrl && (
-                        <video src={videoUrl} controls={false} autoPlay loop className="h-full w-full object-cover" />
+                        <video src={videoUrl} controls={false} autoPlay loop playsInline className="h-full w-full object-cover" />
                     )}
 
-                    {/* TikTok Overlay Controls */}
-                    <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
+                    {/* Compact Shorts Control Overlay */}
+                    <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5 z-30">
                         <div className="flex flex-col items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-12 w-12 rounded-full bg-white/10 backdrop-blur-md transition-all", isLiked && "text-red-500 scale-110")}>
-                                <ThumbsUp className={cn("h-6 w-6", isLiked && "fill-current")} />
+                            <Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 transition-all active:scale-125", isLiked && "text-red-500")}>
+                                <ThumbsUp className={cn("h-5.5 w-5.5", isLiked && "fill-current")} />
                             </Button>
-                            <span className="text-[10px] font-black">{likedBy.length}</span>
+                            <span className="text-[10px] font-black drop-shadow-md">{likedBy.length}</span>
                         </div>
                         <div className="flex flex-col items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setShowComments(true)} className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md">
-                                <MessageSquare className="h-6 w-6" />
+                            <Button variant="ghost" size="icon" onClick={() => setShowComments(true)} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                                <MessageSquare className="h-5.5 w-5.5" />
                             </Button>
-                            <span className="text-[10px] font-black">{comments.length}</span>
+                            <span className="text-[10px] font-black drop-shadow-md">{comments.length}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={toggleWatchLater} className={cn("h-12 w-12 rounded-full bg-white/10 backdrop-blur-md", isSaved && "text-amber-500")}>
-                            <Clock className={cn("h-6 w-6", isSaved && "fill-current")} />
+                        <Button variant="ghost" size="icon" onClick={toggleWatchLater} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5", isSaved && "text-amber-500")}>
+                            <Clock className={cn("h-5.5 w-5.5", isSaved && "fill-current")} />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={handleShare} className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md">
-                            <Share2 className="h-6 w-6" />
+                        <Button variant="ghost" size="icon" onClick={handleShare} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                            <Share2 className="h-5.5 w-5.5" />
                         </Button>
                         
                         {isOwner && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md">
-                                        <MoreVertical className="h-6 w-6" />
+                                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                                        <MoreVertical className="h-5.5 w-5.5" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                <DropdownMenuContent align="end" className="rounded-xl w-48 z-[110]">
                                     <DropdownMenuItem onSelect={onRetry} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -459,37 +459,39 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                         )}
                     </div>
 
-                    {/* Bottom Info */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent z-20">
-                        <div className="flex items-center gap-3 mb-3">
-                            <Avatar className="h-10 w-10 border-2 border-white/20">
+                    {/* Author & Info Bottom Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-5 pb-8 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-20 pointer-events-none">
+                        <div className="flex items-center gap-2.5 mb-3 pointer-events-auto">
+                            <Avatar className="h-9 w-9 border-2 border-white/10 shadow-lg">
                                 <AvatarImage src={sender?.avatar} />
-                                <AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback>
+                                <AvatarFallback className="bg-zinc-800 text-white text-xs">{sender?.name?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
-                                <p className="font-bold text-sm truncate flex items-center gap-1">{sender?.name} <VerifiedBadge className="w-3 h-3" /></p>
-                                <Button variant="ghost" className="h-auto p-0 text-[10px] font-black uppercase text-primary hover:text-white" onClick={handleToggleSubscribe}>
+                                <p className="font-bold text-xs truncate flex items-center gap-1 drop-shadow-md">
+                                    {sender?.name} <VerifiedBadge className="w-3 h-3" />
+                                </p>
+                                <button className="h-auto p-0 text-[10px] font-black uppercase text-primary hover:text-white transition-colors" onClick={handleToggleSubscribe}>
                                     {isSubscribed ? t('subscribed') : t('subscribe')}
-                                </Button>
+                                </button>
                             </div>
                         </div>
-                        <h3 className="font-bold text-base leading-tight mb-2">{video.title}</h3>
-                        <p className="text-xs text-white/70 line-clamp-2">{video.description}</p>
+                        <h3 className="font-bold text-sm leading-snug mb-1 drop-shadow-md pointer-events-auto">{video.title}</h3>
+                        <p className="text-[11px] text-white/70 line-clamp-2 leading-relaxed drop-shadow-sm pointer-events-auto">{video.description}</p>
                     </div>
 
-                    <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-6 right-6 z-30 text-white bg-black/40 rounded-full h-10 w-10">
-                        <X className="h-6 w-6" />
+                    <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-6 right-4 z-40 text-white bg-black/40 backdrop-blur-md rounded-full h-9 w-9 hover:bg-black/60 transition-colors">
+                        <X className="h-5 w-5" />
                     </Button>
                 </div>
 
                 <Dialog open={showComments} onOpenChange={setShowComments}>
-                    <DialogContent className="max-w-md h-[60vh] rounded-t-3xl border-none p-0 overflow-hidden flex flex-col bg-card">
+                    <DialogContent className="max-w-md h-[65vh] rounded-t-[2.5rem] border-none p-0 overflow-hidden flex flex-col bg-card z-[120]">
                         <DialogHeader className="p-4 border-b shrink-0 flex flex-row items-center justify-between">
-                            <DialogTitle className="text-sm font-black uppercase tracking-widest">{t('comments')} ({comments.length})</DialogTitle>
-                            <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="h-8 w-8"><X className="h-4 w-4" /></Button>
+                            <DialogTitle className="text-xs font-black uppercase tracking-widest opacity-60 ml-2">{t('comments')} ({comments.length})</DialogTitle>
+                            <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="h-8 w-8 rounded-full"><X className="h-4 w-4" /></Button>
                         </DialogHeader>
                         <ScrollArea className="flex-1">
-                            <div className="p-4"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>
+                            <div className="p-5"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>
                         </ScrollArea>
                     </DialogContent>
                 </Dialog>
@@ -522,7 +524,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Button variant={isLiked ? "default" : "secondary"} className={cn("rounded-full gap-2 h-10 px-5 transition-all", isLiked && "bg-primary text-primary-foreground")} onClick={handleToggleLike}><ThumbsUp className={cn("h-4 w-4", isLiked && "fill-current")} /><span className="text-xs font-bold">{t('likes', { count: likedBy.length })}</span></Button>
-                                    <Button variant={isSaved ? "default" : "secondary"} className={cn("rounded-full gap-2 h-10 px-5 transition-all", isSaved && "bg-amber-500 text-white")} onClick={toggleWatchLater}><Clock className={cn("h-4 w-4", isSaved && "fill-current")} /><span className="text-xs font-bold">{t('watch_later')}</span></Button>
+                                    <Button variant="secondary" className={cn("rounded-full gap-2 h-10 px-5 transition-all", isSaved && "bg-amber-500 text-white")} onClick={toggleWatchLater}><Clock className={cn("h-4 w-4", isSaved && "fill-current")} /><span className="text-xs font-bold">{t('watch_later')}</span></Button>
                                     <Button variant="secondary" className="rounded-full gap-2 h-10 px-5" onClick={handleShare}><Share2 className="h-4 w-4" /><span className="text-xs font-bold">{t('share')}</span></Button>
                                     
                                     {isOwner && (
