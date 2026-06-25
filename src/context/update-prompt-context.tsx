@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { UpdatePromptDialog } from '@/components/update-prompt-dialog';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
@@ -25,31 +25,46 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
   const [updateInfo, setUpdateInfo] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const db = useFirestore();
+  const { user: authUser } = useUser();
   const { toast } = useToast();
   const checkPerformed = useRef(false);
 
   useEffect(() => {
-    if (checkPerformed.current) return;
+    if (checkPerformed.current || !db) return;
     checkPerformed.current = true;
 
-    const checkVersionAndLaunchCount = async () => {
-        if (!db) return;
-        
+    const checkVersion = async () => {
         const launches = parseInt(localStorage.getItem('launch_count') || '0') + 1;
         localStorage.setItem('launch_count', launches.toString());
 
         try {
+            // 1. Get user info to check beta status
+            let isBetaTester = false;
+            if (authUser) {
+                const userSnap = await getDoc(doc(db, 'users', authUser.uid));
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    isBetaTester = userData.isBetaTester || userData.username === '@Infinite';
+                }
+            }
+
+            // 2. Get version info
             const verDocRef = doc(db, 'info', 'ver');
             const verSnap = await getDoc(verDocRef);
             
             if (verSnap.exists()) {
                 const data = verSnap.data();
-                const latestVersion = data.latest;
                 setUpdateInfo(data);
 
-                if (latestVersion && latestVersion !== CURRENT_APP_VERSION) {
+                // 3. Determine target version based on beta status
+                // Testers see latestClosedBeta, others see only latest (publicly available)
+                const targetVersion = isBetaTester 
+                    ? (data.latestClosedBeta || data.latest) 
+                    : data.latest;
+
+                if (targetVersion && targetVersion !== CURRENT_APP_VERSION) {
                     setIsUpdateAvailable(true);
-                    
+                    // Show prompt every 10 launches if update is available
                     if (launches % 10 === 0) {
                         setIsOpen(true);
                     }
@@ -59,8 +74,8 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
             console.error("Error checking app version:", error);
         }
     };
-    checkVersionAndLaunchCount();
-  }, [db]);
+    checkVersion();
+  }, [db, authUser]);
 
   const downloadUpdate = async () => {
     if (!db || !updateInfo?.apkChunkIds || isDownloading) return;
@@ -80,7 +95,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
         
         if (Capacitor.isNativePlatform()) {
           const { Filesystem, Directory } = await import('@capacitor/filesystem');
-          const fileName = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
+          const fileName = `infinite_update_${(updateInfo.latestClosedBeta || updateInfo.latest).replace(/\s+/g, '_')}.apk`;
           
           try {
             await Filesystem.mkdir({
@@ -110,7 +125,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           
           const link = document.createElement('a');
           link.href = url;
-          link.download = `infinite_update_${updateInfo.latest.replace(/\s+/g, '_')}.apk`;
+          link.download = `infinite_update_${(updateInfo.latestClosedBeta || updateInfo.latest).replace(/\s+/g, '_')}.apk`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -148,7 +163,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
             isUpdateAvailable={isUpdateAvailable}
             onUpdate={downloadUpdate}
             isDownloading={isDownloading}
-            targetVersion={updateInfo?.latest}
+            targetVersion={updateInfo ? (updateInfo.latestClosedBeta || updateInfo.latest) : undefined}
         />
     </UpdatePromptContext.Provider>
   );

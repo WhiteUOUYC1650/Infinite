@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -689,8 +688,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                               <Zap className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Shorts UI</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('infshorts_ui_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_shorts_ui_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_shorts_ui_desc')}</p>
                           </div>
                       </div>
 
@@ -699,8 +698,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                               <Clock className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('watch_later')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Save videos to your personal "Watch Later" list.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_watch_later_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_watch_later_desc')}</p>
                           </div>
                       </div>
 
@@ -709,8 +708,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                               <Settings className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('edit_video')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Authors can now edit title/description or delete videos.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_content_mgmt_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_content_mgmt_desc')}</p>
                           </div>
                       </div>
 
@@ -719,8 +718,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                               <RefreshCcw className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('retry_upload')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Reliably retry video uploads if processing fails.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_retry_upload_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_retry_upload_desc')}</p>
                           </div>
                       </div>
 
@@ -730,7 +729,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           </div>
                           <div>
                               <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_bugfixes')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Major stability improvements and UI refinements.</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_bugfixes')}</p>
                           </div>
                       </div>
                   </div>

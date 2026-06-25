@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -8,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,7 +72,8 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.5.1 Beta');
+  const [newVersion, setNewVersion] = useState('0.6 Beta');
+  const [isClosedBeta, setIsClosedBeta] = useState(true);
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
 
@@ -285,9 +285,23 @@ function AdminPage() {
             await new Promise(r => setTimeout(r, 50));
         }
         const verRef = doc(db, 'info', 'ver');
-        await updateDoc(verRef, { latest: newVersion.trim(), apkChunkIds: chunkIds, updatedAt: serverTimestamp() });
+        
+        const updateData: any = { 
+            apkChunkIds: chunkIds, 
+            updatedAt: serverTimestamp() 
+        };
+
+        if (isClosedBeta) {
+            updateData.latestClosedBeta = newVersion.trim();
+        } else {
+            updateData.latest = newVersion.trim();
+        }
+
+        await updateDoc(verRef, updateData);
+
         if (notifyUpdate) {
-            await sendBotBroadcast(`Вышло обновление ${newVersion.trim()}! Рекомендуем обновиться.`);
+            const targetAudience = isClosedBeta ? "бета-тестеров" : "всех пользователей";
+            await sendBotBroadcast(`Вышло обновление ${newVersion.trim()} для ${targetAudience}! Рекомендуем обновиться.`);
         }
         toast({ title: t('dm_success'), description: "Update published!" });
         setApkFile(null);
@@ -385,7 +399,19 @@ function AdminPage() {
                             <p className="text-sm text-muted-foreground">Upload a new APK version for all editions.</p>
                         </div>
                         <div className="space-y-4">
-                            <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="Version Name (e.g. 0.5.1 Beta)" />
+                            <div className="space-y-2">
+                                <Label>Version Name</Label>
+                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.6 Beta" />
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
+                                <div className="flex items-center gap-2">
+                                    <ShieldCheck className="h-4 w-4 text-primary" />
+                                    <Label className="font-bold">Closed Beta Only</Label>
+                                </div>
+                                <Switch checked={isClosedBeta} onCheckedChange={setIsClosedBeta} />
+                            </div>
+
                             <div className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer" onClick={() => apkInputRef.current?.click()}>
                                 <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
                                 {apkFile ? <div className="text-center"><FileJson className="h-8 w-8 text-primary mx-auto mb-2" /><p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p></div> : <p className="text-sm text-muted-foreground">Select APK file</p>}
