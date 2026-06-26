@@ -124,7 +124,7 @@ const processMarkdownChildren = (children: any): any => {
 
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
-function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, rawDate: string, experimentalDesign: boolean }) {
+function DateSeparator({ date, rawDate, experimentalDesign, glassEffect }: { date: string, rawDate: string, experimentalDesign: boolean, glassEffect: boolean }) {
   return (
     <div className="relative my-6 flex items-center justify-center date-separator-marker" data-date={date}>
       <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -132,7 +132,7 @@ function DateSeparator({ date, rawDate, experimentalDesign }: { date: string, ra
       </div>
       <div className={cn(
           "relative px-4 py-1 rounded-full border border-border/50 shadow-sm transition-all",
-          experimentalDesign ? "glass-panel backdrop-blur-xl border-white/20" : "bg-muted/80"
+          (experimentalDesign || glassEffect) ? "glass-panel backdrop-blur-xl border-white/20" : "bg-muted/80"
       )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
           {date}
@@ -212,7 +212,7 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
         case 'image':
             return <img src={mediaUrl!} onClick={() => onPreviewImage(mediaUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer my-1" onLoad={onMediaLoad} />;
         case 'video':
-            return <video src={mediaUrl!} controls className="max-w-full rounded-lg my-1" onLoadedData={onMediaLoad} />;
+            return <video src={mediaUrl!} controls className="max-full rounded-lg my-1" onLoadedData={onMediaLoad} />;
         case 'music':
             return <div className="my-1"><CustomAudioPlayer src={mediaUrl!} isMusic={true} fileName={attachment.fileName} messageId={attachment.id} onMediaLoad={onMediaLoad} /></div>;
         case 'file':
@@ -235,7 +235,7 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
     }
 };
 
-const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean }) => {
+const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
     const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); 
     
     const isChannelPost = !!message.fromChannelId;
@@ -272,7 +272,9 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-white shadow-sm" : "bg-card text-card-foreground shadow-sm"),
                 isCircleComplete ? "rounded-full" : (alignRight ? "rounded-lg rounded-br-none" : "rounded-lg rounded-bl-none"),
                 !isCircleComplete && "px-2 pb-1 pt-1.5",
-                "max-w-[85%] md:max-w-[70%]"
+                "max-w-[85%] md:max-w-[70%]",
+                glassEffect && "glass-msg",
+                glassEffect && alignRight && "align-right"
             )}>
                 {isChannelPost && (
                     <div className="absolute -top-3 -right-1 z-10 flex items-center bg-background/50 backdrop-blur-md px-1.5 rounded-full border border-primary/20 shadow-sm pointer-events-none">
@@ -368,14 +370,14 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", experimentalDesign ? "glass-menu flex flex-row gap-1 w-auto" : "bg-popover rounded-xl flex flex-col w-56")}>
-                        {experimentalDesign ? (
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", (experimentalDesign || glassEffect) ? "glass-menu flex flex-row gap-1 w-auto" : "bg-popover rounded-xl flex flex-col w-56")}>
+                        {(experimentalDesign || glassEffect) ? (
                             <>
                                 <div className="grid grid-cols-5 gap-1 p-2 bg-muted/20 rounded-2xl border border-white/5 shrink-0 w-[180px]">
                                     {COMMON_EMOJIS.map(emoji => { const sel = isLikedByMe(emoji); return (<button key={emoji} onClick={() => onToggleReaction(message.id, emoji)} className={cn("h-8 w-8 flex items-center justify-center transition-all active:scale-150 hover:bg-primary/20 rounded-lg text-lg", sel && "bg-primary/30 scale-110")}>{emoji}</button>); })}
                                 </div>
                                 <div className="w-[180px] flex flex-col gap-0.5">
-                                    <div className="flex items-center justify-between px-3 h-10 bg-primary text-white rounded-xl mb-1 font-bold text-sm">
+                                    <div className="flex items-center justify-between px-3 h-10 bg-primary text-white rounded-xl mb-1 font-bold text-sm shining-gold-element">
                                         <div className="flex items-center gap-2"><Smile className="h-4 w-4" />{t('reactions')}</div>
                                         <ChevronRight className="h-4 w-4" />
                                     </div>
@@ -649,7 +651,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <MoreVertical className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", experimentalDesign ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
+                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
                   {!isSavedMessages && (
                       <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                         <Info className="mr-3 h-4 w-4 text-primary" />
@@ -699,18 +701,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
                 return (
                     <React.Fragment key={m.id}>
-                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign || glassEffect} />}
-                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign || glassEffect} />
+                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}
+                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />
                     </React.Fragment>
                 );
             })}
-            <div className={cn("shrink-0 pointer-events-none", experimentalDesign ? "h-20" : "h-2")} aria-hidden="true" />
+            <div className={cn("shrink-0 pointer-events-none", (experimentalDesign || glassEffect) ? "h-20" : "h-2")} aria-hidden="true" />
           </div>
         </div>
 
-        {/* Scroll to bottom button - Higher z-index for 0.6.1 */}
+        {/* Scroll to bottom button - HIGHEST Z-INDEX */}
         <div className={cn(
-            "absolute bottom-4 right-4 z-[60] transition-all duration-300 transform",
+            "absolute bottom-4 right-4 z-[70] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         )}>
             <Button 
@@ -730,11 +732,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {isDM && otherUser?.isCustomBot && botApps.length > 0 && (
           <div className={cn(
               "absolute bottom-[calc(60px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[45] animate-in slide-in-from-bottom-4 duration-500",
-              experimentalDesign ? "mb-6" : "mb-2"
+              (experimentalDesign || glassEffect) ? "mb-6" : "mb-2"
           )}>
               <Button 
                 onClick={() => setProfileDialogUser(otherUser)}
-                className="rounded-full shadow-2xl bg-primary text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all"
+                className={cn(
+                  "rounded-full shadow-2xl text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all",
+                  glassEffect ? "glass-panel bg-primary/60" : "bg-primary"
+                )}
               >
                   <LayoutGrid className="h-5 w-5" />
                   {botApps.length === 1 ? t('open_mini_app_button') : t('open_mini_apps_menu')}
@@ -745,7 +750,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {isMember && (canWrite ? (
         <footer className={cn(
             "flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300",
-            experimentalDesign ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
+            (experimentalDesign || glassEffect) ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", (experimentalDesign || glassEffect) ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md")}>
@@ -866,7 +871,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       ) : (
         <footer className={cn(
           "flex-shrink-0 p-3 h-auto min-h-[56px] flex items-center justify-center z-40 pb-[calc(1rem+env(safe-area-inset-bottom))]",
-          experimentalDesign ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t"
+          (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t"
         )}>
           <Button 
             variant="ghost" 

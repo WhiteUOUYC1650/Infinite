@@ -172,7 +172,8 @@ img, video {
 
 .theme-shining-gold .bg-primary,
 .theme-shining-gold .data-\[state\=active\]\:bg-primary[data-state=active],
-.theme-shining-gold [data-sidebar="menu-button"][data-active="true"] {
+.theme-shining-gold [data-sidebar="menu-button"][data-active="true"],
+.theme-shining-gold .shining-gold-element {
   background: linear-gradient(90deg, #d4af37, #f9e27c, #d4af37, #f9e27c, #d4af37) !important;
   background-size: 200% auto !important;
   animation: gold-shimmer 4s linear infinite !important;
@@ -185,36 +186,36 @@ audio, video {
   filter: none !important;
 }
 
-/* Glass UI Elements - Retro Glossy Aero Style */
-[data-glass-effect="true"] .glass-input,
+/* Glass UI Elements - Retro Glossy Aero Style (True 2010s Feel) */
 [data-glass-effect="true"] .glass-panel,
+[data-glass-effect="true"] .glass-input,
+[data-glass-effect="true"] .glass-msg,
 [data-glass-effect="true"] .glass-circle,
-[data-glass-effect="true"] .glass-menu,
-[data-experimental-design="true"] .glass-input,
-[data-experimental-design="true"] .glass-panel,
-[data-experimental-design="true"] .glass-circle,
-[data-experimental-design="true"] .glass-menu {
-  @apply backdrop-blur-2xl border border-white/40 shadow-2xl relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.45) !important;
+[data-glass-effect="true"] .glass-menu {
+  @apply backdrop-blur-3xl border shadow-2xl relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
-[data-glass-effect="true"] .glass-input::before,
 [data-glass-effect="true"] .glass-panel::before,
+[data-glass-effect="true"] .glass-input::before,
+[data-glass-effect="true"] .glass-msg::before,
 [data-glass-effect="true"] .glass-circle::before,
-[data-glass-effect="true"] .glass-menu::before,
-[data-experimental-design="true"] .glass-input::before,
-[data-experimental-design="true"] .glass-panel::before,
-[data-experimental-design="true"] .glass-circle::before,
-[data-experimental-design="true"] .glass-menu::before {
+[data-glass-effect="true"] .glass-menu::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 90%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 90%, transparent 100%);
   pointer-events: none;
   z-index: 1;
+}
+
+[data-glass-effect="true"] .glass-msg.align-right {
+  background-color: hsla(var(--primary) / 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 /* Glass Specifics */
