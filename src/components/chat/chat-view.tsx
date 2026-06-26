@@ -405,7 +405,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
 ChatMessage.displayName = 'ChatMessage';
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign } = useTheme(); 
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect } = useTheme(); 
   const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   
@@ -684,13 +684,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               </DropdownMenu>
             )}
         </div>
-        <div className={cn("absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", experimentalDesign ? "glass-panel" : "bg-muted/95")}>
+        <div className={cn("absolute top-[calc(14px+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
+            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", (experimentalDesign || glassEffect) ? "glass-panel" : "bg-muted/95")}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
         </div>
       </header>
-      <div className="relative flex-1 bg-background overflow-hidden min-h-0">
+      <div className="relative flex-1 bg-background overflow-hidden min-h-0 z-10">
         <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full">
             <div className="flex-1" />
@@ -699,8 +699,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
                 return (
                     <React.Fragment key={m.id}>
-                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} />}
-                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} />
+                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign || glassEffect} />}
+                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign || glassEffect} />
                     </React.Fragment>
                 );
             })}
@@ -708,9 +708,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </div>
 
-        {/* Scroll to bottom button - Improved z-index and positioning for 0.6.1 */}
+        {/* Scroll to bottom button - Higher z-index for 0.6.1 */}
         <div className={cn(
-            "absolute bottom-4 right-4 z-[50] transition-all duration-300 transform",
+            "absolute bottom-4 right-4 z-[60] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         )}>
             <Button 
@@ -719,7 +719,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onClick={() => scrollToBottom('smooth')}
                 className={cn(
                     "w-10 h-10 rounded-full shadow-2xl border border-border/50",
-                    experimentalDesign ? "glass-circle" : "bg-card hover:bg-muted"
+                    (experimentalDesign || glassEffect) ? "glass-circle" : "bg-card hover:bg-muted"
                 )}
             >
                 <ChevronDown className="h-6 w-6 text-primary" />
@@ -748,7 +748,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             experimentalDesign ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
-            <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", experimentalDesign ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md")}>
+            <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", (experimentalDesign || glassEffect) ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md")}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                 <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
@@ -801,7 +801,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                   className={cn(
                       "min-h-[40px] h-[40px] max-h-32 resize-none border rounded-2xl transition-all duration-300",
-                      experimentalDesign ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
+                      (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                   )} 
                 />
                 <div className="flex items-center gap-1.5 shrink-0 h-[40px]">
@@ -811,12 +811,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
+                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
                       >
                         <Paperclip className="h-5 w-5" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", experimentalDesign ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl")}>
+                    <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", (experimentalDesign || glassEffect) ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl")}>
                       <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -830,14 +830,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} multiple />
                   
                   {messageContent.trim() || filesToSend.length > 0 ? (
-                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", experimentalDesign ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", (experimentalDesign || glassEffect) ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <Button 
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('circle')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                         onMouseUp={() => stopRecording(false)} 
@@ -849,7 +849,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", experimentalDesign ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('voice')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                         onMouseUp={() => stopRecording(false)} 
@@ -872,7 +872,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             variant="ghost" 
             className={cn(
                 "w-full h-12 font-bold uppercase tracking-widest gap-2 shadow-lg transition-all active:scale-95",
-                experimentalDesign ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary"
+                (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary"
             )}
             onClick={() => { setIsMutedLocal(!isMutedLocal); toast({ title: isMutedLocal ? t('unmute') : t('mute') }); }}
           >

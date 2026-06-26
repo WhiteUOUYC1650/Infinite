@@ -433,7 +433,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const mainPageContent = (
       <>
-        {experimentalDesign ? (
+        {(experimentalDesign || glassEffect) ? (
             <div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent">
                 <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full experimental-glow" />
                 <div className="text-center space-y-1.5">
@@ -444,18 +444,18 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         ) : (
             <div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>
         )}
-        <div className={cn("border-t", experimentalDesign && "mt-2")}>
-          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
-          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign} iconBg="bg-green-500/15" iconColor="text-green-500" />
-          <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('privacy_security_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
-          <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('data_storage_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign} iconBg="bg-orange-500/15" iconColor="text-orange-500" />
-          <SettingsItem icon={Languages} label={t('language')} description={t('language_desc')} value={language.toUpperCase()} onClick={() => navigateTo('language')} showExpColors={experimentalDesign} iconBg="bg-purple-500/15" iconColor="text-purple-500" />
-          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('infgold_desc')} onClick={() => navigateTo('infGold')} showExpColors={experimentalDesign} iconBg="bg-amber-500/15" iconColor="text-amber-600" isGlow={experimentalDesign} />
-          <SettingsItem icon={User} label={t('profile')} description={t('edit_profile_desc')} onClick={() => navigateTo('account')} showExpColors={experimentalDesign} iconBg="bg-teal-500/15" iconColor="text-teal-500" />
-          <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} showExpColors={experimentalDesign} iconBg="bg-yellow-500/15" iconColor="text-yellow-600" />
-          <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} showExpColors={experimentalDesign} iconBg="bg-pink-500/15" iconColor="text-pink-500" />
-          <SettingsItem icon={RefreshCcw} label={t('check_updates')} description={t('check_updates_desc')} onClick={() => navigateTo('checkUpdates')} showExpColors={experimentalDesign} iconBg="bg-indigo-500/15" iconColor="text-indigo-600" />
-          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={currentVersion} onClick={() => navigateTo('about')} showExpColors={experimentalDesign} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
+        <div className={cn("border-t", (experimentalDesign || glassEffect) && "mt-2")}>
+          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
+          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" />
+          <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('privacy_security_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
+          <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('data_storage_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-orange-500/15" iconColor="text-orange-500" />
+          <SettingsItem icon={Languages} label={t('language')} description={t('language_desc')} value={language.toUpperCase()} onClick={() => navigateTo('language')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-500" />
+          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('infgold_desc')} onClick={() => navigateTo('infGold')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" isGlow={experimentalDesign || glassEffect} />
+          <SettingsItem icon={User} label={t('profile')} description={t('edit_profile_desc')} onClick={() => navigateTo('account')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-teal-500/15" iconColor="text-teal-500" />
+          <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-yellow-500/15" iconColor="text-yellow-600" />
+          <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-pink-500/15" iconColor="text-pink-500" />
+          <SettingsItem icon={RefreshCcw} label={t('check_updates')} description={t('check_updates_desc')} onClick={() => navigateTo('checkUpdates')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-indigo-500/15" iconColor="text-indigo-600" />
+          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={currentVersion} onClick={() => navigateTo('about')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
           
           {currentUser.isAdmin && (
             <div className='border-t mt-4'>
@@ -464,10 +464,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     label={t('admin_panel_title')} 
                     description={t('admin_panel_desc')}
                     onClick={() => router.push('/admin')} 
-                    showExpColors={experimentalDesign} 
+                    showExpColors={experimentalDesign || glassEffect} 
                     iconBg="bg-red-600/20" 
                     iconColor="text-red-600" 
-                    isGlow={experimentalDesign}
+                    isGlow={experimentalDesign || glassEffect}
                 />
             </div>
           )}
@@ -598,9 +598,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                       </div>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
-                    <SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign} iconBg="bg-amber-500/15" iconColor="text-amber-600" />
-                    <SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign} iconBg="bg-purple-500/15" iconColor="text-purple-600" />
-                    <SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
+                    <SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" />
+                    <SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-600" />
+                    <SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
                     <SettingsSwitchItem id="prem-badge" label={t('show_prem_badge')} checked={!!currentUser.showPremBadge} onCheckedChange={(v) => updateDoc(doc(db!, 'users', currentUser.uid), { showPremBadge: v })} disabled={currentUser.subscriptionTier !== 'prem'} />
                   </div>
               </div>
@@ -842,7 +842,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   return (
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
-      <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", experimentalDesign && "rounded-[2.5rem] border-none shadow-2xl")}>
+      <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", (experimentalDesign || glassEffect) && "rounded-[2.5rem] border-none shadow-2xl")}>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
           <DialogTitle className="text-lg font-black font-headline tracking-tight">{t(page as any) || t('settings')}</DialogTitle>

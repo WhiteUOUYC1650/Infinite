@@ -105,7 +105,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const db = useFirestore();
   const { language, t } = useLanguage();
   const { toast } = useToast();
-  const { toggleTheme, isDarkMode, experimentalDesign, showFeed } = useTheme();
+  const { toggleTheme, isDarkMode, experimentalDesign, glassEffect, showFeed } = useTheme();
   const { setOpenMobile } = useSidebar();
   const { isUpdateAvailable } = useUpdatePrompt();
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -583,15 +583,15 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
       <SidebarFooter className={cn(
         "p-2 h-[56px] flex items-center shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-[100] bg-sidebar border-t",
-        experimentalDesign ? "bg-sidebar/95 backdrop-blur-xl" : "bg-sidebar"
+        (experimentalDesign || glassEffect) ? "bg-sidebar/95 backdrop-blur-xl" : "bg-sidebar"
       )}>
         <div className="flex items-center gap-2 w-full h-full">
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
                 <button className={cn(
                   "flex items-center gap-2 flex-1 truncate p-1.5 rounded-xl hover:bg-sidebar-accent text-left transition-all",
-                  experimentalDesign && "experimental-glow",
-                  experimentalDesign ? "glass-panel" : "bg-sidebar-background border border-border/50 shadow-sm"
+                  (experimentalDesign || glassEffect) && "experimental-glow",
+                  (experimentalDesign || glassEffect) ? "glass-panel" : "bg-sidebar-background border border-border/50 shadow-sm"
                 )}>
                     {currentUser.uid && currentUser.name && (
                     <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className="h-9 w-9" />
@@ -612,12 +612,12 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9 shrink-0", experimentalDesign && "glass-circle rounded-xl")}>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-9 w-9 shrink-0", (experimentalDesign || glassEffect) && "glass-circle rounded-xl")}>
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="sr-only">Toggle theme</span>
           </Button>
            
-          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9 shrink-0", experimentalDesign && "glass-circle rounded-xl")}>
+          <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-9 w-9 shrink-0", (experimentalDesign || glassEffect) && "glass-circle rounded-xl")}>
               <div className="relative">
                 <Cog className="h-4 w-4" />
                 {isUpdateAvailable && (

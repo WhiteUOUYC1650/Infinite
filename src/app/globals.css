@@ -171,11 +171,13 @@ img, video {
 }
 
 .theme-shining-gold .bg-primary,
-.theme-shining-gold .data-\[state\=active\]\:bg-primary[data-state=active] {
-  background: linear-gradient(90deg, #d4af37, #f9e27c, #d4af37, #f9e27c, #d4af37);
-  background-size: 200% auto;
-  animation: gold-shimmer 4s linear infinite;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+.theme-shining-gold .data-\[state\=active\]\:bg-primary[data-state=active],
+.theme-shining-gold [data-sidebar="menu-button"][data-active="true"] {
+  background: linear-gradient(90deg, #d4af37, #f9e27c, #d4af37, #f9e27c, #d4af37) !important;
+  background-size: 200% auto !important;
+  animation: gold-shimmer 4s linear infinite !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  color: #000 !important;
 }
 
 /* Player color stability */
@@ -183,25 +185,45 @@ audio, video {
   filter: none !important;
 }
 
-/* Glass UI Elements - Enhanced for 0.6.1 */
+/* Glass UI Elements - Retro Glossy Aero Style */
 [data-glass-effect="true"] .glass-input,
-[data-experimental-design="true"] .glass-input {
-  @apply bg-card/40 backdrop-blur-xl border border-white/20 shadow-inner;
-}
-
-[data-glass-effect="true"] .glass-circle,
-[data-experimental-design="true"] .glass-circle {
-  @apply bg-card/40 backdrop-blur-xl border border-white/20 rounded-full shadow-lg;
-}
-
 [data-glass-effect="true"] .glass-panel,
-[data-experimental-design="true"] .glass-panel {
-  @apply bg-card/45 backdrop-blur-xl border border-white/10 shadow-2xl;
+[data-glass-effect="true"] .glass-circle,
+[data-glass-effect="true"] .glass-menu,
+[data-experimental-design="true"] .glass-input,
+[data-experimental-design="true"] .glass-panel,
+[data-experimental-design="true"] .glass-circle,
+[data-experimental-design="true"] .glass-menu {
+  @apply backdrop-blur-2xl border border-white/40 shadow-2xl relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.45) !important;
 }
 
-[data-glass-effect="true"] .glass-menu,
-[data-experimental-design="true"] .glass-menu {
-  @apply bg-card/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl;
+[data-glass-effect="true"] .glass-input::before,
+[data-glass-effect="true"] .glass-panel::before,
+[data-glass-effect="true"] .glass-circle::before,
+[data-glass-effect="true"] .glass-menu::before,
+[data-experimental-design="true"] .glass-input::before,
+[data-experimental-design="true"] .glass-panel::before,
+[data-experimental-design="true"] .glass-circle::before,
+[data-experimental-design="true"] .glass-menu::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 90%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glass Specifics */
+.glass-circle {
+  @apply rounded-full;
+}
+
+.glass-input {
+  @apply shadow-inner border-white/20;
 }
 
 /* Global Layout Fixes for Older Android */
