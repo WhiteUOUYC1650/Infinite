@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/lib/utils';
+import { aiChat } from '@/ai/flows/ai-chat-flow';
 
 const iconMap = {
     Users,
@@ -114,10 +115,8 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   useEffect(() => {
     if (!db || !currentUser || !userData) return;
     
-    // Helper to resolve variables in text
     const resolveVars = (text: string = '', vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
 
-    // Main Bot Messaging Handler
     const chatsRef = collection(db, 'chats');
     const q = query(chatsRef, where('members', 'array-contains', currentUser.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -147,11 +146,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         });
     });
 
-    // Handle Button Click Event from Mini-apps
     const handleBotButtonClick = (event: any) => {
         const { botId, buttonId } = event.detail;
         if (!botId || !buttonId) return;
-
         getDoc(doc(db, 'customBots', botId)).then(async (botLogicSnap) => {
             if (botLogicSnap.exists() && botLogicSnap.data().isActive) {
                 const members = [currentUser.uid, botId].sort();
@@ -180,12 +177,8 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         for (const script of bot.scripts) {
             const blocks = script.blocks; 
             if (!blocks || blocks.length === 0) continue;
-            
-            // Check if the script matches the trigger
             const trigger = blocks[0];
             if (trigger.type !== triggerType) continue;
-            
-            // Fixed button click ID matching (case-insensitive and trimmed)
             if (triggerType === 'event_button_click') {
                 const targetId = String(trigger.params?.buttonId || '').trim().toLowerCase();
                 const clickedId = String(event.buttonId || '').trim().toLowerCase();
@@ -207,9 +200,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                         } else if (cond.includes('!=')) {
                             const [left, right] = cond.split('!=').map(s => s.trim());
                             ifStack.push(left !== right);
-                        } else {
-                            ifStack.push(vars['msg_text'].includes(cond));
-                        }
+                        } else { ifStack.push(vars['msg_text'].includes(cond)); }
                         break;
                     case 'variable_set': vars[block.params?.name] = resolveVars(block.params?.value, vars); break;
                     case 'variable_math':
@@ -233,6 +224,10 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
                     case 'action_send_file':
                         await sendBotMessage(bot, block, chatId, (block.type === 'action_reply' ? event.message : undefined), vars); 
                         break;
+                    case 'action_ai_prompt':
+                        const aiResp = await aiChat(vars['msg_text'], block.params?.prompt || '');
+                        await sendBotMessage(bot, { type: 'action_send', params: { text: aiResp.response } } as any, chatId, undefined, vars);
+                        break;
                     case 'action_wait': await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000)); break;
                 }
                 i++;
@@ -252,25 +247,10 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             type: 'user', 
             readBy: [], 
             ...(replyTo && { replyTo: { messageId: replyTo.id, content: replyTo.content, senderName: userData.name || 'User' } }),
-            
-            // Media support for bots
             ...(block.params?.imageUrl && { imageUrl: block.params.imageUrl }),
-            ...(block.params?.videoStatus === 'complete' && { 
-                videoStatus: 'complete', 
-                videoChunkIds: block.params.videoChunkIds,
-                videoMimeType: block.params.videoMimeType 
-            }),
-            ...(block.params?.musicStatus === 'complete' && { 
-                musicStatus: 'complete', 
-                musicChunkIds: block.params.musicChunkIds,
-                musicMimeType: block.params.musicMimeType,
-                fileName: block.params.fileName
-            }),
-            ...(block.params?.fileStatus === 'complete' && { 
-                fileStatus: 'complete', 
-                fileChunkIds: block.params.fileChunkIds,
-                fileName: block.params.fileName
-            }),
+            ...(block.params?.videoStatus === 'complete' && { videoStatus: 'complete', videoChunkIds: block.params.videoChunkIds, videoMimeType: block.params.videoMimeType }),
+            ...(block.params?.musicStatus === 'complete' && { musicStatus: 'complete', musicChunkIds: block.params.musicChunkIds, musicMimeType: block.params.musicMimeType, fileName: block.params.fileName }),
+            ...(block.params?.fileStatus === 'complete' && { fileStatus: 'complete', fileChunkIds: block.params.fileChunkIds, fileName: block.params.fileName }),
         };
         await setDoc(msgRef, msgData);
         await updateDoc(doc(db, 'chats', chatId), { lastMessage: { ...msgData, id: msgRef.id, senderName: bot.name, timestamp: Timestamp.now() } });
@@ -361,33 +341,16 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
       <SidebarInset className="min-h-0 bg-background relative overflow-hidden">
         {populatedUser && (
           <div className="flex h-full w-full overflow-hidden relative">
-            <div className={cn(
-              "absolute inset-0 z-10 transition-transform duration-300 ease-in-out",
-              isMobile && selectedItem ? "-translate-x-full" : "translate-x-0"
-            )}>
+            <div className={cn("absolute inset-0 z-10 transition-transform duration-300 ease-in-out", isMobile && selectedItem ? "-translate-x-full" : "translate-x-0")}>
               <div className="h-full w-full bg-sidebar text-sidebar-foreground overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <SidebarContent onSelect={handleSelect} selectedId={currentSelectedId} currentUser={populatedUser} />
               </div>
             </div>
-
-            <div className={cn(
-              "absolute inset-0 z-20 transition-transform duration-300 ease-in-out bg-background",
-              isMobile ? (selectedItem ? "translate-x-0" : "translate-x-full") : "relative translate-x-0 flex-1"
-            )}>
-              {selectedItem ? renderSelectedContent() : (
-                !isMobile && (
-                  <div className="relative flex h-full flex-col items-center justify-center bg-background p-4">
-                    <div className="flex flex-col items-center text-center">
-                      <MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} />
-                      <h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2>
-                    </div>
-                  </div>
-                )
-              )}
+            <div className={cn("absolute inset-0 z-20 transition-transform duration-300 ease-in-out bg-background", isMobile ? (selectedItem ? "translate-x-0" : "translate-x-full") : "relative translate-x-0 flex-1")}>
+              {selectedItem ? renderSelectedContent() : (!isMobile && (<div className="relative flex h-full flex-col items-center justify-center bg-background p-4"><div className="flex flex-col items-center text-center"><MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} /><h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2></div></div>))}
             </div>
           </div>
         )}
-
         {incomingCall && (
           <div className="fixed top-[env(safe-area-inset-top))] left-0 right-0 z-[100] p-4 flex justify-center animate-in slide-in-from-top duration-500 cursor-pointer" onClick={handleAcceptIncoming}>
               <div className="bg-black/90 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 w-full max-sm border border-white/10 backdrop-blur-md">
@@ -402,15 +365,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
           <DialogContent className="max-w-sm rounded-[2rem] p-8 border-none shadow-2xl">
             <DialogHeader className="items-center text-center space-y-4">
               <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center"><Bell className="h-10 w-10 text-primary animate-bounce" /></div>
-              <div className="space-y-2">
-                <DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle>
-                <DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription>
-              </div>
+              <div className="space-y-2"><DialogTitle className="text-2xl font-bold font-headline">{t('subscribe_prompt_title')}</DialogTitle><DialogDescription className="text-muted-foreground leading-relaxed">{t('subscribe_prompt_desc')}</DialogDescription></div>
             </DialogHeader>
-            <DialogFooter className="flex-col gap-2 pt-4">
-              <Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">{t('subscribe')}</Button>
-              <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
-            </DialogFooter>
+            <DialogFooter className="flex-col gap-2 pt-4"><Button onClick={handleSubscribeToChannel} className="w-full h-12 rounded-xl font-bold">{t('subscribe')}</Button><Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </SidebarInset>

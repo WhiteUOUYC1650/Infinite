@@ -124,8 +124,8 @@ const processMarkdownChildren = (children: any): any => {
     });
 };
 
-const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean }) => (
-    <button onClick={onClick} className="flex items-center w-full p-4 text-left rounded-lg hover:bg-muted disabled:opacity-50 disabled:pointer-events-none group" disabled={disabled}>
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => (
+    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", glassEffect ? "glass-button mb-1" : "hover:bg-muted")} disabled={disabled}>
         <div className={cn(
             "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-4 transition-colors",
             showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20",
@@ -134,23 +134,23 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
             <Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} />
         </div>
         <div className="flex-1 flex flex-col justify-center min-w-0 mr-2">
-            <span className="font-medium whitespace-normal leading-tight">{label}</span>
+            <span className="font-bold whitespace-normal leading-tight">{label}</span>
             {description && <span className="text-xs text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}
         </div>
         <div className="flex items-center gap-2 text-muted-foreground shrink-0">
-            {value && <span className='capitalize text-sm max-w-[80px] truncate'>{value}</span>}
+            {value && <span className='capitalize text-sm max-w-[80px] truncate font-bold'>{value}</span>}
             <ChevronRightIcon className="h-5 w-5 shrink-0" />
         </div>
   </button>
 );
 
-const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean }) => (
-    <div className="flex items-start justify-between w-full p-4">
+const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => (
+    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", glassEffect && "glass-panel mb-1 border-none shadow-none")}>
         <div className="flex flex-col flex-1 mr-4 min-w-0">
-            <Label htmlFor={id} className={cn("font-medium cursor-pointer whitespace-normal leading-tight mb-1", disabled && "opacity-50")}>{label}</Label>
+            <Label htmlFor={id} className={cn("font-bold cursor-pointer whitespace-normal leading-tight mb-1", disabled && "opacity-50")}>{label}</Label>
             {description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}
         </div>
-        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0 mt-1" disabled={disabled} />
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className={cn("shrink-0 mt-1", glassEffect && "glass-switch")} disabled={disabled} />
     </div>
 );
 
@@ -444,21 +444,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         ) : (
             <div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>
         )}
-        <div className={cn("border-t", (experimentalDesign || glassEffect) && "mt-2")}>
-          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
-          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" />
-          <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('privacy_security_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-rose-500/15" iconColor="text-rose-500" />
-          <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('data_storage_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-orange-500/15" iconColor="text-orange-500" />
-          <SettingsItem icon={Languages} label={t('language')} description={t('language_desc')} value={language.toUpperCase()} onClick={() => navigateTo('language')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-500" />
-          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('infgold_desc')} onClick={() => navigateTo('infGold')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" isGlow={experimentalDesign || glassEffect} />
-          <SettingsItem icon={User} label={t('profile')} description={t('edit_profile_desc')} onClick={() => navigateTo('account')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-teal-500/15" iconColor="text-teal-500" />
-          <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-yellow-500/15" iconColor="text-yellow-600" />
-          <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-pink-500/15" iconColor="text-pink-500" />
-          <SettingsItem icon={RefreshCcw} label={t('check_updates')} description={t('check_updates_desc')} onClick={() => navigateTo('checkUpdates')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-indigo-500/15" iconColor="text-indigo-600" />
-          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={currentVersion} onClick={() => navigateTo('about')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-gray-500/15" iconColor="text-gray-500" />
+        <div className={cn("border-t p-2 space-y-1", (experimentalDesign || glassEffect) && "mt-2")}>
+          <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
+          <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" glassEffect={glassEffect} />
+          <SettingsItem icon={ShieldCheck} label={t('privacy_security')} description={t('privacy_security_desc')} onClick={() => navigateTo('privacy')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-rose-500/15" iconColor="text-rose-500" glassEffect={glassEffect} />
+          <SettingsItem icon={HardDrive} label={t('data_storage')} description={t('data_storage_desc')} onClick={() => navigateTo('dataStorage')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-orange-500/15" iconColor="text-orange-500" glassEffect={glassEffect} />
+          <SettingsItem icon={Languages} label={t('language')} description={t('language_desc')} value={language.toUpperCase()} onClick={() => navigateTo('language')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-500" glassEffect={glassEffect} />
+          <SettingsItem icon={InfGoldIcon} label="InfGold" description={t('infgold_desc')} onClick={() => navigateTo('infGold')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" isGlow={experimentalDesign || glassEffect} glassEffect={glassEffect} />
+          <SettingsItem icon={User} label={t('profile')} description={t('edit_profile_desc')} onClick={() => navigateTo('account')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-teal-500/15" iconColor="text-teal-500" glassEffect={glassEffect} />
+          <SettingsItem icon={Star} label={t('whats_new')} description={t('whats_new_desc')} onClick={() => navigateTo('whatsNew')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-yellow-500/15" iconColor="text-yellow-600" glassEffect={glassEffect} />
+          <SettingsItem icon={HelpCircle} label={t('help')} description={t('faq_desc')} onClick={() => navigateTo('help')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-pink-500/15" iconColor="text-pink-500" glassEffect={glassEffect} />
+          <SettingsItem icon={RefreshCcw} label={t('check_updates')} description={t('check_updates_desc')} onClick={() => navigateTo('checkUpdates')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-indigo-500/15" iconColor="text-indigo-600" glassEffect={glassEffect} />
+          <SettingsItem icon={Info} label={t('version')} description={t('about_desc')} value={currentVersion} onClick={() => navigateTo('about')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-gray-500/15" iconColor="text-gray-500" glassEffect={glassEffect} />
           
           {currentUser.isAdmin && (
-            <div className='border-t mt-4'>
+            <div className='border-t mt-4 pt-2'>
                 <SettingsItem 
                     icon={Shield} 
                     label={t('admin_panel_title')} 
@@ -468,6 +468,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     iconBg="bg-red-600/20" 
                     iconColor="text-red-600" 
                     isGlow={experimentalDesign || glassEffect}
+                    glassEffect={glassEffect}
                 />
             </div>
           )}
@@ -507,13 +508,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       switch(page) {
           case 'main': return mainPageContent;
           case 'appearance': return (
-              <div className='divide-y'>
-                <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} description={t('light_mode')} />
-                <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} />
-                <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} />
-                <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={isExperimentalDesignRestricted ? t('android_9_plus_only') : t('experimental_design_desc')} disabled={isExperimentalDesignRestricted} />
-                <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} />
-                <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} />
+              <div className='p-2 space-y-1 divide-y'>
+                <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} description={t('light_mode')} glassEffect={glassEffect} />
+                <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} glassEffect={glassEffect} />
+                <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} glassEffect={glassEffect} />
+                <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={isExperimentalDesignRestricted ? t('android_9_plus_only') : t('experimental_design_desc')} disabled={isExperimentalDesignRestricted} glassEffect={glassEffect} />
+                <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} glassEffect={glassEffect} />
+                <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
               </div>
           );
           case 'theme': return (
@@ -521,7 +522,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   {['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'].map(tName => {
                       const isPremTheme = tName === 'shining_gold';
                       return (
-                        <div key={tName} className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors">
+                        <div key={tName} className={cn("flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
                             <div className="flex items-center space-x-3">
                                 <RadioGroupItem value={tName} id={tName} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
                                 <Label htmlFor={tName} className='capitalize cursor-pointer font-bold'>
@@ -534,27 +535,27 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   })}
               </RadioGroup>
           );
-          case 'language': return <div className="p-4"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className="flex items-center space-x-2 p-2"><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div><div className="flex items-center space-x-2 p-2"><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div></RadioGroup></div>;
+          case 'language': return <div className="p-4"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div></RadioGroup></div>;
           case 'chat': return (
-              <div className='divide-y'>
-                  <SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} />
-                  <SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} />
-                  <SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} />
+              <div className='p-2 space-y-1 divide-y'>
+                  <SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} />
+                  <SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} />
+                  <SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} />
               </div>
           );
           case 'privacy': return (
-              <div className='divide-y'>
-                  <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} />
+              <div className='p-2 space-y-1 divide-y'>
+                  <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />
                   {currentUser.loginProtectionEnabled && (
-                      <SettingsItem icon={Lock} label={t('cloud_password_label')} onClick={() => {}} description={t('cloud_password_desc')} />
+                      <SettingsItem icon={Lock} label={t('cloud_password_label')} onClick={() => {}} description={t('cloud_password_desc')} glassEffect={glassEffect} />
                   )}
-                  <div className="p-4 space-y-3">
+                  <div className={cn("p-4 space-y-3 rounded-xl", glassEffect && "glass-panel border-none")}>
                       <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{t('story_expiration_label')}</Label>
                       <Select 
                         value={(currentUser.storyExpirationDuration ?? 24).toString()} 
                         onValueChange={(v) => handleSetStoryExpiration(parseInt(v))}
                       >
-                          <SelectTrigger className="h-12 rounded-xl bg-muted/50 border-none font-bold">
+                          <SelectTrigger className={cn("h-12 rounded-xl border-none font-bold", glassEffect ? "glass-input" : "bg-muted/50")}>
                               <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
@@ -571,10 +572,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'dataStorage': return (
               <div className='p-6 space-y-6'>
-                  <div className='bg-card border rounded-3xl p-6 space-y-4 shadow-sm'>
+                  <div className={cn('border rounded-3xl p-6 space-y-4 shadow-sm', glassEffect ? "glass-panel" : "bg-card")}>
                       <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-                              <Database className="h-6 w-6 text-orange-500" />
+                              <HardDrive className="h-6 w-6 text-orange-500" />
                           </div>
                           <div>
                               <p className='text-xs font-black uppercase tracking-widest text-muted-foreground'>{t('cache_usage')}</p>
@@ -582,7 +583,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           </div>
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{t('clear_cache_desc')}</p>
-                      <Button variant="outline" className='w-full h-12 rounded-2xl font-bold border-orange-500/20 hover:bg-orange-500/5' onClick={handleClearCache}>
+                      <Button variant="outline" className={cn('w-full h-12 rounded-2xl font-bold border-orange-500/20 hover:bg-orange-500/5', glassEffect && "glass-button border-none")} onClick={handleClearCache}>
                           <Trash2 className="mr-2 h-4 w-4 text-orange-500" /> {t('clear_cache')}
                       </Button>
                   </div>
@@ -590,18 +591,18 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'infGold': return (
               <div className='p-6 space-y-4'>
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-[2rem] p-8 text-center space-y-4">
+                  <div className={cn("border border-amber-500/20 rounded-[2rem] p-8 text-center space-y-4", glassEffect ? "glass-panel" : "bg-amber-500/10")}>
                       <InfGoldIcon className='h-16 w-16 mx-auto experimental-glow text-amber-600' />
                       <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700/60 mb-1">{t('inf_gold_balance')}</p>
                           <h2 className='text-5xl font-black text-amber-600'>{Math.round(currentUser.infGoldBalance || 0)}</h2>
                       </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-2">
-                    <SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" />
-                    <SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-600" />
-                    <SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" />
-                    <SettingsSwitchItem id="prem-badge" label={t('show_prem_badge')} checked={!!currentUser.showPremBadge} onCheckedChange={(v) => updateDoc(doc(db!, 'users', currentUser.uid), { showPremBadge: v })} disabled={currentUser.subscriptionTier !== 'prem'} />
+                  <div className="p-2 gap-1 flex flex-col">
+                    <SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" glassEffect={glassEffect} />
+                    <SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-600" glassEffect={glassEffect} />
+                    <SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
+                    <SettingsSwitchItem id="prem-badge" label={t('show_prem_badge')} checked={!!currentUser.showPremBadge} onCheckedChange={(v) => updateDoc(doc(db!, 'users', currentUser.uid), { showPremBadge: v })} disabled={currentUser.subscriptionTier !== 'prem'} glassEffect={glassEffect} />
                   </div>
               </div>
           );
@@ -645,7 +646,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                         .map(t => {
                             const isSent = t.senderId === currentUser.uid;
                             return (
-                                <div key={t.id} className="bg-card border rounded-2xl p-4 flex items-center justify-between">
+                                <div key={t.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}>
                                     <div className="flex items-center gap-3">
                                         <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>
                                             {isSent ? <ArrowLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
@@ -683,7 +684,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   
                   <div className="grid gap-3">
-                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                               <Zap className="h-6 w-6" />
                           </div>
@@ -693,7 +694,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           </div>
                       </div>
 
-                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
                               <Clock className="h-6 w-6" />
                           </div>
@@ -703,7 +704,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           </div>
                       </div>
 
-                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
                               <Settings className="h-6 w-6" />
                           </div>
@@ -713,7 +714,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           </div>
                       </div>
 
-                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
                               <RefreshCcw className="h-6 w-6" />
                           </div>
@@ -723,7 +724,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                           </div>
                       </div>
 
-                      <div className="flex items-center gap-4 p-5 bg-card border rounded-3xl shadow-sm opacity-60">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm opacity-60", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-gray-500/10 flex items-center justify-center text-gray-500 shrink-0">
                               <CheckCircle2 className="h-6 w-6" />
                           </div>
@@ -745,7 +746,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                       {f.answer.includes('[BOT_GUIDE_BUTTON]') ? (
                         <>
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{f.answer.replace('[BOT_GUIDE_BUTTON]', '')}</ReactMarkdown>
-                          <Button variant="outline" className="w-full rounded-xl h-12 mt-4 font-bold border-primary/20 hover:bg-primary/5" onClick={() => navigateTo('botGuide')}>
+                          <Button variant="outline" className={cn("w-full rounded-xl h-12 mt-4 font-bold border-primary/20 hover:bg-primary/5", glassEffect && "glass-button border-none")} onClick={() => navigateTo('botGuide')}>
                             <Info className='mr-2 h-4 w-4 text-primary' /> {t('open_full_guide')}
                           </Button>
                         </>
@@ -797,7 +798,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                                   <Download className="mr-2 h-5 w-5" /> {t('download')}
                               </Button>
                           ) : (
-                              <Button variant="outline" className="w-full h-14 rounded-2xl font-bold text-lg" onClick={handleManualCheckUpdates}>
+                              <Button variant="outline" className={cn("w-full h-14 rounded-2xl font-bold text-lg", glassEffect && "glass-button border-none")} onClick={handleManualCheckUpdates}>
                                   {t('check_updates')}
                               </Button>
                           )}
@@ -807,10 +808,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'account': return (
               <div className='p-6 space-y-4'>
-                  <Button variant="outline" className='w-full h-14 rounded-2xl font-bold text-lg' onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>
+                  <Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>
                       <Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}
                   </Button>
-                  <Button variant="destructive" className='w-full h-14 rounded-2xl font-bold text-lg' onClick={handleLogout}>
+                  <Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}>
                       <LogOut className="mr-3 h-5 w-5" /> {t('logout')}
                   </Button>
                   <div className="pt-8 border-t">

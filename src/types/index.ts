@@ -90,16 +90,16 @@ export type Message = {
   fileSize?: number;
   fileStatus?: 'uploading' | 'complete' | 'failed';
   fileChunkIds?: string[];
-  attachments?: MessageAttachment[]; // New for 0.5.5: Multi-file support
+  attachments?: MessageAttachment[]; 
   timestamp: Timestamp;
-  sender?: User; // hydrated sender
+  sender?: User; 
   senderName?: string;
   senderAvatar?: string;
   type?: 'user' | 'announcement';
   readBy?: string[];
   replyTo?: ReplyInfo;
   editedAt?: Timestamp;
-  reactions?: Record<string, string[]>; // emoji -> array of user IDs
+  reactions?: Record<string, string[]>; 
   poll?: Poll;
   fromChannelId?: string;
 };
@@ -126,6 +126,7 @@ export type BotBlockType =
   | 'action_send_video'
   | 'action_send_music'
   | 'action_send_file'
+  | 'action_ai_prompt'
   | 'ui_header'
   | 'ui_text'
   | 'ui_button'
@@ -145,7 +146,7 @@ export type BotScript = {
 export type BotMiniApp = {
   id: string;
   name: string;
-  blocks: BotBlock[]; // UI Definition
+  blocks: BotBlock[]; 
 };
 
 export type CustomBot = {
@@ -210,7 +211,7 @@ export type Chat = {
   id: string;
   type: "dm" | "group" | "channel";
   name?: string;
-  members: string[]; // user ids
+  members: string[]; 
   ownerId?: string;
   lastMessage?: Omit<Message, 'sender'>;
   unreadCounts?: { [userId: string]: number };
@@ -219,8 +220,8 @@ export type Chat = {
   description?: string;
   link?: string;
   discussionChatId?: string;
-  allowedReactions?: string[]; // List of allowed emojis
-  typingStatus?: Record<string, boolean>; // uid -> typing boolean
+  allowedReactions?: string[]; 
+  typingStatus?: Record<string, boolean>; 
 };
 
 export type CallParticipant = {
@@ -234,10 +235,10 @@ export type CallParticipant = {
 export type Call = {
   id: string;
   callerId: string;
-  calleeId?: string; // Optional for group calls
+  calleeId?: string; 
   status: 'calling' | 'active' | 'ended';
   isGroupCall?: boolean;
-  isVideo?: boolean; // New: indicates if it's a video call
+  isVideo?: boolean; 
   callType?: 'video_chat' | 'broadcast';
   participants?: CallParticipant[];
   offer?: RTCSessionDescriptionInit;
@@ -257,9 +258,9 @@ export type SharedVideo = {
   videoChunkIds?: string[];
   thumbnailUrl?: string;
   views?: number;
-  likedBy?: string[]; // Array of user IDs who liked the video
-  isShort?: number; // 1 for Short, 0 for regular video
-  isProcessed?: number; // 1 for complete, 0 for in-progress/failed
+  likedBy?: string[]; 
+  isShort?: number; 
+  isProcessed?: number; 
 };
 
 export type VideoComment = {
@@ -270,7 +271,7 @@ export type VideoComment = {
   text: string;
   timestamp: Timestamp;
   likedBy?: string[];
-  parentId?: string; // ID of the comment this is a reply to
+  parentId?: string; 
   replyTo?: {
     userId: string;
     userName: string;

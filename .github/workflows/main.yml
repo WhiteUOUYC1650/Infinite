@@ -28,6 +28,13 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Initialize AI Flows
+      run: |
+        echo "Building AI Genkit flows for 0.6.1 Beta..."
+        # In a real environment, we'd run 'genkit flow:build' here.
+      env:
+        GOOGLE_GENAI_API_KEY: "dummy"
+
     - name: Sync Capacitor project
       run: npm run sync:android
       env:
@@ -61,7 +68,6 @@ jobs:
 
     - name: Build Legacy APK (Android 4.1+)
       run: |
-        # Patch build.gradle to lower minSdkVersion for Legacy edition
         sed -i 's/minSdkVersion .*/minSdkVersion 16/' app/build.gradle
         ./gradlew assembleDebug -x test --no-daemon
         mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-legacy.apk

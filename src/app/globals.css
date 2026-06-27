@@ -23,13 +23,11 @@ body {
   height: var(--app-height);
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
-  /* Optimization for older devices */
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Global Font Override for System Font Setting - FORCED TOTAL OVERRIDE */
 body.use-system-font,
 body.use-system-font *,
 body.use-system-font .font-headline,
@@ -120,22 +118,97 @@ body.use-system-font h4 {
   }
 }
 
-/* Legacy Device Fixes */
-.overflow-y-auto {
-  -webkit-overflow-scrolling: touch !important;
-  backface-visibility: hidden;
-}
-
-img, video {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Modal Glass Backdrop for Experimental Design on modern Androids */
+/* Experimental Design Specifics */
 [data-experimental-design="true"] div[data-state="open"] > div.fixed.inset-0.bg-black\/80 {
   background-color: hsla(0, 0%, 0%, 0.2) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
+}
+
+@keyframes gold-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.theme-shining-gold .bg-primary,
+.theme-shining-gold .data-\[state\=active\]\:bg-primary[data-state=active],
+.theme-shining-gold [data-sidebar="menu-button"][data-active="true"],
+.theme-shining-gold .shining-gold-element {
+  background: linear-gradient(90deg, #d4af37, #f9e27c, #d4af37, #f9e27c, #d4af37) !important;
+  background-size: 200% auto !important;
+  animation: gold-shimmer 4s linear infinite !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  color: #000 !important;
+}
+
+/* Glass UI Elements - Retro Glossy Aero Style */
+[data-glass-effect="true"] .glass-panel,
+[data-glass-effect="true"] .glass-menu {
+  @apply backdrop-blur-3xl border shadow-2xl relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-glass-effect="true"] .glass-input {
+  @apply backdrop-blur-2xl border shadow-inner relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-glass-effect="true"] .glass-msg {
+  @apply backdrop-blur-xl border shadow-lg relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+[data-glass-effect="true"] .glass-msg.align-right {
+  background-color: hsla(var(--primary) / 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Aero Glossy Highlights */
+[data-glass-effect="true"] .glass-panel::before,
+[data-glass-effect="true"] .glass-input::before,
+[data-glass-effect="true"] .glass-msg::before,
+[data-glass-effect="true"] .glass-menu::before,
+[data-glass-effect="true"] .glass-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 95%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Interactive Elements Glass */
+[data-glass-effect="true"] button.glass-button {
+  @apply backdrop-blur-xl border shadow-md relative overflow-hidden transition-all active:scale-95;
+  background-color: hsla(var(--primary) / 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+[data-glass-effect="true"] .glass-switch {
+  @apply backdrop-blur-lg border relative overflow-hidden;
+  background-color: hsla(var(--muted) / 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-glass-effect="true"] .glass-switch[data-state="checked"] {
+  background-color: hsla(var(--primary) / 0.8) !important;
+}
+
+/* Global Layout Fixes */
+.h-full-safe {
+  height: 100vh;
+  height: var(--app-height);
+}
+
+.min-h-full-safe {
+  min-height: 100vh;
+  min-height: var(--app-height);
 }
 
 @keyframes snowfall {
@@ -153,87 +226,4 @@ img, video {
   z-index: 101;
   opacity: 0;
   pointer-events: none;
-}
-
-@keyframes experimental-glow {
-  0%, 100% { filter: drop-shadow(0 0 5px hsl(var(--primary) / 0.4)); }
-  50% { filter: drop-shadow(0 0 15px hsl(var(--primary) / 0.8)); }
-}
-
-[data-experimental-design="true"] .experimental-glow {
-  animation: experimental-glow 3s infinite ease-in-out;
-}
-
-/* Shining Gold Theme Animation */
-@keyframes gold-shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-.theme-shining-gold .bg-primary,
-.theme-shining-gold .data-\[state\=active\]\:bg-primary[data-state=active],
-.theme-shining-gold [data-sidebar="menu-button"][data-active="true"],
-.theme-shining-gold .shining-gold-element {
-  background: linear-gradient(90deg, #d4af37, #f9e27c, #d4af37, #f9e27c, #d4af37) !important;
-  background-size: 200% auto !important;
-  animation: gold-shimmer 4s linear infinite !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  color: #000 !important;
-}
-
-/* Player color stability */
-audio, video {
-  filter: none !important;
-}
-
-/* Glass UI Elements - Retro Glossy Aero Style (True 2010s Feel) */
-[data-glass-effect="true"] .glass-panel,
-[data-glass-effect="true"] .glass-input,
-[data-glass-effect="true"] .glass-msg,
-[data-glass-effect="true"] .glass-circle,
-[data-glass-effect="true"] .glass-menu {
-  @apply backdrop-blur-3xl border shadow-2xl relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.3) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
-}
-
-[data-glass-effect="true"] .glass-panel::before,
-[data-glass-effect="true"] .glass-input::before,
-[data-glass-effect="true"] .glass-msg::before,
-[data-glass-effect="true"] .glass-circle::before,
-[data-glass-effect="true"] .glass-menu::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 90%, transparent 100%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-[data-glass-effect="true"] .glass-msg.align-right {
-  background-color: hsla(var(--primary) / 0.6) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-/* Glass Specifics */
-.glass-circle {
-  @apply rounded-full;
-}
-
-.glass-input {
-  @apply shadow-inner border-white/20;
-}
-
-/* Global Layout Fixes for Older Android */
-.h-full-safe {
-  height: 100vh;
-  height: var(--app-height);
-}
-
-.min-h-full-safe {
-  min-height: 100vh;
-  min-height: var(--app-height);
 }

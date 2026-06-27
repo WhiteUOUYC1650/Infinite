@@ -1,181 +1,43 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite'; }
     
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite';
-    }
-
-    function isBotOwner(botId) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(botId)).data.botOwnerId == request.auth.uid;
-    }
-
-    function isChatOwner(chatId) {
-      return isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid;
-    }
-
-    // Информация о версии
-    match /info/ver {
-      allow get: if true;
-      allow write: if isAdmin();
-    }
-
-    match /config/version {
-      allow get: if true;
-      allow write: if false;
-    }
-
-    // История переводов
-    match /transfers/{transferId} {
-        allow read, list: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-    }
-
-    // Чтение сообщений админом (для модерации)
-    match /{path=**}/messages/{messageId} {
-        allow read: if isAdmin();
-    }
+    match /videoChunks/{chunkId} { allow create, read: if isSignedIn(); allow delete: if isAdmin(); }
+    match /musicChunks/{chunkId} { allow create, read: if isSignedIn(); }
+    match /fileChunks/{chunkId} { allow create, read: if isSignedIn(); }
+    match /voiceChunks/{chunkId} { allow create, read: if isSignedIn(); }
+    match /circleChunks/{chunkId} { allow create, read: if isSignedIn(); }
+    match /apkChunks/{chunkId} { allow read: if true; allow create, delete: if isAdmin(); }
     
-    // Звонки и трансляции
-    match /calls/{callId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Профили пользователей
     match /users/{userId} {
-      allow read: if true; 
-      allow list: if true; 
-      allow create: if isOwner(userId) || (isSignedIn() && request.resource.data.isBot == true && request.resource.data.botOwnerId == request.auth.uid);
-      
-      // Разрешаем обновление системных и пользовательских полей
-      allow update: if isAdmin() || isOwner(userId) || isBotOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscriberCount', 'subscriptions', 'watchLater', 'infGoldBalance', 'subscriptionTier', 'lastDailyBonusClaimed', 'status', 'loginProtectionEnabled', 'isBetaTester', 'storyExpirationDuration', 'current-sessions', 'lastSeen', 'showPremBadge', 'activeSessionId']));
-      
-      allow delete: if isOwner(userId) || isAdmin() || isBotOwner(userId);
-
-      match /private/security {
-        allow get: if isOwner(userId);
-        allow write: if isOwner(userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tempBotCode', 'cloudPassword', 'recoveryCode']));
-      }
+      allow read: if true;
+      allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
+      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester']));
+      allow delete: if request.auth.uid == userId || isAdmin();
     }
-
-    // Реестр имен
-    match /usernames/{username} {
-        allow get: if true;
-        allow list: if isAdmin();
-        allow create: if isAdmin() || request.resource.data.uid == request.auth.uid || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
-        allow update: if false;
-        allow delete: if isAdmin() || resource.data.uid == request.auth.uid || isBotOwner(resource.data.uid);
-    }
-
-    // Чаты (ЛС, Группы, Каналы)
+    
     match /chats/{chatId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() || isAdmin();
-      allow update: if isAdmin() || isChatOwner(chatId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadCounts', 'typingStatus', 'lastMessage', 'members', 'name', 'avatar', 'description', 'discussionChatId', 'allowedReactions']));
-      allow delete: if isAdmin() || isChatOwner(chatId);
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+      match /messages/{messageId} { allow read, write: if isSignedIn(); }
+    }
 
-      match /messages/{messageId} {
-        allow read: if isSignedIn();
-        
-        allow create: if isAdmin() || (
-          isSignedIn() && (
-            request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
-          ) && (
-            get(/databases/$(database)/documents/chats/$(chatId)).data.type != 'channel' ||
-            get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid
-          )
-        );
-        
-        allow update: if isAdmin() || (
-          isSignedIn() && (
-            request.auth.uid == resource.data.senderId ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'readBy', 'editedAt', 'content', 'poll', 'attachments'])
-          )
-        );
-        
-        allow delete: if isAdmin() || (
-          isSignedIn() && (
-            get(/databases/$(database)/documents/users/$(resource.data.senderId)).data.username != '@Infinite' && (
-              resource.data.senderId == request.auth.uid || 
-              get(/databases/$(database)/documents/chats/$(chatId)).data.ownerId == request.auth.uid ||
-              get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'dm'
-            )
-          )
-        );
-      }
-    }
-    
-    // Истории (Stories)
-    match /stories/{storyId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy']);
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-    
-    // InfVid
     match /videos/{videoId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasAny(['views', 'likedBy', 'videoStatus', 'videoChunkIds', 'title', 'description', 'thumbnailUrl']));
-      allow delete: if isSignedIn() && (request.auth.uid == resource.data.senderId || isAdmin());
-
-      match /comments/{commentId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update: if isSignedIn() && (request.auth.uid == resource.data.userId || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']));
-        allow delete: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
-      }
-    }
-    
-    // Custom Bot Logic (Bot Studio)
-    match /customBots/{botId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-
-      match /userStates/{userId} {
-        allow read: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/customBots/$(botId)).data.ownerId == request.auth.uid);
-        allow write: if isSignedIn() && request.auth.uid == userId;
-      }
-    }
-    
-    // Чанки файлов
-    match /videoChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
-    match /musicChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
-    match /fileChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
-    match /voiceChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
-    match /circleChunks/{chunkId} { allow create, read: if true; allow delete: if isAdmin(); }
-    
-    // Чанки APK (только админ может загружать)
-    match /apkChunks/{chunkId} { 
-      allow read: if true; 
-      allow create, delete: if isAdmin();
-    }
-    
-    // Ссылки
-    match /chatLinks/{linkId} {
-      allow get: if true;
-      allow list: if isAdmin();
       allow create: if isSignedIn();
-      allow update: if isAdmin();
-      allow delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.ownerId == request.auth.uid);
+      allow update, delete: if isSignedIn();
+      match /comments/{commentId} { allow read, write: if isSignedIn(); }
     }
-
-    match /botLinks/{linkId} {
-      allow get: if true;
-      allow list: if isAdmin();
-      allow create: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isSignedIn() && getAfter(/databases/$(database)/documents/users/$(request.resource.data.uid)).data.botOwnerId == request.auth.uid);
-    }
+    
+    match /info/ver { allow get: if true; allow write: if isAdmin(); }
+    match /usernames/{username} { allow get: if true; allow create, delete: if isSignedIn(); }
+    match /chatLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
+    match /botLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
+    match /customBots/{botId} { allow read, write: if isSignedIn(); match /userStates/{userId} { allow read, write: if isSignedIn(); } }
+    match /stories/{storyId} { allow read, write: if isSignedIn(); }
+    match /transfers/{transferId} { allow read, create: if isSignedIn(); }
   }
 }

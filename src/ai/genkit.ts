@@ -1,3 +1,13 @@
+'use client';
+/**
+ * @fileOverview Genkit initialization for the application.
+ */
 
-// AI features have been disabled.
-export const ai = null;
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+
+export const ai = genkit({
+  plugins: [
+    googleAI(),
+  ],
+});
