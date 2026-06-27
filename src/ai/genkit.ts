@@ -1,4 +1,3 @@
-'use client';
 /**
  * @fileOverview Genkit initialization for the application.
  */
