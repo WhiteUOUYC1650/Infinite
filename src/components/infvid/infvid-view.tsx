@@ -296,7 +296,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     const { t, language } = useLanguage(); const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
     const isOwner = video.senderId === currentUser.uid;
     const isSaved = currentUser.watchLater?.includes(video.id);
-    const needsReprocess = isOwner && (video.isProcessed !== 1 || video.videoStatus === 'failed' || video.videoStatus === 'uploading');
+    const needsReprocess = isOwner && (!video.isProcessed || video.isProcessed !== 1 || video.videoStatus === 'failed' || video.videoStatus === 'uploading');
 
     const handleShare = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -325,14 +325,14 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                                 <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                                {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
                                 <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                                 {isOwner && (
                                     <>
-                                        {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                        {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                         <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                     </>
                                 )}
+                                {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -363,14 +363,14 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                            {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
-                                    {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                    {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
                             )}
+                            {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -379,12 +379,12 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     );
 }
 
-function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: () => void }) {
+function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: (vidId: string) => void }) {
     const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const isSaved = currentUser.watchLater?.includes(video.id);
     const isOwner = video.senderId === currentUser.uid;
-    const needsReprocess = isOwner && (video.isProcessed !== 1 || video.videoStatus === 'failed' || video.videoStatus === 'uploading');
+    const needsReprocess = isOwner && (!video.isProcessed || video.isProcessed !== 1 || video.videoStatus === 'failed' || video.videoStatus === 'uploading');
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]); const { users: commentAuthors } = useBatchUsers(commentUserIds);
     const [showComments, setShowComments] = useState(false);
 
@@ -461,7 +461,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                 <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                                 {isOwner && (
                                     <>
-                                        {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                        {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                         <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                     </>
                                 )}
@@ -546,7 +546,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                                             {isOwner && (
                                                 <>
-                                                    {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('reprocess_video')}</DropdownMenuItem>}
+                                                    {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                                 </>
                                             )}

@@ -32,6 +32,8 @@ jobs:
       run: |
         echo "Building AI Genkit flows for 0.6.1 Beta..."
         # In a real environment, we'd run 'genkit flow:build' here.
+        # Ensure correct packages are present for build
+        npm install genkit @genkit-ai/google-genai
       env:
         GOOGLE_GENAI_API_KEY: "dummy"
 

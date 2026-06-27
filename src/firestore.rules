@@ -14,7 +14,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
-      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester']));
+      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge']));
       allow delete: if request.auth.uid == userId || isAdmin();
     }
     

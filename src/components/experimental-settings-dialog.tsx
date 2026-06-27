@@ -862,7 +862,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <Trash2 className="h-8 w-8 text-destructive" />
                 </div>
                 <div className="space-y-2">
-                    <AlertDialogTitle className="text-2xl font-bold font-headline">{t('delete_account_confirm_title')}</AlertDialogTitle>
+                    <AlertDialogTitle className="text-2xl font-bold font-headline">{t('are_you_sure')}</AlertDialogTitle>
                     <AlertDialogDescription className="text-muted-foreground leading-relaxed">
                         {t('delete_account_confirm_desc')}
                     </AlertDialogDescription>

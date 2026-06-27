@@ -482,7 +482,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
-      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
+      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>> = [];
 
       for (const file of selectedFiles) {
         if (file.size > maxSizeInBytes) {
@@ -710,7 +710,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </div>
 
-        {/* Scroll to bottom button - HIGHEST Z-INDEX */}
+        {/* Scroll to bottom button - HIGHEST Z-INDEX siblings of scroll container */}
         <div className={cn(
             "absolute bottom-4 right-4 z-[70] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
@@ -773,7 +773,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                             <div key={idx} className="relative group shrink-0">
                                 <div className="w-16 h-16 rounded-lg overflow-hidden border bg-background flex items-center justify-center">
                                     {fItem.type === 'image' ? (
-                                        <img src={fItem.previewUrl} className="w-full h-full object-cover" />
+                                        <img src={fItem.previewUrl} className="w-full h-full object-cover" alt="Preview" />
                                     ) : fItem.type === 'video' ? (
                                         <VideoIcon className="h-6 w-6 text-orange-500" />
                                     ) : fItem.type === 'music' ? (
@@ -828,7 +828,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleSendMessage('', { file: { name: 'Poll' }, type: 'poll' })}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleSendMessage('', { file: { name: 'Poll' }, type: 'poll' } as any)}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   
