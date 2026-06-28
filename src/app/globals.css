@@ -49,7 +49,7 @@ body.use-system-font h4 {
   :root {
     --background: 30 71% 92%;
     --foreground: 20 14.3% 4.1%;
-    --card: 30 71% 95%;
+    --card: 30 71% 92%;
     --card-foreground: 20 14.3% 4.1%;
     --popover: 30 71% 95%;
     --popover-foreground: 20 14.3% 4.1%;

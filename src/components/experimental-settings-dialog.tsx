@@ -36,7 +36,7 @@ import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCir
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
-import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc, runTransaction } from 'firebase/firestore';
 import { useLanguage } from '@/context/language-context';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/hooks/use-toast';
