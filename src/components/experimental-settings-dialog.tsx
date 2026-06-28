@@ -480,9 +480,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isSpinning, setSpinning] = useState(false);
 
   const handleSpin = async (): Promise<void> => {
-    const totalWeight = PRIZES_WITH_ANGLES.reduce((sum, p) => sum + p.weight, 0);
-    let randomWeight = Math.random() * totalWeight;
-    const winningPrize = PRIZES_WITH_ANGLES.find(p => { randomWeight -= p.weight; return randomWeight <= 0; })!;
+    const totalW = PRIZES_WITH_ANGLES.reduce((sum, p) => sum + p.weight, 0);
+    let randomW = Math.random() * totalW;
+    const winningPrize = PRIZES_WITH_ANGLES.find(p => { randomW -= p.weight; return randomW <= 0; })!;
     const baseRotation = 360 * 5; 
     const prizeAngle = winningPrize.startAngle + winningPrize.angle / 2;
     const randomOffset = (Math.random() - 0.5) * (winningPrize.angle * 0.8);
@@ -643,24 +643,24 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   <div className="space-y-2">
                       {[...(sentTransfers || []), ...(receivedTransfers || [])]
                         .sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis())
-                        .map(t => {
-                            const isSent = t.senderId === currentUser.uid;
+                        .map(item => {
+                            const isSent = item.senderId === currentUser.uid;
                             return (
-                                <div key={t.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}>
+                                <div key={item.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}>
                                     <div className="flex items-center gap-3">
                                         <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>
                                             {isSent ? <ArrowLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-sm leading-tight">{isSent ? t.receiverName : t.senderName}</p>
+                                            <p className="font-bold text-sm leading-tight">{isSent ? item.receiverName : item.senderName}</p>
                                             <p className="text-[10px] text-muted-foreground uppercase font-medium">{isSent ? 'Sent' : 'Received'}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <p className={cn("font-black text-base", isSent ? "text-red-500" : "text-green-500")}>
-                                            {isSent ? '-' : '+'}{t.amount} G
+                                            {isSent ? '-' : '+'}{item.amount} G
                                         </p>
-                                        <p className="text-[9px] text-muted-foreground">{format(t.timestamp.toMillis(), 'dd.MM, HH:mm')}</p>
+                                        <p className="text-[9px] text-muted-foreground">{format(item.timestamp.toMillis(), 'dd.MM, HH:mm')}</p>
                                     </div>
                                 </div>
                             );
@@ -838,11 +838,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           default: return null;
       }
-  }
+  };
+
+  const handleResetState = () => {
+    setPageHistory(['main']);
+    setAnimationDirection('forward');
+    setHasCheckedUpdates(false);
+  };
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => resetState(), 200); }}>
+    <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => handleResetState(), 200); }}>
       <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", (experimentalDesign || glassEffect) && "rounded-[2.5rem] border-none shadow-2xl")}>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
@@ -882,10 +888,4 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     </AlertDialog>
     </>
   );
-
-  function resetState() {
-    setPageHistory(['main']);
-    setAnimationDirection('forward');
-    setHasCheckedUpdates(false);
-  }
 }

@@ -572,14 +572,14 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                         setIsUploading(false);
                     } else {
                         try {
-                            const base64 = (reader.result as string).split(',')[1];
+                            const base64Data = (reader.result as string).split(',')[1];
                             const CHUNK_SIZE = 900 * 1024;
                             const chunkIds: string[] = [];
                             const typePrefix = block.type.replace('action_send_', '');
                             const col = typePrefix === 'video' ? 'videoChunks' : typePrefix === 'music' ? 'musicChunks' : 'fileChunks';
-                            for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+                            for (let i = 0; i < base64Data.length; i += CHUNK_SIZE) {
                                 const cref = doc(collection(db, col));
-                                await setDoc(cref, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: botId });
+                                await setDoc(cref, { data: base64Data.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: botId });
                                 chunkIds.push(cref.id);
                             }
                             onUpdate(sIdx, bIdx, `${typePrefix}ChunkIds`, chunkIds);
@@ -595,7 +595,6 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
 
     const renderParams = () => {
         const typePrefix = block.type.replace('action_send_', '');
-        const chunkIds = block.params?.[`${typePrefix}ChunkIds`];
         switch (block.type) {
             case 'action_send':
             case 'action_reply':

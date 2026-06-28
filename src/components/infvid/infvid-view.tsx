@@ -111,30 +111,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
     if (!videosLoading) { checkAndLoadVideo(); }
   }, [initialVideoId, db, videosLoading, videos, t, toast]);
 
-  const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string, isShort: number) => {
-    if (!db) return; setIsUploading(true);
-    try {
-        const videoDocRef = retryVideoId ? doc(db, 'videos', retryVideoId) : doc(collection(db, 'videos')); 
-        const timestamp = Timestamp.now();
-        let thumbnailUrl = ''; if (thumbnailFile) { thumbnailUrl = await compressImage(thumbnailFile); }
-        const videoData: any = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort, isProcessed: 0 };
-        
-        if (retryVideoId) {
-            await updateDoc(videoDocRef, videoData);
-        } else {
-            await setDoc(videoDocRef, videoData);
-        }
-
-        await uploadVideoData(videoDocRef.id, file, currentUser.uid);
-        toast({ title: t('dm_success'), description: t('infvid_upload_success') }); 
-        setIsUploadOpen(false);
-        setRetryVideoId(null);
-    } catch (error) { 
-        console.error("Video upload failed:", error); 
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload video.' }); 
-    } finally { setIsUploading(false); }
-  };
-
   const uploadVideoData = async (videoId: string, file: File, senderId: string) => {
       const videoBase64 = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve((reader.result as string).split(',')[1]); });
       const CHUNK_SIZE = 900 * 1024;
@@ -146,6 +122,24 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
           await new Promise(res => setTimeout(res, 50));
       }
       await updateDoc(doc(db!, 'videos', videoId), { videoStatus: 'complete', videoChunkIds: chunkIds, isProcessed: 1 });
+  };
+
+  const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string, isShort: number) => {
+    if (!db) return; setIsUploading(true);
+    try {
+        const videoDocRef = retryVideoId ? doc(db, 'videos', retryVideoId) : doc(collection(db, 'videos')); 
+        const timestamp = Timestamp.now();
+        let thumbnailUrl = ''; if (thumbnailFile) { thumbnailUrl = await compressImage(thumbnailFile); }
+        const videoData: any = { title, description, senderId: currentUser.uid, timestamp, videoMimeType: file.type, videoStatus: 'uploading', views: 0, likedBy: [], thumbnailUrl, isShort, isProcessed: 0 };
+        
+        if (retryVideoId) { await updateDoc(videoDocRef, videoData); } else { await setDoc(videoDocRef, videoData); }
+        await uploadVideoData(videoDocRef.id, file, currentUser.uid);
+        toast({ title: t('dm_success'), description: t('infvid_upload_success') }); 
+        setIsUploadOpen(false); setRetryVideoId(null);
+    } catch (error) { 
+        console.error("Video upload failed:", error); 
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to upload video.' }); 
+    } finally { setIsUploading(false); }
   };
 
   const selectedVideo = useMemo(() => { if (!selectedVideoId) return null; return videos?.find(v => v.id === selectedVideoId) || (fetchedExternalVideo?.id === selectedVideoId ? fetchedExternalVideo : null); }, [selectedVideoId, videos, fetchedExternalVideo]);
@@ -168,7 +162,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
         if (selectedVideoId === vidId) setSelectedVideoId(null);
     } catch(e) { 
         console.error("Video deletion error:", e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete video. Check permissions.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete video.' });
     }
   };
 
@@ -220,7 +214,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             retryVideoId={retryVideoId}
           />
       )}
-      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} onRetry={() => handleRetryUpload(selectedVideo.id)} />)}
+      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} onRetry={handleRetryUpload} />)}
     </div>
   );
 }
@@ -416,7 +410,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
     const handleShare = () => { const internalLink = `/IV/V/${video.id}`; navigator.clipboard.writeText(internalLink); toast({ title: t('video_link_copied') }); };
     const toggleWatchLater = async () => { if (!db) return; try { await updateDoc(doc(db, 'users', currentUser.uid), { watchLater: isSaved ? arrayRemove(video.id) : arrayUnion(video.id) }); toast({ title: t('dm_success'), description: isSaved ? t('remove_from_watch_later') : t('add_to_watch_later') }); } catch(e) {} };
 
-    const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
+    const timeAgoString = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
 
     if (video.isShort === 1) {
         return (
@@ -433,29 +427,29 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
 
                     <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5 z-30">
                         <div className="flex flex-col items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 transition-all active:scale-125", isLiked && "text-red-500")}>
+                            <button onClick={handleToggleLike} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center transition-all active:scale-125", isLiked && "text-red-500")}>
                                 <ThumbsUp className={cn("h-5.5 w-5.5", isLiked && "fill-current")} />
-                            </Button>
+                            </button>
                             <span className="text-[10px] font-black drop-shadow-md">{likedBy.length}</span>
                         </div>
                         <div className="flex flex-col items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setShowComments(true)} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                            <button onClick={() => setShowComments(true)} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center">
                                 <MessageSquare className="h-5.5 w-5.5" />
-                            </Button>
+                            </button>
                             <span className="text-[10px] font-black drop-shadow-md">{comments.length}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={toggleWatchLater} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5", isSaved && "text-amber-500")}>
+                        <button onClick={toggleWatchLater} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center", isSaved && "text-amber-500")}>
                             <Clock className={cn("h-5.5 w-5.5", isSaved && "fill-current")} />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={handleShare} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                        </button>
+                        <button onClick={handleShare} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center">
                             <Share2 className="h-5.5 w-5.5" />
-                        </Button>
+                        </button>
                         
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5">
+                                <button className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center">
                                     <MoreVertical className="h-5.5 w-5.5" />
-                                </Button>
+                                </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-xl w-48 z-[110]">
                                 <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
@@ -554,7 +548,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                     </DropdownMenu>
                                 </div>
                             </div>
-                            <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner"><div className="flex items-center gap-2 font-bold mb-2"><span className="text-primary text-base font-black">{t('infvid_views', { count: video.views || 0 })}</span><span className="w-1 h-1 rounded-full bg-muted-foreground/30" /><span className="text-muted-foreground">{timeAgo}</span></div><p className="text-foreground/80 whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p></div>
+                            <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner"><div className="flex items-center gap-2 font-bold mb-2"><span className="text-primary text-base font-black">{t('infvid_views', { count: video.views || 0 })}</span><span className="w-1 h-1 rounded-full bg-muted-foreground/30" /><span className="text-muted-foreground">{timeAgoString}</span></div><p className="text-foreground/80 whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p></div>
                         </div>
                         <div className="block lg:hidden pt-6"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>
                     </div>

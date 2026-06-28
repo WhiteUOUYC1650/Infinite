@@ -347,7 +347,6 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                   </div>
                 )}
                 
-                {/* Discussion Comments Button for Channels */}
                 {chatType === 'channel' && chat.discussionChatId && !isCircleComplete && (
                     <button 
                         onClick={(e) => {
@@ -482,7 +481,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
-      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>> = [];
+      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
 
       for (const file of selectedFiles) {
         if (file.size > maxSizeInBytes) {
@@ -537,7 +536,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             }) 
         };
 
-        // Process all selected files
         for (const fItem of filesToSend) {
             const attachment: MessageAttachment = {
                 id: Math.random().toString(36).substring(7),
@@ -556,14 +554,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 await new Promise<void>((resolve, reject) => {
                     reader.onload = async () => {
                         try {
-                            const base64 = (reader.result as string).split(',')[1];
+                            const base64String = (reader.result as string).split(',')[1];
                             const CHUNK_SIZE = 900 * 1024;
                             const chunkIds: string[] = [];
                             const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
                             
-                            for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+                            for (let i = 0; i < base64String.length; i += CHUNK_SIZE) {
                                 const cref = doc(collection(db, col));
-                                await setDoc(cref, { data: base64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
+                                await setDoc(cref, { data: base64String.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid });
                                 chunkIds.push(cref.id);
                             }
                             
@@ -710,7 +708,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </div>
 
-        {/* Scroll to bottom button - HIGHEST Z-INDEX siblings of scroll container */}
         <div className={cn(
             "absolute bottom-4 right-4 z-[70] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
@@ -828,7 +825,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleSendMessage('', { file: { name: 'Poll' }, type: 'poll' } as any)}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleSendMessage()}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   
