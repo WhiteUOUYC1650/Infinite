@@ -792,7 +792,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
 
                   {!isCheckingUpdates && (
-                      <div className="w-full max-w-xs pt-4">
+                      <div className="w-full max-xs pt-4">
                           {isUpdateAvailable && hasCheckedUpdates ? (
                               <Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={promptUpdate}>
                                   <Download className="mr-2 h-5 w-5" /> {t('download')}

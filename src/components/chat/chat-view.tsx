@@ -298,7 +298,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 )}
                 
                 {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} /></div>)}
-                {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
+                {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={message.videoMimeType && message.videoMimeType.includes('mp4') ? `${mediaUrl}#t=0.1` : mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
                 {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.fileStatus === 'complete' && mediaUrl && !isCircleComplete && (
                      <AttachmentRenderer 
@@ -334,7 +334,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]} 
                       components={{ 
-                        a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank">{p.children}</a>,
+                        a: ({node, ...p}) => <a className={cn("underline font-bold", alignRight ? "text-white" : "text-primary")} target="_blank" href={p.href}>{p.children}</a>,
                         p: ({children}) => <p>{processMarkdownChildren(children)}</p>,
                         li: ({children}) => <li>{processMarkdownChildren(children)}</li>,
                         h1: ({children}) => <h1 className="text-xl font-bold">{processMarkdownChildren(children)}</h1>,
@@ -709,7 +709,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className={cn(
-            "absolute bottom-4 right-4 z-[70] transition-all duration-300 transform",
+            "absolute bottom-4 right-4 z-[60] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         )}>
             <Button 
@@ -718,7 +718,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onClick={() => scrollToBottom('smooth')}
                 className={cn(
                     "w-10 h-10 rounded-full shadow-2xl border border-border/50",
-                    (experimentalDesign || glassEffect) ? "glass-circle" : "bg-card hover:bg-muted"
+                    glassEffect ? "glass-button" : "bg-card hover:bg-muted"
                 )}
             >
                 <ChevronDown className="h-6 w-6 text-primary" />
@@ -735,7 +735,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onClick={() => setProfileDialogUser(otherUser)}
                 className={cn(
                   "rounded-full shadow-2xl text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all",
-                  glassEffect ? "glass-panel bg-primary/60" : "bg-primary"
+                  glassEffect ? "glass-button bg-primary/60" : "bg-primary"
                 )}
               >
                   <LayoutGrid className="h-5 w-5" />
@@ -813,7 +813,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
+                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
                       >
                         <Paperclip className="h-5 w-5" />
                       </Button>
@@ -839,7 +839,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('circle')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                         onMouseUp={() => stopRecording(false)} 
@@ -851,7 +851,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-circle bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('voice')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                         onMouseUp={() => stopRecording(false)} 

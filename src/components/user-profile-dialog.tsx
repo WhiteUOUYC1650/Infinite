@@ -178,7 +178,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;
   }, [user.birthday, t]);
 
-  const isAdmin = authUser?.email === 'infinite@chat.com' || authUser?.uid === 'ADMIN_ID'; // Simple check, or check username '@Infinite'
+  const isAdmin = authUser?.username === '@Infinite';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -288,7 +288,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             )}
 
                             <div className="space-y-2">
-                                {!user.isBot && !user.isDeleted && (
+                                {isAdmin && !user.isBot && !user.isDeleted && (
                                     <Button 
                                         variant="outline" 
                                         className="w-full rounded-xl h-12 font-bold border-primary/20 text-primary hover:bg-primary/5" 
