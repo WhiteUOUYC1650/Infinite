@@ -290,7 +290,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     const { t, language } = useLanguage(); const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
     const isOwner = video.senderId === currentUser.uid;
     const isSaved = currentUser.watchLater?.includes(video.id);
-    const needsReprocess = isOwner && (!video.isProcessed || video.isProcessed !== 1 || video.videoStatus === 'failed' || video.videoStatus === 'uploading');
+    const needsReprocess = isOwner && (video.isProcessed !== 1 || video.videoStatus !== 'complete');
 
     const handleShare = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -378,7 +378,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const isSaved = currentUser.watchLater?.includes(video.id);
     const isOwner = video.senderId === currentUser.uid;
-    const needsReprocess = isOwner && (!video.isProcessed || video.isProcessed !== 1 || video.videoStatus === 'failed' || video.videoStatus === 'uploading');
+    const needsReprocess = isOwner && (video.isProcessed !== 1 || video.videoStatus !== 'complete');
     const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]); const { users: commentAuthors } = useBatchUsers(commentUserIds);
     const [showComments, setShowComments] = useState(false);
 

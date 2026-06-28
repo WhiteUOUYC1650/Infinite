@@ -4,6 +4,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 const ReportInputSchema = z.object({
@@ -17,7 +18,7 @@ const ReportInputSchema = z.object({
 export async function generateUserReport(input: z.infer<typeof ReportInputSchema>) {
   try {
     const { text } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: googleAI.model('gemini-1.5-flash'),
       system: 'You are an AI assistant for Infinite Messenger. Analyze the user profile data and provide a short, creative, and slightly humorous "intelligence report" or "summary" about this user. Be concise.',
       prompt: `User Profile:
 Name: ${input.name}

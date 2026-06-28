@@ -4,13 +4,14 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 export async function aiChat(message: string, systemPrompt: string) {
   if (!ai) return { response: 'AI is currently unavailable.' };
   
   try {
     const { text } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: googleAI.model('gemini-1.5-flash'),
       system: systemPrompt,
       prompt: message,
     });

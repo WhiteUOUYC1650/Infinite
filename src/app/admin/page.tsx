@@ -7,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck, FileSearch } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +47,7 @@ import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status'
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
 
 
 function AdminPage() {
@@ -57,6 +58,10 @@ function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useLanguage();
+
+  // AI Report State
+  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // Renaming State
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -72,7 +77,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.6 Beta');
+  const [newVersion, setNewVersion] = useState('0.6.1 Beta');
   const [isClosedBeta, setIsClosedBeta] = useState(true);
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +135,24 @@ function AdminPage() {
       toast({ title: t('dm_success') });
     } catch (error: any) {
       console.error('Error deleting chat:', error);
+    }
+  };
+
+  const handleGenerateReport = async (user: User) => {
+    setIsGeneratingReport(true);
+    try {
+        const { report } = await generateUserReport({
+            name: user.name,
+            username: user.username,
+            statusMessage: user.statusMessage,
+            infGold: user.infGoldBalance,
+            tier: user.subscriptionTier
+        });
+        setAiReport(report);
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report.' });
+    } finally {
+        setIsGeneratingReport(false);
     }
   };
 
@@ -337,7 +360,15 @@ function AdminPage() {
             <div className="p-4 pb-20 space-y-8">
                 <TabsContent value="users" className="mt-0 outline-none">
                     <ItemList items={users} loading={usersLoading} renderItem={(user: User) => (
-                        <UserItem key={user.id} user={user} onBan={handleBanUser} onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }} onToggleBeta={handleToggleBetaStatus} onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }} />
+                        <UserItem 
+                          key={user.id} 
+                          user={user} 
+                          onBan={handleBanUser} 
+                          onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }} 
+                          onToggleBeta={handleToggleBetaStatus} 
+                          onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }}
+                          onReport={handleGenerateReport}
+                        />
                     )} />
                 </TabsContent>
                 <TabsContent value="groups" className="mt-0 outline-none">
@@ -401,7 +432,7 @@ function AdminPage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Version Name</Label>
-                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.6 Beta" />
+                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.6.1 Beta" />
                             </div>
 
                             <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
@@ -454,6 +485,16 @@ function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!aiReport} onOpenChange={(o) => !o && setAiReport(null)}>
+        <DialogContent className="max-w-sm rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
+            <DialogHeader className="p-6 bg-primary/10 border-b">
+                <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> ИИ-Донос</DialogTitle>
+            </DialogHeader>
+            <div className="p-8"><p className="text-sm italic leading-relaxed text-muted-foreground">"{aiReport}"</p></div>
+            <DialogFooter className="p-6 pt-0"><Button onClick={() => setAiReport(null)} className="w-full rounded-xl font-bold">Закрыть</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -465,7 +506,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
   return <div className="space-y-2">{items.map(renderItem)}</div>;
 }
 
-function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; }) {
+function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename, onReport }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; onReport: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   return (
@@ -478,6 +519,7 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: 
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onReport(user)} className="font-bold"><Sparkles className="h-4 w-4 mr-2 text-primary" /> ИИ-Донос</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onRename(user)}>Rename Handle</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onGrantGold(user)}>Grant Gold</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}>Toggle Beta</DropdownMenuItem>

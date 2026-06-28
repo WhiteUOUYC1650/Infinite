@@ -145,24 +145,24 @@ body.use-system-font h4 {
 [data-glass-effect="true"] .glass-panel,
 [data-glass-effect="true"] .glass-menu {
   @apply backdrop-blur-3xl border shadow-2xl relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.75) !important;
+  background-color: hsla(var(--card) / 0.85) !important;
   border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 [data-glass-effect="true"] .glass-input {
   @apply backdrop-blur-2xl border shadow-inner relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.4) !important;
+  background-color: hsla(var(--card) / 0.5) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 [data-glass-effect="true"] .glass-msg {
   @apply backdrop-blur-2xl border shadow-lg relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.88) !important;
+  background-color: hsla(var(--card) / 0.92) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 [data-glass-effect="true"] .glass-msg.align-right {
-  background-color: hsla(var(--primary) / 0.8) !important;
+  background-color: hsla(var(--primary) / 0.85) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
@@ -178,7 +178,7 @@ body.use-system-font h4 {
   left: 0;
   right: 0;
   height: 40%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 90%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 90%, transparent 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -186,18 +186,18 @@ body.use-system-font h4 {
 /* Interactive Elements Glass */
 [data-glass-effect="true"] button.glass-button {
   @apply backdrop-blur-xl border shadow-md relative overflow-hidden transition-all active:scale-95;
-  background-color: hsla(var(--primary) / 0.7) !important;
+  background-color: hsla(var(--primary) / 0.75) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 [data-glass-effect="true"] .glass-switch {
   @apply backdrop-blur-lg border relative overflow-hidden;
-  background-color: hsla(var(--muted) / 0.5) !important;
+  background-color: hsla(var(--muted) / 0.6) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 [data-glass-effect="true"] .glass-switch[data-state="checked"] {
-  background-color: hsla(var(--primary) / 0.8) !important;
+  background-color: hsla(var(--primary) / 0.85) !important;
 }
 
 /* Global Layout Fixes */

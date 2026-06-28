@@ -22,15 +22,16 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal } from 'lucide-react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal, Sparkles } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { doc, runTransaction, increment, getDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction, increment, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
 import { Capacitor } from '@capacitor/core';
 import { Separator } from './ui/separator';
+import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
 
 interface UserProfileDialogProps {
   user: User;
@@ -55,12 +56,17 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const [botData, setBotData] = useState<CustomBot | null>(null);
   const [activeMiniApp, setActiveMiniApp] = useState<BotMiniApp | null>(null);
 
+  // AI Report State
+  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
   useEffect(() => { 
     if (open) { 
         setShowCompactHeader(false); 
         setShowSendGold(false); 
         setSendAmount('10'); 
         setActiveMiniApp(null);
+        setAiReport(null);
         if (user.isCustomBot && db) {
             getDoc(doc(db, 'customBots', user.id)).then(snap => {
                 if (snap.exists()) setBotData(snap.data() as CustomBot);
@@ -137,6 +143,24 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     finally { setIsSendingGold(false); }
   };
 
+  const handleGenerateReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+        const { report } = await generateUserReport({
+            name: user.name,
+            username: user.username,
+            statusMessage: user.statusMessage,
+            infGold: user.infGoldBalance,
+            tier: user.subscriptionTier
+        });
+        setAiReport(report);
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report.' });
+    } finally {
+        setIsGeneratingReport(false);
+    }
+  };
+
   const handleButtonClick = (buttonId: string) => {
       if (!buttonId) return;
       window.dispatchEvent(new CustomEvent('bot-button-click', { 
@@ -153,6 +177,8 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     if (!user.birthday) return null; const months = (t('months') || '').split(',');
     return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;
   }, [user.birthday, t]);
+
+  const isAdmin = authUser?.email === 'infinite@chat.com' || authUser?.uid === 'ADMIN_ID'; // Simple check, or check username '@Infinite'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -227,6 +253,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
                         <div className="px-2 pt-6 pb-4 space-y-6">
                             {user.statusMessage && !user.isDeleted && (<div className="text-center p-4 bg-muted/50 rounded-2xl border-none"><p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p></div>)}
+
+                            {aiReport && (
+                                <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 space-y-2 animate-in slide-in-from-top-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-3 w-3" /> ИИ-Донос</p>
+                                    <p className="text-xs italic leading-relaxed">"{aiReport}"</p>
+                                </div>
+                            )}
                             
                             {user.isCustomBot && botData?.miniApps && botData.miniApps.length > 0 && (
                                 <div className="space-y-3">
@@ -254,12 +287,26 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                                 </div>
                             )}
 
-                            {!experimentalDesign && !user.isBot && !user.isDeleted && (
-                                <div className="space-y-2">
-                                    <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>
-                                    <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-green-200 text-green-600 bg-green-50/50 hover:bg-green-100" onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }}><Phone className="mr-2 h-5 w-5" />{t('audio_call')}</Button>
-                                </div>
-                            )}
+                            <div className="space-y-2">
+                                {!user.isBot && !user.isDeleted && (
+                                    <Button 
+                                        variant="outline" 
+                                        className="w-full rounded-xl h-12 font-bold border-primary/20 text-primary hover:bg-primary/5" 
+                                        onClick={handleGenerateReport}
+                                        disabled={isGeneratingReport}
+                                    >
+                                        {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                        Сгенерировать ИИ-донос
+                                    </Button>
+                                )}
+
+                                {!experimentalDesign && !user.isBot && !user.isDeleted && (
+                                    <>
+                                        <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>
+                                        <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-green-200 text-green-600 bg-green-50/50 hover:bg-green-100" onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }}><Phone className="mr-2 h-5 w-5" />{t('audio_call')}</Button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </ScrollArea>
