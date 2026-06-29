@@ -4,6 +4,7 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite'; }
     
+    // Media chunks for reliable uploads
     match /videoChunks/{chunkId} { allow create, read: if isSignedIn(); allow delete: if isAdmin(); }
     match /musicChunks/{chunkId} { allow create, read: if isSignedIn(); }
     match /fileChunks/{chunkId} { allow create, read: if isSignedIn(); }
@@ -13,7 +14,8 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow read: if true;
-      allow list: if isAdmin();
+      // Needed for AI Intelligence Reports and Global Search
+      allow list: if isSignedIn();
       allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
       allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge']));
       allow delete: if request.auth.uid == userId || isAdmin();
@@ -23,6 +25,7 @@ service cloud.firestore {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn();
+      // Needed for AI Bot Responses and standard messaging
       match /messages/{messageId} { allow read, write: if isSignedIn(); }
     }
 
@@ -37,7 +40,13 @@ service cloud.firestore {
     match /usernames/{username} { allow get: if true; allow create, delete: if isSignedIn(); }
     match /chatLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
     match /botLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
-    match /customBots/{botId} { allow read, write, list: if isSignedIn(); match /userStates/{userId} { allow read, write: if isSignedIn(); } }
+    
+    // AI Bot logic and state persistence
+    match /customBots/{botId} { 
+      allow read, write, list: if isSignedIn(); 
+      match /userStates/{userId} { allow read, write: if isSignedIn(); } 
+    }
+    
     match /stories/{storyId} { allow read, write, list: if isSignedIn(); }
     match /transfers/{transferId} { allow read, create, list: if isSignedIn(); }
   }
