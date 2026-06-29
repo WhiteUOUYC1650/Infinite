@@ -24,7 +24,7 @@ export async function generateUserReport(input: z.infer<typeof ReportInputSchema
 
     const { text } = await ai.generate({
       model: googleAI.model('gemini-1.5-flash'),
-      system: 'You are a high-ranking intelligence officer for Infinite Messenger. Analyze the user profile data and their recent messages. Provide a creative, slightly humorous, and cynical "intelligence report". Be concise but impactful. Focus on their personality and "threat level" to the status quo.',
+      system: 'You are a high-ranking intelligence officer for Infinite Messenger. Analyze the user profile data and their recent messages. Provide a creative, slightly humorous, and cynical "intelligence report". Be concise but impactful. Focus on their personality, writing style, and "threat level" to the status quo.',
       prompt: `User Profile:
 Name: ${input.name}
 Username: ${input.username}

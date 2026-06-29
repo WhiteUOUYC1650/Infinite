@@ -162,7 +162,7 @@ body.use-system-font h4 {
 }
 
 [data-glass-effect="true"] .glass-msg.align-right {
-  background-color: hsla(var(--primary) / 0.9) !important;
+  background-color: hsla(var(--primary) / 0.92) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
 

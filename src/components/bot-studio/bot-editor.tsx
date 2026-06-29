@@ -249,6 +249,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
         if (direction === 'up') {
             if (bIdx > 1) {
                 const temp = blocks[bIdx];
+                blocks[bIdx] = blocks[blocks.indexOf(temp)];
                 blocks[bIdx] = blocks[bIdx - 1];
                 blocks[bIdx - 1] = temp;
                 newScripts[sIdx] = { ...script, blocks };

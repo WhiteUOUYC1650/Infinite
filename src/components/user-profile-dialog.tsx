@@ -147,15 +147,15 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     if (!db) return;
     setIsGeneratingReport(true);
     try {
-        // Gathering contextual data for Deep Analysis
+        // Deep Analysis: Gathering contextual data (recent messages)
         const messages: string[] = [];
         const chatsRef = collection(db, 'chats');
-        const q = query(chatsRef, where('members', 'array-contains', user.id), limit(5));
+        const q = query(chatsRef, where('members', 'array-contains', user.id), limit(10));
         const chatsSnap = await getDocs(q);
         
         for (const chatDoc of chatsSnap.docs) {
             const msgsRef = collection(db, 'chats', chatDoc.id, 'messages');
-            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(3));
+            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(5));
             const msgsSnap = await getDocs(mq);
             msgsSnap.forEach(m => {
                 const data = m.data();
@@ -173,6 +173,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         });
         setAiReport(report);
     } catch (e) {
+        console.error(e);
         toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report. Make sure Genkit is initialized.' });
     } finally {
         setIsGeneratingReport(false);
@@ -275,7 +276,9 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             {aiReport && (
                                 <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 space-y-2 animate-in slide-in-from-top-2">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-3 w-3" /> ИИ-Донос</p>
-                                    <p className="text-xs italic leading-relaxed">"{aiReport}"</p>
+                                    <ScrollArea className="max-h-[150px]">
+                                        <p className="text-xs italic leading-relaxed whitespace-pre-wrap">"{aiReport}"</p>
+                                    </ScrollArea>
                                 </div>
                             )}
                             
@@ -309,7 +312,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                                 {isAdmin && !user.isBot && !user.isDeleted && (
                                     <Button 
                                         variant="outline" 
-                                        className="w-full rounded-xl h-12 font-bold border-primary/20 text-primary hover:bg-primary/5" 
+                                        className="w-full rounded-xl h-12 font-bold border-primary/20 text-primary hover:bg-primary/5 shadow-sm" 
                                         onClick={handleGenerateReport}
                                         disabled={isGeneratingReport}
                                     >

@@ -988,6 +988,8 @@ export const translations = {
       'reprocess_video': 'Переобработать видео',
       'video_deleted': 'Видео успешно удалено.',
       'video_updated': 'Информация обновлена.',
+      'infshorts_ui_desc': 'Листайте видео, ставьте лайки и сохраняйте в один клик.',
+      'all_videos': 'Все видео',
       'wn_shorts_ui_title': 'Интерфейс Shorts',
       'wn_shorts_ui_desc': 'Полноэкранный плеер для вертикальных видео в стиле TikTok.',
       'wn_watch_later_title': 'Смотреть позже',
@@ -996,8 +998,6 @@ export const translations = {
       'wn_content_mgmt_desc': 'Авторы теперь могут редактировать описания или удалять свои видео.',
       'wn_retry_upload_title': 'Надежная загрузка',
       'wn_retry_upload_desc': 'Удобный повтор обработки видео в случае возникновения ошибок.',
-      'infshorts_ui_desc': 'Листайте видео, ставьте лайки и сохраняйте в один клик.',
-      'all_videos': 'Все видео',
     }
 };
 

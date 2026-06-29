@@ -709,7 +709,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className={cn(
-            "absolute bottom-4 right-4 z-[60] transition-all duration-300 transform",
+            "absolute bottom-4 right-4 z-[90] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         )}>
             <Button 

@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview AI chat flow for custom bots.
+ * @fileOverview AI chat flow for custom bots using Genkit 1.x.
  */
 
 import { ai } from '@/ai/genkit';

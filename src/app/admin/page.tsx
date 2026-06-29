@@ -142,7 +142,7 @@ function AdminPage() {
     if (!db) return;
     setIsGeneratingReport(true);
     try {
-        // Deep Analysis: Collect recent messages
+        // Deep Analysis: Collect recent messages from accessible chats
         const messages: string[] = [];
         const chatsRef = collection(db, 'chats');
         const q = query(chatsRef, where('members', 'array-contains', user.id), limit(10));
@@ -150,7 +150,7 @@ function AdminPage() {
         
         for (const chatDoc of chatsSnap.docs) {
             const msgsRef = collection(db, 'chats', chatDoc.id, 'messages');
-            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(3));
+            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(5));
             const msgsSnap = await getDocs(mq);
             msgsSnap.forEach(m => {
                 const data = m.data();
@@ -510,7 +510,9 @@ function AdminPage() {
             <DialogHeader className="p-6 bg-primary/10 border-b">
                 <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> ИИ-Донос</DialogTitle>
             </DialogHeader>
-            <div className="p-8"><p className="text-sm italic leading-relaxed text-muted-foreground">"{aiReport}"</p></div>
+            <ScrollArea className="max-h-[60vh]">
+                <div className="p-8"><p className="text-sm italic leading-relaxed text-muted-foreground whitespace-pre-wrap">"{aiReport}"</p></div>
+            </ScrollArea>
             <DialogFooter className="p-6 pt-0"><Button onClick={() => setAiReport(null)} className="w-full rounded-xl font-bold">Закрыть</Button></DialogFooter>
         </DialogContent>
       </Dialog>
@@ -537,8 +539,11 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename, onReport }
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => onReport(user)} className="font-bold"><Sparkles className="h-4 w-4 mr-2 text-primary" /> ИИ-Донос</DropdownMenuItem>
+        <DropdownMenuContent align="end" className="w-56 rounded-xl p-1">
+          <DropdownMenuItem onSelect={() => onReport(user)} className="font-bold h-11 rounded-lg focus:bg-primary/10">
+            <Sparkles className="h-4 w-4 mr-3 text-primary" /> ИИ-Донос
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => onRename(user)}>Rename Handle</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onGrantGold(user)}>Grant Gold</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}>Toggle Beta</DropdownMenuItem>

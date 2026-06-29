@@ -125,7 +125,7 @@ const processMarkdownChildren = (children: any): any => {
 };
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => (
-    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", glassEffect ? "glass-button mb-1" : "hover:bg-muted")} disabled={disabled}>
+    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
         <div className={cn(
             "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-4 transition-colors",
             showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20",
@@ -145,7 +145,7 @@ const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, des
 );
 
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => (
-    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", glassEffect && "glass-panel mb-1 border-none shadow-none")}>
+    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
         <div className="flex flex-col flex-1 mr-4 min-w-0">
             <Label htmlFor={id} className={cn("font-bold cursor-pointer whitespace-normal leading-tight mb-1", disabled && "opacity-50")}>{label}</Label>
             {description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}
