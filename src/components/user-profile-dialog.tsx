@@ -25,7 +25,7 @@ import { useTheme } from '@/context/theme-context';
 import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal, Sparkles } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, doc, runTransaction, increment, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, runTransaction, increment, getDoc, setDoc, serverTimestamp, query, where, limit, getDocs, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
@@ -144,18 +144,36 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   };
 
   const handleGenerateReport = async () => {
+    if (!db) return;
     setIsGeneratingReport(true);
     try {
+        // Gathering contextual data for Deep Analysis
+        const messages: string[] = [];
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('members', 'array-contains', user.id), limit(5));
+        const chatsSnap = await getDocs(q);
+        
+        for (const chatDoc of chatsSnap.docs) {
+            const msgsRef = collection(db, 'chats', chatDoc.id, 'messages');
+            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(3));
+            const msgsSnap = await getDocs(mq);
+            msgsSnap.forEach(m => {
+                const data = m.data();
+                if (data.content) messages.push(data.content);
+            });
+        }
+
         const { report } = await generateUserReport({
             name: user.name,
             username: user.username,
             statusMessage: user.statusMessage,
             infGold: user.infGoldBalance,
-            tier: user.subscriptionTier
+            tier: user.subscriptionTier,
+            recentMessages: messages
         });
         setAiReport(report);
     } catch (e) {
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report.' });
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report. Make sure Genkit is initialized.' });
     } finally {
         setIsGeneratingReport(false);
     }
@@ -206,7 +224,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                                     return (
                                         <Button 
                                             key={block.id} 
-                                            className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/10 transition-all active:scale-95" 
+                                            className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/10 transition-all active:scale-[0.98]" 
                                             onClick={() => handleButtonClick(block.params?.buttonId)}
                                         >
                                             {block.params?.text}

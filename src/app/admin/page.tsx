@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp, getDocs, Timestamp, addDoc } from 'firebase/firestore';
-import type { User, Chat } from '@/types';
+import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, increment, setDoc, serverTimestamp, getDocs, Timestamp, addDoc, query, where, orderBy, limit } from 'firebase/firestore';
+import type { User, Chat, Message } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck, FileSearch } from 'lucide-react';
@@ -139,18 +139,37 @@ function AdminPage() {
   };
 
   const handleGenerateReport = async (user: User) => {
+    if (!db) return;
     setIsGeneratingReport(true);
     try {
+        // Deep Analysis: Collect recent messages
+        const messages: string[] = [];
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('members', 'array-contains', user.id), limit(10));
+        const chatsSnap = await getDocs(q);
+        
+        for (const chatDoc of chatsSnap.docs) {
+            const msgsRef = collection(db, 'chats', chatDoc.id, 'messages');
+            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(3));
+            const msgsSnap = await getDocs(mq);
+            msgsSnap.forEach(m => {
+                const data = m.data();
+                if (data.content) messages.push(data.content);
+            });
+        }
+
         const { report } = await generateUserReport({
             name: user.name,
             username: user.username,
             statusMessage: user.statusMessage,
             infGold: user.infGoldBalance,
-            tier: user.subscriptionTier
+            tier: user.subscriptionTier,
+            recentMessages: messages
         });
         setAiReport(report);
-    } catch (e) {
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report.' });
+    } catch (e: any) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report. Make sure Genkit is configured.' });
     } finally {
         setIsGeneratingReport(false);
     }
