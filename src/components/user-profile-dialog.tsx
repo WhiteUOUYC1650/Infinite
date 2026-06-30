@@ -31,7 +31,6 @@ import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
 import { Capacitor } from '@capacitor/core';
 import { Separator } from './ui/separator';
-import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
 
 interface UserProfileDialogProps {
   user: User;
@@ -56,17 +55,12 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const [botData, setBotData] = useState<CustomBot | null>(null);
   const [activeMiniApp, setActiveMiniApp] = useState<BotMiniApp | null>(null);
 
-  // AI Report State
-  const [aiReport, setAiReport] = useState<string | null>(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-
   useEffect(() => { 
     if (open) { 
         setShowCompactHeader(false); 
         setShowSendGold(false); 
         setSendAmount('10'); 
         setActiveMiniApp(null);
-        setAiReport(null);
         if (user.isCustomBot && db) {
             getDoc(doc(db, 'customBots', user.id)).then(snap => {
                 if (snap.exists()) setBotData(snap.data() as CustomBot);
@@ -141,43 +135,6 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         setShowSendGold(false);
     } catch (e: any) { toast({ variant: 'destructive', title: 'Error', description: e.message || t('transfer_error') }); }
     finally { setIsSendingGold(false); }
-  };
-
-  const handleGenerateReport = async () => {
-    if (!db) return;
-    setIsGeneratingReport(true);
-    try {
-        // Deep Analysis: Gathering contextual data (recent messages)
-        const messages: string[] = [];
-        const chatsRef = collection(db, 'chats');
-        const q = query(chatsRef, where('members', 'array-contains', user.id), limit(10));
-        const chatsSnap = await getDocs(q);
-        
-        for (const chatDoc of chatsSnap.docs) {
-            const msgsRef = collection(db, 'chats', chatDoc.id, 'messages');
-            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(5));
-            const msgsSnap = await getDocs(mq);
-            msgsSnap.forEach(m => {
-                const data = m.data();
-                if (data.content) messages.push(data.content);
-            });
-        }
-
-        const { report } = await generateUserReport({
-            name: user.name,
-            username: user.username,
-            statusMessage: user.statusMessage,
-            infGold: user.infGoldBalance,
-            tier: user.subscriptionTier,
-            recentMessages: messages
-        });
-        setAiReport(report);
-    } catch (e) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report. Make sure Genkit is initialized.' });
-    } finally {
-        setIsGeneratingReport(false);
-    }
   };
 
   const handleButtonClick = (buttonId: string) => {
@@ -272,15 +229,6 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
                         <div className="px-2 pt-6 pb-4 space-y-6">
                             {user.statusMessage && !user.isDeleted && (<div className="text-center p-4 bg-muted/50 rounded-2xl border-none"><p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p></div>)}
-
-                            {aiReport && (
-                                <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 space-y-2 animate-in slide-in-from-top-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-3 w-3" /> ИИ-Донос</p>
-                                    <ScrollArea className="max-h-[150px]">
-                                        <p className="text-xs italic leading-relaxed whitespace-pre-wrap">"{aiReport}"</p>
-                                    </ScrollArea>
-                                </div>
-                            )}
                             
                             {user.isCustomBot && botData?.miniApps && botData.miniApps.length > 0 && (
                                 <div className="space-y-3">
@@ -309,18 +257,6 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             )}
 
                             <div className="space-y-2">
-                                {isAdmin && !user.isBot && !user.isDeleted && (
-                                    <Button 
-                                        variant="outline" 
-                                        className="w-full rounded-xl h-12 font-bold border-primary/20 text-primary hover:bg-primary/5 shadow-sm" 
-                                        onClick={handleGenerateReport}
-                                        disabled={isGeneratingReport}
-                                    >
-                                        {isGeneratingReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                        Сгенерировать ИИ-донос
-                                    </Button>
-                                )}
-
                                 {!experimentalDesign && !user.isBot && !user.isDeleted && (
                                     <>
                                         <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>

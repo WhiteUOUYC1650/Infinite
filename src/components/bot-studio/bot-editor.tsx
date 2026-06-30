@@ -48,7 +48,6 @@ const BLOCK_COLORS: Record<BotBlockType, string> = {
   action_send_video: 'bg-slate-500 border-slate-600',
   action_send_music: 'bg-green-600 border-green-700',
   action_send_file: 'bg-zinc-600 border-zinc-700',
-  action_ai_prompt: 'bg-gradient-to-r from-violet-600 to-indigo-600 border-violet-700',
   ui_header: 'bg-teal-600 border-teal-700',
   ui_text: 'bg-teal-500 border-teal-600',
   ui_button: 'bg-blue-600 border-blue-700',
@@ -76,7 +75,6 @@ const BLOCK_ICONS: Record<BotBlockType, any> = {
   action_send_video: Video,
   action_send_music: Music,
   action_send_file: FileText,
-  action_ai_prompt: BrainCircuit,
   ui_header: Type,
   ui_text: Type,
   ui_button: MousePointer2,
@@ -489,7 +487,6 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                             <TabsContent value="actions" className="mt-0 space-y-2">
                                 <PaletteItem type="action_send" label={t('block_action_send')} onClick={onAddFromFab} />
                                 <PaletteItem type="action_reply" label={t('block_action_reply')} onClick={onAddFromFab} />
-                                <PaletteItem type="action_ai_prompt" label="Ответ от ИИ" onClick={onAddFromFab} />
                                 <PaletteItem type="action_send_image" label={t('action_send_image')} onClick={onAddFromFab} />
                                 <PaletteItem type="action_send_video" label={t('action_send_video')} onClick={onAddFromFab} />
                                 <PaletteItem type="action_send_music" label={t('action_send_music')} onClick={onAddFromFab} />
@@ -504,7 +501,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                             </TabsContent>
                             <TabsContent value="vars" className="mt-0 space-y-2">
                                 <PaletteItem type="variable_set" label={t('block_variable_set')} onClick={onAddFromFab} />
-                                <PaletteItem type="variable_math" label={t('block_math')} onClick={onAddFromFab} />
+                                <PaletteItem type="variable_math" label={t('block_variable_math')} onClick={onAddFromFab} />
                                 <PaletteItem type="variable_random" label={t('block_variable_random')} onClick={onAddFromFab} />
                                 <PaletteItem type="variable_clear" label={t('block_clear')} onClick={onAddFromFab} />
                             </TabsContent>
@@ -606,13 +603,6 @@ function BotBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDel
                     <div className="space-y-2 mt-1 w-full">
                         <Textarea placeholder={block.type === 'ui_button' ? "Текст кнопки..." : "Введите сообщение..."} value={block.params?.text || ''} onChange={e => onUpdate(sIdx, bIdx, 'text', e.target.value)} className="min-h-[60px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs" rows={2} onInput={(e) => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'; }} />
                         {block.type === 'ui_button' && <div className="space-y-1"><Label className="text-[8px] font-black uppercase opacity-50 ml-1">{t('button_id_label')}</Label><Textarea placeholder="main_menu_btn" value={block.params?.buttonId || ''} onChange={e => onUpdate(sIdx, bIdx, 'buttonId', e.target.value.toLowerCase().replace(/\s/g, '_'))} className="h-8 bg-black/10 border-none text-white placeholder:text-white/40 font-mono text-[10px]" rows={1} /></div>}
-                    </div>
-                );
-            case 'action_ai_prompt':
-                return (
-                    <div className="space-y-1 mt-1 w-full">
-                        <Label className="text-[8px] font-black uppercase opacity-50 ml-1">Системные инструкции (Промпт)</Label>
-                        <Textarea placeholder="Пример: Ты саркастичный кот. Отвечай коротко." value={block.params?.prompt || ''} onChange={e => onUpdate(sIdx, bIdx, 'prompt', e.target.value)} className="min-h-[80px] bg-black/10 border-none text-white placeholder:text-white/40 font-bold text-xs" rows={3} />
                     </div>
                 );
             case 'event_button_click':

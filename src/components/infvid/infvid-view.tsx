@@ -65,6 +65,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const [isUploadOpen, setIsUploadOpen] = useState(false); const [isUploading, setIsUploading] = useState(false); const [searchQuery, setSearchQuery] = useState(''); const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null); const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'shorts' | 'watch_later'>('all');
   const [retryVideoId, setRetryVideoId] = useState<string | null>(null);
+  const [editingVideo, setEditingVideo] = useState<SharedVideo | null>(null);
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
 
   const videosQuery = useMemo(() => { 
@@ -92,10 +93,10 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [videos, searchQuery, senders, activeTab, currentUser.watchLater]);
 
   useEffect(() => {
-    const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); setRetryVideoId(null); } else { onClose(); } };
+    const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); setRetryVideoId(null); } else if (editingVideo) { setEditingVideo(null); } else { onClose(); } };
     let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); }
     return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
-  }, [selectedVideoId, isUploadOpen, onClose]);
+  }, [selectedVideoId, isUploadOpen, onClose, editingVideo]);
 
   useEffect(() => {
     if (!initialVideoId || !db) return;
@@ -201,7 +202,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                     </Tabs>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => handleRetryUpload(video.id)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
+            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => handleRetryUpload(video.id)} onEdit={() => setEditingVideo(video)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
           </>
       ) : (
           <UploadView 
@@ -214,9 +215,73 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             retryVideoId={retryVideoId}
           />
       )}
-      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} onRetry={handleRetryUpload} />)}
+      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} onRetry={handleRetryUpload} onEdit={() => setEditingVideo(selectedVideo)} />)}
+      {editingVideo && (<VideoEditDialog video={editingVideo} onClose={() => setEditingVideo(null)} db={db!} t={t} />)}
     </div>
   );
+}
+
+function VideoEditDialog({ video, onClose, db, t }: { video: SharedVideo, onClose: () => void, db: any, t: any }) {
+    const { toast } = useToast();
+    const [title, setTitle] = useState(video.title);
+    const [description, setDescription] = useState(video.description || '');
+    const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(video.thumbnailUrl || null);
+    const [isSaving, setIsSaving] = useState(false);
+    const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
+    const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            const file = e.target.files[0];
+            compressImage(file).then(setThumbnailPreview);
+        }
+    };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await updateDoc(doc(db, 'videos', video.id), {
+                title,
+                description,
+                thumbnailUrl: thumbnailPreview
+            });
+            toast({ title: t('dm_success'), description: t('video_updated') });
+            onClose();
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update video.' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-md rounded-3xl p-6 overflow-hidden">
+                <DialogHeader><DialogTitle>{t('edit_video')}</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label>{t('infvid_thumbnail_label')}</Label>
+                        <div className="aspect-video border-2 border-dashed rounded-xl flex items-center justify-center cursor-pointer overflow-hidden bg-muted relative" onClick={() => thumbnailInputRef.current?.click()}>
+                            <input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />
+                            {thumbnailPreview ? <img src={thumbnailPreview} className="w-full h-full object-cover" /> : <ImageIcon className="h-8 w-8 text-muted-foreground" />}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>{t('infvid_video_title_label')}</Label>
+                        <Input value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>{t('infvid_video_desc_label')}</Label>
+                        <Textarea value={description} onChange={e => setDescription(e.target.value)} className="rounded-xl min-h-[100px] resize-none" />
+                    </div>
+                </div>
+                <DialogFooter className="gap-2">
+                    <Button variant="ghost" onClick={onClose} disabled={isSaving}>{t('cancel')}</Button>
+                    <Button onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : t('save')}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInBytes, t, retryVideoId }: { onClose: () => void, onUpload: any, isUploading: boolean, maxSizeText: string, maxSizeInBytes: number, t: any, retryVideoId?: string | null }) {
@@ -286,7 +351,7 @@ function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInByte
     );
 }
 
-function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleWatchLater, onDelete, onRetry }: { video: SharedVideo, sender?: User, onClick: () => void, isShortMode?: boolean, currentUser: AuthenticatedUser, onToggleWatchLater: () => void, onDelete: () => void, onRetry: () => void }) {
+function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleWatchLater, onDelete, onRetry, onEdit }: { video: SharedVideo, sender?: User, onClick: () => void, isShortMode?: boolean, currentUser: AuthenticatedUser, onToggleWatchLater: () => void, onDelete: () => void, onRetry: () => void, onEdit: () => void }) {
     const { t, language } = useLanguage(); const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
     const isOwner = video.senderId === currentUser.uid;
     const isSaved = currentUser.watchLater?.includes(video.id);
@@ -322,6 +387,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                                 <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                                 {isOwner && (
                                     <>
+                                        <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
                                         {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                         <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                     </>
@@ -360,6 +426,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                             {isOwner && (
                                 <>
+                                    <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
                                     {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                 </>
@@ -373,7 +440,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
     );
 }
 
-function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: (vidId: string) => void }) {
+function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry, onEdit }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: (vidId: string) => void, onEdit: () => void }) {
     const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const isSaved = currentUser.watchLater?.includes(video.id);
@@ -455,6 +522,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                 <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                                 {isOwner && (
                                     <>
+                                        <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
                                         {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                         <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                     </>
@@ -540,6 +608,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                                             <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
                                             {isOwner && (
                                                 <>
+                                                    <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
                                                     {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
                                                     <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
                                                 </>

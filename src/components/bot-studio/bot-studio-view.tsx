@@ -137,11 +137,18 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
   const handleDeleteBot = async (bot: CustomBot) => {
     if (!db || !window.confirm(t('delete_chat_confirm'))) return;
     try {
-        await deleteDoc(doc(db, 'customBots', bot.id));
-        await deleteDoc(doc(db, 'users', bot.id));
-        await deleteDoc(doc(db, 'usernames', bot.username));
+        const botHandle = bot.username.substring(1);
+        await runTransaction(db, async (tx) => {
+            tx.delete(doc(db, 'customBots', bot.id));
+            tx.delete(doc(db, 'users', bot.id));
+            tx.delete(doc(db, 'usernames', bot.username));
+            tx.delete(doc(db, 'botLinks', encodeURIComponent('/B/' + botHandle)));
+        });
         toast({ title: t('dm_success') });
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete bot.' });
+    }
   };
 
   if (selectedBot) {

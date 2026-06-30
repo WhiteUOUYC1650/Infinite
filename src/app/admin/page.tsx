@@ -47,8 +47,6 @@ import { UserAvatarWithStatus } from '@/components/chat/user-avatar-with-status'
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
-
 
 function AdminPage() {
   const { user: authUser, loading: authLoading } = useUser();
@@ -58,10 +56,6 @@ function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useLanguage();
-
-  // AI Report State
-  const [aiReport, setAiReport] = useState<string | null>(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // Renaming State
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -135,43 +129,6 @@ function AdminPage() {
       toast({ title: t('dm_success') });
     } catch (error: any) {
       console.error('Error deleting chat:', error);
-    }
-  };
-
-  const handleGenerateReport = async (user: User) => {
-    if (!db) return;
-    setIsGeneratingReport(true);
-    try {
-        // Deep Analysis: Collect recent messages from accessible chats
-        const messages: string[] = [];
-        const chatsRef = collection(db, 'chats');
-        const q = query(chatsRef, where('members', 'array-contains', user.id), limit(10));
-        const chatsSnap = await getDocs(q);
-        
-        for (const chatDoc of chatsSnap.docs) {
-            const msgsRef = collection(db, 'chats', chatDoc.id, 'messages');
-            const mq = query(msgsRef, where('senderId', '==', user.id), orderBy('timestamp', 'desc'), limit(5));
-            const msgsSnap = await getDocs(mq);
-            msgsSnap.forEach(m => {
-                const data = m.data();
-                if (data.content) messages.push(data.content);
-            });
-        }
-
-        const { report } = await generateUserReport({
-            name: user.name,
-            username: user.username,
-            statusMessage: user.statusMessage,
-            infGold: user.infGoldBalance,
-            tier: user.subscriptionTier,
-            recentMessages: messages
-        });
-        setAiReport(report);
-    } catch (e: any) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate report. Make sure Genkit is configured.' });
-    } finally {
-        setIsGeneratingReport(false);
     }
   };
 
@@ -386,7 +343,6 @@ function AdminPage() {
                           onGrantGold={(u) => { setSelectedUserForGold(u); setGoldDialogOpen(true); }} 
                           onToggleBeta={handleToggleBetaStatus} 
                           onRename={(u) => { setRenameTarget({ id: u.id, type: 'user', currentVal: u.username }); setNewVal(u.username); setRenameDialogOpen(true); }}
-                          onReport={handleGenerateReport}
                         />
                     )} />
                 </TabsContent>
@@ -504,18 +460,6 @@ function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={!!aiReport} onOpenChange={(o) => !o && setAiReport(null)}>
-        <DialogContent className="max-w-sm rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-            <DialogHeader className="p-6 bg-primary/10 border-b">
-                <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> ИИ-Донос</DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[60vh]">
-                <div className="p-8"><p className="text-sm italic leading-relaxed text-muted-foreground whitespace-pre-wrap">"{aiReport}"</p></div>
-            </ScrollArea>
-            <DialogFooter className="p-6 pt-0"><Button onClick={() => setAiReport(null)} className="w-full rounded-xl font-bold">Закрыть</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -527,7 +471,7 @@ function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
   return <div className="space-y-2">{items.map(renderItem)}</div>;
 }
 
-function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename, onReport }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; onReport: (user: User) => void; }) {
+function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   return (
@@ -540,10 +484,6 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename, onReport }
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 rounded-xl p-1">
-          <DropdownMenuItem onSelect={() => onReport(user)} className="font-bold h-11 rounded-lg focus:bg-primary/10">
-            <Sparkles className="h-4 w-4 mr-3 text-primary" /> ИИ-Донос
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => onRename(user)}>Rename Handle</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onGrantGold(user)}>Grant Gold</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onToggleBeta(user.id, !!user.isBetaTester)}>Toggle Beta</DropdownMenuItem>
