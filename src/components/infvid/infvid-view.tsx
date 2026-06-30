@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, where, deleteDoc, increment } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
 import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -258,6 +258,7 @@ function VideoEditDialog({ video, onClose, db, t }: { video: SharedVideo, onClos
     return (
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent className="max-w-md rounded-3xl p-6 overflow-hidden">
+                <DialogTitle className="sr-only">{t('edit_video')}</DialogTitle>
                 <DialogHeader><DialogTitle>{t('edit_video')}</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
