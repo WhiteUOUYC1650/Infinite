@@ -206,6 +206,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                 <ScrollArea className="flex-1" onScroll={e => setShowCompactHeader(e.currentTarget.scrollTop > 100)}>
                     <div className={cn(experimentalDesign ? "bg-gradient-to-b from-primary/10 to-background pt-8 pb-6 px-6" : "pt-8 pb-4 px-6")}>
                         <DialogHeader className="p-0 relative">
+                            <DialogTitle className="sr-only">{displayName}</DialogTitle>
                             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
                             <div className='relative mx-auto flex justify-center'><UserAvatarWithStatus user={user} className="w-28 h-28 text-4xl shadow-xl border-4 border-background rounded-full" /></div>
