@@ -1,10 +1,11 @@
+
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -225,7 +226,7 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
                     </div>
                     {mediaUrl && (
                         <a href={mediaUrl} download={attachment.fileName} className="p-1.5 hover:bg-black/5 rounded-full">
-                            <Clock className="h-4 w-4" />
+                            <Download className="h-4 w-4" />
                         </a>
                     )}
                 </div>
@@ -249,10 +250,47 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     
     useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
+    
+    const handleSaveToDevice = async () => {
+        if (!mediaUrl) return;
+        const fileName = message.fileName || `Infinite_${message.id}.${(message.imageUrl ? 'jpg' : (message.videoMimeType?.split('/')[1] || 'bin'))}`;
+        
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                const cleanBase64 = mediaUrl.includes(',') ? mediaUrl.split(',')[1] : mediaUrl;
+                
+                try {
+                    await Filesystem.mkdir({ path: 'Infinite', directory: Directory.Documents, recursive: true });
+                } catch (e) {}
+
+                await Filesystem.writeFile({
+                    path: `Infinite/${fileName}`,
+                    data: cleanBase64,
+                    directory: Directory.Documents,
+                });
+                toast({ title: t('dm_success'), description: `Saved to Documents/Infinite/${fileName}` });
+            } catch (e) {
+                console.error(e);
+                toast({ variant: 'destructive', title: 'Error', description: "Failed to save natively." });
+            }
+        } else {
+            const link = document.createElement('a');
+            link.href = mediaUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast({ title: t('dm_success') });
+        }
+    };
+
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
     
     const canCopy = message.content && !message.poll; const canEdit = isCurrentUser && !message.poll && !message.voiceStatus && !message.circleStatus; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
     const isLikedByMe = (emoji: string) => message.reactions?.[emoji]?.includes(currentUser.uid);
+    const hasAttachments = !!(message.imageUrl || message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.fileStatus === 'complete' || (message.attachments && message.attachments.length > 0));
+    const canSave = hasAttachments && !message.voiceStatus && !message.circleStatus;
 
     const displayName = isChannelPost ? message.senderName : (message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name));
     const displayAvatar = isChannelPost ? message.senderAvatar : (message.type === 'announcement' ? message.senderAvatar : sender?.avatar);
@@ -382,6 +420,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                                     </div>
                                     <DropdownMenuItem onSelect={() => onReply(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Reply className="mr-3 h-4 w-4 text-primary" />{t('reply')}</DropdownMenuItem>
                                     {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Copy className="mr-3 h-4 w-4 text-primary" />{t('copy_text')}</DropdownMenuItem>}
+                                    {canSave && <DropdownMenuItem onSelect={handleSaveToDevice} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Download className="mr-3 h-4 w-4 text-primary" />{t('save_to_device')}</DropdownMenuItem>}
                                     <DropdownMenuItem onSelect={() => onForward(message)} className="h-10 rounded-xl px-3 focus:bg-primary/10 font-bold"><Forward className="mr-3 h-4 w-4 text-primary" />{t('forward')}</DropdownMenuItem>
                                     {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive h-10 rounded-xl px-3 focus:bg-destructive/10 font-bold"><Trash2 className="mr-3 h-4 w-4" />{t('delete_message')}</DropdownMenuItem>}
                                 </div>
@@ -393,6 +432,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                                 </div>
                                 <DropdownMenuItem onSelect={() => onReply(message)}><Reply className="mr-2 h-4 w-4" />{t('reply')}</DropdownMenuItem>
                                 {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }}><Copy className="mr-2 h-4 w-4" />{t('copy_text')}</DropdownMenuItem>}
+                                {canSave && <DropdownMenuItem onSelect={handleSaveToDevice}><Download className="mr-2 h-4 w-4" />{t('save_to_device')}</DropdownMenuItem>}
                                 <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" />{t('forward')}</DropdownMenuItem>
                                 {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />{t('delete_message')}</DropdownMenuItem>}
                             </>
@@ -610,7 +650,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
 
-  const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${ex}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
+  const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${e}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   
@@ -684,7 +724,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               </DropdownMenu>
             )}
         </div>
-        <div className={cn("absolute top-[calc(14px+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-40 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
+        <div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
             <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", (experimentalDesign || glassEffect) ? "glass-panel" : "bg-muted/95")}>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
             </div>
@@ -888,3 +928,4 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     </div>
   );
 }
+
