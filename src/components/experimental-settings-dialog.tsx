@@ -177,6 +177,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);
+  const [isBuyingPrem, setIsBuyingPrem] = useState(false);
 
   const transfersQuery = useMemo(() => {
     if (!db) return null;
@@ -230,6 +231,25 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
         setIsCheckingUpdates(false);
         setHasCheckedUpdates(true);
     }, 2000);
+  };
+
+  const handleBuyPrem = async () => {
+    if (!db || !currentUser.uid || isBuyingPrem) return;
+    setIsBuyingPrem(true);
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+            subscriptionTier: 'prem',
+            subscriptionStartedAt: serverTimestamp(),
+            showPremBadge: true
+        });
+        toast({ title: t('dm_success'), description: "Infinite Prem activated!" });
+        handleBack();
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsBuyingPrem(false);
+    }
   };
 
   useEffect(() => {
@@ -529,7 +549,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                                     {t(tName as any)}
                                 </Label>
                             </div>
-                            {isPremTheme && <Badge className="bg-purple-500 text-white text-[9px]">PREM</Badge>}
+                            {isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}
                         </div>
                       );
                   })}
@@ -600,7 +620,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="p-2 gap-1 flex flex-col">
                     <SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" glassEffect={glassEffect} />
-                    <SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-purple-500/15" iconColor="text-purple-600" glassEffect={glassEffect} />
+                    <SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-primary/15" iconColor="text-primary" glassEffect={glassEffect} />
                     <SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
                     <SettingsSwitchItem id="prem-badge" label={t('show_prem_badge')} checked={!!currentUser.showPremBadge} onCheckedChange={(v) => updateDoc(doc(db!, 'users', currentUser.uid), { showPremBadge: v })} disabled={currentUser.subscriptionTier !== 'prem'} glassEffect={glassEffect} />
                   </div>
@@ -608,10 +628,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'infinitePrem': return (
               <div className='p-6 space-y-6'>
-                  <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl shadow-purple-500/20 relative overflow-hidden">
+                  <div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none" : "bg-primary")}>
                       <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" />
                       <div className="relative z-10 space-y-4">
-                          <VerifiedBadge className="w-12 h-12" />
+                          <div className='flex items-center justify-between'>
+                            <VerifiedBadge className="w-12 h-12" />
+                            {currentUser.subscriptionTier === 'prem' && <Badge variant="secondary" className="bg-white/20 text-white border-none font-black">ACTIVE</Badge>}
+                          </div>
                           <h2 className="text-3xl font-black font-headline leading-none">Infinite Prem</h2>
                           <p className="text-white/80 text-sm leading-relaxed">{t('prem_description')}</p>
                           <ul className="space-y-3 pt-2">
@@ -627,10 +650,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                       </div>
                   </div>
                   <div className="space-y-3">
-                      <Button className="w-full h-16 rounded-3xl font-black text-lg bg-purple-600 hover:bg-purple-700 shadow-xl shadow-purple-600/20">
-                          {t('subscribe_monthly')}
+                      <Button onClick={handleBuyPrem} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">
+                          {isBuyingPrem ? <Loader2 className='animate-spin' /> : (currentUser.subscriptionTier === 'prem' ? "Current Plan" : t('subscribe_monthly'))}
                       </Button>
-                      <Button variant="outline" className="w-full h-16 rounded-3xl font-black text-lg border-purple-200">
+                      <Button variant="outline" disabled={currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">
                           {t('subscribe_yearly')}
                       </Button>
                       <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('yearly_discount_note')}</p>
@@ -680,57 +703,37 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <div className='p-6 space-y-6'>
                   <div className="text-center space-y-2 mb-2">
                     <h2 className='text-4xl font-black font-headline text-primary'>What's New</h2>
-                    <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{t('beta_badge')}</p>
+                    <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion}</p>
                   </div>
                   
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              <Zap className="h-6 w-6" />
+                              <Star className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_shorts_ui_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_shorts_ui_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Infinite Prem 1.0</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Redesigned adaptive interface and new subscription logic.</p>
                           </div>
                       </div>
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                              <Clock className="h-6 w-6" />
+                              <ListTodo className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_watch_later_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_watch_later_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Polls Restored</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Full-featured poll creation system is back.</p>
                           </div>
                       </div>
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
-                              <Settings className="h-6 w-6" />
+                              <RefreshCw className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_content_mgmt_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_content_mgmt_desc')}</p>
-                          </div>
-                      </div>
-
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shrink-0">
-                              <RefreshCcw className="h-6 w-6" />
-                          </div>
-                          <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_retry_upload_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_retry_upload_desc')}</p>
-                          </div>
-                      </div>
-
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm opacity-60", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-gray-500/10 flex items-center justify-center text-gray-500 shrink-0">
-                              <CheckCircle2 className="h-6 w-6" />
-                          </div>
-                          <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_bugfixes')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_bugfixes')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">1.0 Stability</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Preparing for the major release with various fixes.</p>
                           </div>
                       </div>
                   </div>
@@ -828,10 +831,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="space-y-2">
                     <h2 className='text-4xl font-black font-headline'>Infinite</h2>
-                    <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{t('beta_badge')}</Badge>
+                    <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{currentVersion}</Badge>
                   </div>
                   <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-bold text-primary leading-relaxed">
-                    {t('version_notice_06')}
+                    Preparing for the major 1.0 release.
                   </div>
                   <p className='text-sm text-muted-foreground leading-relaxed max-w-xs font-medium'>{t('version_info_detail')}</p>
               </div>

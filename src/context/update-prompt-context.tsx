@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
@@ -7,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "0.6.1 Beta";
+const CURRENT_APP_VERSION = "1.0 Pre-Release 1";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
@@ -57,7 +58,6 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
                 setUpdateInfo(data);
 
                 // 3. Determine target version based on beta status
-                // Testers see latestClosedBeta, others see only latest (publicly available)
                 const targetVersion = isBetaTester 
                     ? (data.latestClosedBeta || data.latest) 
                     : data.latest;

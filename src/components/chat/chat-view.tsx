@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -40,6 +39,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ReactMarkdown from 'react-markdown';
@@ -49,6 +51,9 @@ import { useBatchUsers } from '@/hooks/use-batch-users';
 import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Checkbox } from '../ui/checkbox';
 
 export const COMMON_EMOJIS = [
     '👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨', 
@@ -154,6 +159,75 @@ function PollDisplay({ poll, onVote, currentUserId, alignRight }: { poll: Poll, 
             })}</div>
             <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest opacity-60 px-1"><span>{t('poll_vote_count', { count: totalVotes })}</span>{poll.isAnonymous ? <span className="flex items-center gap-1"><Info className="h-2.5 w-2.5" /> {t('poll_anonymous_label')}</span> : <span>{t('poll_view_results')}</span>}</div>
         </div>
+    );
+}
+
+function NewPollDialog({ open, onOpenChange, onCreate }: { open: boolean, onOpenChange: (o: boolean) => void, onCreate: (p: Poll) => void }) {
+    const { t } = useLanguage();
+    const [question, setQuestion] = useState('');
+    const [options, setOptions] = useState(['', '']);
+    const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+
+    const handleAddOption = () => { if (options.length < 10) setOptions([...options, '']); };
+    const handleRemoveOption = (idx: number) => { if (options.length > 2) setOptions(options.filter((_, i) => i !== idx)); };
+    const handleOptionChange = (idx: number, val: string) => { const newOpts = [...options]; newOpts[idx] = val; setOptions(newOpts); };
+
+    const handleSubmit = () => {
+        if (!question.trim() || options.some(o => !o.trim())) return;
+        onCreate({
+            question: question.trim(),
+            options: options.map(o => ({ text: o.trim(), votes: [] })),
+            isAnonymous,
+            isMultipleChoice
+        });
+        onOpenChange(false);
+        setQuestion('');
+        setOptions(['', '']);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md rounded-3xl p-6 overflow-hidden">
+                <DialogTitle className="text-xl font-bold font-headline">{t('create_poll')}</DialogTitle>
+                <ScrollArea className="max-h-[60vh] py-4 pr-4">
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{t('poll_question_label')}</Label>
+                            <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Напр. Куда пойдем сегодня?" className="rounded-xl h-12 bg-muted/50 border-none font-bold" />
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Варианты ответа</Label>
+                            {options.map((opt, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <Input value={opt} onChange={e => handleOptionChange(idx, e.target.value)} placeholder={`Вариант ${idx + 1}`} className="rounded-xl h-11 bg-muted/50 border-none font-medium" />
+                                    {options.length > 2 && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(idx)} className="h-11 w-11 text-destructive shrink-0"><Trash className="h-4 w-4" /></Button>
+                                    )}
+                                </div>
+                            ))}
+                            {options.length < 10 && (
+                                <Button variant="outline" onClick={handleAddOption} className="w-full h-11 rounded-xl border-dashed font-bold"><Plus className="h-4 w-4 mr-2" /> Добавить вариант</Button>
+                            )}
+                        </div>
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                                <Label htmlFor="anon-poll" className="font-bold cursor-pointer">Анонимный опрос</Label>
+                                <Checkbox id="anon-poll" checked={isAnonymous} onCheckedChange={(v) => setIsAnonymous(!!v)} />
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                                <Label htmlFor="multi-poll" className="font-bold cursor-pointer">Несколько вариантов</Label>
+                                <Checkbox id="multi-poll" checked={isMultipleChoice} onCheckedChange={(v) => setIsMultipleChoice(!!v)} />
+                            </div>
+                        </div>
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="gap-2">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl">{t('cancel')}</Button>
+                    <Button onClick={handleSubmit} disabled={!question.trim() || options.some(o => !o.trim())} className="rounded-xl font-bold px-8">Создать</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -455,6 +529,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); const [stickyDate, setStickyDate] = useState<string | null>(null); const [showStickyDate, setShowStickyDate] = useState(false); const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [showNewPoll, setShowNewPoll] = useState(false);
 
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const [isMutedLocal, setIsMutedLocal] = useState(false);
@@ -551,9 +626,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       setFilesToSend(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (customPoll?: Poll) => {
     const finalC = messageContent; 
-    if ((!finalC.trim() && filesToSend.length === 0) || !db) return;
+    if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     
     setIsSending(true); setMessageContent(''); setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     
@@ -567,6 +642,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             readBy: [], 
             senderName: currentUser.name || currentUser.username, 
             attachments: [],
+            ...(customPoll && { poll: customPoll }),
             ...(replyToMessage && { 
                 replyTo: { 
                     messageId: replyToMessage.id, 
@@ -617,7 +693,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         await setDoc(mref, data);
 
         let lastMsgContent = finalC.trim();
-        if (!lastMsgContent && data.attachments.length > 0) {
+        if (customPoll) lastMsgContent = `Poll: ${customPoll.question}`;
+        else if (!lastMsgContent && data.attachments.length > 0) {
             lastMsgContent = data.attachments.length === 1 
                 ? t(data.attachments[0].type as any) 
                 : `${t('file')} (${data.attachments.length})`;
@@ -865,7 +942,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleSendMessage()}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setShowNewPoll(true)}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   
@@ -925,7 +1002,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       ))}
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
+      <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onCreate={(p) => handleSendMessage(p)} />
     </div>
   );
 }
-
