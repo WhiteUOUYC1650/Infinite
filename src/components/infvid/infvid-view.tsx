@@ -258,7 +258,7 @@ function VideoEditDialog({ video, onClose, db, t }: { video: SharedVideo, onClos
     return (
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent className="max-w-md rounded-3xl p-6 overflow-hidden">
-                <DialogTitle className="sr-only">{t('edit_video')}</DialogTitle>
+                <DialogTitle>{t('edit_video')}</DialogTitle>
                 <DialogHeader><DialogTitle>{t('edit_video')}</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -559,6 +559,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
 
                 <Dialog open={showComments} onOpenChange={setShowComments}>
                     <DialogContent className="max-w-md h-[65vh] rounded-t-[2.5rem] border-none p-0 overflow-hidden flex flex-col bg-card z-[120]">
+                        <DialogTitle className="sr-only">{t('comments')}</DialogTitle>
                         <DialogHeader className="p-4 border-b shrink-0 flex flex-row items-center justify-between">
                             <DialogTitle className="text-xs font-black uppercase tracking-widest opacity-60 ml-2">{t('comments')} ({comments.length})</DialogTitle>
                             <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="h-8 w-8 rounded-full"><X className="h-4 w-4" /></Button>

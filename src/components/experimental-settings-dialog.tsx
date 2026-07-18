@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, CheckCircle2, Download, Settings, Check } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -628,7 +628,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'infinitePrem': return (
               <div className='p-6 space-y-6'>
-                  <div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none" : "bg-primary")}>
+                  <div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none bg-primary/80 backdrop-blur-xl" : "bg-primary")}>
                       <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" />
                       <div className="relative z-10 space-y-4">
                           <div className='flex items-center justify-between'>
@@ -853,6 +853,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => handleResetState(), 200); }}>
       <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", (experimentalDesign || glassEffect) && "rounded-[2.5rem] border-none shadow-2xl")}>
+        <DialogTitle className="sr-only">{t(page as any)}</DialogTitle>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
           <DialogTitle className="text-lg font-black font-headline tracking-tight">{t(page as any) || t('settings')}</DialogTitle>
