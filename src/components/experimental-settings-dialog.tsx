@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, ChevronRight as ChevronRightIcon, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -179,6 +179,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);
   const [isBuyingPrem, setIsBuyingPrem] = useState(false);
 
+  const PREM_COST = 500;
+
   const transfersQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'transfers'), 
@@ -235,14 +237,26 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const handleBuyPrem = async () => {
     if (!db || !currentUser.uid || isBuyingPrem) return;
+    
     setIsBuyingPrem(true);
     try {
-        const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, {
-            subscriptionTier: 'prem',
-            subscriptionStartedAt: serverTimestamp(),
-            showPremBadge: true
+        await runTransaction(db, async (tx) => {
+            const userRef = doc(db, 'users', currentUser.uid);
+            const userSnap = await tx.get(userRef);
+            if (!userSnap.exists()) throw new Error("User not found");
+            const data = userSnap.data();
+            const currentGold = data.infGoldBalance || 0;
+
+            if (currentGold < PREM_COST) throw new Error(t('not_enough_gold'));
+
+            tx.update(userRef, {
+                infGoldBalance: increment(-PREM_COST),
+                subscriptionTier: 'prem',
+                subscriptionStartedAt: serverTimestamp(),
+                showPremBadge: true
+            });
         });
+
         toast({ title: t('dm_success'), description: "Infinite Prem activated!" });
         handleBack();
     } catch (e: any) {
@@ -708,32 +722,32 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              <Star className="h-6 w-6" />
+                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                              <LayoutGrid className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Infinite Prem 1.0</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Redesigned adaptive interface and new subscription logic.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">InfMarket</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">First global marketplace for bot logic and plugins.</p>
                           </div>
                       </div>
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                              <ListTodo className="h-6 w-6" />
+                              <Sparkles className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Polls Restored</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Full-featured poll creation system is back.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Floating Pill UI</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Modern adaptive chat header for experimental design.</p>
                           </div>
                       </div>
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
-                              <RefreshCw className="h-6 w-6" />
+                              <CheckCircle2 className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">1.0 Stability</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Preparing for the major release with various fixes.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Global 1.0 Release</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">No more beta! Infinite is now open for everyone.</p>
                           </div>
                       </div>
                   </div>
@@ -833,8 +847,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <h2 className='text-4xl font-black font-headline'>Infinite</h2>
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{currentVersion}</Badge>
                   </div>
-                  <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-bold text-primary leading-relaxed">
-                    Preparing for the major 1.0 release.
+                  <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed">
+                    ОФИЦИАЛЬНЫЙ РЕЛИЗ 1.0
                   </div>
                   <p className='text-sm text-muted-foreground leading-relaxed max-w-xs font-medium'>{t('version_info_detail')}</p>
               </div>
@@ -853,7 +867,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => handleResetState(), 200); }}>
       <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", (experimentalDesign || glassEffect) && "rounded-[2.5rem] border-none shadow-2xl")}>
-        <DialogTitle className="sr-only">{t(page as any)}</DialogTitle>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
           <DialogTitle className="text-lg font-black font-headline tracking-tight">{t(page as any) || t('settings')}</DialogTitle>

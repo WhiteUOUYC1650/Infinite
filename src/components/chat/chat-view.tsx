@@ -189,7 +189,9 @@ function NewPollDialog({ open, onOpenChange, onCreate }: { open: boolean, onOpen
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md rounded-3xl p-6 overflow-hidden">
-                <DialogTitle className="text-xl font-bold font-headline">{t('create_poll')}</DialogTitle>
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-bold font-headline">{t('create_poll')}</DialogTitle>
+                </DialogHeader>
                 <ScrollArea className="max-h-[60vh] py-4 pr-4">
                     <div className="space-y-6">
                         <div className="space-y-2">
@@ -323,7 +325,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const isCircleComplete = message.circleStatus === 'complete';
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     
-    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
+    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : 'voiceStatus' === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
     
     const handleSaveToDevice = async () => {
         if (!mediaUrl) return;
@@ -814,7 +816,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         ) : (
             <>
                 {headerContent}
-                <div className={cn("absolute top-[calc(56px+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
+                <div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
                     <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel" : "bg-muted/95")}>
                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
                     </div>
@@ -930,7 +932,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
             <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
                 <Textarea 
-                  placeholder={chatType === 'channel' ? t('publish_placeholder') : t('message_placeholder')} 
+                  placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} 
                   value={messageContent} 
                   onChange={(e) => setMessageContent(e.target.value)} 
                   onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
