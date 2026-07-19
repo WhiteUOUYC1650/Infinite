@@ -7,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "1.0 Pre-Release 1";
+const CURRENT_APP_VERSION = "1.0";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
@@ -38,32 +38,16 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
         localStorage.setItem('launch_count', launches.toString());
 
         try {
-            // 1. Get user info to check beta status
-            let isBetaTester = false;
-            if (authUser) {
-                const userSnap = await getDoc(doc(db, 'users', authUser.uid));
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    isBetaTester = userData.isBetaTester || userData.username === '@Infinite';
-                }
-            }
-
-            // 2. Get version info
             const verDocRef = doc(db, 'info', 'ver');
             const verSnap = await getDoc(verDocRef);
             
             if (verSnap.exists()) {
                 const data = verSnap.data();
                 setUpdateInfo(data);
-
-                // 3. Determine target version based on beta status
-                const targetVersion = isBetaTester 
-                    ? (data.latestClosedBeta || data.latest) 
-                    : data.latest;
+                const targetVersion = data.latest;
 
                 if (targetVersion && targetVersion !== CURRENT_APP_VERSION) {
                     setIsUpdateAvailable(true);
-                    // Show prompt every 10 launches if update is available
                     if (launches % 10 === 0) {
                         setIsOpen(true);
                     }
@@ -94,7 +78,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
         
         if (Capacitor.isNativePlatform()) {
           const { Filesystem, Directory } = await import('@capacitor/filesystem');
-          const fileName = `infinite_update_${(updateInfo.latestClosedBeta || updateInfo.latest).replace(/\s+/g, '_')}.apk`;
+          const fileName = `infinite_update_${(updateInfo.latest).replace(/\s+/g, '_')}.apk`;
           
           try {
             await Filesystem.mkdir({
@@ -102,8 +86,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
               directory: Directory.Documents,
               recursive: true,
             });
-          } catch (e) {
-          }
+          } catch (e) {}
 
           await Filesystem.writeFile({
             path: `Infinite/${fileName}`,
@@ -124,7 +107,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           
           const link = document.createElement('a');
           link.href = url;
-          link.download = `infinite_update_${(updateInfo.latestClosedBeta || updateInfo.latest).replace(/\s+/g, '_')}.apk`;
+          link.download = `infinite_update_${(updateInfo.latest).replace(/\s+/g, '_')}.apk`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -162,7 +145,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
             isUpdateAvailable={isUpdateAvailable}
             onUpdate={downloadUpdate}
             isDownloading={isDownloading}
-            targetVersion={updateInfo ? (updateInfo.latestClosedBeta || updateInfo.latest) : undefined}
+            targetVersion={updateInfo ? updateInfo.latest : undefined}
         />
     </UpdatePromptContext.Provider>
   );

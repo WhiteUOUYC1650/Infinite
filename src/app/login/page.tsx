@@ -67,7 +67,6 @@ export default function LoginPage() {
     },
   });
 
-  // Reset login state on mount to prevent being stuck
   useEffect(() => {
     setNeedsTwoFactor(false);
     setIsRecoveryMode(false);
@@ -98,22 +97,6 @@ export default function LoginPage() {
           return;
         }
 
-        // 0.6 Beta: Beta-tester only access check
-        const isBetaTester = userData.isBetaTester;
-        const isAdmin = userData.username === '@Infinite';
-        const isBot = userData.isBot || userData.isCustomBot;
-
-        if (!isBetaTester && !isAdmin && !isBot) {
-          await auth.signOut();
-          toast({
-            variant: 'destructive',
-            title: t('sign_in_failed_toast_title'),
-            description: t('access_denied_beta_only'),
-          });
-          setIsLoading(false);
-          return;
-        }
-
         if (userData.loginProtectionEnabled) {
           setUserId(uid);
           setNeedsTwoFactor(true);
@@ -124,7 +107,6 @@ export default function LoginPage() {
           router.push('/');
         }
       } else {
-        // Handle case where auth user exists but firestore user doesn't
         setIsLoading(false);
         router.push('/');
       }
@@ -358,7 +340,7 @@ export default function LoginPage() {
         const securitySnap = await getDoc(securityRef);
         
         if (securitySnap.exists() && securitySnap.data().tempBotCode === botCodeInput.trim()) {
-            await updateDoc(securityRef, { tempBotCode: null }); // Clear it
+            await updateDoc(securityRef, { tempBotCode: null });
             localStorage.setItem('justLoggedIn', 'true');
             localStorage.setItem('isVerified', 'true');
             router.push('/');

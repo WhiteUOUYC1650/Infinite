@@ -259,7 +259,6 @@ function VideoEditDialog({ video, onClose, db, t }: { video: SharedVideo, onClos
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent className="max-w-md rounded-3xl p-6 overflow-hidden">
                 <DialogTitle>{t('edit_video')}</DialogTitle>
-                <DialogHeader><DialogTitle>{t('edit_video')}</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label>{t('infvid_thumbnail_label')}</Label>
@@ -562,7 +561,7 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                         <DialogTitle className="sr-only">{t('comments')}</DialogTitle>
                         <DialogHeader className="p-4 border-b shrink-0 flex flex-row items-center justify-between">
                             <DialogTitle className="text-xs font-black uppercase tracking-widest opacity-60 ml-2">{t('comments')} ({comments.length})</DialogTitle>
-                            <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="h-8 w-8 rounded-full"><X className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="h-8 rounded-full"><X className="h-4 w-4" /></Button>
                         </DialogHeader>
                         <ScrollArea className="flex-1">
                             <div className="p-5"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>

@@ -21,14 +21,14 @@ export type User = {
   showPremBadge?: boolean;
   lastDailyBonusClaimed?: Timestamp;
   loginProtectionEnabled?: boolean;
-  storyExpirationDuration?: number; // in hours, 0 for never
-  subscriptions?: string[]; // Array of user IDs the user is subscribed to
+  storyExpirationDuration?: number; 
+  subscriptions?: string[];
   subscriberCount?: number;
   isBetaTester?: boolean;
   isCustomBot?: boolean;
   botOwnerId?: string;
   activeSessionId?: string | null;
-  watchLater?: string[]; // Array of video IDs
+  watchLater?: string[];
   birthday?: {
     day: number;
     month: number;
@@ -46,7 +46,7 @@ export type ReplyInfo = {
 
 export type PollOption = {
   text: string;
-  votes: string[]; // user IDs
+  votes: string[];
 };
 
 export type Poll = {
@@ -59,7 +59,7 @@ export type Poll = {
 export type MessageAttachment = {
   id: string;
   type: 'image' | 'video' | 'music' | 'file';
-  url?: string; // For images (base64)
+  url?: string;
   fileName?: string;
   fileMimeType?: string;
   chunkIds?: string[];
@@ -104,7 +104,6 @@ export type Message = {
   fromChannelId?: string;
 };
 
-// Bot Logic Types
 export type BotBlockType = 
   | 'event_start' 
   | 'event_message'
@@ -126,7 +125,6 @@ export type BotBlockType =
   | 'action_send_video'
   | 'action_send_music'
   | 'action_send_file'
-  | 'action_ai_prompt'
   | 'ui_header'
   | 'ui_text'
   | 'ui_button'
@@ -162,6 +160,18 @@ export type CustomBot = {
   createdAt: Timestamp;
 };
 
+export type BotMarketItem = {
+  id: string;
+  authorId: string;
+  name: string;
+  description: string;
+  price: number;
+  data: BotBlock[];
+  installs: number;
+  buyers: string[];
+  type: 'script' | 'plugin';
+};
+
 export type Transfer = {
   id: string;
   senderId: string;
@@ -189,24 +199,6 @@ export type MusicChunk = {
   senderId: string;
 };
 
-export type VoiceChunk = {
-  data: string;
-  part: number;
-  senderId: string;
-};
-
-export type CircleChunk = {
-  data: string;
-  part: number;
-  senderId: string;
-};
-
-export type FileChunk = {
-  data: string;
-  part: number;
-  senderId: string;
-};
-
 export type Chat = {
   id: string;
   type: "dm" | "group" | "channel";
@@ -221,15 +213,6 @@ export type Chat = {
   link?: string;
   discussionChatId?: string;
   allowedReactions?: string[]; 
-  typingStatus?: Record<string, boolean>; 
-};
-
-export type CallParticipant = {
-  uid: string;
-  name: string;
-  avatar?: string;
-  joinedAt: Timestamp;
-  isSpeaking?: boolean;
 };
 
 export type Call = {
@@ -237,10 +220,7 @@ export type Call = {
   callerId: string;
   calleeId?: string; 
   status: 'calling' | 'active' | 'ended';
-  isGroupCall?: boolean;
   isVideo?: boolean; 
-  callType?: 'video_chat' | 'broadcast';
-  participants?: CallParticipant[];
   offer?: RTCSessionDescriptionInit;
   answer?: RTCSessionDescriptionInit;
   callerCandidates?: RTCIceCandidateInit[];

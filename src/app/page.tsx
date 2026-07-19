@@ -89,23 +89,6 @@ export default function Home() {
             
             if (userDoc.exists()) {
                 const data = userDoc.data();
-                
-                // 0.6 Beta: Verify beta-tester status for existing session
-                const isBetaTester = data.isBetaTester;
-                const isAdmin = data.username === '@Infinite';
-                const isBot = data.isBot || data.isCustomBot;
-
-                if (!isBetaTester && !isAdmin && !isBot) {
-                  await auth.signOut();
-                  toast({
-                    variant: 'destructive',
-                    title: t('sign_in_failed_toast_title'),
-                    description: t('access_denied_beta_only'),
-                  });
-                  router.push('/login');
-                  return;
-                }
-
                 const isVerified = localStorage.getItem('isVerified') === 'true';
                 
                 if (data.loginProtectionEnabled && !isVerified) {
@@ -193,8 +176,6 @@ export default function Home() {
     const handleBeforeUnload = () => { decrementSession(); };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Heartbeat for online status (2 minutes)
-    // Optimization: only run when tab is visible to save battery
     const interval = setInterval(() => {
       if (auth.currentUser && document.visibilityState === 'visible') {
         setDoc(userRef, { status: 'online', lastSeen: serverTimestamp(), activeSessionId: sessionId }, { merge: true });

@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -740,77 +740,93 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isGeneralChat = item.id === 'GENERAL_CHAT';
   const canWrite = item.type !== 'channel' || isOwner;
 
-  return (
-    <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
-      <header className={cn("flex-shrink-0 flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0 z-30", colorTheme === 'frutiger' ? 'bg-white/85 dark:bg-black/80 backdrop-blur-2xl' : 'bg-background')}>
-        <div className="flex items-center p-2 h-14">
-            <Button variant="ghost" size="icon" onClick={onClose} className="mr-2 shrink-0"><X className="h-5 w-5" /></Button>
-            <div className="flex-1 flex items-center min-w-0 h-12">
-                <button className="flex items-center text-left hover:bg-accent px-3 py-1 rounded-md transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
-                    <div className='shrink-0 h-10 w-10'>
-                        {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-6 w-6 text-primary" /> : (item.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />)}</AvatarFallback></Avatar>)}
+  const Icon = isGeneralChat ? Globe : (item.type === 'group' ? Users : Megaphone);
+
+  const headerContent = (
+    <div className={cn(
+        "flex items-center w-full transition-all duration-300",
+        experimentalDesign ? "h-14 px-3" : "p-2 h-14"
+    )}>
+        <Button variant="ghost" size="icon" onClick={onClose} className="mr-1 shrink-0 rounded-full"><X className="h-5 w-5" /></Button>
+        <div className="flex-1 flex items-center min-w-0 h-full">
+            <button className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                <div className='shrink-0 h-10 w-10'>
+                    {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-6 w-6 text-primary" /> : (item.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />)}</AvatarFallback></Avatar>)}
+                </div>
+                <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
+                        {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
                     </div>
-                    <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
-                            {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="shrink-0" />}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground truncate font-medium mt-0.5">{getStatusLine()}</p>
-                    </div>
-                </button>
-            </div>
-            {!isGeneralChat && (
-              <DropdownMenu modal={false}>
+                    <p className="text-[10px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">{getStatusLine()}</p>
+                </div>
+            </button>
+        </div>
+        <div className="flex items-center gap-1 shrink-0 ml-1">
+            {isDM && !otherUser?.isBot && !isSavedMessages && (
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
+                    <Phone className="h-5 w-5" />
+                </Button>
+            )}
+            <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0 ml-2">
-                    <MoreVertical className="h-5 w-5" />
-                  </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                        <MoreVertical className="h-5 w-5" />
+                    </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
-                  {!isSavedMessages && (
-                      <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
-                        <Info className="mr-3 h-4 w-4 text-primary" />
-                        <span>{t('view_profile')}</span>
-                      </DropdownMenuItem>
-                  )}
-                  {isDM && !otherUser?.isBot && !isSavedMessages && (
-                    <>
-                        <DropdownMenuItem onSelect={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
-                            <Phone className="mr-3 h-4 w-4 text-primary" />
-                            <span>{t('audio_call')}</span>
+                    {!isSavedMessages && (
+                        <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                            <Info className="mr-3 h-4 w-4 text-primary" />
+                            <span className="font-bold">{t('view_profile')}</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: true } }))}>
-                            <Video className="mr-3 h-4 w-4 text-primary" />
-                            <span>{t('video_call')}</span>
+                    )}
+                    {(isOwner || isAdmin || isDM || isSavedMessages) && (
+                        <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
+                            <Eraser className="mr-3 h-4 w-4" />
+                            <span className="font-bold">{t('clear_history')}</span>
                         </DropdownMenuItem>
-                    </>
-                  )}
-                  {(isOwner || isAdmin || isDM || isSavedMessages) && (
-                      <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
-                        <Eraser className="mr-3 h-4 w-4" />
-                        <span>{t('clear_history')}</span>
-                      </DropdownMenuItem>
-                  )}
-                  {!isSavedMessages && (isOwner || isAdmin || isDM) && (
-                      <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
-                        <Trash2 className="mr-3 h-4 w-4" />
-                        <span>{t('delete_chat')}</span>
-                      </DropdownMenuItem>
-                  )}
+                    )}
+                    {!isSavedMessages && (isOwner || isAdmin || isDM) && (
+                        <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
+                            <Trash2 className="mr-3 h-4 w-4" />
+                            <span className="font-bold">{t('delete_chat')}</span>
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            </DropdownMenu>
         </div>
-        <div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-            <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", (experimentalDesign || glassEffect) ? "glass-panel" : "bg-muted/95")}>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
+    </div>
+  );
+
+  return (
+    <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+      <header className={cn(
+          "flex-shrink-0 z-30 transition-all duration-300",
+          experimentalDesign 
+            ? "fixed top-[env(safe-area-inset-top)] left-4 right-4 mt-2" 
+            : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0"
+      )}>
+        {experimentalDesign ? (
+            <div className="glass-panel rounded-[2rem] shadow-2xl border-white/20 backdrop-blur-3xl overflow-hidden">
+                {headerContent}
             </div>
-        </div>
+        ) : (
+            <>
+                {headerContent}
+                <div className={cn("absolute top-[calc(56px+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
+                    <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel" : "bg-muted/95")}>
+                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
+                    </div>
+                </div>
+            </>
+        )}
       </header>
+
       <div className="relative flex-1 bg-background overflow-hidden min-h-0 z-10">
         <div ref={scrollContainerRef} onScroll={handleScroll} className="absolute inset-0 overflow-y-auto px-2 md:px-4 flex flex-col overscroll-behavior-y-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div ref={listInnerRef} className="space-y-1.5 py-2 flex flex-col min-h-full">
-            <div className="flex-1" />
+            <div className={cn("flex-1", experimentalDesign && "min-h-[80px]")} />
             {messages?.map((m, i) => {
                 const msgDate = getSafeDate(m.timestamp); const prevMsg = messages[i - 1]; const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
                 let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
@@ -914,23 +930,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
             <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full">
                 <Textarea 
-                  placeholder={t('message_placeholder')} 
+                  placeholder={chatType === 'channel' ? t('publish_placeholder') : t('message_placeholder')} 
                   value={messageContent} 
                   onChange={(e) => setMessageContent(e.target.value)} 
                   onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                   className={cn(
-                      "min-h-[40px] h-[40px] max-h-32 resize-none border rounded-2xl transition-all duration-300",
+                      "min-h-[44px] h-[44px] max-h-32 py-3 resize-none border rounded-2xl transition-all duration-300",
                       (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                   )} 
                 />
-                <div className="flex items-center gap-1.5 shrink-0 h-[40px]">
+                <div className="flex items-center gap-1.5 shrink-0 h-[44px]">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
+                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
                       >
                         <Paperclip className="h-5 w-5" />
                       </Button>
@@ -938,25 +954,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", (experimentalDesign || glassEffect) ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl")}>
                       <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')}><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')}><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')}><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')}><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setShowNewPoll(true)}><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')} className="font-bold"><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')} className="font-bold"><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')} className="font-bold"><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')} className="font-bold"><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="font-bold"><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   
                   <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} multiple />
                   
                   {messageContent.trim() || filesToSend.length > 0 ? (
-                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-9 w-9 rounded-full transition-all active:scale-95", (experimentalDesign || glassEffect) ? "bg-primary/45 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-10 w-10 rounded-full transition-all active:scale-95", (experimentalDesign || glassEffect) ? "bg-primary/60 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <Button 
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('circle')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                         onMouseUp={() => stopRecording(false)} 
@@ -968,7 +984,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-9 w-9 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('voice')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                         onMouseUp={() => stopRecording(false)} 
