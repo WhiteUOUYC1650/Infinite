@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, orderBy, doc, setDoc, deleteDoc, Timestamp, runTransaction, updateDoc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, setDoc, deleteDoc, Timestamp, runTransaction, updateDoc, getDoc, getDocs, increment, arrayUnion } from 'firebase/firestore';
 import type { AuthenticatedUser, CustomBot, BotMarketItem } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost, X, LayoutGrid, ShoppingBag, Search, Download, Star, ExternalLink, Info, Coins } from 'lucide-react';
@@ -256,12 +256,20 @@ function MarketView({ currentUser }: { currentUser: AuthenticatedUser }) {
     const db = useFirestore();
     const { toast } = useToast();
     const [search, setSearch] = useState('');
-    const itemsQuery = useMemo(() => { if (!db) return null; return query(collection(db, 'marketItems'), orderBy('installs', 'desc')); }, [db]);
+    
+    const itemsQuery = useMemo(() => { 
+        if (!db) return null; 
+        return query(collection(db, 'marketItems'), orderBy('installs', 'desc')); 
+    }, [db]);
+    
     const { data: items, loading } = useCollection<BotMarketItem>(itemsQuery);
 
     const filtered = useMemo(() => {
         if (!items) return [];
-        return items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || i.description.toLowerCase().includes(search.toLowerCase()));
+        return items.filter(i => 
+            i.name.toLowerCase().includes(search.toLowerCase()) || 
+            i.description.toLowerCase().includes(search.toLowerCase())
+        );
     }, [items, search]);
 
     const handleBuy = async (item: BotMarketItem) => {

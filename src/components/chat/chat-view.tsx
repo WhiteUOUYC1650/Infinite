@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -533,7 +533,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showNewPoll, setShowNewPoll] = useState(false);
 
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const [isMutedLocal, setIsMutedLocal] = useState(false);
 
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
@@ -555,10 +555,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
       chunksRef.current = []; mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = async () => { const blob = new Blob(chunksRef.current, { type: mr.mimeType }); if (blob.size > 50) handleSendMediaMessage(blob, type); stream.getTracks().forEach(t => t.stop()); };
-      mr.start(); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); setRecordingDuration(0); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+      mr.start(); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); setRecordingDuration(0); setIsRecordingLocked(false); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
     } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
   };
-  const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { if (canceled) chunksRef.current = []; mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); };
+  const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { if (canceled) chunksRef.current = []; mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
   
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
   
@@ -746,58 +746,75 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const headerContent = (
     <div className={cn(
-        "flex items-center w-full transition-all duration-300",
-        experimentalDesign ? "h-14 px-3" : "p-2 h-14"
+        "flex items-center w-full transition-all duration-300 gap-2",
+        experimentalDesign ? "h-14 px-1" : "p-2 h-14"
     )}>
-        <Button variant="ghost" size="icon" onClick={onClose} className="mr-1 shrink-0 rounded-full"><X className="h-5 w-5" /></Button>
-        <div className="flex-1 flex items-center min-w-0 h-full">
+        {/* Left Part: Close */}
+        <div className={cn(
+            experimentalDesign ? "glass-panel rounded-2xl h-12 w-12 flex items-center justify-center border-white/20" : "flex items-center"
+        )}>
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
+        </div>
+
+        {/* Middle Part: Info */}
+        <div className={cn(
+            "flex-1 flex items-center min-w-0 h-full",
+            experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20"
+        )}>
             <button className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
-                <div className='shrink-0 h-10 w-10'>
-                    {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} />) : (<Avatar className="h-10 w-10"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-6 w-6 text-primary" /> : (item.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />)}</AvatarFallback></Avatar>)}
+                <div className='shrink-0 h-9 w-9'>
+                    {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} className="h-9 w-9" />) : (<Avatar className="h-9 w-9"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-5 w-5 text-primary" /> : (item.type === 'group' ? <Users className='h-4 w-4 text-muted-foreground' /> : <Megaphone className='h-4 w-4 text-muted-foreground' />)}</AvatarFallback></Avatar>)}
                 </div>
-                <div className="ml-3 min-w-0 flex flex-col justify-center h-full">
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-base font-bold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
-                        {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
+                <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full">
+                    <div className="flex items-center gap-1.5">
+                        <h2 className="text-[15px] font-bold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
+                        {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3 h-3 shrink-0" />}
                     </div>
-                    <p className="text-[10px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">{getStatusLine()}</p>
+                    <p className="text-[9px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">{getStatusLine()}</p>
                 </div>
             </button>
         </div>
-        <div className="flex items-center gap-1 shrink-0 ml-1">
-            {isDM && !otherUser?.isBot && !isSavedMessages && (
-                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
-                    <Phone className="h-5 w-5" />
-                </Button>
-            )}
-            <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
-                        <MoreVertical className="h-5 w-5" />
+
+        {/* Right Part: Actions */}
+        {!isGeneralChat && (
+            <div className={cn(
+                "flex items-center gap-1 shrink-0 h-full",
+                experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20"
+            )}>
+                {isDM && !otherUser?.isBot && !isSavedMessages && (
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
+                        <Phone className="h-5 w-5" />
                     </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
-                    {!isSavedMessages && (
-                        <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
-                            <Info className="mr-3 h-4 w-4 text-primary" />
-                            <span className="font-bold">{t('view_profile')}</span>
-                        </DropdownMenuItem>
-                    )}
-                    {(isOwner || isAdmin || isDM || isSavedMessages) && (
-                        <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
-                            <Eraser className="mr-3 h-4 w-4" />
-                            <span className="font-bold">{t('clear_history')}</span>
-                        </DropdownMenuItem>
-                    )}
-                    {!isSavedMessages && (isOwner || isAdmin || isDM) && (
-                        <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
-                            <Trash2 className="mr-3 h-4 w-4" />
-                            <span className="font-bold">{t('delete_chat')}</span>
-                        </DropdownMenuItem>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+                )}
+                <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                            <MoreVertical className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
+                        {!isSavedMessages && (
+                            <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+                                <Info className="mr-3 h-4 w-4 text-primary" />
+                                <span className="font-bold">{t('view_profile')}</span>
+                            </DropdownMenuItem>
+                        )}
+                        {(isOwner || isAdmin || isDM || isSavedMessages) && (
+                            <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
+                                <Eraser className="mr-3 h-4 w-4" />
+                                <span className="font-bold">{t('clear_history')}</span>
+                            </DropdownMenuItem>
+                        )}
+                        {!isSavedMessages && (isOwner || isAdmin || isDM) && (
+                            <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
+                                <Trash2 className="mr-3 h-4 w-4" />
+                                <span className="font-bold">{t('delete_chat')}</span>
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        )}
     </div>
   );
 
@@ -810,7 +827,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0"
       )}>
         {experimentalDesign ? (
-            <div className="glass-panel rounded-[2rem] shadow-2xl border-white/20 backdrop-blur-3xl overflow-hidden">
+            <div className="bg-transparent overflow-hidden">
                 {headerContent}
             </div>
         ) : (
@@ -821,7 +838,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
                     </div>
                 </div>
-            </>
+        </>
         )}
       </header>
 
@@ -845,7 +862,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         <div className={cn(
             "absolute bottom-4 right-4 z-[90] transition-all duration-300 transform",
-            showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
+            showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none",
+            experimentalDesign && "bottom-20"
         )}>
             <Button 
                 variant="secondary" 
@@ -885,13 +903,22 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             (experimentalDesign || glassEffect) ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
-            <div className={cn("absolute inset-0 z-50 flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", (experimentalDesign || glassEffect) ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md")}>
+            <div className={cn(
+              "absolute inset-0 z-[100] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", 
+              (experimentalDesign || glassEffect) ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md"
+            )}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                 <span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
-                <span className="text-xs text-muted-foreground ml-2 font-bold uppercase tracking-widest">{isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}</span>
+                <span className="text-[10px] text-muted-foreground ml-2 font-black uppercase tracking-widest">{isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}</span>
+                {isRecordingLocked && <div className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full"><Clock className="h-3 w-3 text-red-500" /><span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">LOCKED</span></div>}
               </div>
-              <div className="flex items-center gap-2"><Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button></div>
+              <div className="flex items-center gap-2">
+                  <Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button>
+                  {(isRecordingLocked || !isMobile) && (
+                      <Button onClick={() => stopRecording(false)} className="rounded-full h-9 w-9 bg-primary text-white shadow-lg"><Square className="h-4 w-4 fill-white" /></Button>
+                  )}
+              </div>
             </div>
           )}
           <div className="max-w-3xl mx-auto w-full h-full flex flex-col">
@@ -977,8 +1004,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('circle')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
-                        onMouseUp={() => stopRecording(false)} 
-                        onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} 
+                        onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
+                        onTouchEnd={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
                       >
                         <Camera className="h-5 w-5" />
                       </Button>
@@ -989,8 +1016,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
                         onMouseDown={() => startRecording('voice')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
-                        onMouseUp={() => stopRecording(false)} 
-                        onTouchEnd={(e) => { e.preventDefault(); stopRecording(false); }} 
+                        onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
+                        onTouchEnd={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
                       >
                         <Mic className="h-5 w-5" />
                       </Button>
