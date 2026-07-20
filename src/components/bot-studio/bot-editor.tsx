@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -319,7 +320,7 @@ export function BotEditor({ bot, onBack }: { bot: CustomBot, onBack: () => void 
                 </div>
                 <div className="min-w-0 flex-1">
                     <h1 className="text-base font-black font-headline truncate leading-tight">{botName}</h1>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 0.6.1</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Bot Editor 1.0</p>
                 </div>
             </div>
         </div>

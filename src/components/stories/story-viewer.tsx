@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -13,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Capacitor } from '@capacitor/core';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +48,73 @@ const getSafeDate = (ts: any): Date => {
   return new Date();
 };
 
+const STANDARD_COLORS: Record<string, string> = {
+  '0': '#000000',
+  '1': '#0000AA',
+  '2': '#00AA00',
+  '3': '#00AAAA',
+  '4': '#AA0000',
+  '5': '#AA00AA',
+  '6': '#FFAA00',
+  '7': '#AAAAAA',
+  '8': '#555555',
+  '9': '#5555FF',
+  'a': '#55FF55',
+  'b': '#55FFFF',
+  'c': '#FF5555',
+  'd': '#FF55FF',
+  'e': '#FFFF55',
+  'f': '#FFFFFF',
+};
+
+const ColoredText = ({ text }: { text: string }) => {
+  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+  const parts = text.split(regex);
+  
+  if (parts.length === 1) return <>{text}</>;
+
+  let currentColor: string | undefined = undefined;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        
+        if (part.startsWith('§')) {
+          if (part.startsWith('§[')) {
+            const hex = part.slice(2, -1);
+            currentColor = `#${hex}`;
+          } else {
+            const code = part[1].toLowerCase();
+            currentColor = STANDARD_COLORS[code];
+          }
+          return null; 
+        }
+        
+        return (
+          <span key={i} style={{ color: currentColor }}>
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
+const processMarkdownChildren = (children: any): any => {
+    return React.Children.map(children, child => {
+        if (typeof child === 'string') {
+            return <ColoredText text={child} />;
+        }
+        if (React.isValidElement(child) && child.props.children) {
+            return React.cloneElement(child, {
+                children: processMarkdownChildren(child.props.children)
+            } as any);
+        }
+        return child;
+    });
+};
+
 export function StoryViewer({ userId, stories, onClose, currentUser, user }: StoryViewerProps) {
   const db = useFirestore();
   const { t } = useLanguage();
@@ -66,7 +136,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
   const currentStory = stories[currentIndex];
   const isOwner = userId === currentUser.uid;
 
-  // Mark story as viewed
   useEffect(() => {
     if (!currentStory || !db) return;
     
@@ -143,52 +212,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
     }
   };
 
-  const handleCopyText = () => {
-    if (currentStory.caption) {
-      navigator.clipboard.writeText(currentStory.caption);
-      toast({ title: t('copy_success_toast') });
-    }
-  };
-
-  const handleSaveToGallery = async () => {
-    if (currentStory.mediaUrl) {
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const { Filesystem, Directory } = await import('@capacitor/filesystem');
-          const cleanBase64 = currentStory.mediaUrl.split(',')[1];
-          const fileName = `infinite_story_${currentStory.id}.jpg`;
-          
-          // Ensure folder Infinite exists in Documents (standard user-accessible folder)
-          try {
-              await Filesystem.mkdir({
-                  path: 'Infinite',
-                  directory: Directory.Documents,
-                  recursive: true
-              });
-          } catch (e) {}
-
-          await Filesystem.writeFile({
-            path: `Infinite/${fileName}`,
-            data: cleanBase64,
-            directory: Directory.Documents,
-          });
-          toast({ title: t('dm_success'), description: "Saved to Documents/Infinite" });
-        } catch (e) {
-          console.error(e);
-          toast({ variant: 'destructive', title: 'Error', description: "Failed to save story natively." });
-        }
-      } else {
-        const link = document.createElement('a');
-        link.href = currentStory.mediaUrl;
-        link.download = `infinite-story-${currentStory.id}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast({ title: t('dm_success') });
-      }
-    }
-  };
-
   if (!mounted || !currentStory) return null;
 
   const storyDate = getSafeDate(currentStory.timestamp);
@@ -197,7 +220,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
   const content = (
     <>
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300 w-screen h-svh overflow-hidden">
-      {/* Media Content */}
       <div 
         className="relative w-full h-full bg-zinc-950 overflow-hidden flex items-center justify-center"
         onMouseDown={() => setIsPaused(true)}
@@ -214,23 +236,38 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             />
             {currentStory.caption && (
               <div className="absolute bottom-0 left-0 right-0 p-8 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-black/90 via-black/40 to-transparent text-center z-[215]">
-                <p className="text-white text-xl font-medium drop-shadow-lg max-w-lg mx-auto">
-                  {currentStory.caption}
-                </p>
+                <div className="text-white text-xl font-medium drop-shadow-lg max-w-lg mx-auto prose prose-invert">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                        p: ({children}) => <p>{processMarkdownChildren(children)}</p>,
+                        a: ({children}) => <span>{children}</span>
+                    }}
+                  >
+                    {currentStory.caption}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
           </>
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#FF8C00] to-[#FF4500] flex items-center justify-center p-10 text-center">
-            <p className="text-white text-3xl md:text-5xl font-black font-headline leading-tight drop-shadow-2xl animate-in zoom-in duration-500 max-w-2xl">
-              {currentStory.caption}
-            </p>
+          <div className="w-full h-full flex items-center justify-center p-10 text-center relative" style={{ background: 'var(--primary)' }}>
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
+            <div className="relative z-10 text-white text-3xl md:text-5xl font-black font-headline leading-tight drop-shadow-2xl animate-in zoom-in duration-500 max-w-2xl prose prose-invert">
+                <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                        p: ({children}) => <p>{processMarkdownChildren(children)}</p>,
+                        a: ({children}) => <span>{children}</span>
+                    }}
+                >
+                    {currentStory.caption || ''}
+                </ReactMarkdown>
+            </div>
           </div>
         )}
 
-        {/* Top Overlay - Progress and Header */}
         <div className="absolute top-0 left-0 right-0 p-4 pt-[calc(1.5rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/80 via-black/40 to-transparent z-[220]">
-          {/* Progress Bars */}
           <div className="flex gap-1.5 mb-6 max-w-4xl mx-auto">
             {stories.map((_, i) => (
               <div key={i} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
@@ -244,7 +281,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             ))}
           </div>
 
-          {/* User Info & Actions */}
           <div className="flex items-center justify-between max-w-4xl mx-auto px-2">
             <div className="flex items-center gap-3">
               <Avatar className="w-11 h-11 border-2 border-white/20 shadow-lg">
@@ -267,18 +303,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="rounded-xl z-[10000] w-48">
-                  {currentStory.caption && (
-                    <DropdownMenuItem onClick={handleCopyText} className="font-bold">
-                      <Copy className="w-4 h-4 mr-2" />
-                      {t('copy_text')}
-                    </DropdownMenuItem>
-                  )}
-                  {currentStory.mediaUrl && (
-                    <DropdownMenuItem onClick={handleSaveToGallery} className="font-bold">
-                      <Download className="w-4 h-4 mr-2" />
-                      {t('save_to_device')}
-                    </DropdownMenuItem>
-                  )}
                   {isOwner && (
                     <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10 font-bold">
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -295,7 +319,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
           </div>
         </div>
 
-        {/* Views Count */}
         <div className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-8 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-[230]">
           <Eye className="w-4 h-4 text-white" />
           <span className="text-white text-xs font-bold">
@@ -303,7 +326,6 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
           </span>
         </div>
 
-        {/* Navigation Touch Zones */}
         <div className="absolute inset-0 flex z-[210]">
           <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { e.stopPropagation(); handlePrev(); }} />
           <div className="w-1/3 h-full" onClick={() => setIsPaused(!isPaused)} />

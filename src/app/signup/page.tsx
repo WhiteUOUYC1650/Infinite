@@ -34,6 +34,7 @@ import { useTheme } from '@/context/theme-context';
 import type { User } from '@/types';
 
 const formSchema = z.object({
+  name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
   username: z.string()
     .min(4, { message: 'Username must be at least 4 characters.'})
     .refine(value => !/\s/.test(value), { message: 'Username must not contain spaces.'})
@@ -53,6 +54,7 @@ export default function SignUpPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: '',
       username: '',
       email: '',
       password: '',
@@ -83,9 +85,9 @@ export default function SignUpPage() {
         const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
 
         transaction.set(userDocRef, {
-          name: isBotUser ? 'Infinite' : usernameWithAt,
+          name: values.name,
           username: usernameWithAt,
-          email: values.email, // Store email for recovery lookup
+          email: values.email,
           status: 'online',
           statusMessage: isBotUser 
             ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!'
@@ -163,8 +165,6 @@ export default function SignUpPage() {
             });
         }
 
-        console.error('Error signing up:', error);
-
         if (error.message === t('username_taken_error')) {
             form.setError('username', { message: t('username_taken_error') });
             return;
@@ -231,6 +231,19 @@ export default function SignUpPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
              <FormField
               control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('nickname_label')}</FormLabel>
+                  <FormControl>
+                    <Input placeholder={t('nickname_placeholder')} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
               name="username"
               render={({ field }) => (
                 <FormItem>
@@ -273,7 +286,7 @@ export default function SignUpPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? t('creating_account_button') : t('create_account_button')}
             </Button>
           </form>

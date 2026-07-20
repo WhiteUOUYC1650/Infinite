@@ -1,22 +1,15 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite'; }
     
-    // Media chunks for reliable uploads
-    match /videoChunks/{chunkId} { allow create, read, list: if isSignedIn(); allow delete: if isAdmin(); }
-    match /musicChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
-    match /fileChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
-    match /voiceChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
-    match /circleChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
-    match /apkChunks/{chunkId} { allow read, list: if true; allow create, delete: if isAdmin(); }
-    
     match /users/{userId} {
       allow read: if true;
       allow list: if isSignedIn();
       allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
-      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge']));
+      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge', 'birthday', 'name', 'statusMessage', 'avatar']));
       allow delete: if request.auth.uid == userId || isAdmin();
     }
     
@@ -24,27 +17,38 @@ service cloud.firestore {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn();
-      match /messages/{messageId} { allow read, write, list: if isSignedIn(); }
+      match /messages/{messageId} { 
+        allow read, list: if isSignedIn();
+        allow create, update, delete: if isSignedIn();
+      }
     }
-
-    match /videos/{videoId} {
-      allow read, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
-      match /comments/{commentId} { allow read, write, list: if isSignedIn(); }
-    }
-    
-    match /info/ver { allow get: if true; allow write: if isAdmin(); }
-    match /usernames/{username} { allow get: if true; allow create, delete: if isSignedIn(); }
-    match /chatLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
-    match /botLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
     
     match /customBots/{botId} { 
-      allow read, write, list: if isSignedIn(); 
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
       match /userStates/{userId} { allow read, write, list: if isSignedIn(); } 
+    }
+
+    match /marketItems/{itemId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.authorId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['installs', 'buyers']));
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
     
     match /stories/{storyId} { allow read, write, list: if isSignedIn(); }
     match /transfers/{transferId} { allow read, create, list: if isSignedIn(); }
+    match /videos/{videoId} { allow read, list: if isSignedIn(); allow create: if isSignedIn(); allow update, delete: if isSignedIn(); match /comments/{commentId} { allow read, write, list: if isSignedIn(); } }
+    match /videoChunks/{chunkId} { allow create, read, list: if isSignedIn(); allow delete: if isAdmin(); }
+    match /musicChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
+    match /fileChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
+    match /voiceChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
+    match /circleChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
+    match /apkChunks/{chunkId} { allow read, list: if true; allow create, delete: if isAdmin(); }
+    match /info/ver { allow get: if true; allow write: if isAdmin(); }
+    match /usernames/{username} { allow get: if true; allow create, delete: if isSignedIn(); }
+    match /chatLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
+    match /botLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }
   }
 }

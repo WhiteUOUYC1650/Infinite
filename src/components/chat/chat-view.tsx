@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -333,7 +334,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const isCircleComplete = message.circleStatus === 'complete';
     const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     
-    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : 'voiceStatus' === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
+    useEffect(() => { const loadMedia = async () => { const cached = await getCachedFile(message.id); if (cached) { setMediaUrl(cached); onMediaLoad(); return; } if (message.imageUrl) { const url = await fetchAndCacheImage(message.id, message.imageUrl); if (url) { setMediaUrl(url); onMediaLoad(); } return; } if (!db) return; if (message.videoStatus === 'complete' || message.musicStatus === 'complete' || message.voiceStatus === 'complete' || message.circleStatus === 'complete' || message.fileStatus === 'complete') { try { const col = message.videoStatus === 'complete' ? 'videoChunks' : message.musicStatus === 'complete' ? 'musicChunks' : message.voiceStatus === 'complete' ? 'voiceChunks' : message.circleStatus === 'complete' ? 'circleChunks' : 'fileChunks'; const chunkIds = message.videoChunkIds || message.musicChunkIds || message.voiceChunkIds || message.circleChunkIds || message.fileChunkIds || []; const chunkSnaps = await Promise.all(chunkIds.map(id => getDoc(doc(db, col, id)))); const chunksData = chunkSnaps.filter(s => s.exists()).map(s => s.data() as { part: number, data: string }); chunksData.sort((a, b) => a.part - b.part); const assembled = chunksData.map(c => c.data).join(''); const mime = message.videoMimeType || message.musicMimeType || message.voiceMimeType || message.circleMimeType || message.fileMimeType || 'application/octet-stream'; const dataUrl = `data:${mime};base64,${assembled}`; await cacheFile(message.id, dataUrl); const finalUrl = await getCachedFile(message.id); if (finalUrl) { setMediaUrl(finalUrl); onMediaLoad(); } } catch (e) { console.error("Media failed", e); } } }; loadMedia(); }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad]);
     
     const handleSaveToDevice = async () => {
         if (!mediaUrl) return;
@@ -561,12 +562,36 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
       const stream = await navigator.mediaDevices.getUserMedia(constraints); activeStreamRef.current = stream;
       const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
-      chunksRef.current = []; mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = async () => { const blob = new Blob(chunksRef.current, { type: mr.mimeType }); if (blob.size > 50) handleSendMediaMessage(blob, type); stream.getTracks().forEach(t => t.stop()); };
-      mr.start(); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); setRecordingDuration(0); setIsRecordingLocked(false); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
+      chunksRef.current = []; 
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => { 
+          if (chunksRef.current.length > 0) {
+            const blob = new Blob(chunksRef.current, { type: mr.mimeType }); 
+            if (blob.size > 50) handleSendMediaMessage(blob, type); 
+          }
+          stream.getTracks().forEach(t => t.stop()); 
+      };
+      mr.start(200); // Small time slice ensures data is pushed frequently
+      if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); 
+      setRecordingDuration(0); setIsRecordingLocked(false); 
+      timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
     } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
   };
-  const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { if (canceled) chunksRef.current = []; mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
+
+  const stopRecording = (canceled: boolean) => { 
+    if (timerRef.current) clearInterval(timerRef.current); 
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { 
+        if (canceled) {
+            chunksRef.current = []; // Explicitly clear before stopping
+            mediaRecorderRef.current.onstop = () => {
+                activeStreamRef.current?.getTracks().forEach(t => t.stop());
+                activeStreamRef.current = null;
+            };
+        }
+        mediaRecorderRef.current.stop(); 
+    } 
+    setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); 
+  };
   
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
   
@@ -723,7 +748,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
-    if (!db) return; setIsSending(true);
+    if (!db || blob.size < 100) return; 
+    setIsSending(true);
     try {
       const reader = new FileReader(); reader.readAsDataURL(blob);
       reader.onload = async () => {
@@ -731,7 +757,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const mref = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks')); await setDoc(mref, { data: base64, part: 0, senderId: currentUser.uid });
         const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
         if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [mref.id]; msgData.voiceDuration = recordingDuration; } 
-        else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleDuration = recordingDuration; }
+        else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [mref.id]; msgData.circleDuration = recordingDuration; }
         const msgRef = doc(collection(db, 'chats', item.id, 'messages')); await setDoc(msgRef, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...msgData, id: msgRef.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', timestamp: Timestamp.now() } });
       };
     } catch (e) { console.error(e); } finally { setIsSending(false); }
@@ -769,7 +795,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
             experimentalDesign && !glassEffect && "bg-card/40"
         )}>
-            <button className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+            <button 
+                disabled={isGeneralChat}
+                className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full disabled:hover:bg-transparent" 
+                onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}
+            >
                 <div className='shrink-0 h-9 w-9'>
                     {isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} className="h-9 w-9" />) : (<Avatar className="h-9 w-9"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-5 w-5 text-primary" /> : (item.type === 'group' ? <Users className='h-4 w-4 text-muted-foreground' /> : <Megaphone className='h-4 w-4 text-muted-foreground' />)}</AvatarFallback></Avatar>)}
                 </div>
@@ -936,8 +966,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className={cn(
-              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl border-t", 
-              "bg-background w-full h-full"
+              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl border-t bg-background", 
+              "w-full h-full"
             )}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />

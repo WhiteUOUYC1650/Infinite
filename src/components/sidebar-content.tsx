@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -589,16 +590,15 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
                 <button className={cn(
-                  "flex items-center gap-2 flex-1 truncate p-1.5 rounded-2xl hover:bg-sidebar-accent/50 text-left transition-all",
-                  (experimentalDesign || glassEffect) && "experimental-glow",
-                  !(experimentalDesign || glassEffect) && "bg-sidebar-background border border-border/50 shadow-sm"
+                  "flex-1 truncate p-3 rounded-2xl hover:bg-sidebar-accent/50 text-center transition-all",
+                  (experimentalDesign || glassEffect) ? "experimental-glow flex flex-col items-center gap-2" : "bg-sidebar-background border border-border/50 shadow-sm flex items-center gap-2 text-left"
                 )}>
                     {currentUser.uid && currentUser.name && (
-                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className="h-9 w-9" />
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className={cn("shrink-0", (experimentalDesign || glassEffect) ? "h-11 w-11" : "h-9 w-9")} />
                     )}
-                    <div className="flex-1 truncate">
-                    <p className="font-bold text-sm leading-tight">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{currentUser.isDeleted ? '' : t(currentUser.status as any || 'online')}</p>
+                    <div className={cn("truncate", (experimentalDesign || glassEffect) ? "w-full" : "flex-1")}>
+                        <p className="font-bold text-sm leading-tight truncate">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-black truncate">{currentUser.isDeleted ? '' : t(currentUser.status as any || 'online')}</p>
                     </div>
                 </button>
             </PopoverTrigger>
@@ -679,7 +679,7 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
   const isSavedMessages = otherUser?.id === currentUserId;
   const unreadCount = item.unreadCounts?.[currentUserId] || 0;
   const isSelected = selectedId === item.id;
-  const isVerified = !isSavedMessages && (otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot');
+  const isVerified = !isSavedMessages && (otherUser.username === '@Infinite' || otherUser.username === '@InfiniteBot' || otherUser.username === '@VeoBot' || otherUser.username === '@GeminiBot');
   const isPrem = !isSavedMessages && otherUser.subscriptionTier === 'prem' && otherUser.showPremBadge;
   const isBetaTester = !isSavedMessages && otherUser.isBetaTester;
   const displayName = isSavedMessages ? t('saved_messages') : (otherUser.isDeleted ? t('deleted_account') : otherUser.name);
@@ -741,11 +741,13 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
                             )
                         )}
                         {AttachmentIcon}
-                        <div className="truncate flex-1">
+                        <div className="truncate flex-1 overflow-hidden">
                             <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
                               components={{ 
-                                p: ({children}) => <span className="inline">{children}</span>,
-                                a: ({children}) => <span>{children}</span> 
+                                p: ({children}) => <span className="inline truncate">{children}</span>,
+                                a: ({children}) => <span>{children}</span>,
+                                span: ({children}) => <span>{children}</span>
                               }}
                             >
                                 {displayContent}
@@ -833,11 +835,13 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
                     )
                 ) : null}
                 {AttachmentIcon}
-                <div className="truncate flex-1">
+                <div className="truncate flex-1 overflow-hidden">
                     <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
                       components={{ 
-                        p: ({children}) => <span className="inline">{senderPrefix}{children}</span>,
-                        a: ({children}) => <span>{children}</span> 
+                        p: ({children}) => <span className="inline truncate">{senderPrefix}{children}</span>,
+                        a: ({children}) => <span>{children}</span>,
+                        span: ({children}) => <span>{children}</span>
                       }}
                     >
                         {displayContent}

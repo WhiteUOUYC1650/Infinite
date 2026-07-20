@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -99,6 +100,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
     if (!db) return;
     try {
         await updateDoc(doc(db, 'customBots', bot.id), { isActive: !bot.isActive });
+        toast({ title: t('dm_success') });
     } catch (e) { console.error(e); }
   };
 

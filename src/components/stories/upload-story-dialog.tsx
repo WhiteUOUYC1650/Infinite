@@ -12,10 +12,12 @@ import { AuthenticatedUser } from '@/types';
 import { Loader2, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/context/theme-context';
 
 export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
   const { t } = useLanguage();
   const db = useFirestore();
+  const { theme } = useTheme();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -80,7 +82,8 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         caption: caption.trim() || null,
         timestamp: now,
         expiresAt: expiresAt,
-        viewedBy: []
+        viewedBy: [],
+        theme: theme // Store theme to use as background if no mediaUrl
       });
 
       toast({ title: t('dm_success'), description: t('story_upload_success') });
