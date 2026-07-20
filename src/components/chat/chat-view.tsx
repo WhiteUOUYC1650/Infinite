@@ -757,19 +757,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         "flex items-center w-full transition-all duration-300 gap-2",
         experimentalDesign ? "h-14 px-1" : "p-2 h-14"
     )}>
-        {/* Left Part: Close */}
         <div className={cn(
             experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center",
-            experimentalDesign && !glassEffect && "bg-card/90"
+            experimentalDesign && !glassEffect && "bg-card/40"
         )}>
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
         </div>
 
-        {/* Middle Part: Info */}
         <div className={cn(
             "flex-1 flex items-center min-w-0 h-full",
             experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
-            experimentalDesign && !glassEffect && "bg-card/90"
+            experimentalDesign && !glassEffect && "bg-card/40"
         )}>
             <button className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                 <div className='shrink-0 h-9 w-9'>
@@ -785,45 +783,68 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             </button>
         </div>
 
-        {/* Right Part: Actions Grouped */}
         {!isGeneralChat && (
             <div className={cn(
-                "flex items-center gap-1 shrink-0 h-full",
+                "flex items-center shrink-0 h-full",
                 experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
-                experimentalDesign && !glassEffect && "bg-card/90"
+                experimentalDesign && !glassEffect && "bg-card/40"
             )}>
-                {isDM && !otherUser?.isBot && !isSavedMessages && (
-                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
-                        <Phone className="h-5 w-5" />
-                    </Button>
-                )}
-                <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
-                            <MoreVertical className="h-5 w-5" />
+                {isDM && !otherUser?.isBot && !isSavedMessages ? (
+                    <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
+                            <Phone className="h-5 w-5" />
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
-                        {!isSavedMessages && (
-                            <DropdownMenuItem onSelect={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
-                                <Info className="mr-3 h-4 w-4 text-primary" />
-                                <span className="font-bold">{t('view_profile')}</span>
-                            </DropdownMenuItem>
-                        )}
-                        {(isOwner || isAdmin || isDM || isSavedMessages) && (
-                            <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
-                                <Eraser className="mr-3 h-4 w-4" />
-                                <span className="font-bold">{t('clear_history')}</span>
-                            </DropdownMenuItem>
-                        )}
-                        {!isSavedMessages && (isOwner || isAdmin || isDM) && (
-                            <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
-                                <Trash2 className="mr-3 h-4 w-4" />
-                                <span className="font-bold">{t('delete_chat')}</span>
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                        <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                                    <MoreVertical className="h-5 w-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
+                                <DropdownMenuItem onSelect={() => setProfileDialogUser(otherUser)}>
+                                    <Info className="mr-3 h-4 w-4 text-primary" />
+                                    <span className="font-bold">{t('view_profile')}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
+                                    <Eraser className="mr-3 h-4 w-4" />
+                                    <span className="font-bold">{t('clear_history')}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
+                                    <Trash2 className="mr-3 h-4 w-4" />
+                                    <span className="font-bold">{t('delete_chat')}</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                ) : (
+                    <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                                <MoreVertical className="h-5 w-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" collisionPadding={16} className={cn("w-64 rounded-xl p-1 shadow-2xl z-[100]", (experimentalDesign || glassEffect) ? "glass-menu" : "bg-popover/95 backdrop-blur-xl")}>
+                            {!isSavedMessages && (
+                                <DropdownMenuItem onSelect={() => setShowChatProfile(true)}>
+                                    <Info className="mr-3 h-4 w-4 text-primary" />
+                                    <span className="font-bold">{t('view_profile')}</span>
+                                </DropdownMenuItem>
+                            )}
+                            {(isOwner || isAdmin || isDM || isSavedMessages) && (
+                                <DropdownMenuItem onSelect={handleClearHistory} className="text-destructive focus:bg-destructive/10">
+                                    <Eraser className="mr-3 h-4 w-4" />
+                                    <span className="font-bold">{t('clear_history')}</span>
+                                </DropdownMenuItem>
+                            )}
+                            {!isSavedMessages && (isOwner || isAdmin || isDM) && (
+                                <DropdownMenuItem onSelect={() => setShowChatProfile(true)} className="text-destructive focus:bg-destructive/10">
+                                    <Trash2 className="mr-3 h-4 w-4" />
+                                    <span className="font-bold">{t('delete_chat')}</span>
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
         )}
     </div>
@@ -911,12 +932,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {isMember && (canWrite ? (
         <footer className={cn(
             "flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300",
-            (experimentalDesign || glassEffect) ? "bg-transparent border-none absolute bottom-0 left-0 right-0" : "bg-background border-t"
+            (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0" : "bg-background border-t"
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className={cn(
-              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", 
-              "bg-background"
+              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl border-t", 
+              "bg-background w-full h-full"
             )}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -927,7 +948,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
               <div className="flex items-center gap-2">
                   <Button variant="ghost" onClick={() => stopRecording(true)} className="text-destructive font-black uppercase text-[10px] tracking-widest">{t('cancel')}</Button>
                   {(isRecordingLocked || !isMobile) && (
-                      <Button onClick={() => stopRecording(false)} className="rounded-full h-9 w-9 bg-primary text-white shadow-lg"><Square className="h-4 w-4 fill-white" /></Button>
+                      <Button onClick={() => stopRecording(false)} className="rounded-full h-10 w-10 bg-primary text-white shadow-lg"><Square className="h-4 w-4 fill-white" /></Button>
                   )}
               </div>
             </div>
