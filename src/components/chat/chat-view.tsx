@@ -55,6 +55,14 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 
+const iconMap = {
+    Users,
+    Megaphone,
+    Bookmark,
+    Globe,
+    Bot,
+};
+
 export const COMMON_EMOJIS = [
     '👍', '👎', '❤️', '🔥', '😂', '😮', '😢', '🙏', '👏', '🎉', '✨', 
     '🤔', '🤯', '🤩', '🥳', '🤮', '💩', '🤡', '👻', '👽', '👾', 
@@ -751,7 +759,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     )}>
         {/* Left Part: Close */}
         <div className={cn(
-            experimentalDesign ? "glass-panel rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center",
+            experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center",
             experimentalDesign && !glassEffect && "bg-card/90"
         )}>
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
@@ -760,7 +768,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         {/* Middle Part: Info */}
         <div className={cn(
             "flex-1 flex items-center min-w-0 h-full",
-            experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20 shadow-lg",
+            experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
             experimentalDesign && !glassEffect && "bg-card/90"
         )}>
             <button className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
@@ -781,7 +789,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         {!isGeneralChat && (
             <div className={cn(
                 "flex items-center gap-1 shrink-0 h-full",
-                experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20 shadow-lg",
+                experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
                 experimentalDesign && !glassEffect && "bg-card/90"
             )}>
                 {isDM && !otherUser?.isBot && !isSavedMessages && (
@@ -864,7 +872,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className={cn(
-            "absolute bottom-20 right-4 z-[90] transition-all duration-300 transform",
+            "absolute bottom-20 right-4 z-[110] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none",
             !experimentalDesign && "bottom-4"
         )}>
@@ -907,8 +915,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className={cn(
-              "absolute inset-0 z-[100] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", 
-              (experimentalDesign || glassEffect) ? "glass-panel rounded-none" : "bg-background/95 backdrop-blur-md"
+              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2", 
+              "bg-background"
             )}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />

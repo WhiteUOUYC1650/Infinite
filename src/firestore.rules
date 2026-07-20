@@ -24,7 +24,10 @@ service cloud.firestore {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn();
-      match /messages/{messageId} { allow read, write, list: if isSignedIn(); }
+      match /messages/{messageId} { 
+        allow read, list: if isSignedIn(); 
+        allow create, update, delete: if isSignedIn();
+      }
     }
 
     match /videos/{videoId} {
@@ -32,6 +35,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn();
       match /comments/{commentId} { allow read, write, list: if isSignedIn(); }
+    }
+    
+    match /marketItems/{itemId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (resource.data.authorId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['installs', 'buyers']));
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
     
     match /info/ver { allow get: if true; allow write: if isAdmin(); }

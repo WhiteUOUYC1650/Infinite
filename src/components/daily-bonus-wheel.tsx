@@ -98,9 +98,11 @@ export function DailyBonusWheel({ onSpin, isSpinning, setSpinning, canSpin, rota
             })}
         </div>
       </div>
-      <Button onClick={handleSpinClick} disabled={isSpinning || !canSpin} size="lg" className='w-48'>
-        {isSpinning ? <Loader2 className='animate-spin' /> : (canSpin ? t('spin_the_wheel') : t('come_back_tomorrow'))}
-      </Button>
+      {!isSpinning && (
+        <Button onClick={handleSpinClick} disabled={!canSpin} size="lg" className='w-48'>
+            {canSpin ? t('spin_the_wheel') : t('come_back_tomorrow')}
+        </Button>
+      )}
     </div>
   );
 }

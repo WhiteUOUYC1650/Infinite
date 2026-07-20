@@ -180,6 +180,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isBuyingPrem, setIsBuyingPrem] = useState(false);
 
   const PREM_COST = 500;
+  const PREM_COST_YEARLY = 5000;
 
   const transfersQuery = useMemo(() => {
     if (!db) return null;
@@ -235,9 +236,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }, 2000);
   };
 
-  const handleBuyPrem = async () => {
+  const handleBuyPrem = async (isYearly = false) => {
     if (!db || !currentUser.uid || isBuyingPrem) return;
     
+    const cost = isYearly ? PREM_COST_YEARLY : PREM_COST;
     setIsBuyingPrem(true);
     try {
         await runTransaction(db, async (tx) => {
@@ -247,10 +249,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             const data = userSnap.data();
             const currentGold = data.infGoldBalance || 0;
 
-            if (currentGold < PREM_COST) throw new Error(t('not_enough_gold'));
+            if (currentGold < cost) throw new Error(t('not_enough_gold'));
 
             tx.update(userRef, {
-                infGoldBalance: increment(-PREM_COST),
+                infGoldBalance: increment(-cost),
                 subscriptionTier: 'prem',
                 subscriptionStartedAt: serverTimestamp(),
                 showPremBadge: true
@@ -664,10 +666,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                       </div>
                   </div>
                   <div className="space-y-3">
-                      <Button onClick={handleBuyPrem} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">
+                      <Button onClick={() => handleBuyPrem(false)} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">
                           {isBuyingPrem ? <Loader2 className='animate-spin' /> : (currentUser.subscriptionTier === 'prem' ? "Current Plan" : t('subscribe_monthly'))}
                       </Button>
-                      <Button variant="outline" disabled={currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">
+                      <Button onClick={() => handleBuyPrem(true)} variant="outline" disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">
                           {t('subscribe_yearly')}
                       </Button>
                       <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('yearly_discount_note')}</p>
@@ -848,7 +850,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{currentVersion}</Badge>
                   </div>
                   <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed">
-                    ОФИЦИАЛЬНЫЙ РЕЛИЗ 1.0
+                    ОФИЦИАЛЬНЫЙ РЕЛИЗ
                   </div>
                   <p className='text-sm text-muted-foreground leading-relaxed max-w-xs font-medium'>{t('version_info_detail')}</p>
               </div>
