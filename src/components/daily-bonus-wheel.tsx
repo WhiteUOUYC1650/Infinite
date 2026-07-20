@@ -61,10 +61,11 @@ export function DailyBonusWheel({ onSpin, isSpinning, setSpinning, canSpin, rota
 
         {/* The wheel */}
         <div
-          className="relative w-full h-full rounded-full border-4 border-muted overflow-hidden transition-transform duration-[5000ms] ease-out"
+          className="relative w-full h-full rounded-full border-4 border-muted overflow-hidden transition-transform ease-out"
           style={{ 
               transform: `rotate(${rotation}deg)`,
-              background: `conic-gradient(${conicGradient})`
+              background: `conic-gradient(${conicGradient})`,
+              transitionDuration: '5000ms'
            }}
         >
             {/* The center circle */}
@@ -98,9 +99,14 @@ export function DailyBonusWheel({ onSpin, isSpinning, setSpinning, canSpin, rota
             })}
         </div>
       </div>
-      {!isSpinning && (
-        <Button onClick={handleSpinClick} disabled={!canSpin} size="lg" className='w-48'>
-            {canSpin ? t('spin_the_wheel') : t('come_back_tomorrow')}
+      {!isSpinning && canSpin && (
+        <Button onClick={handleSpinClick} size="lg" className='w-48'>
+            {t('spin_the_wheel')}
+        </Button>
+      )}
+      {!isSpinning && !canSpin && (
+        <Button disabled size="lg" className='w-48'>
+            {t('come_back_tomorrow')}
         </Button>
       )}
     </div>

@@ -1,6 +1,6 @@
-
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
-import { Sun, Moon, Languages } from 'lucide-react';
+import { Sun, Moon, Languages, ArrowLeft, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,8 +33,11 @@ import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
 import type { User } from '@/types';
 
-const formSchema = z.object({
+const step1Schema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
+});
+
+const step2Schema = z.object({
   username: z.string()
     .min(4, { message: 'Username must be at least 4 characters.'})
     .refine(value => !/\s/.test(value), { message: 'Username must not contain spaces.'})
@@ -51,22 +54,30 @@ export default function SignUpPage() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      username: '',
-      email: '',
-      password: '',
-    },
+  const [step, setStep] = useState(1);
+  const [nickname, setNickname] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form1 = useForm<z.infer<typeof step1Schema>>({
+    resolver: zodResolver(step1Schema),
+    defaultValues: { name: '' },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!auth || !db) return;
+  const form2 = useForm<z.infer<typeof step2Schema>>({
+    resolver: zodResolver(step2Schema),
+    defaultValues: { username: '', email: '', password: '' },
+  });
 
-    form.clearErrors();
+  const onStep1Submit = (values: z.infer<typeof step1Schema>) => {
+    setNickname(values.name);
+    setStep(2);
+  };
+
+  const onStep2Submit = async (values: z.infer<typeof step2Schema>) => {
+    if (!auth || !db) return;
+    setIsLoading(true);
+
     const usernameWithAt = '@' + values.username;
-    
     let createdUser: import('firebase/auth').User | null = null;
 
     try {
@@ -82,113 +93,31 @@ export default function SignUpPage() {
           throw new Error(t('username_taken_error'));
         }
         
-        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
-
         transaction.set(userDocRef, {
-          name: values.name,
+          name: nickname,
           username: usernameWithAt,
           email: values.email,
           status: 'online',
-          statusMessage: isBotUser 
-            ? 'I am the official Infinite bot. I can send you welcome messages and important announcements!'
-            : 'Hey there! I am using Infinite.',
+          statusMessage: 'Hey there! I am using Infinite.',
           hasSetNickname: true,
-          isBot: isBotUser,
+          isBot: false,
           infGoldBalance: 0,
           subscriptionTier: 'none',
         });
 
         transaction.set(usernameRef, { uid: createdUser!.uid });
-
-        if (isBotUser) {
-            let botPath = values.username;
-            if (usernameWithAt === '@InfiniteBot') botPath = 'Infinite';
-            if (usernameWithAt === '@VeoBot') botPath = 'Veo';
-
-            const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/' + botPath));
-            transaction.set(botLinkRef, { botId: createdUser!.uid });
-        }
       });
 
-      try {
-        const isBotUser = usernameWithAt === '@InfiniteBot' || usernameWithAt === '@VeoBot';
-        if (!isBotUser) {
-          const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
-          const botLinkSnap = await getDoc(botLinkRef);
-      
-          if (botLinkSnap.exists()) {
-              const botId = botLinkSnap.data().botId;
-              const botUserRef = doc(db, 'users', botId);
-              const botUserSnap = await getDoc(botUserRef);
-
-              if (botUserSnap.exists()) {
-                const botData = botUserSnap.data() as User;
-                const newUserId = createdUser!.uid;
-                const members = [newUserId, botId].sort();
-                const chatId = members.join('_');
-                const chatRef = doc(db, 'chats', chatId);
-                
-                const chatSnap = await getDoc(chatRef);
-                if (!chatSnap.exists()) {
-                    await setDoc(chatRef, {
-                        type: 'dm',
-                        members: members,
-                        unreadCounts: { [newUserId]: 1, [botId]: 0 },
-                        icon: 'Bot',
-                    });
-                }
-                
-                const messagesCollectionRef = collection(db, 'chats', chatId, 'messages');
-                const welcomeMessage = {
-                    senderId: newUserId,
-                    type: 'announcement',
-                    content: 'Welcome to Infinite!',
-                    timestamp: Timestamp.now(),
-                    senderName: botData.name,
-                    senderAvatar: botData.avatar || null
-                };
-                const msgRef = await addDoc(messagesCollectionRef, welcomeMessage);
-                await updateDoc(chatRef, { lastMessage: { ...welcomeMessage, id: msgRef.id } });
-              }
-          }
-        }
-      } catch (botError) {
-          console.error("Could not send welcome message from bot:", botError);
-      }
-      
       router.push('/welcome');
-
     } catch (error: any) {
-        if (createdUser) {
-            await deleteUser(createdUser).catch(e => {
-                console.error("Failed to clean up orphaned auth user:", e);
-            });
-        }
-
+        if (createdUser) await deleteUser(createdUser).catch(console.error);
         if (error.message === t('username_taken_error')) {
-            form.setError('username', { message: t('username_taken_error') });
-            return;
+            form2.setError('username', { message: t('username_taken_error') });
+        } else {
+            toast({ variant: 'destructive', title: t('signup_failed_toast_title'), description: error.message || t('unexpected_error') });
         }
-
-        if (error.code) {
-            switch (error.code) {
-                case 'auth/email-already-in-use':
-                    form.setError('email', { message: t('email_in_use_error') });
-                    return;
-                case 'auth/invalid-email':
-                    form.setError('email', { message: t('invalid_email_error') });
-                    return;
-                case 'auth/weak-password':
-                    form.setError('password', { message: t('weak_password_error') });
-                    return;
-            }
-        }
-        
-        toast({
-            variant: 'destructive',
-            title: t('signup_failed_toast_title'),
-            description: error.message || t('unexpected_error'),
-        });
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -196,11 +125,7 @@ export default function SignUpPage() {
     <div className="flex min-h-svh items-center justify-center bg-background relative overflow-hidden">
       <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-left))] flex items-center gap-2 z-10">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Languages className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><Languages className="h-5 w-5" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
               <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
@@ -208,94 +133,60 @@ export default function SignUpPage() {
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {isDarkMode ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+        <Button variant="ghost" size="icon" onClick={toggleTheme}>{isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</Button>
       </div>
+
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="text-4xl font-bold font-headline text-primary">Infinite</h1>
-          </div>
-          <p className="text-muted-foreground">
-            {t('signup_subtitle')}
-          </p>
+          <h1 className="text-4xl font-bold font-headline text-primary mb-2">Infinite</h1>
+          <p className="text-muted-foreground">{step === 1 ? t('nickname_label') : t('signup_subtitle')}</p>
         </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-             <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('nickname_label')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('nickname_placeholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('username_label')}</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                            @
-                        </span>
-                        <Input placeholder={t('username_placeholder')} className="pl-7" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('email_label')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('password_label')}</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="********" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('creating_account_button') : t('create_account_button')}
-            </Button>
-          </form>
-        </Form>
+
+        {step === 1 ? (
+            <Form {...form1}>
+                <form onSubmit={form1.handleSubmit(onStep1Submit)} className="space-y-4">
+                    <FormField control={form1.control} name="name" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t('nickname_label')}</FormLabel>
+                            <FormControl><Input placeholder={t('nickname_placeholder')} {...field} autoFocus /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <Button type="submit" className="w-full h-12 rounded-xl font-bold">{t('continue_button')}</Button>
+                </form>
+            </Form>
+        ) : (
+            <Form {...form2}>
+                <form onSubmit={form2.handleSubmit(onStep2Submit)} className="space-y-4">
+                    <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="mb-2 p-0 h-auto text-muted-foreground hover:bg-transparent"><ArrowLeft className="h-4 w-4 mr-1" /> {t('back_button') || 'Назад'}</Button>
+                    <FormField control={form2.control} name="username" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t('username_label')}</FormLabel>
+                            <FormControl>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">@</span>
+                                    <Input placeholder={t('username_placeholder')} className="pl-7" {...field} />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form2.control} name="email" render={({ field }) => (
+                        <FormItem><FormLabel>{t('email_label')}</FormLabel><FormControl><Input placeholder="name@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form2.control} name="password" render={({ field }) => (
+                        <FormItem><FormLabel>{t('password_label')}</FormLabel><FormControl><Input type="password" placeholder="********" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                        {t('create_account_button')}
+                    </Button>
+                </form>
+            </Form>
+        )}
+
         <p className="text-center text-sm text-muted-foreground">
-          {t('has_account_prompt')}{' '}
-          <Link href="/login" className="font-semibold text-primary hover:underline">
-            {t('sign_in_link')}
-          </Link>
+          {t('has_account_prompt')} <Link href="/login" className="font-semibold text-primary hover:underline">{t('sign_in_link')}</Link>
         </p>
       </div>
        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))]">

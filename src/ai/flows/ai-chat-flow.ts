@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview AI chat flow (Disabled).
  */

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -9,7 +8,7 @@ import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, 
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch, increment } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
@@ -543,6 +542,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showNewPoll, setShowNewPoll] = useState(false);
 
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
+  const isRecordingCanceledRef = useRef(false);
   const [isMutedLocal, setIsMutedLocal] = useState(false);
 
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
@@ -563,15 +563,17 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const stream = await navigator.mediaDevices.getUserMedia(constraints); activeStreamRef.current = stream;
       const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
       chunksRef.current = []; 
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      isRecordingCanceledRef.current = false;
+      mr.ondataavailable = (e) => { if (e.data.size > 0 && !isRecordingCanceledRef.current) chunksRef.current.push(e.data); };
       mr.onstop = async () => { 
-          if (chunksRef.current.length > 0) {
+          if (!isRecordingCanceledRef.current && chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: mr.mimeType }); 
             if (blob.size > 50) handleSendMediaMessage(blob, type); 
           }
           stream.getTracks().forEach(t => t.stop()); 
+          activeStreamRef.current = null;
       };
-      mr.start(200); // Small time slice ensures data is pushed frequently
+      mr.start(200); 
       if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); 
       setRecordingDuration(0); setIsRecordingLocked(false); 
       timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
@@ -580,14 +582,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const stopRecording = (canceled: boolean) => { 
     if (timerRef.current) clearInterval(timerRef.current); 
+    isRecordingCanceledRef.current = canceled;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { 
-        if (canceled) {
-            chunksRef.current = []; // Explicitly clear before stopping
-            mediaRecorderRef.current.onstop = () => {
-                activeStreamRef.current?.getTracks().forEach(t => t.stop());
-                activeStreamRef.current = null;
-            };
-        }
         mediaRecorderRef.current.stop(); 
     } 
     setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); 
@@ -806,7 +802,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full">
                     <div className="flex items-center gap-1.5">
                         <h2 className="text-[15px] font-bold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
-                        {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3 h-3 shrink-0" />}
+                        {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
                     </div>
                     <p className="text-[9px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">{getStatusLine()}</p>
                 </div>
@@ -896,7 +892,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <>
                 {headerContent}
                 <div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-                    <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel" : "bg-muted/95")}>
+                    <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel backdrop-blur-xl" : "bg-muted/95")}>
                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
                     </div>
                 </div>
@@ -923,7 +919,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className={cn(
-            "absolute bottom-20 right-4 z-[110] transition-all duration-300 transform",
+            "absolute bottom-24 right-4 z-[110] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none",
             !experimentalDesign && "bottom-4"
         )}>
@@ -966,7 +962,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className={cn(
-              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl border-t bg-background", 
+              "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl bg-background", 
               "w-full h-full"
             )}>
               <div className="flex items-center gap-3">

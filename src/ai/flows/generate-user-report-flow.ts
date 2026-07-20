@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview AI flow to generate user reports (Disabled).
  */

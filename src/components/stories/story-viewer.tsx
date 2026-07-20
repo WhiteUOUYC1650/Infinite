@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -251,7 +250,7 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             )}
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center p-10 text-center relative" style={{ background: 'var(--primary)' }}>
+          <div className="w-full h-full flex items-center justify-center p-10 text-center relative" style={{ background: 'hsl(var(--primary))' }}>
             <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
             <div className="relative z-10 text-white text-3xl md:text-5xl font-black font-headline leading-tight drop-shadow-2xl animate-in zoom-in duration-500 max-w-2xl prose prose-invert">
                 <ReactMarkdown 
@@ -272,9 +271,11 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             {stories.map((_, i) => (
               <div key={i} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-white transition-all duration-[50ms] ease-linear shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                  className="h-full bg-white transition-all shadow-[0_0_8px_rgba(255,255,255,0.5)]"
                   style={{ 
-                    width: i < currentIndex ? '100%' : i === currentIndex ? `${progress}%` : '0%' 
+                    width: i < currentIndex ? '100%' : i === currentIndex ? `${progress}%` : '0%',
+                    transitionDuration: '50ms',
+                    transitionTimingFunction: 'linear'
                   }}
                 />
               </div>

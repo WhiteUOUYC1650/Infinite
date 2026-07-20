@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -583,18 +582,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <Separator className="shrink-0" />
 
       <SidebarFooter className={cn(
-        "p-3 flex items-center shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] relative z-[100] border-t transition-all",
-        (experimentalDesign || glassEffect) ? "bg-sidebar/40 backdrop-blur-3xl m-3 rounded-[2rem] border-white/20 shadow-2xl" : "bg-sidebar"
+        "p-3 flex flex-col items-center shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] relative z-[100] border-t transition-all",
+        (experimentalDesign || glassEffect) ? "bg-sidebar/40 backdrop-blur-3xl m-3 rounded-[2.5rem] border-white/20 shadow-2xl" : "bg-sidebar"
       )}>
-        <div className="flex items-center gap-2 w-full">
+        <div className={cn("flex w-full gap-2 items-center", (experimentalDesign || glassEffect) ? "flex-col" : "flex-row")}>
           <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
             <PopoverTrigger asChild>
                 <button className={cn(
-                  "flex-1 truncate p-3 rounded-2xl hover:bg-sidebar-accent/50 text-center transition-all",
-                  (experimentalDesign || glassEffect) ? "experimental-glow flex flex-col items-center gap-2" : "bg-sidebar-background border border-border/50 shadow-sm flex items-center gap-2 text-left"
+                  "flex-1 truncate p-3 rounded-2xl hover:bg-sidebar-accent/50 transition-all",
+                  (experimentalDesign || glassEffect) ? "experimental-glow flex flex-col items-center gap-2 text-center w-full" : "bg-sidebar-background border border-border/50 shadow-sm flex items-center gap-2 text-left"
                 )}>
                     {currentUser.uid && currentUser.name && (
-                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className={cn("shrink-0", (experimentalDesign || glassEffect) ? "h-11 w-11" : "h-9 w-9")} />
+                    <UserAvatarWithStatus user={{id: currentUser.uid, name: currentUser.name, username: currentUser.username || '', avatar: currentUser.avatar, status: currentUser.status || "online", isDeleted: currentUser.isDeleted, isBetaTester: currentUser.isBetaTester, subscriptionTier: currentUser.subscriptionTier, showPremBadge: currentUser.showPremBadge }} className={cn("shrink-0", (experimentalDesign || glassEffect) ? "h-14 w-14" : "h-9 w-9")} />
                     )}
                     <div className={cn("truncate", (experimentalDesign || glassEffect) ? "w-full" : "flex-1")}>
                         <p className="font-bold text-sm leading-tight truncate">{currentUser.isDeleted ? t('deleted_account') : (currentUser.name || currentUser.email)}</p>
@@ -612,13 +611,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 />
             </PopoverContent>
           </Popover>
-          <div className="flex flex-col gap-1 shrink-0">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-8 w-8", (experimentalDesign || glassEffect) && "glass-circle rounded-xl")}>
+          <div className={cn("flex gap-1 shrink-0", (experimentalDesign || glassEffect) ? "flex-row w-full justify-center mt-1" : "flex-col")}>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-8 w-8", (experimentalDesign || glassEffect) && "glass-circle rounded-xl h-10 w-10")}>
                 {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 <span className="sr-only">Toggle theme</span>
             </Button>
             
-            <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-8 w-8", (experimentalDesign || glassEffect) && "glass-circle rounded-xl")}>
+            <Button variant="ghost" size="icon" onClick={() => setShowSettingsDialog(true)} className={cn("relative h-8 w-8", (experimentalDesign || glassEffect) && "glass-circle rounded-xl h-10 w-10")}>
                 <div className="relative">
                     <Cog className="h-4 w-4" />
                     {isUpdateAvailable && (
