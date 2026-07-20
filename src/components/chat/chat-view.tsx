@@ -598,7 +598,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
-      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>> = [];
+      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
 
       for (const file of selectedFiles) {
         if (file.size > maxSizeInBytes) {
@@ -841,7 +841,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
                     </div>
                 </div>
-        </>
+            </>
         )}
       </header>
 
