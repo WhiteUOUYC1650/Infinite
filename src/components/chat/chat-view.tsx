@@ -598,11 +598,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
-      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
+      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>> = [];
 
       for (const file of selectedFiles) {
         if (file.size > maxSizeInBytes) {
-            toast({ variant: 'destructive', title: t('file_too_large', { size: maxSizeText }) });
+            toast({ variant: 'destructive', title: t('video_too_large', { size: maxSizeText }) });
             continue;
         }
         
@@ -742,7 +742,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isGeneralChat = item.id === 'GENERAL_CHAT';
   const canWrite = item.type !== 'channel' || isOwner;
 
-  const Icon = isGeneralChat ? Globe : (item.type === 'group' ? Users : Megaphone);
+  const Icon = isGeneralChat ? Globe : (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : (item.type === 'group' ? Users : Megaphone));
 
   const headerContent = (
     <div className={cn(
@@ -751,7 +751,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     )}>
         {/* Left Part: Close */}
         <div className={cn(
-            experimentalDesign ? "glass-panel rounded-2xl h-12 w-12 flex items-center justify-center border-white/20" : "flex items-center"
+            experimentalDesign ? "glass-panel rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center",
+            experimentalDesign && !glassEffect && "bg-card/90"
         )}>
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
         </div>
@@ -759,7 +760,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         {/* Middle Part: Info */}
         <div className={cn(
             "flex-1 flex items-center min-w-0 h-full",
-            experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20"
+            experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20 shadow-lg",
+            experimentalDesign && !glassEffect && "bg-card/90"
         )}>
             <button className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
                 <div className='shrink-0 h-9 w-9'>
@@ -775,11 +777,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             </button>
         </div>
 
-        {/* Right Part: Actions */}
+        {/* Right Part: Actions Grouped */}
         {!isGeneralChat && (
             <div className={cn(
                 "flex items-center gap-1 shrink-0 h-full",
-                experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20"
+                experimentalDesign && "glass-panel rounded-2xl h-12 px-1 border-white/20 shadow-lg",
+                experimentalDesign && !glassEffect && "bg-card/90"
             )}>
                 {isDM && !otherUser?.isBot && !isSavedMessages && (
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={() => window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: item, otherUser, isVideo: false } }))}>
@@ -861,9 +864,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className={cn(
-            "absolute bottom-4 right-4 z-[90] transition-all duration-300 transform",
+            "absolute bottom-20 right-4 z-[90] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none",
-            experimentalDesign && "bottom-20"
+            !experimentalDesign && "bottom-4"
         )}>
             <Button 
                 variant="secondary" 
