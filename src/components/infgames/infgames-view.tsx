@@ -6,15 +6,17 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore } from '@/firebase';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import type { AuthenticatedUser } from '@/types';
-import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap, Smartphone, ShieldCheck, Lock, AlertTriangle, MessageCircle, X, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { useTheme } from '@/context/theme-context';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ScrollArea } from '../ui/scroll-area';
 
-type GameType = 'none' | 'gold_clicker';
+type GameType = 'none' | 'gold_clicker' | 'max_simulator';
 
 export function InfGamesView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
   const { t } = useLanguage();
@@ -25,6 +27,8 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
     switch (selectedGame) {
       case 'gold_clicker':
         return <GoldClickerGame currentUser={currentUser} onBack={() => setSelectedGame('none')} />;
+      case 'max_simulator':
+        return <MaxSimulatorGame onBack={() => setSelectedGame('none')} />;
       default:
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto pb-[calc(2rem+env(safe-area-inset-bottom))]">
@@ -34,6 +38,13 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
               icon={MousePointer2}
               color="bg-amber-500"
               onClick={() => setSelectedGame('gold_clicker')}
+            />
+            <GameCard 
+              title={t('game_max_simulator')}
+              description={t('game_max_simulator_desc')}
+              icon={Smartphone}
+              color="bg-indigo-600"
+              onClick={() => setSelectedGame('max_simulator')}
             />
             <div className="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-muted-foreground/40 gap-4">
                 <Gamepad2 className="h-12 w-12" />
@@ -64,8 +75,8 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 bg-muted/5 min-h-full">
+      <main className="flex-1 overflow-y-auto relative bg-muted/5">
+        <div className="p-4 md:p-6 min-h-full">
             {renderContent()}
         </div>
       </main>
@@ -100,6 +111,231 @@ function GameCard({ title, description, icon: Icon, color, onClick }: { title: s
             <Button className="w-full mt-auto rounded-2xl font-bold bg-primary group-hover:scale-105 transition-transform">
                 {t('play')}
             </Button>
+        </div>
+    );
+}
+
+function MaxSimulatorGame({ onBack }: { onBack: () => void }) {
+    const { t } = useLanguage();
+    const [gameState, setGameState] = useState<'phone' | 'install_prompt' | 'launching' | 'welcome' | 'chat_list' | 'chat_view' | 'fine' | 'prison'>('phone');
+    const [notifications, setNotifications] = useState<string[]>([]);
+    const [selectedChat, setSelectedChat] = useState<number>(0);
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const addNotification = (text: string) => {
+        setNotifications(prev => [text, ...prev].slice(0, 3));
+        setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n !== text));
+        }, 4000);
+    };
+
+    useEffect(() => {
+        if (gameState === 'welcome' || gameState === 'chat_list' || gameState === 'chat_view') {
+            const interval = setInterval(() => {
+                const pool = [t('max_notif_data_leak'), t('max_notif_fsb')];
+                addNotification(pool[Math.floor(Math.random() * pool.length)]);
+            }, 8000);
+            return () => clearInterval(interval);
+        }
+    }, [gameState, t]);
+
+    const handleChoice = (isSafe: boolean) => {
+        if (isSafe) {
+            setGameState('chat_list');
+        } else {
+            const outcome = Math.random() > 0.5 ? 'fine' : 'prison';
+            setGameState(outcome);
+        }
+    };
+
+    const renderGameContent = () => {
+        switch (gameState) {
+            case 'phone':
+                return (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-purple-900 flex flex-col items-center justify-between p-8 animate-in fade-in duration-700">
+                        <div className="text-center pt-20">
+                            <h2 className="text-6xl font-light text-white font-mono">
+                                {currentTime.getHours().toString().padStart(2, '0')}:
+                                {currentTime.getMinutes().toString().padStart(2, '0')}
+                            </h2>
+                            <p className="text-white/60 text-sm mt-2 uppercase tracking-widest font-bold">Safe Phone OS</p>
+                        </div>
+                        <div className="grid grid-cols-4 gap-6 w-full max-w-xs mb-20">
+                            {[1, 2, 3].map(i => <div key={i} className="aspect-square bg-white/10 rounded-2xl border border-white/5" />)}
+                            <button onClick={() => setGameState('install_prompt')} className="aspect-square bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 animate-pulse">
+                                <AlertTriangle className="text-white w-8 h-8" />
+                            </button>
+                        </div>
+                    </div>
+                );
+            case 'install_prompt':
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+                        <div className="bg-card border rounded-[2rem] p-8 max-w-sm w-full text-center space-y-6 shadow-2xl animate-in zoom-in duration-300">
+                            <div className="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto flex items-center justify-center text-white shadow-lg">
+                                <Smartphone className="w-10 h-10" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold font-headline">{t('game_max_simulator')}</h3>
+                                <p className="text-muted-foreground font-medium">{t('max_install_prompt')}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button variant="outline" disabled className="rounded-xl opacity-50 grayscale">{t('cancel')}</Button>
+                                <Button onClick={() => setGameState('launching')} className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700">{t('max_yes')}</Button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'launching':
+                return (
+                    <div className="w-full h-full bg-[#1e1b4b] flex flex-col items-center justify-center text-white gap-8 animate-in fade-in duration-500">
+                        <div className="w-24 h-24 bg-white/10 rounded-[2.5rem] flex items-center justify-center animate-bounce">
+                             <Smartphone className="w-12 h-12 text-indigo-400" />
+                        </div>
+                        <div className="text-center space-y-2">
+                            <p className="text-sm font-bold uppercase tracking-[0.3em] text-indigo-300">{t('max_launching')}</p>
+                            <p className="text-xs text-white/40 animate-pulse">{t('max_login_status')}</p>
+                        </div>
+                        <Progress value={80} className="w-48 h-1 bg-white/10" />
+                        {setTimeout(() => setGameState('welcome'), 3000) && null}
+                    </div>
+                );
+            case 'welcome':
+                return (
+                    <div className="w-full h-full bg-white flex flex-col items-center justify-center p-8 gap-8 animate-in slide-in-from-bottom duration-700">
+                        <div className="text-center space-y-4">
+                            <Smartphone className="w-20 h-20 text-indigo-600 mx-auto" />
+                            <h2 className="text-3xl font-black font-headline text-indigo-950 uppercase tracking-tighter">{t('max_welcome')}</h2>
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full border border-green-100 mx-auto w-fit">
+                                <ShieldCheck className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{t('max_secure_connection')}</span>
+                            </div>
+                        </div>
+                        <Button onClick={() => setGameState('chat_list')} className="w-full max-w-xs h-14 rounded-2xl bg-indigo-600 font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20">
+                            {t('continue_button')}
+                        </Button>
+                    </div>
+                );
+            case 'chat_list':
+                return (
+                    <div className="w-full h-full bg-slate-50 flex flex-col animate-in fade-in duration-300">
+                        <header className="bg-indigo-600 text-white p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between shadow-md">
+                            <h3 className="font-black text-xl font-headline tracking-tighter uppercase">MAX</h3>
+                            <Lock className="w-5 h-5 opacity-50" />
+                        </header>
+                        <ScrollArea className="flex-1">
+                            <div className="p-2 space-y-1">
+                                {[1, 2].map(i => (
+                                    <button key={i} onClick={() => { setSelectedChat(i); setGameState('chat_view'); }} className="w-full flex items-center gap-4 p-4 bg-white border rounded-2xl hover:bg-indigo-50 transition-colors group text-left">
+                                        <Avatar className="h-12 w-12 border-2 border-indigo-100">
+                                            <AvatarFallback className="bg-indigo-50 text-indigo-600 font-black">
+                                                {t(`max_chat_contact_${i}` as any).charAt(0)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-indigo-950">{t(`max_chat_contact_${i}` as any)}</p>
+                                            <p className="text-xs text-muted-foreground truncate italic">{t(`max_chat_msg_${i}` as any)}</p>
+                                        </div>
+                                        <Badge className="bg-red-500 text-white font-black">1</Badge>
+                                    </button>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                );
+            case 'chat_view':
+                return (
+                    <div className="w-full h-full bg-slate-100 flex flex-col animate-in slide-in-from-right duration-300">
+                        <header className="bg-indigo-600 text-white p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center gap-4 shadow-md">
+                            <Button variant="ghost" size="icon" onClick={() => setGameState('chat_list')} className="text-white"><ArrowLeft /></Button>
+                            <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-white/20 text-white font-bold">{t(`max_chat_contact_${selectedChat}` as any).charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-black uppercase tracking-tighter">{t(`max_chat_contact_${selectedChat}` as any)}</span>
+                        </header>
+                        <div className="flex-1 p-4 space-y-4">
+                            <div className="bg-white border p-4 rounded-2xl rounded-bl-none shadow-sm max-w-[85%] animate-in slide-in-from-left duration-500">
+                                <p className="text-sm font-medium leading-relaxed">{t(`max_chat_msg_${selectedChat}` as any)}</p>
+                            </div>
+                        </div>
+                        <footer className="p-4 bg-white border-t space-y-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                            <p className="text-[10px] font-black uppercase text-indigo-600/60 tracking-widest px-2">Выберите безопасный ответ:</p>
+                            <div className="flex flex-col gap-2">
+                                <Button variant="outline" className="h-12 rounded-xl text-xs font-bold text-left justify-start border-indigo-100 hover:bg-green-50 hover:text-green-700" onClick={() => handleChoice(true)}>
+                                    {t(`max_reply_safe_${selectedChat}` as any)}
+                                </Button>
+                                <Button variant="outline" className="h-12 rounded-xl text-xs font-bold text-left justify-start border-red-100 hover:bg-red-50 hover:text-red-700" onClick={() => handleChoice(false)}>
+                                    {t(`max_reply_dangerous_${selectedChat}` as any)}
+                                </Button>
+                            </div>
+                        </footer>
+                    </div>
+                );
+            case 'fine':
+                return (
+                    <div className="w-full h-full bg-red-50 flex flex-col items-center justify-center p-8 gap-8 animate-in fade-in duration-500">
+                        <div className="w-24 h-24 bg-red-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl animate-bounce">
+                             <AlertTriangle className="w-12 h-12" />
+                        </div>
+                        <div className="text-center space-y-4">
+                            <h2 className="text-4xl font-black font-headline text-red-700 uppercase tracking-tighter">{t('max_fine_title')}</h2>
+                            <p className="text-red-900 font-bold bg-white p-6 rounded-3xl border-2 border-red-200 shadow-xl">{t('max_fine_reason_1')}</p>
+                        </div>
+                        <Button onClick={() => setGameState('phone')} className="w-full max-w-xs h-14 rounded-2xl bg-indigo-600 font-black uppercase tracking-widest">
+                            {t('max_restart')}
+                        </Button>
+                    </div>
+                );
+            case 'prison':
+                return (
+                    <div className="w-full h-full bg-black text-white flex flex-col items-center justify-center p-8 gap-10 animate-in zoom-in duration-1000 overflow-hidden relative">
+                        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                            <div className="w-full h-full grid grid-cols-6 gap-0">
+                                {Array.from({length: 6}).map((_, i) => <div key={i} className="border-r border-white/50 h-full" />)}
+                            </div>
+                        </div>
+                        <Ban className="w-32 h-32 text-red-600 animate-pulse relative z-10" />
+                        <div className="text-center space-y-4 relative z-10">
+                            <h2 className="text-4xl font-black font-headline text-white uppercase tracking-[0.2em]">{t('max_prison_title')}</h2>
+                            <p className="text-white/60 font-medium italic">{t('max_prison_reason_1')}</p>
+                        </div>
+                        <Button onClick={() => setGameState('phone')} variant="outline" className="w-full max-w-xs h-14 rounded-2xl font-black uppercase tracking-widest border-white/20 hover:bg-white/10 relative z-10">
+                            {t('max_restart')}
+                        </Button>
+                    </div>
+                );
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
+            <header className="h-14 border-b flex items-center px-4 shrink-0 bg-background/80 backdrop-blur-md relative z-[110] pt-[calc(0.5rem+env(safe-area-inset-top))]">
+                <div className="flex items-center gap-3">
+                    < स्मार्टफोन className="h-5 w-5 text-indigo-600" />
+                    <span className="text-xs font-black uppercase tracking-widest opacity-40">{t('game_max_simulator')}</span>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onBack} className="ml-auto rounded-full h-10 w-10">
+                    <X className="h-5 w-5" />
+                </Button>
+            </header>
+            
+            <div className="flex-1 relative">
+                {renderGameContent()}
+                
+                {/* Simulated Overlay Notifications */}
+                <div className="absolute top-4 left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+                    {notifications.map((n, i) => (
+                        <div key={i} className="bg-indigo-950/90 text-white p-3 rounded-2xl border border-indigo-400/30 shadow-2xl text-[10px] font-bold animate-in slide-in-from-top-4 backdrop-blur-xl">
+                            {n}
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
@@ -323,3 +559,4 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
         </div>
     );
 }
+
