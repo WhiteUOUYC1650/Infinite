@@ -557,6 +557,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
   useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, scrollToBottom]);
 
+  // --- System Back Button Support ---
+  useEffect(() => {
+    const handleSystemBack = () => {
+        if (previewImage) setPreviewImage(null);
+        else if (showChatProfile) setShowChatProfile(false);
+        else if (profileDialogUser) setProfileDialogUser(null);
+        else if (showNewPoll) setShowNewPoll(false);
+        else if (replyToMessage) setReplyToMessage(null);
+        else if (filesToSend.length > 0) setFilesToSend([]);
+        else if (isRecordingVoice || isRecordingCircle) stopRecording(true);
+        else onClose();
+    };
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+    return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
+  }, [onClose, previewImage, showChatProfile, profileDialogUser, showNewPoll, replyToMessage, filesToSend.length, isRecordingVoice, isRecordingCircle]);
+
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
       const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
@@ -564,16 +585,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
       chunksRef.current = []; 
       isRecordingCanceledRef.current = false;
-      mr.ondataavailable = (e) => { if (e.data.size > 0 && !isRecordingCanceledRef.current) chunksRef.current.push(e.data); };
+      mr.ondataavailable = (e) => { 
+          if (e.data.size > 0 && !isRecordingCanceledRef.current) {
+              chunksRef.current.push(e.data); 
+          }
+      };
       mr.onstop = async () => { 
           if (!isRecordingCanceledRef.current && chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: mr.mimeType }); 
-            if (blob.size > 50) handleSendMediaMessage(blob, type); 
+            if (blob.size > 500) handleSendMediaMessage(blob, type); 
           }
           stream.getTracks().forEach(t => t.stop()); 
           activeStreamRef.current = null;
       };
-      mr.start(200); 
+      mr.start(500); 
       if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); 
       setRecordingDuration(0); setIsRecordingLocked(false); 
       timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
@@ -744,13 +769,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
-    if (!db || blob.size < 100) return; 
+    if (!db || blob.size < 500) return; 
     setIsSending(true);
     try {
       const reader = new FileReader(); reader.readAsDataURL(blob);
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        const mref = doc(collection(db, type === 'voice' ? 'voiceChunks' : 'circleChunks')); await setDoc(mref, { data: base64, part: 0, senderId: currentUser.uid });
+        const chunkCol = type === 'voice' ? 'voiceChunks' : 'circleChunks';
+        const mref = doc(collection(db, chunkCol)); 
+        await setDoc(mref, { data: base64, part: 0, senderId: currentUser.uid });
         const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
         if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [mref.id]; msgData.voiceDuration = recordingDuration; } 
         else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [mref.id]; msgData.circleDuration = recordingDuration; }
@@ -771,8 +798,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isSavedMessages = item.id === currentUser.uid;
   const isGeneralChat = item.id === 'GENERAL_CHAT';
   const canWrite = item.type !== 'channel' || isOwner;
-
-  const Icon = isGeneralChat ? Globe : (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : (item.type === 'group' ? Users : Megaphone));
 
   const headerContent = (
     <div className={cn(
@@ -877,7 +902,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   );
 
   return (
-    <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden", isMobile ? 'w-screen' : 'w-full')}>
+    <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden animate-in fade-in duration-300", isMobile ? 'w-screen' : 'w-full')}>
       <header className={cn(
           "flex-shrink-0 z-30 transition-all duration-300",
           experimentalDesign 
@@ -919,9 +944,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
 
         <div className={cn(
-            "absolute bottom-24 right-4 z-[110] transition-all duration-300 transform",
+            "absolute right-4 z-[110] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none",
-            !experimentalDesign && "bottom-4"
+            experimentalDesign ? "bottom-24" : "bottom-4"
         )}>
             <Button 
                 variant="secondary" 

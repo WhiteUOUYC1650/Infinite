@@ -15,6 +15,7 @@ import { Progress } from '../ui/progress';
 import { useTheme } from '@/context/theme-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
+import { Capacitor } from '@capacitor/core';
 
 type GameType = 'none' | 'gold_clicker' | 'max_simulator';
 
@@ -22,6 +23,19 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
   const { t } = useLanguage();
   const { theme: colorTheme } = useTheme();
   const [selectedGame, setSelectedGame] = useState<GameType>('none');
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handleSystemBack = () => {
+        if (selectedGame !== 'none') setSelectedGame('none');
+        else onClose();
+    };
+    let backListener: any;
+    import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+    });
+    return () => { if (backListener) backListener.then((l: any) => l.remove()); };
+  }, [selectedGame, onClose]);
 
   const renderContent = () => {
     switch (selectedGame) {
@@ -31,7 +45,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
         return <MaxSimulatorGame onBack={() => setSelectedGame('none')} />;
       default:
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto pb-[calc(2rem+env(safe-area-inset-bottom))]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto pb-[calc(2rem+env(safe-area-inset-bottom))] animate-in fade-in slide-in-from-bottom-4 duration-300">
             <GameCard 
               title={t('game_gold_clicker')}
               description={t('game_gold_clicker_desc')}
@@ -321,7 +335,7 @@ function MaxSimulatorGame({ onBack }: { onBack: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden animate-in fade-in duration-300">
             <header className="h-14 border-b flex items-center px-4 shrink-0 bg-background/80 backdrop-blur-md relative z-[110] pt-[calc(0.5rem+env(safe-area-inset-top))]">
                 <div className="flex items-center gap-3">
                     <Smartphone className="h-5 w-5 text-indigo-600" />
@@ -476,7 +490,7 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
             )}
 
             {gameState === 'playing' && (
-                <div className="w-full flex flex-col items-center gap-6">
+                <div className="w-full flex flex-col items-center gap-6 animate-in slide-in-from-right-4 duration-300">
                     <div className="w-full bg-card border p-6 rounded-3xl shadow-lg space-y-4">
                         <div className="flex justify-between items-end">
                             <div className="space-y-1">

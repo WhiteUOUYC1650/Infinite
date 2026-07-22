@@ -290,6 +290,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
+  // --- System Back Button Support ---
+  useEffect(() => {
+    if (!open) return;
+    const handleSystemBack = () => { handleBack(); };
+    let backListener: any;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        backListener = App.addListener('backButton', handleSystemBack);
+      });
+    }
+    return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
+  }, [open, pageHistory]);
+
   const handleClearCache = async () => {
       await clearCacheDB();
       calculateCacheSize();
@@ -369,7 +382,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   ];
 
   const botGuidePageContent = (
-      <div className='p-6 space-y-8'>
+      <div className='p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300'>
           <div className='space-y-4'>
               <h2 className='text-3xl font-black font-headline text-primary'>{t('bot_guide_title')}</h2>
               <p className='text-muted-foreground text-sm leading-relaxed font-medium'>{t('bot_guide_intro')}</p>
@@ -468,7 +481,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   );
 
   const mainPageContent = (
-      <>
+      <div className="animate-in fade-in duration-300">
         {(experimentalDesign || glassEffect) ? (
             <div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent">
                 <UserAvatarWithStatus user={currentUser as any} className="w-28 h-28 text-4xl mb-6 border-4 border-background shadow-2xl rounded-full experimental-glow" />
@@ -509,7 +522,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </div>
           )}
         </div>
-      </>
+      </div>
   );
 
   const [wheelRotation, setWheelRotation] = useState(0);
@@ -544,7 +557,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       switch(page) {
           case 'main': return mainPageContent;
           case 'appearance': return (
-              <div className='p-2 space-y-1 divide-y'>
+              <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
                 <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} description={t('light_mode')} glassEffect={glassEffect} />
                 <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} glassEffect={glassEffect} />
                 <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} glassEffect={glassEffect} />
@@ -554,7 +567,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'theme': return (
-              <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1">
+              <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">
                   {['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'].map(tName => {
                       const isPremTheme = tName === 'shining_gold';
                       return (
@@ -571,16 +584,16 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   })}
               </RadioGroup>
           );
-          case 'language': return <div className="p-4"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div></RadioGroup></div>;
+          case 'language': return <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div></RadioGroup></div>;
           case 'chat': return (
-              <div className='p-2 space-y-1 divide-y'>
+              <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
                   <SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} />
                   <SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} />
                   <SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} />
               </div>
           );
           case 'privacy': return (
-              <div className='p-2 space-y-1 divide-y'>
+              <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
                   <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />
                   {currentUser.loginProtectionEnabled && (
                       <SettingsItem icon={Lock} label={t('cloud_password_label')} onClick={() => {}} description={t('cloud_password_desc')} glassEffect={glassEffect} />
@@ -607,7 +620,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'dataStorage': return (
-              <div className='p-6 space-y-6'>
+              <div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className={cn('border rounded-3xl p-6 space-y-4 shadow-sm', glassEffect ? "glass-panel" : "bg-card")}>
                       <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center">
@@ -626,7 +639,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'infGold': return (
-              <div className='p-6 space-y-4'>
+              <div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className={cn("border border-amber-500/20 rounded-[2rem] p-8 text-center space-y-4", glassEffect ? "glass-panel" : "bg-amber-500/10")}>
                       <InfGoldIcon className='h-16 w-16 mx-auto experimental-glow text-amber-600' />
                       <div>
@@ -643,7 +656,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'infinitePrem': return (
-              <div className='p-6 space-y-6'>
+              <div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none bg-primary/80 backdrop-blur-xl" : "bg-primary")}>
                       <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" />
                       <div className="relative z-10 space-y-4">
@@ -677,7 +690,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'transferHistory': return (
-              <div className='p-4 space-y-4'>
+              <div className='p-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Последние операции</h3>
                   <div className="space-y-2">
                       {[...(sentTransfers || []), ...(receivedTransfers || [])]
@@ -714,11 +727,11 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
           );
-          case 'dailyBonus': return <div className='p-6'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
+          case 'dailyBonus': return <div className='p-6 animate-in fade-in slide-in-from-right-4 duration-300'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
           case 'whatsNew': return (
-              <div className='p-6 space-y-6'>
+              <div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className="text-center space-y-2 mb-2">
-                    <h2 className='text-4xl font-black font-headline text-primary'>What's New</h2>
+                    <h2 className='text-4xl font-black font-headline text-primary'>{t('whats_new')}</h2>
                     <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion}</p>
                   </div>
                   
@@ -735,28 +748,38 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                              <Sparkles className="h-6 w-6" />
+                              <Gamepad2 className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Floating Pill UI</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Modern adaptive chat header for experimental design.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('game_max_simulator')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">New satirical game in InfGames section.</p>
                           </div>
                       </div>
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
-                              <CheckCircle2 className="h-6 w-6" />
+                              <Sparkles className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Global 1.0 Release</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">No more beta! Infinite is now open for everyone.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_animations_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_animations_desc')}</p>
+                          </div>
+                      </div>
+                      
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0">
+                              <ArrowLeft className="h-6 w-6" />
+                          </div>
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_back_button_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_back_button_desc')}</p>
                           </div>
                       </div>
                   </div>
               </div>
           );
           case 'help': return (
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
               {faqs.map((f, i) => (
                 <AccordionItem value={`f-${i}`} key={i} className="px-4">
                   <AccordionTrigger className="text-left font-bold">{f.question}</AccordionTrigger>
@@ -780,7 +803,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           );
           case 'botGuide': return botGuidePageContent;
           case 'checkUpdates': return (
-              <div className='p-12 flex flex-col items-center text-center gap-8'>
+              <div className='p-12 flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className={cn(
                       "w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000",
                       isCheckingUpdates && "rotate-180"
@@ -826,7 +849,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'account': return (
-              <div className='p-6 space-y-4'>
+              <div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}>
                       <Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}
                   </Button>
@@ -841,7 +864,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'about': return (
-              <div className='p-12 flex flex-col items-center text-center gap-6'>
+              <div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className="w-32 h-32 rounded-[2.5rem] bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 experimental-glow">
                     <InfiniteLogo className='w-20 h-20 text-white' />
                   </div>
@@ -874,7 +897,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           <DialogTitle className="text-lg font-black font-headline tracking-tight">{t(page as any) || t('settings')}</DialogTitle>
           <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="absolute right-2 top-1/2 -translate-y-1/2"><X /></Button>
         </DialogHeader>
-        <ScrollArea ref={scrollAreaRef} className="flex-1"><div key={page} className={cn("animate-in fade-in-0 duration-300", animationDirection === 'forward' ? 'slide-in-from-right-5' : 'slide-in-from-left-5')}>{renderPage()}</div></ScrollArea>
+        <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-x-hidden"><div key={page} className={cn("animate-in fade-in-0 duration-300", animationDirection === 'forward' ? 'slide-in-from-right-5' : 'slide-in-from-left-5')}>{renderPage()}</div></ScrollArea>
       </DialogContent>
     </Dialog>
     

@@ -107,7 +107,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     if (!Capacitor.isNativePlatform()) return;
     const handleSystemBack = () => { if (selectedItem) setSelectedItem(null); };
     let backListener: any;
-    import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); });
+    import('@capacitor/app').then(({ App }) => { 
+        backListener = App.addListener('backButton', handleSystemBack); 
+    });
     return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
   }, [selectedItem]);
 
@@ -347,7 +349,11 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
               </div>
             </div>
             <div className={cn("absolute inset-0 z-20 transition-transform duration-300 ease-in-out bg-background", isMobile ? (selectedItem ? "translate-x-0" : "translate-x-full") : "relative translate-x-0 flex-1")}>
-              {selectedItem ? renderSelectedContent() : (!isMobile && (<div className="relative flex h-full flex-col items-center justify-center bg-background p-4"><div className="flex flex-col items-center text-center"><MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} /><h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2></div></div>))}
+              {selectedItem ? (
+                  <div className="h-full w-full animate-in fade-in slide-in-from-right-4 duration-300">
+                    {renderSelectedContent()}
+                  </div>
+              ) : (!isMobile && (<div className="relative flex h-full flex-col items-center justify-center bg-background p-4 animate-in fade-in duration-500"><div className="flex flex-col items-center text-center"><MessageCircle className="h-24 w-24 mb-4 text-primary/50" strokeWidth={1} /><h2 className="text-2xl font-bold tracking-tight font-headline">{t('chat_not_selected')}</h2></div></div>))}
             </div>
           </div>
         )}
