@@ -137,9 +137,16 @@ function MaxSimulatorGame({ onBack }: { onBack: () => void }) {
     useEffect(() => {
         if (gameState === 'welcome' || gameState === 'chat_list' || gameState === 'chat_view') {
             const interval = setInterval(() => {
-                const pool = [t('max_notif_data_leak'), t('max_notif_fsb')];
+                const pool = [
+                    t('max_notif_data_leak'), 
+                    t('max_notif_fsb'),
+                    "Система: Ваши контакты успешно синхронизированы с базой МВД.",
+                    "Уведомление: ФСБ запрашивает доступ к вашему микрофону.",
+                    "Система: Обнаружена подозрительная активность в мыслях.",
+                    "MAX: Рекомендуем обновить лояльность до версии 2.0."
+                ];
                 addNotification(pool[Math.floor(Math.random() * pool.length)]);
-            }, 8000);
+            }, 6000);
             return () => clearInterval(interval);
         }
     }, [gameState, t]);
@@ -184,9 +191,10 @@ function MaxSimulatorGame({ onBack }: { onBack: () => void }) {
                                 <h3 className="text-xl font-bold font-headline">{t('game_max_simulator')}</h3>
                                 <p className="text-muted-foreground font-medium">{t('max_install_prompt')}</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button variant="outline" disabled className="rounded-xl opacity-50 grayscale">{t('cancel')}</Button>
-                                <Button onClick={() => setGameState('launching')} className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700">{t('max_yes')}</Button>
+                            <div className="grid grid-cols-1">
+                                <Button onClick={() => setGameState('launching')} className="h-14 rounded-2xl font-black bg-indigo-600 hover:bg-indigo-700 shadow-xl">
+                                    {t('max_yes')} (ОБЯЗАТЕЛЬНО)
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -316,7 +324,7 @@ function MaxSimulatorGame({ onBack }: { onBack: () => void }) {
         <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
             <header className="h-14 border-b flex items-center px-4 shrink-0 bg-background/80 backdrop-blur-md relative z-[110] pt-[calc(0.5rem+env(safe-area-inset-top))]">
                 <div className="flex items-center gap-3">
-                    < स्मार्टफोन className="h-5 w-5 text-indigo-600" />
+                    <Smartphone className="h-5 w-5 text-indigo-600" />
                     <span className="text-xs font-black uppercase tracking-widest opacity-40">{t('game_max_simulator')}</span>
                 </div>
                 <Button variant="ghost" size="icon" onClick={onBack} className="ml-auto rounded-full h-10 w-10">
@@ -559,4 +567,3 @@ function GoldClickerGame({ currentUser, onBack }: { currentUser: AuthenticatedUs
         </div>
     );
 }
-

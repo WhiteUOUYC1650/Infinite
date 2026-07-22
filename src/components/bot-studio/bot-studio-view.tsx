@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -261,10 +260,15 @@ function MarketView({ currentUser }: { currentUser: AuthenticatedUser }) {
     
     const itemsQuery = useMemo(() => { 
         if (!db) return null; 
-        return query(collection(db, 'marketItems'), orderBy('installs', 'desc')); 
+        try {
+            return query(collection(db, 'marketItems'), orderBy('installs', 'desc')); 
+        } catch (e) {
+            console.error("Firestore query creation failed", e);
+            return null;
+        }
     }, [db]);
     
-    const { data: items, loading } = useCollection<BotMarketItem>(itemsQuery);
+    const { data: items, loading, error } = useCollection<BotMarketItem>(itemsQuery);
 
     const filtered = useMemo(() => {
         if (!items) return [];
@@ -282,13 +286,25 @@ function MarketView({ currentUser }: { currentUser: AuthenticatedUser }) {
                 const userRef = doc(db, 'users', currentUser.uid);
                 const itemRef = doc(db, 'marketItems', item.id);
                 const userSnap = await tx.get(userRef);
-                if ((userSnap.data()?.infGoldBalance || 0) < item.price) throw new Error("Not enough gold.");
+                if (!userSnap.exists()) throw new Error("User data missing.");
+                const currentGold = userSnap.data()?.infGoldBalance || 0;
+                if (currentGold < item.price) throw new Error("Not enough gold.");
                 tx.update(userRef, { infGoldBalance: increment(-item.price) });
                 tx.update(itemRef, { installs: increment(1), buyers: arrayUnion(currentUser.uid) });
             });
             toast({ title: "Successfully purchased!" });
         } catch (e: any) { toast({ variant: 'destructive', title: "Error", description: e.message }); }
     };
+
+    if (error) {
+        return (
+            <div className="text-center py-20 bg-card rounded-3xl border-2 border-dashed opacity-50">
+                <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-destructive" />
+                <p className="font-bold uppercase tracking-widest text-xs">Маркет временно недоступен</p>
+                <p className="text-[10px] mt-2 opacity-60">Ошибка доступа к базе данных.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
