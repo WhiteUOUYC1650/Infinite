@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -165,7 +166,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const router = useRouter();
   
   const { t, language, setLanguage } = useLanguage();
-  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, m3Design, toggleM3Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont } = useTheme();
   const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
   
   const auth = useAuth();
@@ -290,7 +291,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     }
   };
 
-  // --- System Back Button Support ---
   useEffect(() => {
     if (!open) return;
     const handleSystemBack = () => { handleBack(); };
@@ -562,6 +562,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} glassEffect={glassEffect} />
                 <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} glassEffect={glassEffect} />
                 <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={isExperimentalDesignRestricted ? t('android_9_plus_only') : t('experimental_design_desc')} disabled={isExperimentalDesignRestricted} glassEffect={glassEffect} />
+                <SettingsSwitchItem id="m3-design" label={t('m3_design_label')} checked={m3Design} onCheckedChange={toggleM3Design} description={t('m3_design_desc')} glassEffect={glassEffect} />
                 <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} glassEffect={glassEffect} />
                 <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
               </div>
@@ -737,42 +738,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0">
                               <LayoutGrid className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">InfMarket</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">First global marketplace for bot logic and plugins.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">AM3 Design</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Android Material 3 support with extreme rounding.</p>
                           </div>
                       </div>
 
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                              <Gamepad2 className="h-6 w-6" />
+                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                              <Download className="h-6 w-6" />
                           </div>
                           <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('game_max_simulator')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">New satirical game in InfGames section.</p>
-                          </div>
-                      </div>
-
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
-                              <Sparkles className="h-6 w-6" />
-                          </div>
-                          <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_animations_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_animations_desc')}</p>
-                          </div>
-                      </div>
-                      
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0">
-                              <ArrowLeft className="h-6 w-6" />
-                          </div>
-                          <div>
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_back_button_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_back_button_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Reliability</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Core engine improvements and bug fixes.</p>
                           </div>
                       </div>
                   </div>
@@ -891,7 +872,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   return (
     <>
     <Dialog open={open} onOpenChange={(isOpen) => { onOpenChange(isOpen); if (!isOpen) setTimeout(() => handleResetState(), 200); }}>
-      <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", (experimentalDesign || glassEffect) && "rounded-[2.5rem] border-none shadow-2xl")}>
+      <DialogContent hideCloseButton className={cn("max-w-md w-full h-[85svh] h-full-safe flex flex-col p-0 gap-0 overflow-hidden outline-none bg-card", (experimentalDesign || glassEffect || m3Design) && "rounded-[2.5rem] border-none shadow-2xl")}>
         <DialogHeader className="relative flex-row items-center justify-center p-4 shrink-0 h-16 z-20 transition-all bg-card border-b">
           <Button variant="ghost" size="icon" onClick={handleBack} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
           <DialogTitle className="text-lg font-black font-headline tracking-tight">{t(page as any) || t('settings')}</DialogTitle>

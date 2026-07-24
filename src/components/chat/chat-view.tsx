@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -138,7 +139,7 @@ const processMarkdownChildren = (children: any): any => {
 
 const getSafeDate = (ts: any): Date => { if (ts && typeof ts.seconds === 'number') { return new Date(ts.seconds * 1000); } return new Date(); };
 
-function DateSeparator({ date, rawDate, experimentalDesign, glassEffect }: { date: string, rawDate: string, experimentalDesign: boolean, glassEffect: boolean }) {
+function DateSeparator({ date, rawDate, experimentalDesign, glassEffect, m3Design }: { date: string, rawDate: string, experimentalDesign: boolean, glassEffect: boolean, m3Design: boolean }) {
   return (
     <div className="relative my-6 flex items-center justify-center date-separator-marker" data-date={date}>
       <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -146,7 +147,8 @@ function DateSeparator({ date, rawDate, experimentalDesign, glassEffect }: { dat
       </div>
       <div className={cn(
           "relative px-4 py-1 rounded-full border border-border/50 shadow-sm transition-all",
-          (experimentalDesign || glassEffect) ? "glass-panel backdrop-blur-xl border-white/20" : "bg-muted/80"
+          (experimentalDesign || glassEffect) ? "glass-panel backdrop-blur-xl border-white/20" : "bg-muted/80",
+          m3Design && "bg-secondary text-secondary-foreground border-none rounded-2xl"
       )}>
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
           {date}
@@ -320,7 +322,7 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
     }
 };
 
-const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
+const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect, m3Design }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean, m3Design: boolean }) => {
     const { t } = useLanguage(); const { toast } = useToast(); const db = useFirestore(); 
     
     const isChannelPost = !!message.fromChannelId;
@@ -391,12 +393,15 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             
             <div className={cn(
                 "min-w-0 flex flex-col relative transition-all duration-300",
-                isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-white shadow-sm" : "bg-card text-card-foreground shadow-sm"),
+                isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-primary-foreground shadow-sm" : "bg-card text-card-foreground shadow-sm"),
                 isCircleComplete ? "rounded-full" : (alignRight ? "rounded-lg rounded-br-none" : "rounded-lg rounded-bl-none"),
                 !isCircleComplete && "px-2 pb-1 pt-1.5",
                 "max-w-[85%] md:max-w-[70%]",
                 glassEffect && "glass-msg",
-                glassEffect && alignRight && "align-right"
+                glassEffect && alignRight && "align-right",
+                m3Design && !isCircleComplete && "rounded-[1.75rem] px-4 py-3 border-none",
+                m3Design && alignRight && "bg-primary text-primary-foreground",
+                m3Design && !alignRight && "bg-secondary text-secondary-foreground"
             )}>
                 {isChannelPost && (
                     <div className="absolute -top-3 -right-1 z-10 flex items-center bg-background/50 backdrop-blur-md px-1.5 rounded-full border border-primary/20 shadow-sm pointer-events-none">
@@ -413,7 +418,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 )}
                 
                 {message.replyTo && !isCircleComplete && (
-                    <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}>
+                    <div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10", m3Design && "rounded-2xl border-none bg-black/5")}>
                         <p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p>
                         <p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p>
                     </div>
@@ -477,7 +482,8 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                         }}
                         className={cn(
                             "mt-2 mb-1 flex items-center gap-1.5 text-[11px] font-bold py-1.5 px-3 rounded-xl transition-all active:scale-95 w-fit border border-transparent shadow-sm",
-                            alignRight ? "bg-white/20 text-white hover:bg-white/30" : "bg-primary/10 text-primary hover:bg-primary/20 border-primary/5"
+                            alignRight ? "bg-white/20 text-white hover:bg-white/30" : "bg-primary/10 text-primary hover:bg-primary/20 border-primary/5",
+                            m3Design && "rounded-2xl bg-black/5 border-none"
                         )}
                     >
                         <MessageSquare className="h-3.5 w-3.5" />
@@ -485,13 +491,13 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                     </button>
                 )}
 
-                {message.reactions && Object.keys(message.reactions).length > 0 && !isCircleComplete && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
+                {message.reactions && Object.keys(message.reactions).length > 0 && !isCircleComplete && (<div className={cn("flex flex-wrap gap-1.5 mt-2", alignRight ? "justify-end" : "justify-start")}>{Object.entries(message.reactions).map(([emoji, uids]) => { if (uids.length === 0) return null; const hasReacted = uids.includes(currentUser.uid); return (<button key={emoji} onClick={(e) => { e.stopPropagation(); onToggleReaction(message.id, emoji); }} className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-black border transition-all active:scale-90", hasReacted ? "bg-white/20 border-white/50 text-white" : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted", alignRight && "text-white border-white/30", m3Design && "border-none bg-black/5")}><span>{emoji}</span><span className={cn(alignRight && "text-white")}>{uids.length}</span></button>); })}</div>)}
                 {!isCircleComplete && (<div className={cn("flex items-center gap-1 mt-0.5 text-[9px] self-end opacity-70")}>{message.editedAt && <span className="font-bold">{t('edited')}</span>}<span>{format(getSafeDate(message.timestamp), 'HH:mm')}</span>{isCurrentUser && !isChannelPost && (<span className="ml-0.5">{isRead ? <CheckDouble className="h-3 w-3" /> : <Check className="h-2.5 w-2.5" />}</span>)}</div>)}
             </div>
             <div className={cn("flex-shrink-0 self-center w-8 flex justify-center transition-all", isMobile ? (isActiveOnMobile ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover:opacity-100", !alignRight && "order-last")}>
                 <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", (experimentalDesign || glassEffect) ? "glass-menu flex flex-row gap-1 w-auto" : "bg-popover rounded-xl flex flex-col w-56")}>
+                    <DropdownMenuContent align={alignRight ? 'end' : 'start'} collisionPadding={16} className={cn("p-1 shadow-2xl border-none z-[100] max-h-[85vh]", (experimentalDesign || glassEffect) ? "glass-menu flex flex-row gap-1 w-auto" : "bg-popover rounded-xl flex flex-col w-56", m3Design && "rounded-[1.75rem] p-2 bg-surface text-on-surface")}>
                         {(experimentalDesign || glassEffect) ? (
                             <>
                                 <div className="grid grid-cols-5 gap-1 p-2 bg-muted/20 rounded-2xl border border-white/5 shrink-0 w-[180px]">
@@ -530,7 +536,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
 ChatMessage.displayName = 'ChatMessage';
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect } = useTheme(); 
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect, m3Design } = useTheme(); 
   const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   
@@ -557,7 +563,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useLayoutEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
   useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, scrollToBottom]);
 
-  // --- System Back Button Support ---
   useEffect(() => {
     const handleSystemBack = () => {
         if (previewImage) setPreviewImage(null);
@@ -652,7 +657,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
-      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
+      const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>> = [];
 
       for (const file of selectedFiles) {
         if (file.size > maxSizeInBytes) {
@@ -799,14 +804,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isGeneralChat = item.id === 'GENERAL_CHAT';
   const canWrite = item.type !== 'channel' || isOwner;
 
+  const Icon = isGeneralChat ? Globe : (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : (item.type === 'group' ? Users : Megaphone));
+
   const headerContent = (
     <div className={cn(
         "flex items-center w-full transition-all duration-300 gap-2",
-        experimentalDesign ? "h-14 px-1" : "p-2 h-14"
+        experimentalDesign ? "h-14 px-1" : "p-2 h-14",
+        m3Design && "h-20 px-6 bg-background border-none"
     )}>
         <div className={cn(
             experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center",
-            experimentalDesign && !glassEffect && "bg-card/40"
+            experimentalDesign && !glassEffect && "bg-card/40",
+            m3Design && "h-12 w-12 rounded-full bg-secondary flex items-center justify-center"
         )}>
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
         </div>
@@ -814,7 +823,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         <div className={cn(
             "flex-1 flex items-center min-w-0 h-full",
             experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
-            experimentalDesign && !glassEffect && "bg-card/40"
+            experimentalDesign && !glassEffect && "bg-card/40",
+            m3Design && "px-4"
         )}>
             <button 
                 disabled={isGeneralChat}
@@ -826,7 +836,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 </div>
                 <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full">
                     <div className="flex items-center gap-1.5">
-                        <h2 className="text-[15px] font-bold font-headline truncate leading-none">{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
+                        <h2 className={cn("text-[15px] font-bold font-headline truncate leading-none", m3Design && "text-lg")}>{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
                         {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
                     </div>
                     <p className="text-[9px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">{getStatusLine()}</p>
@@ -838,7 +848,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <div className={cn(
                 "flex items-center shrink-0 h-full",
                 experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg",
-                experimentalDesign && !glassEffect && "bg-card/40"
+                experimentalDesign && !glassEffect && "bg-card/40",
+                m3Design && "gap-2"
             )}>
                 {isDM && !otherUser?.isBot && !isSavedMessages ? (
                     <div className="flex items-center">
@@ -907,7 +918,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           "flex-shrink-0 z-30 transition-all duration-300",
           experimentalDesign 
             ? "fixed top-[env(safe-area-inset-top)] left-4 right-4 mt-2" 
-            : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0"
+            : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0",
+          m3Design && "static border-none bg-background shadow-none"
       )}>
         {experimentalDesign ? (
             <div className="bg-transparent overflow-hidden">
@@ -917,7 +929,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <>
                 {headerContent}
                 <div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}>
-                    <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel backdrop-blur-xl" : "bg-muted/95")}>
+                    <div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel backdrop-blur-xl" : "bg-muted/95", m3Design && "bg-secondary text-secondary-foreground border-none rounded-2xl")}>
                         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span>
                     </div>
                 </div>
@@ -934,8 +946,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
                 return (
                     <React.Fragment key={m.id}>
-                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}
-                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />
+                        {showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} m3Design={m3Design} />}
+                        <ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} m3Design={m3Design} />
                     </React.Fragment>
                 );
             })}
@@ -946,7 +958,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         <div className={cn(
             "absolute right-4 z-[110] transition-all duration-300 transform",
             showScrollDown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none",
-            experimentalDesign ? "bottom-24" : "bottom-4"
+            experimentalDesign ? "bottom-24" : "bottom-4",
+            m3Design && "bottom-24"
         )}>
             <Button 
                 variant="secondary" 
@@ -954,10 +967,11 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onClick={() => scrollToBottom('smooth')}
                 className={cn(
                     "w-10 h-10 rounded-full shadow-2xl border border-border/50",
-                    glassEffect ? "glass-button" : "bg-card hover:bg-muted"
+                    glassEffect ? "glass-button" : "bg-card hover:bg-muted",
+                    m3Design && "w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl border-none"
                 )}
             >
-                <ChevronDown className="h-6 w-6 text-primary" />
+                <ChevronDown className="h-6 w-6" />
             </Button>
         </div>
       </div>
@@ -971,7 +985,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 onClick={() => setProfileDialogUser(otherUser)}
                 className={cn(
                   "rounded-full shadow-2xl text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all",
-                  glassEffect ? "glass-button bg-primary/60" : "bg-primary"
+                  glassEffect ? "glass-button bg-primary/60" : "bg-primary",
+                  m3Design && "h-14 rounded-full px-10 bg-primary text-primary-foreground shadow-lg"
                 )}
               >
                   <LayoutGrid className="h-5 w-5" />
@@ -983,12 +998,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {isMember && (canWrite ? (
         <footer className={cn(
             "flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300",
-            (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0" : "bg-background border-t"
+            (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0" : "bg-background border-t",
+            m3Design && "p-4 bg-background border-none"
         )}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className={cn(
               "absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl bg-background", 
-              "w-full h-full"
+              "w-full h-full",
+              m3Design && "rounded-t-3xl"
             )}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -1005,10 +1022,16 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             </div>
           )}
           <div className="max-w-3xl mx-auto w-full h-full flex flex-col">
-            {replyToMessage && <div className="flex items-center justify-between bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2"><Reply className="h-4 w-4 text-primary shrink-0" /><div className="min-w-0 truncate text-xs mx-2 flex-1">{replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file'))}</div><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button></div>}
+            {replyToMessage && (
+                <div className={cn("flex items-center justify-between bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2", m3Design && "rounded-2xl")}>
+                    <Reply className="h-4 w-4 text-primary shrink-0" />
+                    <div className="min-w-0 truncate text-xs mx-2 flex-1">{replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file'))}</div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button>
+                </div>
+            )}
             
             {filesToSend.length > 0 && (
-              <div className="bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2">
+              <div className={cn("bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2", m3Design && "rounded-2xl")}>
                 <ScrollArea className="w-full">
                     <div className="flex items-center gap-3 pb-2">
                         {filesToSend.map((fItem, idx) => (
@@ -1048,7 +1071,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                   className={cn(
                       "min-h-[44px] h-[44px] max-h-32 py-3 resize-none border rounded-2xl transition-all duration-300",
-                      (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
+                      (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input",
+                      m3Design && "rounded-[1.75rem] border-none bg-secondary text-secondary-foreground"
                   )} 
                 />
                 <div className="flex items-center gap-1.5 shrink-0 h-[44px]">
@@ -1058,12 +1082,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}
+                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full", m3Design && "h-12 w-12 bg-secondary rounded-full")}
                       >
                         <Paperclip className="h-5 w-5" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", (experimentalDesign || glassEffect) ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl")}>
+                    <DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", (experimentalDesign || glassEffect) ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl", m3Design && "rounded-[1.75rem] bg-surface text-on-surface")}>
                       <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')} className="font-bold"><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem>
@@ -1077,14 +1101,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                   <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} multiple />
                   
                   {messageContent.trim() || filesToSend.length > 0 ? (
-                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-10 w-10 rounded-full transition-all active:scale-95", (experimentalDesign || glassEffect) ? "bg-primary/60 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+                    <Button type="submit" size="icon" disabled={isSending} className={cn("h-10 w-10 rounded-full transition-all active:scale-95", (experimentalDesign || glassEffect) ? "bg-primary/60 backdrop-blur-xl border border-white/20" : "", m3Design && "h-12 w-12 bg-primary text-primary-foreground")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <Button 
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full", m3Design && "h-12 w-12 bg-secondary rounded-full")} 
                         onMouseDown={() => startRecording('circle')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
                         onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
@@ -1096,7 +1120,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} 
+                        className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full", m3Design && "h-12 w-12 bg-secondary rounded-full")} 
                         onMouseDown={() => startRecording('voice')} 
                         onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
                         onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
@@ -1113,13 +1137,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       ) : (
         <footer className={cn(
           "flex-shrink-0 p-3 h-auto min-h-[56px] flex items-center justify-center z-40 pb-[calc(1rem+env(safe-area-inset-bottom))]",
-          (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t"
+          (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t",
+          m3Design && "p-6 bg-background border-none"
         )}>
           <Button 
             variant="ghost" 
             className={cn(
                 "w-full h-12 font-bold uppercase tracking-widest gap-2 shadow-lg transition-all active:scale-95",
-                (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary"
+                (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary",
+                m3Design && "rounded-full bg-secondary text-primary h-14"
             )}
             onClick={() => { setIsMutedLocal(!isMutedLocal); toast({ title: isMutedLocal ? t('unmute') : t('mute') }); }}
           >

@@ -274,7 +274,7 @@ export const translations = {
       'come_back_tomorrow': 'Come back tomorrow!',
       'you_won': 'You won!',
       'whats_new': "What's New",
-      'whats_new_desc': "Official 1.0.1 changes.",
+      'whats_new_desc': "Official 1.0.2 changes.",
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Upload Video',
       'infvid_video_limits': 'Up to {size}',
@@ -523,6 +523,8 @@ export const translations = {
       'wn_animations_desc': 'New transitions for chats, settings and dialogs.',
       'wn_back_button_title': 'Native Navigation',
       'wn_back_button_desc': 'System back button now works layer-by-layer.',
+      'm3_design_label': 'Material 3 Design',
+      'm3_design_desc': 'Modern Android style with very rounded corners.',
     },
     ru: {
       'settings': 'Настройки',
@@ -672,7 +674,7 @@ export const translations = {
       'invalid_credentials_error': 'Неверный адрес почты или пароль.',
       'user_disabled_error': 'Эта учетная запись была отключена.',
       'user_blocked_error': 'Пользователь заблокирован',
-      'access_denied_beta_only': 'Доступ запрещен.',
+      'access_denied_beta_only': 'Access denied.',
       'invalid_email_error': 'Неверный формат почты.',
       'unexpected_error': 'Произошла непредвиденная ошибка.',
       'weak_password_error': 'Пароль слишком слабый.',
@@ -797,7 +799,7 @@ export const translations = {
       'come_back_tomorrow': 'Возвращайтесь завтра!',
       'you_won': 'Вы выиграли!',
       'whats_new': "Что нового",
-      'whats_new_desc': "Изменения версии 1.0.1.",
+      'whats_new_desc': "Изменения версии 1.0.2.",
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Загрузить видео',
       'infvid_video_limits': 'До {size}',
@@ -1046,6 +1048,8 @@ export const translations = {
       'wn_animations_desc': 'Новые переходы для чатов, настроек и диалогов.',
       'wn_back_button_title': 'Нативная навигация',
       'wn_back_button_desc': 'Системная кнопка «Назад» теперь работает послойно.',
+      'm3_design_label': 'Дизайн Material 3',
+      'm3_design_desc': 'Современный стиль Android с сильными закруглениями.',
     }
 };
 

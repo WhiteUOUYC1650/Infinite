@@ -301,6 +301,8 @@ interface ThemeContextType {
   toggleMinimizeCallOnClose: () => void;
   experimentalDesign: boolean;
   toggleExperimentalDesign: () => void;
+  m3Design: boolean;
+  toggleM3Design: () => void;
   glassEffect: boolean;
   toggleGlassEffect: () => void;
   glassIntensity: number;
@@ -320,6 +322,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [smoothScroll, setSmoothScroll] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
+  const [m3Design, setM3Design] = useState(false);
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
   const [useSystemFont, setUseSystemFont] = useState(true);
@@ -333,15 +336,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedSmoothScroll = localStorage.getItem('app-smooth-scroll');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
     const storedExperimental = localStorage.getItem('app-experimental-design');
+    const storedM3Design = localStorage.getItem('app-m3-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
 
-    // Migration: If theme was 'frutiger', switch to 'orange'
-    if (storedTheme === ('frutiger' as any)) {
-      setTheme('orange');
-      localStorage.setItem('app-color-theme', 'orange');
-    } else if (storedTheme && THEMES[storedTheme]) {
+    if (storedTheme && THEMES[storedTheme]) {
       setTheme(storedTheme);
     }
     
@@ -351,48 +351,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
     
-    if (storedSnowflakes) {
-      setShowSnowflakes(storedSnowflakes === 'true');
-    }
-
-    if (storedSendOnEnter) {
-      setSendOnEnter(storedSendOnEnter === 'true');
-    }
-
-    if (storedSmoothScroll) {
-      setSmoothScroll(storedSmoothScroll === 'true');
-    }
-
-    if (storedMinimizeCall) {
-      setMinimizeCallOnClose(storedMinimizeCall === 'true');
-    }
-
-    let isExpEnabled = storedExperimental === 'true';
-    if (typeof navigator !== 'undefined') {
-        const ua = navigator.userAgent;
-        const match = ua.match(/Android\s([0-9\.]+)/);
-        const version = match ? parseFloat(match[1]) : null;
-        if (version !== null && version < 9) {
-            isExpEnabled = false;
-            localStorage.setItem('app-experimental-design', 'false');
-        }
-    }
-    setExperimentalDesign(isExpEnabled);
-
-    if (storedGlassEffect) {
-      setGlassEffect(storedGlassEffect === 'true');
-    }
-
-    if (storedShowFeed) {
-      setShowFeed(storedShowFeed === 'true');
-    }
-
-    if (storedSystemFont !== null) {
-      setUseSystemFont(storedSystemFont === 'true');
-    } else {
-      setUseSystemFont(true);
-      localStorage.setItem('app-use-system-font', 'true');
-    }
+    if (storedSnowflakes) setShowSnowflakes(storedSnowflakes === 'true');
+    if (storedSendOnEnter) setSendOnEnter(storedSendOnEnter === 'true');
+    if (storedSmoothScroll) setSmoothScroll(storedSmoothScroll === 'true');
+    if (storedMinimizeCall) setMinimizeCallOnClose(storedMinimizeCall === 'true');
+    if (storedExperimental) setExperimentalDesign(storedExperimental === 'true');
+    if (storedM3Design) setM3Design(storedM3Design === 'true');
+    if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
+    if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
+    if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
 
     setIsMounted(true);
   }, []);
@@ -400,33 +367,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isMounted) {
       const root = document.documentElement;
-      const body = document.body;
-
       root.classList.toggle('dark', isDarkMode);
       localStorage.setItem('app-theme-mode', isDarkMode ? 'dark' : 'light');
 
       root.setAttribute('data-glass-effect', glassEffect ? 'true' : 'false');
       root.setAttribute('data-experimental-design', experimentalDesign ? 'true' : 'false');
-      root.style.setProperty('--glass-intensity', glassEffect ? '0.7' : '0');
+      root.setAttribute('data-m3-design', m3Design ? 'true' : 'false');
 
       if (theme === 'shining_gold') {
         root.classList.add('theme-shining-gold');
       } else {
         root.classList.remove('theme-shining-gold');
-      }
-      
-      const themeConfig = THEMES[theme];
-      const bgImageKey = themeConfig.backgroundImage;
-
-      if (bgImageKey && (placeholderImages as any)[bgImageKey]) {
-        const imageUrl = (placeholderImages as any)[bgImageKey].url;
-        body.style.backgroundImage = `url(${imageUrl})`;
-        body.style.backgroundSize = 'cover';
-        body.style.backgroundPosition = 'center';
-        body.style.backgroundAttachment = 'fixed';
-        body.style.backgroundRepeat = 'no-repeat';
-      } else {
-        body.style.backgroundImage = 'none';
       }
       
       const themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
@@ -458,78 +409,66 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           if (value) root.style.setProperty(property, value);
       }
     }
-  }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted]);
+  }, [theme, isDarkMode, glassEffect, experimentalDesign, m3Design, isMounted]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
     localStorage.setItem('app-color-theme', newTheme);
   };
 
-  const handleToggleTheme = () => {
-    setIsDarkMode(prev => !prev);
-  };
-
+  const handleToggleTheme = () => setIsDarkMode(prev => !prev);
   const handleToggleSnowflakes = () => {
     setShowSnowflakes(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-snowflakes-mode', String(newState));
-      return newState;
+      localStorage.setItem('app-snowflakes-mode', String(!prev));
+      return !prev;
     });
   };
-
   const handleToggleSendOnEnter = () => {
     setSendOnEnter(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-send-on-enter', String(newState));
-      return newState;
+      localStorage.setItem('app-send-on-enter', String(!prev));
+      return !prev;
     });
   };
-
   const handleToggleSmoothScroll = () => {
     setSmoothScroll(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-smooth-scroll', String(newState));
-      return newState;
+      localStorage.setItem('app-smooth-scroll', String(!prev));
+      return !prev;
     });
   };
-
   const handleToggleMinimizeCallOnClose = () => {
     setMinimizeCallOnClose(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-minimize-call', String(newState));
-      return newState;
+      localStorage.setItem('app-minimize-call', String(!prev));
+      return !prev;
     });
   };
-
   const handleToggleExperimentalDesign = () => {
     setExperimentalDesign(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-experimental-design', String(newState));
-      return newState;
+      localStorage.setItem('app-experimental-design', String(!prev));
+      return !prev;
     });
   };
-
+  const toggleM3Design = () => {
+    setM3Design(prev => {
+      localStorage.setItem('app-m3-design', String(!prev));
+      return !prev;
+    });
+  };
   const toggleGlassEffect = () => {
     setGlassEffect(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-glass-effect', String(newState));
-      return newState;
+      localStorage.setItem('app-glass-effect', String(!prev));
+      return !prev;
     });
   };
-
   const toggleShowFeed = () => {
     setShowFeed(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-show-feed', String(newState));
-      return newState;
+      localStorage.setItem('app-show-feed', String(!prev));
+      return !prev;
     });
   };
-
   const toggleSystemFont = () => {
     setUseSystemFont(prev => {
-      const newState = !prev;
-      localStorage.setItem('app-use-system-font', String(newState));
-      return newState;
+      localStorage.setItem('app-use-system-font', String(!prev));
+      return !prev;
     });
   };
 
@@ -548,6 +487,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
     experimentalDesign,
     toggleExperimentalDesign: handleToggleExperimentalDesign,
+    m3Design,
+    toggleM3Design,
     glassEffect,
     toggleGlassEffect,
     glassIntensity: glassEffect ? 70 : 0,
@@ -557,17 +498,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleSystemFont,
   };
 
-  if (!isMounted) {
-    return null;
-  }
-
+  if (!isMounted) return null;
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  if (context === undefined) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
 }

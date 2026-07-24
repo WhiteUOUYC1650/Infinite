@@ -125,6 +125,19 @@ body.use-system-font h4 {
   -webkit-backdrop-filter: blur(16px) !important;
 }
 
+/* Material 3 (M3) Specifics */
+[data-m3-design="true"] {
+  --radius: 1.75rem; /* 28px standard M3 radius */
+}
+
+[data-m3-design="true"] .m3-bubble {
+    border-radius: 1.75rem !important;
+}
+
+[data-m3-design="true"] .m3-top-bar {
+    @apply h-20 px-6 flex items-center justify-between bg-background border-none shadow-none;
+}
+
 @keyframes gold-shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
