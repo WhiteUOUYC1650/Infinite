@@ -109,6 +109,7 @@ export function DailyBonusWheel({ onSpin, isSpinning, setSpinning, canSpin, rota
             {t('come_back_tomorrow')}
         </Button>
       )}
+      {isSpinning && <div className="h-10 shrink-0" />}
     </div>
   );
 }

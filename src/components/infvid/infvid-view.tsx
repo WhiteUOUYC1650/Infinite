@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -10,7 +9,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, where, deleteDoc, increment } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -443,8 +442,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
 }
 
 function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry, onEdit }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: (vidId: string) => void, onEdit: () => void }) {
-    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); 
-    const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
+    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
     const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
     const isSaved = currentUser.watchLater?.includes(video.id);
     const isOwner = video.senderId === currentUser.uid;
@@ -626,6 +624,60 @@ function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser,
                         <div className="block lg:hidden pt-6"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>
                     </div>
                     <aside className="hidden lg:block w-96 shrink-0 border-l pl-6"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></aside>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText, commentAuthors }: { video: SharedVideo, comments: VideoComment[], currentUser: AuthenticatedUser, onAddComment: (replyTo?: VideoComment) => void, commentText: string, setAddCommentText: (t: string) => void, commentAuthors: Record<string, User> }) {
+    const { t, language } = useLanguage(); const [replyingTo, setReplyTo] = useState<VideoComment | null>(null);
+    const parentComments = comments.filter(c => !c.parentId);
+    const getReplies = (parentId: string) => comments.filter(c => c.parentId === parentId).sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+
+    return (
+        <div className="flex flex-col h-full gap-4">
+            <h3 className="text-lg font-black font-headline uppercase tracking-tighter hidden lg:block">{t('comments')} ({comments.length})</h3>
+            <div className="flex gap-3 mb-4">
+                <Avatar className="h-9 w-9"><AvatarImage src={currentUser.avatar} /><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar>
+                <div className="flex-1 space-y-2">
+                    {replyingTo && (<div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg text-[10px]"><p className="font-bold text-muted-foreground">{t('replying_to', { name: replyingTo.userName })}</p><Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setReplyTo(null)}><X className="h-3 w-3" /></Button></div>)}
+                    <div className="flex gap-2">
+                        <Input value={commentText} onChange={e => setAddCommentText(e.target.value)} placeholder={t('no_comments_yet')} className="rounded-xl h-10 border-none bg-muted/50" onKeyDown={e => e.key === 'Enter' && (onAddComment(replyingTo || undefined), setReplyTo(null))} />
+                        <Button size="icon" onClick={() => { onAddComment(replyingTo || undefined); setReplyTo(null); }} className="rounded-full h-10 w-10 shrink-0"><Send className="h-4 w-4" /></Button>
+                    </div>
+                </div>
+            </div>
+            <div className="space-y-6">
+                {parentComments.length > 0 ? parentComments.map(comment => (
+                    <div key={comment.id} className="space-y-4">
+                        <CommentItem comment={comment} author={commentAuthors[comment.userId]} onReply={() => setReplyTo(comment)} t={t} language={language} />
+                        <div className="ml-10 space-y-4 border-l pl-4">
+                            {getReplies(comment.id).map(reply => (
+                                <CommentItem key={reply.id} comment={reply} author={commentAuthors[reply.userId]} onReply={() => setReplyTo(reply)} isReply t={t} language={language} />
+                            ))}
+                        </div>
+                    </div>
+                )) : (<div className="text-center py-10 opacity-30"><MessageSquare className="h-10 w-10 mx-auto mb-2" /><p className="text-xs font-bold uppercase">{t('no_comments_yet')}</p></div>)}
+            </div>
+        </div>
+    );
+}
+
+function CommentItem({ comment, author, onReply, isReply = false, t, language }: { comment: VideoComment, author?: User, onReply: () => void, isReply?: boolean, t: any, language: any }) {
+    const timeAgo = formatDistanceToNow(new Date(comment.timestamp.toMillis()), { addSuffix: true, locale: language === 'ru' ? ru : enUS });
+    return (
+        <div className="flex gap-3 group">
+            <Avatar className={cn(isReply ? "h-7 w-7" : "h-9 w-9")}><AvatarImage src={author?.avatar} /><AvatarFallback>{comment.userName.charAt(0)}</AvatarFallback></Avatar>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-xs truncate">{comment.userName}{(author?.username === '@InfiniteBot' || author?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">{timeAgo}</span>
+                </div>
+                {comment.replyTo && (<p className="text-[10px] font-bold text-primary mb-1">@{comment.replyTo.userName}</p>)}
+                <p className="text-sm leading-relaxed mb-1.5">{comment.text}</p>
+                <div className="flex items-center gap-4">
+                    <button onClick={onReply} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button>
                 </div>
             </div>
         </div>
