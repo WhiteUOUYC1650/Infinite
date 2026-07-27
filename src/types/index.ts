@@ -29,11 +29,21 @@ export type User = {
   botOwnerId?: string;
   activeSessionId?: string | null;
   watchLater?: string[];
+  activeGiftEmoji?: string | null;
   birthday?: {
     day: number;
     month: number;
     year?: number;
   };
+};
+
+export type Gift = {
+    id: string;
+    emoji: string;
+    senderId: string;
+    senderName: string;
+    timestamp: Timestamp;
+    price: number;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };

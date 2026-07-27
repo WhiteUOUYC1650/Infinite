@@ -22,15 +22,16 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal, Sparkles } from 'lucide-react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal, Sparkles, Gift } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, doc, runTransaction, increment, getDoc, setDoc, serverTimestamp, query, where, limit, getDocs, orderBy } from 'firebase/firestore';
+import { collection, doc, runTransaction, increment, getDoc, setDoc, serverTimestamp, query, where, limit, getDocs, orderBy, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { ScrollArea } from './ui/scroll-area';
 import { Capacitor } from '@capacitor/core';
 import { Separator } from './ui/separator';
+import { GiftPickerDialog } from './gifts/gift-picker-dialog';
 
 interface UserProfileDialogProps {
   user: User;
@@ -50,6 +51,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const [isMuted, setIsMuted] = useState(false);
   const [showCompactHeader, setShowCompactHeader] = useState(false);
   const [showSendGold, setShowSendGold] = useState(false);
+  const [showGiftPicker, setShowGiftPicker] = useState(false);
   const [sendAmount, setSendAmount] = useState('10');
   const [isSendingGold, setIsSendingGold] = useState(false);
   const [botData, setBotData] = useState<CustomBot | null>(null);
@@ -59,6 +61,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     if (open) { 
         setShowCompactHeader(false); 
         setShowSendGold(false); 
+        setShowGiftPicker(false);
         setSendAmount('10'); 
         setActiveMiniApp(null);
         if (user.isCustomBot && db) {
@@ -69,33 +72,22 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     } 
   }, [open, user.id, user.isCustomBot, db]);
 
-  // --- System Back Button Support ---
   useEffect(() => {
     if (!open) return;
-
     const handleSystemBack = () => {
-      if (activeMiniApp) {
-          setActiveMiniApp(null);
-      } else if (showSendGold) {
-        setShowSendGold(false);
-      } else {
-        onOpenChange(false);
-      }
+      if (activeMiniApp) setActiveMiniApp(null);
+      else if (showSendGold) setShowSendGold(false);
+      else if (showGiftPicker) setShowGiftPicker(false);
+      else onOpenChange(false);
     };
-
     let backListener: any;
     if (Capacitor.isNativePlatform()) {
       import('@capacitor/app').then(({ App }) => {
         backListener = App.addListener('backButton', handleSystemBack);
       });
     }
-
-    return () => {
-      if (backListener) {
-        backListener.then((l: any) => l.remove());
-      }
-    };
-  }, [open, showSendGold, activeMiniApp, onOpenChange]);
+    return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
+  }, [open, showSendGold, showGiftPicker, activeMiniApp, onOpenChange]);
 
   const getStatusText = (user: User) => {
     if (user.isDeleted) return '';
@@ -140,10 +132,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const handleButtonClick = (buttonId: string) => {
       if (!buttonId) return;
       window.dispatchEvent(new CustomEvent('bot-button-click', { 
-          detail: { 
-              botId: user.id, 
-              buttonId: buttonId 
-          } 
+          detail: { botId: user.id, buttonId: buttonId } 
       }));
   };
 
@@ -153,8 +142,6 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     if (!user.birthday) return null; const months = (t('months') || '').split(',');
     return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;
   }, [user.birthday, t]);
-
-  const isAdmin = authUser?.username === '@Infinite';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,24 +161,11 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     <div className="p-6 space-y-4">
                         {activeMiniApp.blocks?.map((block) => {
                             switch (block.type) {
-                                case 'ui_header':
-                                    return <h3 key={block.id} className="text-xl font-black font-headline text-primary border-b pb-2">{block.params?.text}</h3>;
-                                case 'ui_text':
-                                    return <p key={block.id} className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{block.params?.text}</p>;
-                                case 'ui_button':
-                                    return (
-                                        <Button 
-                                            key={block.id} 
-                                            className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/10 transition-all active:scale-[0.98]" 
-                                            onClick={() => handleButtonClick(block.params?.buttonId)}
-                                        >
-                                            {block.params?.text}
-                                        </Button>
-                                    );
-                                case 'ui_separator':
-                                    return <Separator key={block.id} className="my-4" />;
-                                default:
-                                    return null;
+                                case 'ui_header': return <h3 key={block.id} className="text-xl font-black font-headline text-primary border-b pb-2">{block.params?.text}</h3>;
+                                case 'ui_text': return <p key={block.id} className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{block.params?.text}</p>;
+                                case 'ui_button': return <Button key={block.id} className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/10 transition-all active:scale-[0.98]" onClick={() => handleButtonClick(block.params?.buttonId)}>{block.params?.text}</Button>;
+                                case 'ui_separator': return <Separator key={block.id} className="my-4" />;
+                                default: return null;
                             }
                         })}
                     </div>
@@ -209,10 +183,23 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             <DialogTitle className="sr-only">{displayName}</DialogTitle>
                             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
-                            <div className='relative mx-auto flex justify-center'><UserAvatarWithStatus user={user} className="w-28 h-28 text-4xl shadow-xl border-4 border-background rounded-full" /></div>
+                            <div className='relative mx-auto flex justify-center'>
+                                <div className="relative">
+                                    <UserAvatarWithStatus user={user} className="w-28 h-28 text-4xl shadow-xl border-4 border-background rounded-full" />
+                                    {user.activeGiftEmoji && (
+                                        <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">
+                                            {user.activeGiftEmoji}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </DialogHeader>
                         <div className="text-center py-4">
-                            <div className="flex items-center justify-center gap-2"><h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{displayName}</h2>{!user.isDeleted && (<>{(user.username === '@Infinite' || user.username === '@InfiniteBot' || user.username === '@VeoBot' || user.username === '@GeminiBot') && <VerifiedBadge />}{user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}{user.isBetaTester && <BetaBadge />}</>)}{!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}</div>
+                            <div className="flex items-center justify-center gap-2">
+                                <h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{displayName}</h2>
+                                {!user.isDeleted && (<>{(user.username === '@Infinite' || user.username === '@InfiniteBot' || user.username === '@VeoBot' || user.username === '@GeminiBot') && <VerifiedBadge />}{user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}{user.isBetaTester && <BetaBadge />}</>)}
+                                {!user.isDeleted && user.isBot && user.username !== '@Infinite' && user.username !== '@InfiniteBot' && <Badge variant="secondary">BOT</Badge>}
+                            </div>
                             <p className="text-muted-foreground font-medium">{displayUsername}</p>
                             <p className={cn("text-sm mt-1 font-black uppercase tracking-widest", user.isBot ? "text-primary" : "text-muted-foreground")}>{getStatusText(user)}</p>
                         </div>
@@ -222,9 +209,9 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         {!user.isBot && !user.isDeleted && experimentalDesign && (
                             <div className="grid grid-cols-2 gap-3 w-full mt-4 px-2">
                                 <button onClick={handleStartMessage} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight">{t('message')}</span></button>
+                                <button onClick={() => setShowGiftPicker(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-pink-500/15 flex items-center justify-center"><Gift className="w-5 h-5 text-pink-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-pink-600">{t('send_gift')}</span></button>
                                 <button onClick={() => setShowSendGold(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center"><Coins className="w-5 h-5 text-amber-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-amber-600">{t('send_gold')}</span></button>
                                 <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-orange-500/15")}>{isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="h-5 w-5 text-orange-500" />}</div><span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('mute')}</span></button>
-                                <button onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center"><Phone className="w-5 h-5 text-green-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-green-600">{t('audio_call')}</span></button>
                             </div>
                         )}
 
@@ -236,19 +223,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                                     <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('mini_apps')}</h3>
                                     <div className="grid gap-2">
                                         {botData.miniApps.map(app => (
-                                            <button 
-                                                key={app.id} 
-                                                onClick={() => setActiveMiniApp(app)}
-                                                className="w-full p-4 rounded-2xl bg-primary/5 hover:bg-primary/10 border border-primary/10 flex items-center justify-between group transition-all active:scale-[0.98]"
-                                            >
+                                            <button key={app.id} onClick={() => setActiveMiniApp(app)} className="w-full p-4 rounded-2xl bg-primary/5 hover:bg-primary/10 border border-primary/10 flex items-center justify-between group transition-all active:scale-[0.98]">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                                                        <LayoutGrid className="h-5 w-5" />
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <p className="font-bold text-sm leading-none">{app.name}</p>
-                                                        <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-black">{t('open_mini_app')}</p>
-                                                    </div>
+                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><LayoutGrid className="h-5 w-5" /></div>
+                                                    <div className="text-left"><p className="font-bold text-sm leading-none">{app.name}</p><p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-black">{t('open_mini_app')}</p></div>
                                                 </div>
                                                 <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                             </button>
@@ -260,6 +238,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             <div className="space-y-2">
                                 {!experimentalDesign && !user.isBot && !user.isDeleted && (
                                     <>
+                                        <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-pink-200 text-pink-600 bg-pink-50/50 hover:bg-pink-100" onClick={() => setShowGiftPicker(true)}><Gift className="mr-2 h-5 w-5" />{t('send_gift')}</Button>
                                         <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>
                                         <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-green-200 text-green-600 bg-green-50/50 hover:bg-green-100" onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }}><Phone className="mr-2 h-5 w-5" />{t('audio_call')}</Button>
                                     </>
@@ -278,10 +257,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                 <Button variant="ghost" size="icon" onClick={() => setShowSendGold(false)} className="absolute right-4 top-4 rounded-full"><X className="h-5 w-5" /></Button>
                 <DialogHeader className="items-center text-center space-y-4">
                     <div className="w-20 h-20 rounded-3xl bg-amber-500/10 flex items-center justify-center"><InfGoldIcon className="h-10 w-10 text-amber-600 animate-bounce" /></div>
-                    <div className="space-y-2">
-                        <DialogTitle className="text-2xl font-bold font-headline">{t('send_gold')}</DialogTitle>
-                        <DialogDescription>{t('send_gold_desc', { name: user.name })}</DialogDescription>
-                    </div>
+                    <div className="space-y-2"><DialogTitle className="text-2xl font-bold font-headline">{t('send_gold')}</DialogTitle><DialogDescription>{t('send_gold_desc', { name: user.name })}</DialogDescription></div>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -293,13 +269,12 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                     </div>
                 </div>
                 <DialogFooter className="flex-col gap-2 pt-2">
-                    <Button onClick={handleSendGold} disabled={isSendingGold} className="w-full h-14 rounded-2xl font-bold text-lg bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-500/20">
-                        {isSendingGold ? <Loader2 className="animate-spin" /> : t('send_button')}
-                    </Button>
+                    <Button onClick={handleSendGold} disabled={isSendingGold} className="w-full h-14 rounded-2xl font-bold text-lg bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-500/20">{isSendingGold ? <Loader2 className="animate-spin" /> : t('send_button')}</Button>
                     <Button variant="ghost" onClick={() => setShowSendGold(false)} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <GiftPickerDialog open={showGiftPicker} onOpenChange={setShowGiftPicker} recipient={user} currentUser={authUser as any} />
       </DialogContent>
     </Dialog>
   );

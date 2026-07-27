@@ -241,29 +241,19 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>{chat.type === 'group' ? t('group_name_label') : t('channel_name_label')}</FormLabel><FormControl><Input {...field} className={cn(experimentalDesign && "glass-input")} /></FormControl><FormMessage /></FormItem>)} />
                             {(chat.type === 'channel' || chat.type === 'group') && (<FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('description_label')}</FormLabel><FormControl><Textarea {...field} className={cn("resize-none", experimentalDesign && "glass-input")} /></FormControl><FormMessage /></FormItem>)} />)}
                             {chat.type === 'channel' && (
-                                <FormField 
-                                    control={form.control} 
-                                    name="discussionChatId" 
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t('discussion_chat_label')}</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger disabled={isLoadingGroups} className={cn(experimentalDesign && "glass-input")}>
-                                                        <SelectValue placeholder={t('select_discussion_chat_placeholder')} />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="none">{t('none_label')}</SelectItem>
-                                                    {ownedGroups.map(g => (
-                                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} 
-                                />
+                                <FormField control={form.control} name="discussionChatId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t('discussion_chat_label')}</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger disabled={isLoadingGroups} className={cn(experimentalDesign && "glass-input")}><SelectValue placeholder={t('select_discussion_chat_placeholder')} /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">{t('none_label')}</SelectItem>
+                                                {ownedGroups.map(g => (<SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
                             )}
                             <div className="space-y-3"><div className="flex items-center gap-2"><SmilePlus className="h-4 w-4 text-muted-foreground" /><FormLabel>{t('manage_reactions_label')}</FormLabel></div><div className="grid grid-cols-5 gap-2 p-3 bg-muted/30 rounded-xl border">{COMMON_EMOJIS.map(emoji => (<FormField key={emoji} control={form.control} name="allowedReactions" render={({ field }) => (<FormItem className="flex flex-col items-center gap-1 space-y-0"><FormControl><button type="button" onClick={() => { const cur = field.value || []; if (cur.includes(emoji)) { field.onChange(cur.filter(e => e !== emoji)); } else { field.onChange([...cur, emoji]); } }} className={cn("w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all", field.value?.includes(emoji) ? "bg-primary/20 border-primary" : "bg-background border border-border/50 opacity-50 grayscale hover:opacity-100 hover:grayscale-0")}>{emoji}</button></FormControl></FormItem>)} />))}</div></div>
                     </div></div>
