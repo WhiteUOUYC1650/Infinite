@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
-import { doc, runTransaction, collection, getDoc, setDoc, Timestamp, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, runTransaction, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +32,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
-import type { User } from '@/types';
 
 const step1Schema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
@@ -78,7 +78,7 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     const usernameWithAt = '@' + values.username;
-    let createdUser: import('firebase/auth').User | null = null;
+    let createdUser: any = null;
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -89,11 +89,10 @@ export default function SignUpPage() {
         const userDocRef = doc(db, 'users', createdUser!.uid);
 
         const usernameDoc = await transaction.get(usernameRef);
-        if (usernameDoc.exists()) {
-          throw new Error(t('username_taken_error'));
-        }
+        if (usernameDoc.exists()) throw new Error(t('username_taken_error'));
         
         transaction.set(userDocRef, {
+          id: createdUser.uid,
           name: nickname,
           username: usernameWithAt,
           email: values.email,
@@ -103,6 +102,10 @@ export default function SignUpPage() {
           isBot: false,
           infGoldBalance: 0,
           subscriptionTier: 'none',
+          createdAt: serverTimestamp(),
+          subscriptions: [],
+          subscriberCount: 0,
+          storyExpirationDuration: 24,
         });
 
         transaction.set(usernameRef, { uid: createdUser!.uid });

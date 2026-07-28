@@ -9,7 +9,7 @@ import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch, increment } from 'firebase/firestore';
-import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from '@/components/ui/textarea';
@@ -250,6 +250,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const canSave = hasAttachments && !message.voiceStatus && !message.circleStatus;
     const displayName = isChannelPost ? message.senderName : (message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name));
     const displayAvatar = isChannelPost ? message.senderAvatar : (message.type === 'announcement' ? message.senderAvatar : sender?.avatar);
+    
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
@@ -316,20 +317,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
   const [filesToSend, setFilesToSend] = useState<Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}>>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null); const [activeMessageId, setActiveMessageId] = useState<string | null>(null); const [messageLimit, setMessageLimit] = useState(50); const [hasMore, setHasMore] = useState(true); const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); [stickyDate, setStickyDate] = useState<string | null>(null); [showStickyDate, setShowStickyDate] = useState(false); const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); const [stickyDate, setStickyDate] = useState<string | null>(null); const [showStickyDate, setShowStickyDate] = useState(false); const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showScrollDown, setShowScrollDown] = useState(false); const [showNewPoll, setShowNewPoll] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const isRecordingCanceledRef = useRef(false); const [isMutedLocal, setIsMutedLocal] = useState(false);
+
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid) ?? false, [initialItem?.members, currentUser.uid]);
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem, liveChatData]);
   const messagesQuery = useMemoFirebase(() => { if (!db || !isMember) return null; return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit)); }, [db, item.id, isMember, messageLimit]); const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery); const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
+  
   const scrollToBottom = useCallback((b: ScrollBehavior = 'auto') => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight; }, []);
   const handleScroll = useCallback(() => { if (!scrollContainerRef.current) return; const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; if (scrollTop < 50 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(p => p + 50); } setShowStickyDate(true); if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current); stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000); const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker'); let currentTopDate = null; markers.forEach((marker: any) => { if (marker.offsetTop <= scrollTop + 100) { currentTopDate = marker.getAttribute('data-date'); } }); setStickyDate(currentTopDate); setShowScrollDown(!atBottom); }, [hasMore, messagesLoading, messages, messageLimit]);
+  
   useEffect(() => { const ro = new ResizeObserver(() => { if (isAtBottomRef.current || (Date.now() - autoScrollGuardRef.current < 10000)) requestAnimationFrame(() => { scrollToBottom(); setTimeout(scrollToBottom, 50); }); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
   useEffect(() => { if (prevScrollHeightRef.current > 0 && scrollContainerRef.current) { scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight - prevScrollHeightRef.current; prevScrollHeightRef.current = 0; } else if (isAtBottomRef.current) { autoScrollGuardRef.current = Date.now(); scrollToBottom(smoothScroll ? 'smooth' : 'auto'); } }, [messages, smoothScroll, scrollToBottom]);
   useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, scrollToBottom]);
+  
   useEffect(() => { const handleSystemBack = () => { if (previewImage) setPreviewImage(null); else if (showChatProfile) setShowChatProfile(false); else if (profileDialogUser) setProfileDialogUser(null); else if (showNewPoll) setShowNewPoll(false); else if (replyToMessage) setReplyToMessage(null); else if (filesToSend.length > 0) setFilesToSend([]); else if (isRecordingVoice || isRecordingCircle) stopRecording(true); else onClose(); }; let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); } return () => { if (backListener) { backListener.then((l: any) => l.remove()); } }; }, [onClose, previewImage, showChatProfile, profileDialogUser, showNewPoll, replyToMessage, filesToSend.length, isRecordingVoice, isRecordingCircle]);
+  
   const startRecording = async (type: 'voice' | 'circle') => {
     try {
       const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user', width: 480, height: 480 } : false };
@@ -349,11 +355,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
   };
   const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); isRecordingCanceledRef.current = canceled; if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
+  
   const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
+  
   const getStatusLine = () => { if (item.id === currentUser.uid) return null; if (item.id === 'GENERAL_CHAT') return t('public_chat_description'); if (item.type === 'dm' && otherUser) { if (otherUser.isBot) return t('bot_status'); if (otherUser.status === 'online') return <span className="text-primary font-bold">{t('online')}</span>; if (otherUser.lastSeen) return `${t('was_online')} ${format(new Date(otherUser.lastSeen.seconds * 1000), 'dd.MM.yyyy, HH:mm')}`; return t('offline'); } if (item.type === 'group') return t('members_count', { count: item.members?.length || 0 }); if (item.type === 'channel') return t('subscribers_count', { count: item.members?.length || 0 }); return null; };
+  
   const handleClearHistory = async () => { if (!db || item.id === 'GENERAL_CHAT') return; try { const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit(); await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); toast({ title: t('dm_success') }); } catch(e) { console.error(e); } };
+  
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files); const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
@@ -367,6 +377,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   };
   const removeFileToSend = (index: number) => { setFilesToSend(prev => prev.filter((_, i) => i !== index)); };
+  
   const handleSendMessage = async (customPoll?: Poll) => {
     const finalC = messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     setIsSending(true); setMessageContent(''); setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
@@ -399,6 +410,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: lastMsgContent, senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
+  
   const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
     if (!db || blob.size < 500) return; setIsSending(true);
     try {
@@ -413,11 +425,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       };
     } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
+  
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${e}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid), 1); else votes.push(currentUser.uid); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
+
   const isOwner = item.ownerId === currentUser.uid; const isAdminUser = currentUser.username === '@Infinite'; const isDM = item.type === 'dm'; const isSavedMessages = item.id === currentUser.uid; const isGeneralChat = item.id === 'GENERAL_CHAT'; const canWrite = item.type !== 'channel' || isOwner;
+  
   const headerContent = (
     <div className={cn("flex items-center w-full transition-all duration-300 gap-2", experimentalDesign ? "h-14 px-1" : "p-2 h-14")}>
         <div className={cn(experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center", experimentalDesign && !glassEffect && "bg-card/40")}>
@@ -440,6 +455,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}
     </div>
   );
+  
   return (
     <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden animate-in fade-in duration-300", isMobile ? 'w-screen' : 'w-full')}>
       <header className={cn("flex-shrink-0 z-30 transition-all duration-300", experimentalDesign ? "fixed top-[env(safe-area-inset-top)] left-4 right-4 mt-2" : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0")}>
@@ -479,7 +495,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       ) : (
         <footer className={cn("flex-shrink-0 p-3 h-auto min-h-[56px] flex items-center justify-center z-40 pb-[calc(1rem+env(safe-area-inset-bottom))]", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}><Button variant="ghost" className={cn("w-full h-12 font-bold uppercase tracking-widest gap-2 shadow-lg transition-all active:scale-95", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary")} onClick={() => { setIsMutedLocal(!isMutedLocal); toast({ title: isMutedLocal ? t('unmute') : t('mute') }); }}>{isMutedLocal ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></footer>
       ))}
-      {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
+      {profileDialogUser && <UserProfileDialog user={profileDialogUser} recipient={profileDialogUser} currentUser={currentUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onCreate={(p) => handleSendMessage(p)} />
     </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
-import { doc, runTransaction, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
