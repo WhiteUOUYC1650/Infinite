@@ -404,6 +404,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             }
         }
         await setDoc(mref, data);
+
+        // Auto-forward to linked discussion chat if it's a channel post
+        if (item.type === 'channel' && item.discussionChatId) {
+            const discRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
+            await setDoc(discRef, {
+                ...data,
+                fromChannelId: item.id,
+                channelMessageId: mref.id
+            });
+            await updateDoc(doc(db, 'chats', item.discussionChatId), {
+                lastMessage: {
+                    id: discRef.id,
+                    content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''),
+                    senderId: currentUser.uid,
+                    senderName: currentUser.name || currentUser.username,
+                    timestamp: Timestamp.now()
+                }
+            });
+        }
+
         let lastMsgContent = finalC.trim();
         if (customPoll) lastMsgContent = `Poll: ${customPoll.question}`;
         else if (!lastMsgContent && data.attachments.length > 0) { lastMsgContent = data.attachments.length === 1 ? t(data.attachments[0].type as any) : `${t('file')} (${data.attachments.length})`; }
@@ -439,7 +459,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10"><X className="h-5 w-5" /></Button>
         </div>
         <div className={cn("flex-1 flex items-center min-w-0 h-full", experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg", experimentalDesign && !glassEffect && "bg-card/40")}>
-            <button disabled={isGeneralChat} className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full disabled:hover:bg-transparent" onClick={() => isDM ? setProfileDialogUser(otherUser) : setShowChatProfile(true)}>
+            <button disabled={isGeneralChat} className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full disabled:hover:bg-transparent" onClick={() => isDM ? setProfileDialogUser(otherUser) : (isGeneralChat ? null : setShowChatProfile(true))}>
                 <div className='shrink-0 h-9 w-9'>{isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} className="h-9 w-9" />) : (<Avatar className="h-9 w-9"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-5 w-5 text-primary" /> : (item.type === 'group' ? <Users className='h-4 w-4 text-muted-foreground' /> : <Megaphone className='h-4 w-4 text-muted-foreground' />)}</AvatarFallback></Avatar>)}</div>
                 <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full"><div className="flex items-center gap-1.5"><h2 className={cn("text-[15px] font-bold font-headline truncate leading-none")}>{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>{(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}</div><p className="text-[9px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">{getStatusLine()}</p></div>
             </button>
