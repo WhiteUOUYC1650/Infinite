@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "1.0.2";
+const CURRENT_APP_VERSION = "1.0.2.1";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -32,7 +33,7 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
-    if (!db || !selectedGift || isSending) return;
+    if (!db || !selectedGift || isSending || !currentUser?.uid || !recipient?.id) return;
     setIsSending(true);
     try {
         await runTransaction(db, async (tx) => {
@@ -48,7 +49,7 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
                 emoji: selectedGift.emoji,
                 price: selectedGift.price,
                 senderId: currentUser.uid,
-                senderName: currentUser.name || currentUser.displayName || 'User',
+                senderName: currentUser.name || currentUser.username || 'User',
                 timestamp: serverTimestamp(),
                 message: giftMessage.trim() || null,
             });
@@ -72,7 +73,9 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
             <Sparkles className="h-8 w-8" />
           </div>
           <DialogTitle className="text-xl font-bold font-headline">{t('send_gift')}</DialogTitle>
-          <DialogDescription>Choose a gift for {recipient.id === currentUser.uid ? 'yourself' : recipient.name}</DialogDescription>
+          <DialogDescription>
+            Choose a gift for {(recipient?.id && currentUser?.uid && recipient.id === currentUser.uid) ? 'yourself' : (recipient?.name || 'User')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-3 py-6">

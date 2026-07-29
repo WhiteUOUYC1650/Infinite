@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,8 +17,14 @@ service cloud.firestore {
       allow read: if true;
       allow list: if isSignedIn();
       allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
-      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge']));
+      allow update: if isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge', 'birthday', 'name', 'statusMessage', 'avatar', 'activeGiftEmoji']));
       allow delete: if request.auth.uid == userId || isAdmin();
+      
+      match /receivedGifts/{giftId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
     }
     
     match /chats/{chatId} {
@@ -26,7 +33,12 @@ service cloud.firestore {
       allow update, delete: if isSignedIn();
       match /messages/{messageId} { 
         allow read, list: if isSignedIn(); 
-        allow create, update, delete: if isSignedIn();
+        // Allow creation if user is a member OR if it's a mirrored post from a channel the user owns
+        allow create: if isSignedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members ||
+          (request.resource.data.fromChannelId != null && get(/databases/$(database)/documents/chats/$(request.resource.data.fromChannelId)).data.ownerId == request.auth.uid)
+        );
+        allow update, delete: if isSignedIn();
       }
     }
 
