@@ -320,7 +320,14 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
     if (!userData) return null;
-    return { ...currentUser, ...userData, isAdmin: userData.username === '@Infinite' };
+    // Explicitly mapping uid and id from Firebase Auth and Firestore to ensure they spread correctly
+    return { 
+      ...currentUser, 
+      ...userData, 
+      uid: currentUser.uid,
+      id: userData.id || currentUser.uid,
+      isAdmin: userData.username === '@Infinite' 
+    };
   }, [currentUser, userData]);
 
   const currentSelectedId = useMemo(() => typeof selectedItem === 'string' ? selectedItem : selectedItem?.id, [selectedItem]);

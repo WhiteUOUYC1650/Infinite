@@ -18,6 +18,7 @@ export type User = {
   isDeleted?: boolean;
   infGoldBalance?: number;
   subscriptionTier?: 'none' | 'super' | 'mega' | 'prem' | 'giga' | 'ultra';
+  subscriptionStartedAt?: Timestamp;
   showPremBadge?: boolean;
   lastDailyBonusClaimed?: Timestamp;
   loginProtectionEnabled?: boolean;
