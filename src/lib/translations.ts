@@ -533,6 +533,12 @@ export const translations = {
       'no_gifts': 'No gifts yet.',
       'active_gift': 'Active Gift',
       'remove_from_profile': 'Remove from Profile',
+      'gift_message_label': 'Your Message (optional)',
+      'gift_message_placeholder': 'Write something nice...',
+      'wn_gifts_title': 'Gifts 1.0',
+      'wn_gifts_desc': 'Send virtual gifts with messages to friends or yourself! Display them in your profile or exchange for Gold.',
+      'wn_reliability_title': 'Stability & Logic',
+      'wn_reliability_desc': 'Fixed media recording issues and fully activated Bot Studio management tools.',
     },
     ru: {
       'settings': 'Настройки',
@@ -602,7 +608,7 @@ export const translations = {
       'members_count': '{count, plural, one {# участник} few {# участника} other {# участников}}',
       'subscribers_count': '{count, plural, one {# подписчик} few {# подписчика} other {# подписчиков}}',
       'loading_chat': 'Загрузка чата...',
-      'chat_not_selected': 'Чат не выбран',
+      'chat_not_selected': 'Chat not selected',
       'no_messages_yet': 'Здесь пока ничего нет.',
       'message_placeholder': 'Сообщение',
       'publish_placeholder': 'Публикация',
@@ -1066,6 +1072,12 @@ export const translations = {
       'no_gifts': 'Подарков пока нет.',
       'active_gift': 'Активный подарок',
       'remove_from_profile': 'Убрать из профиля',
+      'gift_message_label': 'Ваше сообщение (необязательно)',
+      'gift_message_placeholder': 'Напишите что-нибудь приятное...',
+      'wn_gifts_title': 'Подарки 1.0',
+      'wn_gifts_desc': 'Отправляйте виртуальные подарки с сообщениями друзьям или самому себе! Ставьте их в профиль или обменивайте на золото.',
+      'wn_reliability_title': 'Стабильность и логика',
+      'wn_reliability_desc': 'Исправлены ошибки записи медиа и полностью активированы инструменты управления в Bot Studio.',
     }
 };
 

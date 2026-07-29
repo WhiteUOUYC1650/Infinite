@@ -44,6 +44,7 @@ export type Gift = {
     senderName: string;
     timestamp: Timestamp;
     price: number;
+    message?: string;
 };
 
 export type AuthenticatedUser = FirebaseUser & Partial<User> & { isAdmin?: boolean };

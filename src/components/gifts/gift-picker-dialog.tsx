@@ -9,8 +9,10 @@ import { collection, doc, addDoc, serverTimestamp, increment, runTransaction } f
 import { User, Gift as GiftType, AuthenticatedUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { Loader2, Sparkles, X, MessageSquareText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 const GIFT_CONFIG = [
   { emoji: '🍦', price: 15 },
@@ -26,6 +28,7 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
   const db = useFirestore();
   const { toast } = useToast();
   const [selectedGift, setSelectedGift] = useState<{emoji: string, price: number} | null>(null);
+  const [giftMessage, setGiftMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
@@ -47,10 +50,13 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
                 senderId: currentUser.uid,
                 senderName: currentUser.name || currentUser.displayName || 'User',
                 timestamp: serverTimestamp(),
+                message: giftMessage.trim() || null,
             });
         });
         toast({ title: t('dm_success'), description: t('gift_sent') });
         onOpenChange(false);
+        setGiftMessage('');
+        setSelectedGift(null);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
@@ -66,7 +72,7 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
             <Sparkles className="h-8 w-8" />
           </div>
           <DialogTitle className="text-xl font-bold font-headline">{t('send_gift')}</DialogTitle>
-          <DialogDescription>Choose a gift for {recipient.name}</DialogDescription>
+          <DialogDescription>Choose a gift for {recipient.id === currentUser.uid ? 'yourself' : recipient.name}</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-3 py-6">
@@ -88,6 +94,19 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
               </div>
             </button>
           ))}
+        </div>
+
+        <div className="space-y-2 mb-6">
+            <div className="flex items-center gap-2 px-1">
+                <MessageSquareText className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t('gift_message_label')}</Label>
+            </div>
+            <Input 
+                value={giftMessage} 
+                onChange={e => setGiftMessage(e.target.value)} 
+                placeholder={t('gift_message_placeholder')}
+                className="h-12 rounded-xl bg-muted/50 border-none focus-visible:ring-primary font-medium"
+            />
         </div>
 
         <DialogFooter className="flex-col gap-2">

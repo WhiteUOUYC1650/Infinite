@@ -15,7 +15,7 @@ import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Badge } from './ui/badge';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { useTheme } from '@/context/theme-context';
-import { Cake, Gift as GiftIcon, Loader2, Coins, Trash2, CheckCircle2 } from 'lucide-react';
+import { Cake, Gift as GiftIcon, Loader2, Coins, Trash2, CheckCircle2, MessageSquareText } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { useFirestore, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, increment, collection, runTransaction } from 'firebase/firestore';
@@ -166,22 +166,30 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                     {gifts?.map(gift => (
-                        <div key={gift.id} className="bg-muted/30 border border-border/50 p-3 rounded-2xl flex items-center justify-between group">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl">{gift.emoji}</span>
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p>
-                                    <p className="text-xs font-black text-primary">{gift.price} G</p>
+                        <div key={gift.id} className="bg-muted/30 border border-border/50 p-3 rounded-2xl flex flex-col gap-2 group">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{gift.emoji}</span>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p>
+                                        <p className="text-xs font-black text-primary">{gift.price} G</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => handleSetActiveGift(gift)} className={cn("h-8 w-8 rounded-xl", user.activeGiftEmoji === gift.emoji && "text-primary bg-primary/10")}>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleExchangeGift(gift)} className="h-8 w-8 rounded-xl text-amber-600 hover:bg-amber-50">
+                                        <Coins className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" onClick={() => handleSetActiveGift(gift)} className={cn("h-8 w-8 rounded-xl", user.activeGiftEmoji === gift.emoji && "text-primary bg-primary/10")}>
-                                    <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleExchangeGift(gift)} className="h-8 w-8 rounded-xl text-amber-600 hover:bg-amber-50">
-                                    <Coins className="h-4 w-4" />
-                                </Button>
-                            </div>
+                            {gift.message && (
+                                <div className="flex items-start gap-2 bg-background/40 p-2 rounded-xl border border-border/20">
+                                    <MessageSquareText className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                                    <p className="text-[11px] leading-tight text-foreground/80 italic">{gift.message}</p>
+                                </div>
+                            )}
                         </div>
                     ))}
                     {gifts?.length === 0 && !giftsLoading && (

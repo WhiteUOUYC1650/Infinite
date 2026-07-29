@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { User, CustomBot, BotMiniApp } from '@/types';
+import type { User, CustomBot, BotMiniApp, Gift } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -22,9 +22,9 @@ import { PremBadge } from './ui/prem-badge';
 import { BetaBadge } from './ui/beta-badge';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { useTheme } from '@/context/theme-context';
-import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal, Sparkles, Gift } from 'lucide-react';
+import { MessageSquare, Phone, Bell, BellOff, X, Coins, Loader2, Cake, Video, ArrowLeft, LayoutGrid, Globe, ExternalLink, SeparatorHorizontal, Sparkles, Gift as GiftIcon, MessageSquareText } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useCollection } from '@/firebase';
 import { collection, doc, runTransaction, increment, getDoc, setDoc, serverTimestamp, query, where, limit, getDocs, orderBy, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from './ui/inf-gold-icon';
@@ -56,6 +56,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const [isSendingGold, setIsSendingGold] = useState(false);
   const [botData, setBotData] = useState<CustomBot | null>(null);
   const [activeMiniApp, setActiveMiniApp] = useState<BotMiniApp | null>(null);
+
+  const giftsQuery = useMemo(() => {
+    if (!db || !user.id) return null;
+    return collection(db, 'users', user.id, 'receivedGifts');
+  }, [db, user.id]);
+  
+  const { data: gifts, loading: giftsLoading } = useCollection<Gift>(giftsQuery);
 
   useEffect(() => { 
     if (open) { 
@@ -206,18 +213,52 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         {!user.isDeleted && !user.isBot && (<div className="flex items-center justify-center gap-2 mb-4"><InfGoldIcon className="h-5 w-5" /><span className="font-bold text-lg">{user.infGoldBalance ?? 0}</span></div>)}
                         {birthdayText && (<div className="flex items-center justify-center gap-2 mb-4 text-xs font-bold text-primary"><Cake className="h-3.5 w-3.5" /><span>{birthdayText}</span></div>)}
                         
-                        {!user.isBot && !user.isDeleted && experimentalDesign && (
-                            <div className="grid grid-cols-2 gap-3 w-full mt-4 px-2">
+                        {!user.isDeleted && experimentalDesign && (
+                            <div className={cn("grid gap-3 w-full mt-4 px-2", user.isBot ? "grid-cols-2" : "grid-cols-2")}>
                                 <button onClick={handleStartMessage} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight">{t('message')}</span></button>
-                                <button onClick={() => setShowGiftPicker(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-pink-500/15 flex items-center justify-center"><Gift className="w-5 h-5 text-pink-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-pink-600">{t('send_gift')}</span></button>
-                                <button onClick={() => setShowSendGold(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center"><Coins className="w-5 h-5 text-amber-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-amber-600">{t('send_gold')}</span></button>
-                                <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-orange-500/15")}>{isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="h-5 w-5 text-orange-500" />}</div><span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('mute')}</span></button>
+                                <button onClick={() => setShowGiftPicker(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-pink-500/15 flex items-center justify-center"><GiftIcon className="w-5 h-5 text-pink-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-pink-600">{t('send_gift')}</span></button>
+                                {!user.isBot && (
+                                    <>
+                                        <button onClick={() => setShowSendGold(true)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center"><Coins className="w-5 h-5 text-amber-600" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-amber-600">{t('send_gold')}</span></button>
+                                        <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-orange-500/15")}>{isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="h-5 w-5 text-orange-500" />}</div><span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('mute')}</span></button>
+                                    </>
+                                )}
                             </div>
                         )}
 
                         <div className="px-2 pt-6 pb-4 space-y-6">
                             {user.statusMessage && !user.isDeleted && (<div className="text-center p-4 bg-muted/50 rounded-2xl border-none"><p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p></div>)}
                             
+                            {/* Gifts Section (Moved under description) */}
+                            {!user.isBot && !user.isDeleted && (
+                                <div className="space-y-3">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('gifts')}</h3>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {gifts?.map(gift => (
+                                            <div key={gift.id} className="bg-muted/30 border border-border/50 p-3 rounded-2xl flex flex-col gap-2">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl">{gift.emoji}</span>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p>
+                                                    </div>
+                                                </div>
+                                                {gift.message && (
+                                                    <div className="flex items-start gap-2 bg-background/40 p-2 rounded-xl border border-border/20">
+                                                        <MessageSquareText className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                                                        <p className="text-[11px] leading-tight text-foreground/80 italic">{gift.message}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {gifts?.length === 0 && !giftsLoading && (
+                                            <div className="text-center py-4 border-2 border-dashed rounded-2xl opacity-30">
+                                                <p className="text-[9px] font-bold uppercase tracking-widest">{t('no_gifts')}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {user.isCustomBot && botData?.miniApps && botData.miniApps.length > 0 && (
                                 <div className="space-y-3">
                                     <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('mini_apps')}</h3>
@@ -236,10 +277,10 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             )}
 
                             <div className="space-y-2">
-                                {!experimentalDesign && !user.isBot && !user.isDeleted && (
+                                {!experimentalDesign && !user.isDeleted && (
                                     <>
-                                        <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-pink-200 text-pink-600 bg-pink-50/50 hover:bg-pink-100" onClick={() => setShowGiftPicker(true)}><Gift className="mr-2 h-5 w-5" />{t('send_gift')}</Button>
-                                        <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>
+                                        <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-pink-200 text-pink-600 bg-pink-50/50 hover:bg-pink-100" onClick={() => setShowGiftPicker(true)}><GiftIcon className="mr-2 h-5 w-5" />{t('send_gift')}</Button>
+                                        {!user.isBot && <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-amber-200 text-amber-600 bg-amber-50/50 hover:bg-amber-100" onClick={() => setShowSendGold(true)}><Coins className="mr-2 h-5 w-5" />{t('send_gold')}</Button>}
                                         <Button variant="outline" className="w-full rounded-xl h-12 font-bold border-green-200 text-green-600 bg-green-50/50 hover:bg-green-100" onClick={() => { window.dispatchEvent(new CustomEvent('initiate-call', { detail: { chat: { id: [authUser?.uid, user.id].sort().join('_'), type: 'dm', members: [authUser?.uid, user.id].sort() }, otherUser: user, isVideo: false } })); onOpenChange(false); }}><Phone className="mr-2 h-5 w-5" />{t('audio_call')}</Button>
                                     </>
                                 )}
@@ -247,7 +288,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                         </div>
                     </div>
                 </ScrollArea>
-                {!experimentalDesign && (<div className='shrink-0 p-6 border-t flex justify-center bg-background'><Button onClick={handleStartMessage} disabled={user.isBot || !!user.isDeleted} className="rounded-xl px-8 w-full h-12 font-bold">{t('message')}</Button></div>)}
+                {!experimentalDesign && (<div className='shrink-0 p-6 border-t flex justify-center bg-background'><Button onClick={handleStartMessage} disabled={!!user.isDeleted} className="rounded-xl px-8 w-full h-12 font-bold">{t('message')}</Button></div>)}
             </div>
         )}
         <Dialog open={showSendGold} onOpenChange={setShowSendGold}>
