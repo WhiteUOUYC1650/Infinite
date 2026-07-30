@@ -39,9 +39,9 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
 
   const handleUpload = async () => {
     if (!db || (!file && !caption.trim())) return;
+    if (caption.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Caption too long' }); return; }
     setIsUploading(true);
     try {
-      // 1. Manage 100-story limit (FIFO)
       const existingStoriesQuery = query(
         collection(db, 'stories'),
         where('userId', '==', currentUser.uid),
@@ -54,7 +54,6 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         await deleteDoc(oldestStory.ref);
       }
 
-      // 2. Prepare Base64 media
       let base64 = '';
       if (file) {
         const reader = new FileReader();
@@ -64,13 +63,11 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         });
       }
 
-      // 3. Upload new story with custom expiration
       const now = Timestamp.now();
       const expirationHours = currentUser.storyExpirationDuration ?? 24;
       
       let expiresAt: Timestamp;
       if (expirationHours === 0) {
-        // "Never" - set to far future (100 years)
         expiresAt = new Timestamp(now.seconds + 100 * 365 * 24 * 60 * 60, 0);
       } else {
         expiresAt = new Timestamp(now.seconds + expirationHours * 60 * 60, 0);
@@ -83,7 +80,7 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
         timestamp: now,
         expiresAt: expiresAt,
         viewedBy: [],
-        theme: theme // Store theme to use as background if no mediaUrl
+        theme: theme 
       });
 
       toast({ title: t('dm_success'), description: t('story_upload_success') });
@@ -134,6 +131,7 @@ export function UploadStoryDialog({ open, onOpenChange, currentUser }: { open: b
             onChange={e => setCaption(e.target.value)} 
             disabled={isUploading}
             className="rounded-xl h-12 bg-muted/50 border-none focus-visible:ring-primary"
+            maxLength={1600}
           />
         </div>
 

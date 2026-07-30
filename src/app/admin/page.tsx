@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -262,6 +263,7 @@ function AdminPage() {
 
   const sendBotBroadcast = async (text: string) => {
     if (!db || !text.trim()) return;
+    if (text.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Broadcast message too long' }); return 0; }
     try {
         const botLinkRef = doc(db, 'botLinks', encodeURIComponent('/B/Infinite'));
         const botLinkSnap = await getDoc(botLinkRef);
@@ -399,6 +401,7 @@ function AdminPage() {
                                     onChange={e => setTosContent(e.target.value)} 
                                     placeholder="Enter Terms of Service in Markdown..." 
                                     className="min-h-[250px] rounded-xl bg-muted/50 border-none text-sm"
+                                    maxLength={5000}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -408,6 +411,7 @@ function AdminPage() {
                                     onChange={e => setPrivacyContent(e.target.value)} 
                                     placeholder="Enter Privacy Policy in Markdown..." 
                                     className="min-h-[250px] rounded-xl bg-muted/50 border-none text-sm"
+                                    maxLength={5000}
                                 />
                             </div>
                             <Button className="w-full h-12 rounded-xl font-bold" onClick={handleSaveLegal} disabled={isSavingLegal}>
@@ -423,7 +427,13 @@ function AdminPage() {
                             <h2 className="text-2xl font-bold font-headline">{t('admin_broadcast_title')}</h2>
                             <p className="text-sm text-muted-foreground">{t('admin_broadcast_desc')}</p>
                         </div>
-                        <Textarea value={broadcastText} onChange={e => setBroadcastText(e.target.value)} placeholder="Type broadcast message..." className="min-h-[150px] rounded-xl bg-muted/50 border-none" />
+                        <Textarea 
+                          value={broadcastText} 
+                          onChange={e => setBroadcastText(e.target.value)} 
+                          placeholder="Type broadcast message..." 
+                          className="min-h-[150px] rounded-xl bg-muted/50 border-none" 
+                          maxLength={1600}
+                        />
                         <Button className="w-full h-12 rounded-xl font-bold" onClick={async () => { setIsBroadcasting(true); const c = await sendBotBroadcast(broadcastText); toast({ title: t('dm_success'), description: t('admin_broadcast_success', { count: c }) }); setBroadcastText(''); setIsBroadcasting(false); }} disabled={!broadcastText.trim() || isBroadcasting}>
                             {isBroadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                             {t('admin_broadcast_button')}

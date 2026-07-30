@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -203,7 +204,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                     </Tabs>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => handleRetryUpload(video.id)} onEdit={() => setEditingVideo(video)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
+            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{musicLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => handleRetryUpload(video.id)} onEdit={() => setEditingVideo(video)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
           </>
       ) : (
           <UploadView 
@@ -269,11 +270,11 @@ function VideoEditDialog({ video, onClose, db, t }: { video: SharedVideo, onClos
                     </div>
                     <div className="space-y-2">
                         <Label>{t('infvid_video_title_label')}</Label>
-                        <Input value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl font-bold" />
+                        <Input value={title} onChange={e => setTitle(e.target.value)} className="rounded-xl font-bold" maxLength={200} />
                     </div>
                     <div className="space-y-2">
                         <Label>{t('infvid_video_desc_label')}</Label>
-                        <Textarea value={description} onChange={e => setDescription(e.target.value)} className="rounded-xl min-h-[100px] resize-none" />
+                        <Textarea value={description} onChange={e => setDescription(e.target.value)} className="rounded-xl min-h-[100px] resize-none" maxLength={1600} />
                     </div>
                 </div>
                 <DialogFooter className="gap-2">
@@ -343,289 +344,11 @@ function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInByte
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-4"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_thumbnail_label')}</label><div className={cn("aspect-video border-4 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-muted/20 relative", thumbnailPreview ? "border-solid border-primary" : "hover:border-primary/50")} onClick={() => !isUploading && thumbnailInputRef.current?.click()}><input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />{thumbnailPreview ? (<img src={thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />) : (<div className="text-center"><ImageIcon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" /><p className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('infvid_select_thumbnail')}</p></div>)}</div></div>
-                        <div className="space-y-6"><div className="space-y-3"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_video_title_label')}</label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('infvid_video_title_placeholder')} disabled={isUploading} className="rounded-2xl h-14 px-6 bg-muted/30 border-none font-bold" /></div><div className="space-y-3"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_video_desc_label')}</label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('infvid_video_desc_placeholder')} className="resize-none rounded-2xl p-6 bg-muted/30 border-none min-h-[120px]" rows={3} disabled={isUploading} /></div></div>
+                        <div className="space-y-6"><div className="space-y-3"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_video_title_label')}</label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('infvid_video_title_placeholder')} disabled={isUploading} className="rounded-2xl h-14 px-6 bg-muted/30 border-none font-bold" maxLength={200} /></div><div className="space-y-3"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_video_desc_label')}</label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('infvid_video_desc_placeholder')} className="resize-none rounded-2xl p-6 bg-muted/30 border-none min-h-[120px]" rows={3} disabled={isUploading} maxLength={1600} /></div></div>
                     </div>
                     <div className="pt-6 flex gap-4"><Button variant="ghost" onClick={onClose} disabled={isUploading} className="rounded-2xl flex-1 h-14 text-lg font-bold">{t('cancel')}</Button><Button onClick={handleSubmit} disabled={!file || !title.trim() || isUploading} className="rounded-2xl flex-[2] font-black h-14 text-lg shadow-xl">{isUploading ? t('loading') : t('save')}</Button></div>
                 </div>
             </ScrollArea>
-        </div>
-    );
-}
-
-function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleWatchLater, onDelete, onRetry, onEdit }: { video: SharedVideo, sender?: User, onClick: () => void, isShortMode?: boolean, currentUser: AuthenticatedUser, onToggleWatchLater: () => void, onDelete: () => void, onRetry: () => void, onEdit: () => void }) {
-    const { t, language } = useLanguage(); const timeAgo = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
-    const isOwner = video.senderId === currentUser.uid;
-    const isSaved = currentUser.watchLater?.includes(video.id);
-    const needsReprocess = isOwner && (video.isProcessed !== 1 || video.videoStatus !== 'complete');
-
-    const handleShare = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const link = `/IV/V/${video.id}`;
-        navigator.clipboard.writeText(link);
-        toast({ title: t('video_link_copied') });
-    };
-
-    if (isShortMode) {
-        return (
-            <div className="flex flex-col gap-2 group cursor-pointer animate-in zoom-in duration-300" onClick={onClick}>
-                <div className="relative aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-lg border border-white/5 transition-transform hover:scale-[1.03] duration-300">
-                    {video.thumbnailUrl ? (<img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />) : (<div className="absolute inset-0 flex items-center justify-center bg-primary/5"><Zap className="h-12 w-12 text-primary/30" /></div>)}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-                    <div className="absolute bottom-3 left-3 right-3 text-white"><p className="text-[9px] font-bold opacity-80 mt-1 uppercase tracking-widest">{t('infvid_views', { count: video.views || 0 })}</p></div>
-                    <div className="absolute top-3 left-3 bg-primary text-white p-1 rounded-full shadow-lg"><Zap className="h-3 w-3 fill-white" /></div>
-                </div>
-                <div className="flex items-start justify-between px-1">
-                    <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold line-clamp-2 leading-tight">{video.title}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1 truncate">{sender?.name}</p>
-                    </div>
-                    <div onClick={e => e.stopPropagation()} className="shrink-0">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                                <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
-                                {isOwner && (
-                                    <>
-                                        <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
-                                        {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
-                                        <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                    </>
-                                )}
-                                {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-    return (
-        <div className="flex flex-col gap-3 group cursor-pointer relative" onClick={onClick}>
-            <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-sm transition-transform hover:scale-[1.02] duration-200">
-                {video.thumbnailUrl ? (<img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
-                        {video.videoStatus === 'failed' ? <AlertCircle className="h-12 w-12 text-destructive mb-2" /> : <Play className="h-12 w-12 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />}
-                    </div>
-                )}
-                <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">HD</div>
-            </div>
-            <div className="flex gap-3">
-                <Avatar className="h-9 w-9 shrink-0 border border-border/50"><AvatarImage src={sender?.avatar} /><AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback></Avatar>
-                <div className="flex-1 min-w-0">
-                    <h4 className="font-bold line-clamp-2 leading-snug text-sm group-hover:text-primary transition-colors">{video.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sender?.name || '...'}</p>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5"><span className="font-black text-primary">{t('infvid_views', { count: video.views || 0 })}</span><span className='w-1 h-1 rounded-full bg-muted-foreground/30' /><span>{timeAgo}</span></div>
-                </div>
-                <div onClick={e => e.stopPropagation()} className="shrink-0">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground"><MoreVertical className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl w-48 z-[60]">
-                            <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
-                            {isOwner && (
-                                <>
-                                    <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
-                                    {needsReprocess && <DropdownMenuItem onSelect={onRetry} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
-                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                </>
-                            )}
-                            {!isOwner && <DropdownMenuItem onSelect={onToggleWatchLater} className="font-bold">{isSaved ? t('remove_from_watch_later') : t('add_to_watch_later')}</DropdownMenuItem>}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function VideoDetailOverlay({ video: initialVideo, sender, onClose, currentUser, onDelete, onRetry, onEdit }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onDelete: () => void, onRetry: (vidId: string) => void, onEdit: () => void }) {
-    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [assemblyProgress, setAssemblyProgress] = useState(0); const [commentText, setAddCommentText] = useState(''); const [comments, setComments] = useState<VideoComment[]>([]); const [video, setVideo] = useState<SharedVideo>(initialVideo); const [likedBy, setLikedBy] = useState<string[]>(initialVideo.likedBy || []); const [userSubscriptions, setUserSubscriptions] = useState<string[]>(currentUser.subscriptions || []); const viewIncremented = useRef(false);
-    const isLiked = likedBy.includes(currentUser.uid); const isSubscribed = userSubscriptions.includes(video.senderId);
-    const isSaved = currentUser.watchLater?.includes(video.id);
-    const isOwner = video.senderId === currentUser.uid;
-    const needsReprocess = isOwner && (video.isProcessed !== 1 || video.videoStatus !== 'complete');
-    const commentUserIds = useMemo(() => Array.from(new Set(comments.map(c => c.userId))), [comments]); const { users: commentAuthors } = useBatchUsers(commentUserIds);
-    const [showComments, setShowComments] = useState(false);
-
-    useEffect(() => {
-        if (!db) return;
-        const load = async () => {
-            const cached = await getCachedFile(video.id);
-            if (cached) { setVideoUrl(cached); setIsLoading(false); if (!viewIncremented.current) { viewIncremented.current = true; updateDoc(doc(db, 'videos', video.id), { views: increment(1) }); } return; }
-            if (video.videoStatus !== 'complete' || !video.videoChunkIds) { if (video.videoStatus === 'uploading') setIsLoading(true); return; }
-            setIsLoading(true);
-            try {
-                const totalChunks = video.videoChunkIds.length; const chunksData: { part: number, data: string }[] = [];
-                for (let i = 0; i < totalChunks; i++) { const chunkSnap = await getDoc(doc(db, 'videoChunks', video.videoChunkIds[i])); if (chunkSnap.exists()) { chunksData.push(chunkSnap.data() as any); setAssemblyProgress(Math.round(((i + 1) / totalChunks) * 100)); } }
-                chunksData.sort((a, b) => a.part - b.part); const assembledBase64 = chunksData.map(c => c.data).join(''); const dataUrl = `data:${video.videoMimeType};base64,${assembledBase64}`;
-                await cacheFile(video.id, dataUrl); setVideoUrl(await getCachedFile(video.id));
-                if (!viewIncremented.current) { viewIncremented.current = true; updateDoc(doc(db, 'videos', video.id), { views: increment(1) }); }
-            } catch (e) { console.error(e); } finally { setIsLoading(false); }
-        };
-        load();
-    }, [video.id, db, video.videoStatus, video.videoChunkIds, video.videoMimeType]);
-
-    useEffect(() => { if (!db) return; const videoRef = doc(db, 'videos', video.id); return onSnapshot(videoRef, (snapshot) => { if (snapshot.exists()) { const data = { id: snapshot.id, ...snapshot.data() } as SharedVideo; setVideo(data); setLikedBy(data.likedBy || []); } }); }, [db, video.id]);
-    useEffect(() => { if (!db) return; const commentsQuery = query(collection(db, 'videos', video.id, 'comments'), orderBy('timestamp', 'desc'), limit(100)); return onSnapshot(commentsQuery, (snapshot) => { setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as VideoComment))); }); }, [db, video.id]);
-    useEffect(() => { if (!db) return; const userRef = doc(db, 'users', currentUser.uid); return onSnapshot(userRef, (snapshot) => { if (snapshot.exists()) { setUserSubscriptions(snapshot.data().subscriptions || []); } }); }, [db, currentUser.uid]);
-
-    const handleAddComment = async (replyTo?: VideoComment) => { if (!db || !commentText.trim()) return; try { const commentData: any = { userId: currentUser.uid, userName: currentUser.name || currentUser.username, userAvatar: currentUser.avatar || null, text: commentText.trim(), timestamp: Timestamp.now(), likedBy: [], }; if (replyTo) { commentData.parentId = replyTo.parentId || replyTo.id; commentData.replyTo = { userId: replyTo.userId, userName: replyTo.userName, }; } await addDoc(collection(db, 'videos', video.id, 'comments'), commentData); setAddCommentText(''); } catch (e) { console.error(e); } };
-    const handleToggleLike = async () => { if (!db) return; const videoRef = doc(db, 'videos', video.id); try { if (isLiked) { await updateDoc(videoRef, { likedBy: arrayRemove(currentUser.uid) }); } else { await updateDoc(videoRef, { likedBy: arrayUnion(currentUser.uid) }); } } catch (e) { console.error("Like toggle failed", e); } };
-    const handleToggleSubscribe = async () => { if (!db || video.senderId === currentUser.uid) return; const userRef = doc(db, 'users', currentUser.uid); const authorRef = doc(db, 'users', video.senderId); try { const batch = writeBatch(db); if (isSubscribed) { batch.update(userRef, { subscriptions: arrayRemove(video.senderId) }); batch.update(authorRef, { subscriberCount: increment(-1) }); } else { batch.update(userRef, { subscriptions: arrayUnion(video.senderId) }); batch.update(authorRef, { subscriberCount: increment(1) }); } await batch.commit(); } catch (e) { console.error("Subscription toggle failed", e); } };
-    const handleShare = () => { const internalLink = `/IV/V/${video.id}`; navigator.clipboard.writeText(internalLink); toast({ title: t('video_link_copied') }); };
-    const toggleWatchLater = async () => { if (!db) return; try { await updateDoc(doc(db, 'users', currentUser.uid), { watchLater: isSaved ? arrayRemove(video.id) : arrayUnion(video.id) }); toast({ title: t('dm_success'), description: isSaved ? t('remove_from_watch_later') : t('add_to_watch_later') }); } catch(e) {} };
-
-    const timeAgoString = video.timestamp?.seconds ? formatDistanceToNow(new Date(video.timestamp.seconds * 1000), { addSuffix: true, locale: language === 'ru' ? ru : enUS }) : '';
-
-    if (video.isShort === 1) {
-        return (
-            <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col items-center justify-center animate-in fade-in duration-300 overflow-hidden">
-                <div className="relative w-full h-full max-w-[480px] bg-zinc-950 flex items-center justify-center shadow-2xl">
-                    {isLoading ? (
-                        <div className="text-center space-y-4">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-primary">{assemblyProgress}%</p>
-                        </div>
-                    ) : videoUrl && (
-                        <video src={videoUrl} controls={false} autoPlay loop playsInline className="h-full w-full object-cover" />
-                    )}
-
-                    <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5 z-30">
-                        <div className="flex flex-col items-center gap-1">
-                            <button onClick={handleToggleLike} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center transition-all active:scale-125", isLiked && "text-red-500")}>
-                                <ThumbsUp className={cn("h-5.5 w-5.5", isLiked && "fill-current")} />
-                            </button>
-                            <span className="text-[10px] font-black drop-shadow-md">{likedBy.length}</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1">
-                            <button onClick={() => setShowComments(true)} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center">
-                                <MessageSquare className="h-5.5 w-5.5" />
-                            </button>
-                            <span className="text-[10px] font-black drop-shadow-md">{comments.length}</span>
-                        </div>
-                        <button onClick={toggleWatchLater} className={cn("h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center", isSaved && "text-amber-500")}>
-                            <Clock className={cn("h-5.5 w-5.5", isSaved && "fill-current")} />
-                        </button>
-                        <button onClick={handleShare} className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center">
-                            <Share2 className="h-5.5 w-5.5" />
-                        </button>
-                        
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className="h-11 w-11 rounded-full bg-white/10 backdrop-blur-xl border border-white/5 flex items-center justify-center">
-                                    <MoreVertical className="h-5.5 w-5.5" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl w-48 z-[110]">
-                                <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
-                                {isOwner && (
-                                    <>
-                                        <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
-                                        {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
-                                        <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-
-                    <div className="absolute bottom-0 left-0 right-0 p-5 pb-8 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-20 pointer-events-none">
-                        <div className="flex items-center gap-2.5 mb-3 pointer-events-auto">
-                            <Avatar className="h-9 w-9 border-2 border-white/10 shadow-lg">
-                                <AvatarImage src={sender?.avatar} />
-                                <AvatarFallback className="bg-zinc-800 text-white text-xs">{sender?.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                                <p className="font-bold text-xs truncate flex items-center gap-1 drop-shadow-md">
-                                    {sender?.name} <VerifiedBadge className="w-3 h-3" />
-                                </p>
-                                <button className="h-auto p-0 text-[10px] font-black uppercase text-primary hover:text-white transition-colors" onClick={handleToggleSubscribe}>
-                                    {isSubscribed ? t('subscribed') : t('subscribe')}
-                                </button>
-                            </div>
-                        </div>
-                        <h3 className="font-bold text-sm leading-snug mb-1 drop-shadow-md pointer-events-auto">{video.title}</h3>
-                        <p className="text-[11px] text-white/70 line-clamp-2 leading-relaxed drop-shadow-sm pointer-events-auto">{video.description}</p>
-                    </div>
-
-                    <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-6 right-4 z-40 text-white bg-black/40 backdrop-blur-md rounded-full h-9 w-9 hover:bg-black/60 transition-colors">
-                        <X className="h-5 w-5" />
-                    </Button>
-                </div>
-
-                <Dialog open={showComments} onOpenChange={setShowComments}>
-                    <DialogContent className="max-w-md h-[65vh] rounded-t-[2.5rem] border-none p-0 overflow-hidden flex flex-col bg-card z-[120]">
-                        <DialogTitle className="sr-only">{t('comments')}</DialogTitle>
-                        <DialogHeader className="p-4 border-b shrink-0 flex flex-row items-center justify-between">
-                            <DialogTitle className="text-xs font-black uppercase tracking-widest opacity-60 ml-2">{t('comments')} ({comments.length})</DialogTitle>
-                            <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="h-8 rounded-full"><X className="h-4 w-4" /></Button>
-                        </DialogHeader>
-                        <ScrollArea className="flex-1">
-                            <div className="p-5"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>
-                        </ScrollArea>
-                    </DialogContent>
-                </Dialog>
-            </div>
-        );
-    }
-
-    return (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background animate-in fade-in duration-300">
-            <header className="h-14 flex items-center px-4 border-b shrink-0 bg-background/95 backdrop-blur-md sticky top-0 z-20 pt-[calc(1rem+env(safe-area-inset-top))]">
-                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
-                <div className="ml-4 flex items-center gap-2 overflow-hidden flex-1"><InfVidIcon className="h-6 w-6 shrink-0" /><span className="font-bold font-headline truncate">{video.title}</span></div>
-                <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button>
-            </header>
-            <div className="flex-1 overflow-y-auto">
-                <section className="w-full bg-black flex items-center justify-center relative overflow-hidden h-[60vh]">
-                    <div className="h-full flex items-center justify-center w-full">
-                        {isLoading ? (<div className="text-center space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><div className="space-y-2"><p className="text-white/60 text-sm font-medium animate-pulse">{video.videoStatus === 'uploading' ? t('processing_video') : t('loading')}...</p><p className="text-primary text-xs font-black">{assemblyProgress}%</p></div></div>) : videoUrl ? (<video src={videoUrl} controls autoPlay className="h-full max-h-full max-w-full object-contain" />) : (<p className="text-destructive font-bold">{t('infvid_assembly_failed')}</p>)}
-                    </div>
-                </section>
-                <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-6 p-4 md:p-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
-                    <div className="flex-1 space-y-6">
-                        <div className="space-y-4">
-                            <h2 className="text-2xl font-bold font-headline leading-tight">{video.title}</h2>
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-12 w-12 border"><AvatarImage src={sender?.avatar} /><AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback></Avatar>
-                                    <div><div className="font-bold text-base leading-tight flex items-center gap-1">{sender?.name}{(sender?.username === '@InfiniteBot' || sender?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}</div><p className="text-xs text-muted-foreground font-medium">{t('subscribers_count', { count: sender?.subscriberCount || 0 })}</p></div>
-                                    <Button variant={isSubscribed ? "secondary" : "default"} className={cn("ml-4 rounded-full h-10 px-6 font-bold", !isSubscribed && "bg-black text-white dark:bg-white dark:text-black")} onClick={handleToggleSubscribe} disabled={video.senderId === currentUser.uid}>{isSubscribed ? t('subscribed') : t('subscribe')}</Button>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button variant={isLiked ? "default" : "secondary"} className={cn("rounded-full gap-2 h-10 px-5 transition-all", isLiked && "bg-primary text-primary-foreground")} onClick={handleToggleLike}><ThumbsUp className={cn("h-4 w-4", isLiked && "fill-current")} /><span className="text-xs font-bold">{t('likes', { count: likedBy.length })}</span></Button>
-                                    <Button variant="secondary" className={cn("rounded-full gap-2 h-10 px-5 transition-all", isSaved && "bg-amber-500 text-white")} onClick={toggleWatchLater}><Clock className={cn("h-4 w-4", isSaved && "fill-current")} /><span className="text-xs font-bold">{t('watch_later')}</span></Button>
-                                    <Button variant="secondary" className="rounded-full gap-2 h-10 px-5" onClick={handleShare}><Share2 className="h-4 w-4" /><span className="text-xs font-bold">{t('share')}</span></Button>
-                                    
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-muted">
-                                                <MoreVertical className="h-5 w-5" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="rounded-xl w-48">
-                                            <DropdownMenuItem onSelect={handleShare} className="font-bold"><Share2 className="h-4 w-4 mr-2" /> {t('share')}</DropdownMenuItem>
-                                            {isOwner && (
-                                                <>
-                                                    <DropdownMenuItem onSelect={onEdit} className="font-bold"><Pencil className="h-4 w-4 mr-2" /> {t('edit')}</DropdownMenuItem>
-                                                    {needsReprocess && <DropdownMenuItem onSelect={() => onRetry(video.id)} className="font-bold text-primary"><RefreshCw className="h-4 w-4 mr-2" /> {t('retry_upload')}</DropdownMenuItem>}
-                                                    <DropdownMenuItem onSelect={onDelete} className="text-destructive font-bold"><Trash2 className="h-4 w-4 mr-2" /> {t('delete')}</DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </div>
-                            <div className="bg-muted/50 rounded-2xl p-4 text-sm leading-relaxed border border-border/50 shadow-inner"><div className="flex items-center gap-2 font-bold mb-2"><span className="text-primary text-base font-black">{t('infvid_views', { count: video.views || 0 })}</span><span className="w-1 h-1 rounded-full bg-muted-foreground/30" /><span className="text-muted-foreground">{timeAgoString}</span></div><p className="text-foreground/80 whitespace-pre-wrap">{video.description || t('infvid_no_description')}</p></div>
-                        </div>
-                        <div className="block lg:hidden pt-6"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></div>
-                    </div>
-                    <aside className="hidden lg:block w-96 shrink-0 border-l pl-6"><CommentSection video={video} comments={comments} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setAddCommentText} commentAuthors={commentAuthors} /></aside>
-                </div>
-            </div>
         </div>
     );
 }
@@ -643,7 +366,7 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                 <div className="flex-1 space-y-2">
                     {replyingTo && (<div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg text-[10px]"><p className="font-bold text-muted-foreground">{t('replying_to', { name: replyingTo.userName })}</p><Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setReplyTo(null)}><X className="h-3 w-3" /></Button></div>)}
                     <div className="flex gap-2">
-                        <Input value={commentText} onChange={e => setAddCommentText(e.target.value)} placeholder={t('no_comments_yet')} className="rounded-xl h-10 border-none bg-muted/50" onKeyDown={e => e.key === 'Enter' && (onAddComment(replyingTo || undefined), setReplyTo(null))} />
+                        <Input value={commentText} onChange={e => setAddCommentText(e.target.value)} placeholder={t('no_comments_yet')} className="rounded-xl h-10 border-none bg-muted/50" onKeyDown={e => e.key === 'Enter' && (onAddComment(replyingTo || undefined), setReplyTo(null))} maxLength={1600} />
                         <Button size="icon" onClick={() => { onAddComment(replyingTo || undefined); setReplyTo(null); }} className="rounded-full h-10 w-10 shrink-0"><Send className="h-4 w-4" /></Button>
                     </div>
                 </div>
@@ -659,26 +382,6 @@ function CommentSection({ video, comments, currentUser, onAddComment, commentTex
                         </div>
                     </div>
                 )) : (<div className="text-center py-10 opacity-30"><MessageSquare className="h-10 w-10 mx-auto mb-2" /><p className="text-xs font-bold uppercase">{t('no_comments_yet')}</p></div>)}
-            </div>
-        </div>
-    );
-}
-
-function CommentItem({ comment, author, onReply, isReply = false, t, language }: { comment: VideoComment, author?: User, onReply: () => void, isReply?: boolean, t: any, language: any }) {
-    const timeAgo = formatDistanceToNow(new Date(comment.timestamp.toMillis()), { addSuffix: true, locale: language === 'ru' ? ru : enUS });
-    return (
-        <div className="flex gap-3 group">
-            <Avatar className={cn(isReply ? "h-7 w-7" : "h-9 w-9")}><AvatarImage src={author?.avatar} /><AvatarFallback>{comment.userName.charAt(0)}</AvatarFallback></Avatar>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-xs truncate">{comment.userName}{(author?.username === '@InfiniteBot' || author?.username === '@Infinite') && <VerifiedBadge className='w-3 h-3' />}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">{timeAgo}</span>
-                </div>
-                {comment.replyTo && (<p className="text-[10px] font-bold text-primary mb-1">@{comment.replyTo.userName}</p>)}
-                <p className="text-sm leading-relaxed mb-1.5">{comment.text}</p>
-                <div className="flex items-center gap-4">
-                    <button onClick={onReply} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">{t('reply')}</button>
-                </div>
             </div>
         </div>
     );
