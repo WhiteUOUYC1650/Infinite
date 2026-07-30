@@ -7,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat, Message } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck, FileSearch, Scale } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck, FileSearch, Scale, Save } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -337,7 +337,7 @@ function AdminPage() {
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
     } finally {
-        setIsUploadingApk(false);
+        setIsUpdatingApk(false);
     }
   };
 
