@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -24,7 +23,7 @@ const GIFT_CONFIG = [
   { emoji: '👑', price: 1000 },
 ];
 
-export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }: { open: boolean, onOpenChange: (o: boolean) => void, recipient: User, currentUser: AuthenticatedUser }) {
+export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }: { open: boolean, onOpenChange: (o: boolean) => void, recipient: User | null, currentUser: AuthenticatedUser | null }) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -65,6 +64,8 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
     }
   };
 
+  const isSelf = recipient?.id === currentUser?.uid;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-[2rem] p-6 border-none shadow-2xl">
@@ -74,7 +75,7 @@ export function GiftPickerDialog({ open, onOpenChange, recipient, currentUser }:
           </div>
           <DialogTitle className="text-xl font-bold font-headline">{t('send_gift')}</DialogTitle>
           <DialogDescription>
-            Choose a gift for {(recipient?.id && currentUser?.uid && recipient.id === currentUser.uid) ? 'yourself' : (recipient?.name || 'User')}
+            {t('send_gift_desc_label' as any) || 'Choose a gift for'} {isSelf ? (t('yourself_label' as any) || 'yourself') : (recipient?.name || 'User')}
           </DialogDescription>
         </DialogHeader>
 

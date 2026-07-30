@@ -96,7 +96,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
-  const { experimentalDesign } = useTheme();
+  const { experimentalDesign, glassEffect } = useTheme();
   const [isLeaving, setIsLeaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);

@@ -405,23 +405,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         }
         await setDoc(mref, data);
 
-        // Auto-forward to linked discussion chat if it's a channel post
         if (item.type === 'channel' && item.discussionChatId) {
             const discRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-            await setDoc(discRef, {
-                ...data,
-                fromChannelId: item.id,
-                channelMessageId: mref.id
-            });
-            await updateDoc(doc(db, 'chats', item.discussionChatId), {
-                lastMessage: {
-                    id: discRef.id,
-                    content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''),
-                    senderId: currentUser.uid,
-                    senderName: currentUser.name || currentUser.username,
-                    timestamp: Timestamp.now()
-                }
-            });
+            await setDoc(discRef, { ...data, fromChannelId: item.id, channelMessageId: mref.id });
+            await updateDoc(doc(db, 'chats', item.discussionChatId), { lastMessage: { id: discRef.id, content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
         }
 
         let lastMsgContent = finalC.trim();
