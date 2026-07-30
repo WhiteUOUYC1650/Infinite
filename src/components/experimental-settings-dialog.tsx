@@ -299,17 +299,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Music className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_infmusic_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_infmusic_desc')}</p>
+                          </div>
+                      </div>
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0"><Gift className="h-6 w-6" /></div>
                           <div className="flex-1">
                               <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_gifts_title')}</p>
                               <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_gifts_desc')}</p>
-                          </div>
-                      </div>
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0"><RefreshCw className="h-6 w-6" /></div>
-                          <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_reliability_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_reliability_desc')}</p>
                           </div>
                       </div>
                   </div>

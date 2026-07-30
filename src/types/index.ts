@@ -204,8 +204,9 @@ export type VideoChunk = {
 };
 
 export type MusicChunk = {
-  chatId: string;
-  messageId: string;
+  chatId?: string;
+  messageId?: string;
+  musicId?: string;
   data: string;
   part: number;
   senderId: string;
@@ -253,6 +254,21 @@ export type SharedVideo = {
   likedBy?: string[]; 
   isShort?: number; 
   isProcessed?: number; 
+};
+
+export type SharedMusic = {
+  id: string;
+  title: string;
+  author: string;
+  description?: string;
+  senderId: string;
+  timestamp: Timestamp;
+  musicMimeType: string;
+  musicStatus: 'uploading' | 'complete' | 'failed';
+  musicChunkIds?: string[];
+  coverUrl?: string;
+  listens?: number;
+  likedBy?: string[];
 };
 
 export type VideoComment = {

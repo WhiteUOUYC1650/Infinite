@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import {
   SidebarFooter,
@@ -20,7 +20,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
@@ -83,7 +83,7 @@ function HolidayBanner() {
 }
 
 interface SidebarContentProps {
-  onSelect: (item: PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio') => void;
+  onSelect: (item: PopulatedChat | 'infvid' | 'infmusic' | 'infgames' | 'feed' | 'bot_studio') => void;
   selectedId?: string;
   currentUser: AuthenticatedUser;
 }
@@ -348,6 +348,15 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
               <Gamepad2 className="h-4 w-4 text-muted-foreground" />
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-sm">{t('infgames_title')}</p>
+              </div>
+            </div>
+          </Button>
+          <Button variant="ghost" onClick={() => { onSelect('infmusic'); setOpenMobile(false); }} className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infmusic' && 'bg-sidebar-accent text-sidebar-accent-foreground')}>
+            <div className="flex items-center gap-3 w-full">
+              <Music className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm">{t('infmusic_title')}</p>
+                <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
               </div>
             </div>
           </Button>

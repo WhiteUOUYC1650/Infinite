@@ -10,6 +10,7 @@ import {
 import { SidebarContent } from '@/components/sidebar-content';
 import { ChatView } from '@/components/chat/chat-view';
 import { InfVidView } from '@/components/infvid/infvid-view';
+import { InfMusicView } from '@/components/infmusic/infmusic-view';
 import { InfGamesView } from '@/components/infgames/infgames-view';
 import { FeedView } from '@/components/feed/feed-view';
 import { BotStudioView } from '@/components/bot-studio/bot-studio-view';
@@ -38,7 +39,7 @@ const iconMap = {
 };
 
 function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, sessionId: string }) {
-  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio' | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PopulatedChat | 'infvid' | 'infmusic' | 'infgames' | 'feed' | 'bot_studio' | null>(null);
   const [infVidInitialVideoId, setInfVidInitialVideoId] = useState<string | null>(null);
   const { isMobile } = useSidebar();
   const db = useFirestore();
@@ -98,7 +99,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     setActiveChatId(selectedId || null);
   }, [selectedItem, setActiveChatId]);
 
-  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infgames' | 'feed' | 'bot_studio' | null) => {
+  const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infmusic' | 'infgames' | 'feed' | 'bot_studio' | null) => {
     setSelectedItem(item);
     if (item !== 'infvid') setInfVidInitialVideoId(null);
   }, []);
@@ -320,7 +321,6 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
     if (!userData) return null;
-    // Explicitly mapping uid and id from Firebase Auth and Firestore to ensure they spread correctly
     return { 
       ...currentUser, 
       ...userData, 
@@ -339,6 +339,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null)} onSelectChat={handleSelect} />;
     if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null)} initialVideoId={infVidInitialVideoId || undefined} />;
+    if (selectedItem === 'infmusic') return <InfMusicView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     return null;
