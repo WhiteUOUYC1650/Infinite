@@ -11,7 +11,7 @@ service cloud.firestore {
     match /fileChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
     match /voiceChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
     match /circleChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
-    match /apkChunks/{chunkId} { allow read, list: if true; allow create, delete: if isAdmin(); }
+    match /apkChunks/{chunkId} { allow read, list: if true; allow create, update, delete: if isAdmin(); }
     
     match /users/{userId} {
       allow read: if true;
