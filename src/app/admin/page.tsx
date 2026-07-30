@@ -7,7 +7,7 @@ import { collection, doc, getDoc, deleteDoc, runTransaction, updateDoc, incremen
 import type { User, Chat, Message } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck, FileSearch } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, Users, Megaphone, MoreVertical, Ban, Coins, Star, Upload, FileJson, Send, MessageSquare, Image as ImageIcon, Pencil, X, Sparkles, Terminal, Copy, Palette, ShieldCheck, FileSearch, Scale } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,14 +71,19 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('0.6.1 Beta');
-  const [isClosedBeta, setIsClosedBeta] = useState(true);
+  const [newVersion, setNewVersion] = useState('1.1');
+  const [isClosedBeta, setIsClosedBeta] = useState(false);
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
 
   // Branding State
   const [remoteIconBase64, setRemoteIconBase64] = useState('');
   const [isUpdatingBranding, setIsUpdatingBranding] = useState(false);
+
+  // Legal State
+  const [tosContent, setTosContent] = useState('');
+  const [privacyContent, setPrivacyContent] = useState('');
+  const [isSavingLegal, setIsSavingLegal] = useState(false);
 
   // Broadcast State
   const [broadcastText, setBroadcastText] = useState('');
@@ -102,6 +107,12 @@ function AdminPage() {
       const userDocSnap = await getDoc(userDocRef);
       if (userDocSnap.exists() && userDocSnap.data().username === '@Infinite') {
         setIsAdmin(true);
+        // Fetch existing legal docs
+        const legalSnap = await getDoc(doc(db, 'config', 'legal'));
+        if (legalSnap.exists()) {
+            setTosContent(legalSnap.data().tos || '');
+            setPrivacyContent(legalSnap.data().privacy || '');
+        }
       } else {
         router.replace('/');
       }
@@ -212,6 +223,24 @@ function AdminPage() {
     }
   };
 
+  const handleSaveLegal = async () => {
+      if (!db) return;
+      setIsSavingLegal(true);
+      try {
+          await setDoc(doc(db, 'config', 'legal'), {
+              tos: tosContent,
+              privacy: privacyContent,
+              updatedAt: serverTimestamp()
+          });
+          await sendBotBroadcast(t('tos_update_broadcast'));
+          toast({ title: t('dm_success'), description: "Legal docs updated and broadcast sent!" });
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: e.message });
+      } finally {
+          setIsSavingLegal(false);
+      }
+  };
+
   const handleBanUser = async (userToBan: User) => {
     if (!db || !userToBan.id || !userToBan.username) return;
     try {
@@ -252,7 +281,8 @@ function AdminPage() {
                 type: 'announcement',
                 content: text,
                 timestamp: Timestamp.now(),
-                readBy: []
+                readBy: [],
+                senderName: 'Infinite'
             };
             await addDoc(collection(db, 'chats', chatId, 'messages'), message);
             await setDoc(doc(db, 'chats', chatId), { type: 'dm', members: members, lastMessage: { ...message, id: 'last' } }, { merge: true });
@@ -323,11 +353,12 @@ function AdminPage() {
       </header>
       <main className="flex-1 overflow-hidden p-0 relative">
         <Tabs defaultValue="users" className="flex h-full flex-col">
-          <div className="px-4 py-2 bg-background border-b shrink-0">
-            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 bg-transparent p-0">
+          <div className="px-4 py-2 bg-background border-b shrink-0 overflow-x-auto">
+            <TabsList className="flex h-auto w-full justify-start gap-1 bg-transparent p-0 no-scrollbar">
                 <TabsTrigger value="users" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_users_tab')}</TabsTrigger>
                 <TabsTrigger value="groups" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_groups_tab')}</TabsTrigger>
                 <TabsTrigger value="channels" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_channels_tab')}</TabsTrigger>
+                <TabsTrigger value="legal" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_legal_tab')}</TabsTrigger>
                 <TabsTrigger value="broadcast" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_broadcast_tab')}</TabsTrigger>
                 <TabsTrigger value="update" className="rounded-full px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t('admin_system_tab')}</TabsTrigger>
             </TabsList>
@@ -351,6 +382,40 @@ function AdminPage() {
                 </TabsContent>
                 <TabsContent value="channels" className="mt-0 outline-none">
                     <ItemList items={channels} loading={chatsLoading} renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />} />
+                </TabsContent>
+                <TabsContent value="legal" className="mt-0 outline-none">
+                    <div className="max-w-2xl mx-auto space-y-6 p-6 bg-card border rounded-3xl">
+                        <div className="text-center space-y-2">
+                            <h2 className="text-2xl font-bold font-headline flex items-center justify-center gap-2">
+                                <Scale className="h-6 w-6 text-primary" /> {t('admin_legal_tab')}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">Edit TOS and Privacy Policy. Saving will notify all users via bot.</p>
+                        </div>
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <Label className="font-bold">{t('tos_label')}</Label>
+                                <Textarea 
+                                    value={tosContent} 
+                                    onChange={e => setTosContent(e.target.value)} 
+                                    placeholder="Enter Terms of Service in Markdown..." 
+                                    className="min-h-[250px] rounded-xl bg-muted/50 border-none text-sm"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="font-bold">{t('privacy_label')}</Label>
+                                <Textarea 
+                                    value={privacyContent} 
+                                    onChange={e => setPrivacyContent(e.target.value)} 
+                                    placeholder="Enter Privacy Policy in Markdown..." 
+                                    className="min-h-[250px] rounded-xl bg-muted/50 border-none text-sm"
+                                />
+                            </div>
+                            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleSaveLegal} disabled={isSavingLegal}>
+                                {isSavingLegal ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                {t('save')}
+                            </Button>
+                        </div>
+                    </div>
                 </TabsContent>
                 <TabsContent value="broadcast" className="mt-0 outline-none">
                     <div className="max-w-md mx-auto space-y-6 p-6 bg-card border rounded-3xl">
@@ -407,7 +472,7 @@ function AdminPage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Version Name</Label>
-                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 0.6.1 Beta" />
+                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 1.1" />
                             </div>
 
                             <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">

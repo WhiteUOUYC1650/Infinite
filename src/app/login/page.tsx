@@ -33,6 +33,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
 import type { User } from '@/types';
+import { LegalDialog } from '@/components/legal-dialog';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -58,6 +59,9 @@ export default function LoginPage() {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [isBotCodeMode, setIsBotCodeMode] = useState(false);
   const [userId, setUserId] = useState('');
+
+  // Legal Modal States
+  const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -464,17 +468,27 @@ export default function LoginPage() {
                             </FormItem>
                         )}
                         />
-                        <Button type="submit" className="w-full" disabled={isLoading}>
+                        <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isLoading}>
                             {isLoading ? t('signing_in_button') : t('sign_in_button')}
                         </Button>
                     </form>
                 </Form>
-                <p className="text-center text-sm text-muted-foreground">
-                    {t('no_account_prompt')}{' '}
-                    <Link href="/signup" className="font-semibold text-primary hover:underline">
-                        {t('sign_up_link')}
-                    </Link>
-                </p>
+                
+                <div className="space-y-4">
+                    <p className="text-center text-sm text-muted-foreground">
+                        {t('no_account_prompt')}{' '}
+                        <Link href="/signup" className="font-semibold text-primary hover:underline">
+                            {t('sign_up_link')}
+                        </Link>
+                    </p>
+
+                    <p className="text-[10px] text-center text-muted-foreground px-4 leading-relaxed">
+                        {t('legal_links_prefix')}
+                        <button onClick={() => setShowLegalType('tos')} className="text-primary font-bold hover:underline">{t('terms_of_service')}</button>
+                        {t('legal_and')}
+                        <button onClick={() => setShowLegalType('privacy')} className="text-primary font-bold hover:underline">{t('privacy_policy')}</button>.
+                    </p>
+                </div>
             </>
         ) : (
             <div className="space-y-6 text-center animate-in fade-in zoom-in duration-300">
@@ -559,6 +573,12 @@ export default function LoginPage() {
       <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))]">
         <Badge variant="outline">{t('beta_badge')}</Badge>
       </div>
+
+      <LegalDialog 
+        open={!!showLegalType} 
+        onOpenChange={(open) => !open && setShowLegalType(null)} 
+        type={showLegalType || 'tos'} 
+      />
     </div>
   );
 }

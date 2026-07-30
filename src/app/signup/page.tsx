@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -32,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
+import { LegalDialog } from '@/components/legal-dialog';
 
 const step1Schema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
@@ -57,6 +57,9 @@ export default function SignUpPage() {
   const [step, setStep] = useState(1);
   const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Legal Modal States
+  const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
 
   const form1 = useForm<z.infer<typeof step1Schema>>({
     resolver: zodResolver(step1Schema),
@@ -188,13 +191,28 @@ export default function SignUpPage() {
             </Form>
         )}
 
-        <p className="text-center text-sm text-muted-foreground">
-          {t('has_account_prompt')} <Link href="/login" className="font-semibold text-primary hover:underline">{t('sign_in_link')}</Link>
-        </p>
+        <div className="space-y-4">
+            <p className="text-center text-sm text-muted-foreground">
+              {t('has_account_prompt')} <Link href="/login" className="font-semibold text-primary hover:underline">{t('sign_in_link')}</Link>
+            </p>
+
+            <p className="text-[10px] text-center text-muted-foreground px-4 leading-relaxed">
+                {t('legal_links_prefix')}
+                <button onClick={() => setShowLegalType('tos')} className="text-primary font-bold hover:underline">{t('terms_of_service')}</button>
+                {t('legal_and')}
+                <button onClick={() => setShowLegalType('privacy')} className="text-primary font-bold hover:underline">{t('privacy_policy')}</button>.
+            </p>
+        </div>
       </div>
        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))]">
         <Badge variant="outline">{t('beta_badge')}</Badge>
       </div>
+
+      <LegalDialog 
+        open={!!showLegalType} 
+        onOpenChange={(open) => !open && setShowLegalType(null)} 
+        type={showLegalType || 'tos'} 
+      />
     </div>
   );
 }

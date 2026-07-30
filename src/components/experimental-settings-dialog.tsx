@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -54,6 +54,7 @@ import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { GiftPickerDialog } from './gifts/gift-picker-dialog';
+import { LegalDialog } from './legal-dialog';
 import React from 'react';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates';
@@ -134,8 +135,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false); const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
-  const PREM_COST = 500; const PREM_COST_YEARLY = 5000;
-  
+  const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
+
   const userId = currentUser.uid || currentUser.id || '';
 
   const transfersQuery = useMemo(() => { if (!db || !userId) return null; return query(collection(db, 'transfers'), where('senderId', '==', userId), orderBy('timestamp', 'desc'), limit(50)); }, [db, userId]); const { data: sentTransfers } = useCollection<Transfer>(transfersQuery);
@@ -148,7 +149,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const handleBuyPrem = async (isYearly = false) => { 
     if (!db || !userId || isBuyingPrem) return; 
-    const cost = isYearly ? PREM_COST_YEARLY : PREM_COST; 
+    const cost = isYearly ? 5000 : 500; 
     setIsBuyingPrem(true); 
     try { 
       await runTransaction(db, async (tx) => { 
@@ -273,17 +274,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    <SelectItem value="12">{t('story_expiration_12 hours' as any)}</SelectItem>
-                    <SelectItem value="24">{t('story_expiration_24 hours' as any)}</SelectItem>
-                    <SelectItem value="48">{t('story_expiration_48 hours' as any)}</SelectItem>
-                    <SelectItem value="72">{t('story_expiration_72 hours' as any)}</SelectItem>
-                    <SelectItem value="0">{t('story_expiration_never' as any)}</SelectItem>
+                    <SelectItem value="12">12 {t('hours')}</SelectItem>
+                    <SelectItem value="24">24 {t('hours')}</SelectItem>
+                    <SelectItem value="48">48 {t('hours')}</SelectItem>
+                    <SelectItem value="72">72 {t('hours')}</SelectItem>
+                    <SelectItem value="0">{t('story_expiration_never')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-[10px] text-muted-foreground ml-1 leading-tight">
-                {t('story_expiration_desc')}
-              </p>
+              <div className="px-4 pb-2">
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                    {t('story_expiration_desc')}
+                </p>
+              </div>
             </div>
           );
           case 'dataStorage': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn('border rounded-3xl p-6 space-y-4 shadow-sm', glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center"><HardDrive className="h-6 w-6 text-orange-500" /></div><div><p className='text-xs font-black uppercase tracking-widest text-muted-foreground'>{t('cache_usage')}</p><p className='text-2xl font-black text-foreground'>{currentCacheSize}</p></div></div><p className="text-xs text-muted-foreground leading-relaxed">{t('clear_cache_desc')}</p><Button variant="outline" className={cn('w-full h-12 rounded-2xl font-bold border-orange-500/20 hover:bg-orange-500/5', glassEffect && "glass-button border-none")} onClick={handleClearCache}><Trash2 className="mr-2 h-4 w-4 text-orange-500" /> {t('clear_cache')}</Button></div></div>);
@@ -319,7 +322,35 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           case 'botGuide': return botGuidePageContent;
           case 'checkUpdates': return (<div className='p-12 flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000", isCheckingUpdates && "rotate-180")}>{isCheckingUpdates ? (<Loader2 className="h-10 w-10 text-primary animate-spin" />) : (<RefreshCcw className="h-10 w-10 text-primary" />)}</div><div className="space-y-4"><h2 className="text-2xl font-black font-headline">{isCheckingUpdates ? t('checking_updates_progress') : (hasCheckedUpdates ? (isUpdateAvailable ? t('update_available_title') : t('latest_version_installed')) : t('check_updates'))}</h2>{hasCheckedUpdates && (<p className="text-sm text-muted-foreground font-medium">{isUpdateAvailable ? t('update_available_status', { version: updateInfo?.latest }) : `${t('version')}: ${currentVersion}`}</p>)}</div>{!isCheckingUpdates && (<div className="w-full max-xs pt-4">{isUpdateAvailable && hasCheckedUpdates ? (<Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={promptUpdate}><Download className="mr-2 h-5 w-5" /> {t('download')}</Button>) : (<Button variant="outline" className={cn("w-full h-14 rounded-2xl font-bold text-lg", glassEffect && "glass-button border-none")} onClick={handleManualCheckUpdates}>{t('check_updates')}</Button>)}</div>)}</div>);
           case 'account': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button><Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button><div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div></div>);
-          case 'about': return (<div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className="w-32 h-32 rounded-[2.5rem] bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 experimental-glow"><InfiniteLogo className='w-20 h-20 text-white' /></div><div className="space-y-2"><h2 className='text-4xl font-black font-headline'>Infinite</h2><Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{currentVersion}</Badge></div><div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed">ОФИЦИАЛЬНЫЙ РЕЛИЗ</div><p className='text-sm text-muted-foreground leading-relaxed max-w-xs font-medium'>{t('version_info_detail')}</p></div>);
+          case 'about': return (
+              <div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'>
+                <div className="w-32 h-32 rounded-[2.5rem] bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 experimental-glow"><InfiniteLogo className='w-20 h-20 text-white' /></div>
+                <div className="space-y-2">
+                    <h2 className='text-4xl font-black font-headline'>Infinite</h2>
+                    <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{currentVersion}</Badge>
+                </div>
+                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Official Release</div>
+                
+                <div className="flex flex-col gap-2 w-full pt-4">
+                    <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div>
+                            <span className="text-xs font-bold">{t('terms_of_service')}</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </button>
+                    <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div>
+                            <span className="text-xs font-bold">{t('privacy_policy')}</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </button>
+                </div>
+
+                <p className='text-xs text-muted-foreground leading-relaxed max-w-xs font-medium opacity-60'>{t('version_info_detail')}</p>
+              </div>
+          );
           default: return null;
       }
   };
@@ -335,6 +366,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <EditProfileDialog user={currentUser} open={showEditProfile} onOpenChange={setShowEditProfile} />
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl"><AlertDialogHeader className="items-center text-center space-y-4"><div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center"><Trash2 className="h-8 w-8 text-destructive" /></div><div className="space-y-2"><AlertDialogTitle className="text-2xl font-bold font-headline">{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground leading-relaxed">{t('delete_account_confirm_desc')}</AlertDialogDescription></div></AlertDialogHeader><AlertDialogFooter className="flex flex-col gap-2 pt-4 sm:flex-col sm:justify-center"><AlertDialogAction onClick={handleDeleteAccount} disabled={isDeletingAccount} className={cn(buttonVariants({ variant: 'destructive' }), "w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-destructive/20")}>{isDeletingAccount ? <Loader2 className="animate-spin" /> : t('delete_account')}</AlertDialogAction><AlertDialogCancel className="w-full h-12 rounded-2xl font-medium border-none hover:bg-muted">{t('cancel')}</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
     <GiftPickerDialog open={showSelfGiftPicker} onOpenChange={setShowSelfGiftPicker} recipient={currentUser as any} currentUser={currentUser} />
+    <LegalDialog open={!!showLegalType} onOpenChange={(open) => !open && setShowLegalType(null)} type={showLegalType || 'tos'} />
     </>
   );
 }
