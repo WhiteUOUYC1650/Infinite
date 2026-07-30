@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -397,7 +398,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files); const newFiles: Array<{file: File, previewUrl: string, type: 'image' | 'video' | 'music' | 'file'}> = [];
       for (const file of selectedFiles) {
-        if (file.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('video_too_large', { size: maxSizeText }) }); continue; }
+        if (file.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('max_file_size_label', { size: maxSizeText }) }); continue; }
         const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'music' : 'file';
         if (type === 'image') { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => { setFilesToSend(prev => [...prev, { file, previewUrl: reader.result as string, type }]); }; } 
         else { newFiles.push({ file, previewUrl: '', type }); }
@@ -413,25 +414,28 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], ...(customPoll && { poll: customPoll }), ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
+        
         for (const fItem of filesToSend) {
             const attachment: MessageAttachment = { id: Math.random().toString(36).substring(7), type: fItem.type, fileName: fItem.file.name, fileMimeType: fItem.file.type, status: 'complete' };
-            if (fItem.type === 'image') { attachment.url = fItem.previewUrl; data.attachments.push(attachment); } 
-            else {
-                const reader = new FileReader(); reader.readAsDataURL(fItem.file);
-                await new Promise<void>((resolve, reject) => {
-                    reader.onload = async () => {
-                        try {
-                            const base64String = (reader.result as string).split(',')[1]; const CHUNK_SIZE = 900 * 1024; const chunkIds: string[] = [];
-                            const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
-                            for (let i = 0; i < base64String.length; i += CHUNK_SIZE) {
-                                const cref = doc(collection(db, col)); await setDoc(cref, { data: base64String.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid }); chunkIds.push(cref.id);
-                            }
-                            attachment.chunkIds = chunkIds; data.attachments.push(attachment); resolve();
-                        } catch(e) { reject(e); }
-                    };
-                });
-            }
+            
+            // USE CHUNKING FOR ALL ATTACHMENTS TO AVOID 1MB DOCUMENT LIMIT
+            const reader = new FileReader(); 
+            reader.readAsDataURL(fItem.file);
+            await new Promise<void>((resolve, reject) => {
+                reader.onload = async () => {
+                    try {
+                        const base64String = (reader.result as string).split(',')[1]; const CHUNK_SIZE = 900 * 1024; const chunkIds: string[] = [];
+                        const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
+                        for (let i = 0; i < base64String.length; i += CHUNK_SIZE) {
+                            const cref = doc(collection(db, col)); await setDoc(cref, { data: base64String.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid }); chunkIds.push(cref.id);
+                        }
+                        attachment.chunkIds = chunkIds; data.attachments.push(attachment); resolve();
+                    } catch(e) { reject(e); }
+                };
+                reader.onerror = () => reject(new Error("File read failed"));
+            });
         }
+        
         await setDoc(mref, data);
 
         if (item.type === 'channel' && item.discussionChatId) {
@@ -444,7 +448,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (customPoll) lastMsgContent = `Poll: ${customPoll.question}`;
         else if (!lastMsgContent && data.attachments.length > 0) { lastMsgContent = data.attachments.length === 1 ? t(data.attachments[0].type as any) : `${t('file')} (${data.attachments.length})`; }
         await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: lastMsgContent, senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
-    } catch (e) { console.error(e); } finally { setIsSending(false); }
+    } catch (e: any) { 
+        console.error("Failed to send message:", e);
+        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not send message.' });
+    } finally { 
+        setIsSending(false); 
+    }
   };
   
   const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
@@ -452,6 +461,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
       const reader = new FileReader(); reader.readAsDataURL(blob);
       reader.onload = async () => {
+        if (isRecordingCanceledRef.current) return;
         const base64 = (reader.result as string).split(',')[1]; const chunkCol = type === 'voice' ? 'voiceChunks' : 'circleChunks';
         const mref = doc(collection(db, chunkCol)); await setDoc(mref, { data: base64, part: 0, senderId: currentUser.uid });
         const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
