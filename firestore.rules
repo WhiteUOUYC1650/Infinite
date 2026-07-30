@@ -28,6 +28,7 @@ service cloud.firestore {
         allow read, list: if isSignedIn();
         // Allow creation if user is a member OR if it's a mirrored post from a channel the user owns
         allow create: if isSignedIn() && (
+          isAdmin() ||
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members ||
           (request.resource.data.fromChannelId != null && get(/databases/$(database)/documents/chats/$(request.resource.data.fromChannelId)).data.ownerId == request.auth.uid)
         );
@@ -50,9 +51,10 @@ service cloud.firestore {
     match /stories/{storyId} { allow read, write, list: if isSignedIn(); }
     match /transfers/{transferId} { allow read, create, list: if isSignedIn(); }
     match /videos/{videoId} { allow read, list: if isSignedIn(); allow create: if isSignedIn(); allow update, delete: if isSignedIn(); match /comments/{commentId} { allow read, write, list: if isSignedIn(); } }
+    match /music/{musicId} { allow read, list: if isSignedIn(); allow create: if isSignedIn(); allow update, delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin()); }
     
     match /videoChunks/{chunkId} { allow create, read, list: if isSignedIn(); allow delete: if isAdmin(); }
-    match /musicChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
+    match /musicChunks/{chunkId} { allow create, read, list: if isSignedIn(); allow delete: if isAdmin(); }
     match /fileChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
     match /voiceChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
     match /circleChunks/{chunkId} { allow create, read, list: if isSignedIn(); }
@@ -62,7 +64,7 @@ service cloud.firestore {
       allow write: if isAdmin(); 
     }
     match /info/ver { 
-      allow read: if true;
+      allow read: if true; 
       allow write: if isAdmin(); 
     }
     
