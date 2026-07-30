@@ -178,7 +178,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   const handleLeaveChat = async () => {
     if (!db) return;
     setIsLeaving(true);
-    try { await updateDoc(doc(db, 'chats', chat.id), { members: arrayRemove(currentUser.uid) }); toast({ title: t('dm_success'), description: t('leave_chat_success')}); onOpenChange(false); onCloseChat(); }
+    try { await updateDoc(doc(db, 'chats', chat.id), { members: arrayRemove(currentUser.uid!) }); toast({ title: t('dm_success'), description: t('leave_chat_success')}); onOpenChange(false); onCloseChat(); }
     catch (e) { toast({ variant: 'destructive', title: 'Error', description: t('leave_chat_error')}); }
     finally { setIsLeaving(false); }
   };
