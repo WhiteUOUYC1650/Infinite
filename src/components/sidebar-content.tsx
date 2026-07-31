@@ -386,6 +386,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                     selectedId={selectedId} 
                                     currentUserId={currentUser.uid!}
                                     onArchive={() => toggleArchive(chat.id)}
+                                    archivedChatIds={archivedChatIds}
                                 />
                             );
                         })
@@ -399,7 +400,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </div>
         ) : (
             <>
-                <div className={cn("transition-all duration-500 flex flex-col items-center justify-center overflow-hidden", isArchiveVisible ? "h-24 opacity-100 py-3" : "h-0 opacity-0")}>
+                <div className={cn("transition-all duration-500 flex flex-col items-center justify-center overflow-hidden", isArchiveVisible ? "h-16 opacity-100 py-2" : "h-0 opacity-0")}>
                     <Button 
                         variant="ghost" 
                         size="lg" 
@@ -498,6 +499,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                     selectedId={selectedId} 
                                     currentUserId={currentUser.uid!} 
                                     onArchive={() => toggleArchive(botChatId)}
+                                    archivedChatIds={archivedChatIds}
                                 />
                             ); 
                             })
@@ -519,6 +521,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                     selectedId={selectedId} 
                                     currentUserId={currentUser.uid!} 
                                     onArchive={() => toggleArchive(chat.id)}
+                                    archivedChatIds={archivedChatIds}
                                 />
                             ); 
                             })
@@ -547,6 +550,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                                 selectedId={selectedId} 
                                 currentUserId={currentUser.uid!} 
                                 onArchive={() => toggleArchive(chat.id)}
+                                archivedChatIds={archivedChatIds}
                             />
                             ); 
                         })}
@@ -567,6 +571,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                             selectedId={selectedId} 
                             currentUserId={currentUser.uid!} 
                             onArchive={() => toggleArchive(chat.id)}
+                            archivedChatIds={archivedChatIds}
                             />
                         ))}
                         </div>
@@ -586,6 +591,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                             selectedId={selectedId} 
                             currentUserId={currentUser.uid!} 
                             onArchive={() => toggleArchive(channel.id)}
+                            archivedChatIds={archivedChatIds}
                             />
                         ))}
                         </div>
@@ -668,7 +674,7 @@ function DMChatItemSkeleton() {
   ); 
 }
 
-const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId, currentUserId, onArchive }: { item: Chat, otherUser: User, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, onArchive: () => void }) => {
+const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId, currentUserId, onArchive, archivedChatIds }: { item: Chat, otherUser: User, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, onArchive: () => void, archivedChatIds: Set<string> }) => {
   const { t } = useLanguage(); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isSavedMessages = otherUser?.id === currentUserId; 
@@ -806,7 +812,7 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
 });
 DMChatItemComponent.displayName = 'DMChatItemComponent';
 
-const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserId, onArchive }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, onArchive: () => void }) => {
+const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserId, onArchive, archivedChatIds }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, onArchive: () => void, archivedChatIds: Set<string> }) => {
   const { t } = useLanguage(); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const lastMessage = item.lastMessage; 
@@ -929,7 +935,7 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
         <DropdownMenuContent align="start" className="w-56 rounded-xl font-bold p-1 shadow-2xl">
             <DropdownMenuItem onSelect={onArchive} className="h-10 rounded-lg">
                 <Archive className="w-4 h-4 mr-3 text-primary" />
-                {t('archive_chat')}
+                {archivedChatIds.has(item.id) ? t('unarchive_chat') : t('archive_chat')}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onSelect(item)} className="h-10 rounded-lg">
                 <MessageSquare className="w-4 h-4 mr-3 text-primary" />
@@ -941,3 +947,4 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
   );
 });
 ChatItemComponent.displayName = 'ChatItemComponent';
+
