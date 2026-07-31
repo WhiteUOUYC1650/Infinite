@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -8,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, deleteDoc, increment } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedMusic, User, VideoComment } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare, Download, Music, Pause } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare, Download, Music, Pause, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -87,7 +86,6 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
         const timestamp = Timestamp.now();
         let coverUrl = ''; if (coverFile) { coverUrl = await compressImage(coverFile); }
         
-        // Prepare base64
         const musicBase64 = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve((reader.result as string).split(',')[1]); });
         const CHUNK_SIZE = 900 * 1024;
         const chunkIds: string[] = [];
@@ -153,7 +151,6 @@ function UploadMusicView({ onClose, onUpload, isUploading, maxSizeText, maxSizeI
             if (selectedFile.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('max_file_size_label', { size: maxSizeText }) }); return; } 
             setFile(selectedFile); 
             
-            // Extract MP3 Artwork
             if (selectedFile.type === 'audio/mpeg' || selectedFile.name.endsWith('.mp3')) {
                 try {
                     const jsmediatags = (await import('jsmediatags')).default;
@@ -171,7 +168,6 @@ function UploadMusicView({ onClose, onUpload, isUploading, maxSizeText, maxSizeI
                                 }
                                 const base64 = "data:" + image.format + ";base64," + btoa(base64String);
                                 setCoverPreview(base64);
-                                // Create a File object from base64 to match upload interface if needed
                                 fetch(base64).then(res => res.blob()).then(blob => {
                                     setCover(new File([blob], "artwork.jpg", { type: image.format }));
                                 });
@@ -179,7 +175,7 @@ function UploadMusicView({ onClose, onUpload, isUploading, maxSizeText, maxSizeI
                         },
                         onError: (error) => console.log('Error reading tags', error)
                     });
-                } catch (e) { console.error("jsmediatags import error", e); }
+                } catch (e) { console.error("jsmediatags dynamic import failed", e); }
             }
             if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); 
         } 
@@ -222,7 +218,6 @@ function UploadMusicView({ onClose, onUpload, isUploading, maxSizeText, maxSizeI
 }
 
 function MusicCard({ music, sender, onClick }: { music: SharedMusic, sender?: User, onClick: () => void }) {
-    const { t, language } = useLanguage();
     return (
         <div className="bg-card border rounded-2xl p-3 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group" onClick={onClick}>
             <div className="w-16 h-16 rounded-xl overflow-hidden bg-muted shrink-0 relative">
@@ -249,7 +244,6 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isLiked, setIsLiked] = useState(music.likedBy?.includes(currentUser.uid) || false);
     
-    // Comments State
     const [commentText, setCommentText] = useState('');
     const [isSendingComment, setIsSendingComment] = useState(false);
     const commentsQuery = useMemo(() => (db ? query(collection(db, 'music', music.id, 'comments'), orderBy('timestamp', 'desc'), limit(50)) : null), [db, music.id]);
@@ -278,7 +272,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
             } catch (e) { console.error(e); } finally { setIsLoading(false); }
         };
         load();
-    }, [music.id, db]);
+    }, [music.id, db, music.musicChunkIds, music.musicMimeType]);
 
     const togglePlay = () => { if (!audioRef.current) return; if (isPlaying) audioRef.current.pause(); else audioRef.current.play(); setIsPlaying(!isPlaying); };
     const formatTime = (t: number) => { const m = Math.floor(t / 60); const s = Math.floor(t % 60); return `${m}:${s.toString().padStart(2, '0')}`; };
@@ -318,9 +312,8 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
             
             <ScrollArea className="flex-1 overflow-y-auto">
                 <div className="flex flex-col items-center p-8 text-center max-w-lg mx-auto w-full pb-24">
-                    {/* System Player Style Visuals */}
                     <div className="w-full aspect-square max-w-[320px] rounded-3xl bg-muted shadow-2xl overflow-hidden mb-10 relative">
-                        {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" /> : <Music className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
+                        {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" alt="Cover" /> : <Music className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
                         {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-white" /></div>}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                     </div>
@@ -340,7 +333,6 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         />
                     )}
 
-                    {/* Progress Bar */}
                     <div className="w-full space-y-2 mb-8">
                         <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden cursor-pointer" onClick={(e) => {
                             if (!audioRef.current || !duration) return;
@@ -355,7 +347,6 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         </div>
                     </div>
 
-                    {/* Controls */}
                     <div className="flex items-center justify-center gap-10 mb-10">
                         <Button variant="ghost" size="icon" onClick={toggleLike} className={cn("h-14 w-14 rounded-full transition-all active:scale-90", isLiked && "text-red-500")}>
                             <ThumbsUp className={cn("h-7 w-7", isLiked && "fill-current")} />
@@ -368,12 +359,11 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                                 <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-muted-foreground"><MoreHorizontal className="h-7 w-7" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="rounded-xl font-bold">
-                                <DropdownMenuItem><Download className="mr-2 h-4 w-4" /> {t('download')}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { if (audioUrl) { const a = document.createElement('a'); a.href = audioUrl; a.download = `${music.title}.mp3`; a.click(); } }}><Download className="mr-2 h-4 w-4" /> {t('download')}</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
 
-                    {/* Description Card */}
                     {music.description && (
                         <div className="w-full bg-muted/30 p-5 rounded-3xl border border-border/40 text-left mb-6">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">About Track</p>
@@ -381,7 +371,6 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         </div>
                     )}
                     
-                    {/* Sender Info */}
                     <div className="w-full bg-muted/40 p-4 rounded-3xl border border-border/50 mb-10 text-left">
                         <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-3">{t('sender_label')}</p>
                         <div className="flex items-center gap-3">
@@ -390,11 +379,10 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                                 <p className="font-bold text-base truncate flex items-center gap-1">{sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}</p>
                                 <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-60">@{sender?.username?.replace('@','')}</p>
                             </div>
-                            <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: [currentUser.uid, sender?.id].sort().join('_') } }))}>Message</Button>
+                            <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: [currentUser.uid, sender?.id || ''].sort().join('_') } }))}>Message</Button>
                         </div>
                     </div>
 
-                    {/* Comments Section */}
                     <div className="w-full text-left space-y-6">
                         <h3 className="text-xl font-black font-headline uppercase tracking-tighter ml-1">{t('comments')} ({comments?.length || 0})</h3>
                         <div className="flex gap-3 mb-6">

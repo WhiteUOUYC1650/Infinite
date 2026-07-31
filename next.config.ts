@@ -75,6 +75,7 @@ const nextConfig: NextConfig = {
         'node:dns': false,
         'node:net': false,
         'node:tls': false,
+        'react-native-fs': false,
       };
     }
     return config;
