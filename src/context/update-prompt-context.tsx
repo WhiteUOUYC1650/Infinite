@@ -83,7 +83,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           try {
             await Filesystem.mkdir({
               path: 'Infinite',
-              directory: Directory.Documents,
+              directory: Directory.ExternalStorage, // Changed to ExternalStorage for APK visibility
               recursive: true,
             });
           } catch (e) {}
@@ -91,10 +91,10 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           await Filesystem.writeFile({
             path: `Infinite/${fileName}`,
             data: assembledBase64,
-            directory: Directory.Documents,
+            directory: Directory.ExternalStorage,
           });
           
-          toast({ title: "Success", description: "Update saved to Documents/Infinite. Please install it manually." });
+          toast({ title: "Success", description: "Update saved to Download/Infinite. Please install it manually." });
         } else {
           const binaryString = window.atob(assembledBase64);
           const bytes = new Uint8Array(binaryString.length);
