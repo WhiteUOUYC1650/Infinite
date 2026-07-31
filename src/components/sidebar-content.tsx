@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -21,7 +20,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Music, Archive, ArchiveX, MoreHorizontal, ChevronDown, ChevronUp, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreHorizontal, ChevronDown, ChevronUp, ArrowLeft, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, arrayRemove } from 'firebase/firestore';
@@ -399,14 +398,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </div>
         ) : (
             <>
-                <div className={cn("transition-all duration-500 flex flex-col items-center justify-center overflow-hidden", isArchiveVisible ? "h-14 opacity-100 py-2" : "h-0 opacity-0")}>
+                <div className={cn("transition-all duration-500 flex flex-col items-center justify-center overflow-hidden", isArchiveVisible ? "h-20 opacity-100 py-3" : "h-0 opacity-0")}>
                     <Button 
                         variant="ghost" 
-                        size="sm" 
+                        size="lg" 
                         onClick={() => { setShowArchive(true); setIsArchiveVisible(false); }} 
-                        className="rounded-full h-10 px-6 font-black uppercase tracking-widest text-[11px] bg-primary/10 text-primary hover:bg-primary/20 shadow-sm border border-primary/20 animate-in zoom-in duration-300"
+                        className="rounded-full h-12 px-10 font-black uppercase tracking-widest text-xs bg-primary/10 text-primary hover:bg-primary/20 shadow-md border border-primary/20 animate-in zoom-in duration-300"
                     >
-                        <Archive className="w-4 h-4 mr-2" />
+                        <Archive className="w-5 h-5 mr-3" />
                         {t('archive')}
                     </Button>
                 </div>
@@ -456,7 +455,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 </Button>
                 <Button variant="ghost" onClick={() => { onSelect('infmusic'); setOpenMobile(false); }} className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infmusic' && 'bg-sidebar-accent text-sidebar-accent-foreground')}>
                     <div className="flex items-center gap-3 w-full">
-                    <Music className="h-4 w-4 text-muted-foreground" />
+                    <MusicIcon className="h-4 w-4 text-muted-foreground" />
                     <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm">{t('infmusic_title')}</p>
                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
