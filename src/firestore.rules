@@ -14,7 +14,7 @@ service cloud.firestore {
       allow read: if true;
       allow list: if isSignedIn();
       allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
-      allow update: if (isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge', 'birthday', 'name', 'statusMessage', 'avatar', 'activeGiftEmoji'])))
+      allow update: if (isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge', 'birthday', 'name', 'statusMessage', 'avatar', 'activeGiftEmoji', 'archivedChats'])))
                     && isValidText(request.resource.data.statusMessage, 120)
                     && isValidText(request.resource.data.name, 64);
       allow delete: if request.auth.uid == userId || isAdmin();

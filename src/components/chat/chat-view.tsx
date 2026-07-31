@@ -280,18 +280,17 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 const { Filesystem, Directory } = await import('@capacitor/filesystem'); 
                 const cleanBase64 = mediaUrl.includes(',') ? mediaUrl.split(',')[1] : mediaUrl; 
                 
-                // Try to use Download folder on Android
-                const path = `Infinite/${fileName}`;
+                const dirPath = 'Infinite';
                 try { 
                     await Filesystem.mkdir({ 
-                        path: 'Infinite', 
+                        path: dirPath, 
                         directory: Directory.ExternalStorage, 
                         recursive: true 
                     }); 
                 } catch (e) {} 
 
                 await Filesystem.writeFile({ 
-                    path: `Download/${path}`, 
+                    path: `Download/Infinite/${fileName}`, 
                     data: cleanBase64, 
                     directory: Directory.ExternalStorage, 
                 }); 

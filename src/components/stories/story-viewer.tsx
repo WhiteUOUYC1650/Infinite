@@ -130,16 +130,18 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
 
   useEffect(() => {
     setMounted(true);
-    // Listen for back button
+    let backListener: any;
     if (Capacitor.isNativePlatform()) {
         import('@capacitor/app').then(({ App }) => {
-            const l = App.addListener('backButton', () => {
+            backListener = App.addListener('backButton', () => {
                 onClose();
             });
-            return () => l.then(v => v.remove());
         });
     }
-    return () => setMounted(false);
+    return () => {
+        setMounted(false);
+        if (backListener) backListener.then((l: any) => l.remove());
+    };
   }, [onClose]);
 
   const currentStory = stories[currentIndex];
@@ -236,12 +238,11 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
             const { Filesystem, Directory } = await import('@capacitor/filesystem');
             const base64Data = currentStory.mediaUrl.includes(',') ? currentStory.mediaUrl.split(',')[1] : currentStory.mediaUrl;
             
-            // For Android, we try to use the public Download folder
-            const path = `Infinite/${fileName}`;
-            try { await Filesystem.mkdir({ path: 'Infinite', directory: Directory.ExternalStorage, recursive: true }); } catch (e) {}
+            const dirPath = 'Infinite';
+            try { await Filesystem.mkdir({ path: dirPath, directory: Directory.ExternalStorage, recursive: true }); } catch (e) {}
 
             await Filesystem.writeFile({
-                path: `Download/${path}`,
+                path: `Download/Infinite/${fileName}`,
                 data: base64Data,
                 directory: Directory.ExternalStorage,
             });
