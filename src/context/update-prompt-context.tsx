@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
@@ -7,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
-const CURRENT_APP_VERSION = "1.1";
+const CURRENT_APP_VERSION = "1.1.1";
 
 interface UpdatePromptContextType {
   promptUpdate: () => void;
@@ -83,7 +84,7 @@ export function UpdatePromptProvider({ children }: { children: React.ReactNode }
           try {
             await Filesystem.mkdir({
               path: 'Infinite',
-              directory: Directory.ExternalStorage, // Changed to ExternalStorage for APK visibility
+              directory: Directory.ExternalStorage,
               recursive: true,
             });
           } catch (e) {}

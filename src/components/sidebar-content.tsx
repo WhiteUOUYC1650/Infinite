@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -398,7 +399,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </div>
         ) : (
             <>
-                <div className={cn("transition-all duration-500 flex flex-col items-center justify-center overflow-hidden", isArchiveVisible ? "h-20 opacity-100 py-3" : "h-0 opacity-0")}>
+                <div className={cn("transition-all duration-500 flex flex-col items-center justify-center overflow-hidden", isArchiveVisible ? "h-24 opacity-100 py-3" : "h-0 opacity-0")}>
                     <Button 
                         variant="ghost" 
                         size="lg" 
@@ -669,6 +670,7 @@ function DMChatItemSkeleton() {
 
 const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId, currentUserId, onArchive }: { item: Chat, otherUser: User, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, onArchive: () => void }) => {
   const { t } = useLanguage(); 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isSavedMessages = otherUser?.id === currentUserId; 
   const unreadCount = item.unreadCounts?.[currentUserId] || 0; 
   const isSelected = selectedId === item.id;
@@ -698,11 +700,53 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
   }, [lastMessage, t]);
   
   const displayContent = lastMessage?.content || attachmentText;
+
+  // Refined Long-press logic
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef<{x: number, y: number} | null>(null);
+
+  const startPress = (e: React.MouseEvent | React.TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      touchStartPos.current = { x: clientX, y: clientY };
+      pressTimer.current = setTimeout(() => {
+          setIsMenuOpen(true);
+          if ('vibrate' in navigator) navigator.vibrate(50);
+      }, 1000); // 1 second delay
+  };
+
+  const cancelPress = (e: React.MouseEvent | React.TouchEvent) => {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+      touchStartPos.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (!touchStartPos.current) return;
+      const moveX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+      const moveY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+      if (moveX > 15 || moveY > 15) { // 15px threshold
+          if (pressTimer.current) clearTimeout(pressTimer.current);
+          pressTimer.current = null;
+      }
+  };
   
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button key={item.id} variant="ghost" onClick={() => onSelect(item)} onContextMenu={(e) => { e.preventDefault(); /* long press handled by dropdown */ }} className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden transition-all", isSelected && 'bg-sidebar-accent')}>
+        <Button 
+            key={item.id} 
+            variant="ghost" 
+            onClick={() => onSelect(item)} 
+            onMouseDown={startPress}
+            onMouseUp={cancelPress}
+            onMouseLeave={cancelPress}
+            onTouchStart={startPress}
+            onTouchEnd={cancelPress}
+            onTouchMove={handleTouchMove}
+            onContextMenu={(e) => { e.preventDefault(); setIsMenuOpen(true); }} 
+            className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden transition-all", isSelected && 'bg-sidebar-accent')}
+        >
           <div className="flex items-center gap-3 w-full">
             <div className="relative">
               <UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={isSelected} className="h-9 w-9" />
@@ -750,7 +794,7 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
       <DropdownMenuContent align="start" className="w-56 rounded-xl font-bold p-1 shadow-2xl">
         <DropdownMenuItem onSelect={onArchive} className="h-10 rounded-lg">
             <Archive className="w-4 h-4 mr-3 text-primary" />
-            {t('archive_chat')}
+            {archivedChatIds.has(item.id) ? t('unarchive_chat') : t('archive_chat')}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onSelect(item)} className="h-10 rounded-lg">
             <MessageSquare className="w-4 h-4 mr-3 text-primary" />
@@ -764,6 +808,7 @@ DMChatItemComponent.displayName = 'DMChatItemComponent';
 
 const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserId, onArchive }: { item: Chat, onSelect: (item: Chat) => void, selectedId?: string, currentUserId: string, onArchive: () => void }) => {
   const { t } = useLanguage(); 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const lastMessage = item.lastMessage; 
   const isGeneralChat = item.id === 'GENERAL_CHAT'; 
   const Icon = isGeneralChat ? Globe : (item.icon === 'Drum' || item.name === 'Infinite') ? Bot : (item.icon ? iconMap[item.icon as keyof typeof iconMap] : (item.type === 'group' ? Users : Megaphone));
@@ -794,11 +839,53 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
   if (item.type === 'group' && lastMessage && !senderIsCurrentUser) {
     if (lastMessage.senderName) senderPrefix = `${lastMessage.senderName}: `;
   }
+
+  // Refined Long-press logic
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef<{x: number, y: number} | null>(null);
+
+  const startPress = (e: React.MouseEvent | React.TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      touchStartPos.current = { x: clientX, y: clientY };
+      pressTimer.current = setTimeout(() => {
+          setIsMenuOpen(true);
+          if ('vibrate' in navigator) navigator.vibrate(50);
+      }, 1000);
+  };
+
+  const cancelPress = () => {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+      touchStartPos.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (!touchStartPos.current) return;
+      const moveX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+      const moveY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+      if (moveX > 15 || moveY > 15) {
+          if (pressTimer.current) clearTimeout(pressTimer.current);
+          pressTimer.current = null;
+      }
+  };
   
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button key={item.id} variant="ghost" onClick={() => onSelect(item)} onContextMenu={(e) => { e.preventDefault(); }} className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden transition-all", isSelected && 'bg-sidebar-accent')}>
+        <Button 
+            key={item.id} 
+            variant="ghost" 
+            onClick={() => onSelect(item)} 
+            onMouseDown={startPress}
+            onMouseUp={cancelPress}
+            onMouseLeave={cancelPress}
+            onTouchStart={startPress}
+            onTouchEnd={cancelPress}
+            onTouchMove={handleTouchMove}
+            onContextMenu={(e) => { e.preventDefault(); setIsMenuOpen(true); }} 
+            className={cn("relative w-full justify-start h-auto py-1.5 text-left overflow-hidden transition-all", isSelected && 'bg-sidebar-accent')}
+        >
           <div className="flex items-center gap-3 w-full">
             <Avatar className="h-9 w-9 shrink-0">
               {item.avatar ? (

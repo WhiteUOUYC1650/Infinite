@@ -5,7 +5,6 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == '@Infinite'; }
     
-    // Helper function for character limits
     function isValidText(text, maxLen) {
       return text == null || text.size() <= maxLen;
     }
@@ -33,7 +32,6 @@ service cloud.firestore {
       
       match /messages/{messageId} { 
         allow read, list: if isSignedIn();
-        // Allow creation with character limit
         allow create: if isSignedIn() && 
           isValidText(request.resource.data.content, 1600) &&
           (
@@ -49,6 +47,10 @@ service cloud.firestore {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn() && isValidText(request.resource.data.description, 1600);
       allow update, delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin());
+      match /comments/{commentId} { 
+        allow read, list: if isSignedIn();
+        allow write: if isSignedIn() && isValidText(request.resource.data.text, 1600);
+      }
     }
 
     match /videos/{videoId} {

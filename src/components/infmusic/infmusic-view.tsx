@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, deleteDoc, increment } from 'firebase/firestore';
-import type { AuthenticatedUser, SharedMusic, User } from '@/types';
+import type { AuthenticatedUser, SharedMusic, User, VideoComment } from '@/types';
 import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare, Download, Music, Pause } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -146,11 +147,41 @@ function UploadMusicView({ onClose, onUpload, isUploading, maxSizeText, maxSizeI
     const { toast } = useToast(); const [file, setFile] = useState<File | null>(null); const [cover, setCover] = useState<File | null>(null); const [coverPreview, setCoverPreview] = useState<string | null>(null); const [title, setTitle] = useState(''); const [author, setAuthor] = useState(''); const [description, setDescription] = useState(''); 
     const fileInputRef = useRef<HTMLInputElement>(null); const coverInputRef = useRef<HTMLInputElement>(null);
     
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => { 
         if (e.target.files?.[0]) { 
             const selectedFile = e.target.files[0]; 
             if (selectedFile.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('max_file_size_label', { size: maxSizeText }) }); return; } 
-            setFile(selectedFile); if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); 
+            setFile(selectedFile); 
+            
+            // Extract MP3 Artwork
+            if (selectedFile.type === 'audio/mpeg' || selectedFile.name.endsWith('.mp3')) {
+                try {
+                    const jsmediatags = (await import('jsmediatags')).default;
+                    new jsmediatags.Reader(selectedFile).read({
+                        onSuccess: (tag) => {
+                            const { title: fTitle, artist } = tag.tags;
+                            if (fTitle && !title) setTitle(fTitle);
+                            if (artist && !author) setAuthor(artist);
+                            
+                            const image = tag.tags.picture;
+                            if (image) {
+                                let base64String = "";
+                                for (let i = 0; i < image.data.length; i++) {
+                                    base64String += String.fromCharCode(image.data[i]);
+                                }
+                                const base64 = "data:" + image.format + ";base64," + btoa(base64String);
+                                setCoverPreview(base64);
+                                // Create a File object from base64 to match upload interface if needed
+                                fetch(base64).then(res => res.blob()).then(blob => {
+                                    setCover(new File([blob], "artwork.jpg", { type: image.format }));
+                                });
+                            }
+                        },
+                        onError: (error) => console.log('Error reading tags', error)
+                    });
+                } catch (e) { console.error("jsmediatags import error", e); }
+            }
+            if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); 
         } 
     };
     const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { setCover(e.target.files[0]); setCoverPreview(URL.createObjectURL(e.target.files[0])); } };
@@ -217,6 +248,14 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isLiked, setIsLiked] = useState(music.likedBy?.includes(currentUser.uid) || false);
+    
+    // Comments State
+    const [commentText, setCommentText] = useState('');
+    const [isSendingComment, setIsSendingComment] = useState(false);
+    const commentsQuery = useMemo(() => (db ? query(collection(db, 'music', music.id, 'comments'), orderBy('timestamp', 'desc'), limit(50)) : null), [db, music.id]);
+    const { data: comments, loading: commentsLoading } = useCollection<VideoComment>(commentsQuery);
+    const commentUserIds = useMemo(() => Array.from(new Set(comments?.map(c => c.userId) || [])), [comments]);
+    const { users: commentAuthors } = useBatchUsers(commentUserIds);
 
     useEffect(() => {
         if (!db || !music.musicChunkIds) return;
@@ -243,6 +282,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
 
     const togglePlay = () => { if (!audioRef.current) return; if (isPlaying) audioRef.current.pause(); else audioRef.current.play(); setIsPlaying(!isPlaying); };
     const formatTime = (t: number) => { const m = Math.floor(t / 60); const s = Math.floor(t % 60); return `${m}:${s.toString().padStart(2, '0')}`; };
+    
     const toggleLike = async () => {
         if (!db) return;
         const ref = doc(db, 'music', music.id);
@@ -252,37 +292,44 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
         } catch(e) {}
     };
 
+    const handleAddComment = async () => {
+        if (!db || !commentText.trim() || isSendingComment) return;
+        setIsSendingComment(true);
+        try {
+            await addDoc(collection(db, 'music', music.id, 'comments'), {
+                userId: currentUser.uid,
+                userName: currentUser.name || currentUser.username,
+                userAvatar: currentUser.avatar || null,
+                text: commentText.trim(),
+                timestamp: serverTimestamp(),
+            });
+            setCommentText('');
+        } catch (e) { console.error(e); }
+        finally { setIsSendingComment(false); }
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] bg-background flex flex-col animate-in slide-in-from-bottom duration-500">
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col animate-in slide-in-from-bottom duration-500 overflow-hidden">
             <header className="h-14 flex items-center px-4 shrink-0 bg-background/95 backdrop-blur-md pt-[calc(0.5rem+env(safe-area-inset-top))]">
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="h-6 w-6" /></Button>
+                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><ChevronDown className="h-6 w-6" /></Button>
                 <div className="flex-1 text-center"><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t('infmusic_title')}</p></div>
                 <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(`/IM/T/${music.id}`); toast({ title: t('copy_success_toast') }); }} className="rounded-full"><Share2 className="h-5 w-5" /></Button>
             </header>
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-lg mx-auto w-full">
-                <div className="w-full aspect-square max-w-[320px] rounded-3xl bg-muted shadow-2xl overflow-hidden mb-10 relative">
-                    {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" /> : <Music className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
-                    {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-white" /></div>}
-                </div>
-                <div className="w-full space-y-2 mb-8">
-                    <h2 className="text-2xl font-black font-headline leading-tight">{music.title}</h2>
-                    <p className="text-primary font-bold text-lg">{music.author}</p>
-                </div>
-                {music.description && <p className="text-sm text-muted-foreground leading-relaxed mb-6 whitespace-pre-wrap">{music.description}</p>}
-                
-                <div className="w-full bg-muted/40 p-4 rounded-2xl border border-border/50 mb-10 text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-3">{t('sender_label')}</p>
-                    <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border"><AvatarImage src={sender?.avatar} /><AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback></Avatar>
-                        <div className="min-w-0 flex-1">
-                            <p className="font-bold text-sm truncate flex items-center gap-1">{sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3 h-3" />}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-black">{sender?.username}</p>
-                        </div>
-                        <Button variant="outline" size="sm" className="rounded-xl font-bold h-9" onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: [currentUser.uid, sender?.id].sort().join('_') } }))}>Message</Button>
+            
+            <ScrollArea className="flex-1 overflow-y-auto">
+                <div className="flex flex-col items-center p-8 text-center max-w-lg mx-auto w-full pb-24">
+                    {/* System Player Style Visuals */}
+                    <div className="w-full aspect-square max-w-[320px] rounded-3xl bg-muted shadow-2xl overflow-hidden mb-10 relative">
+                        {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" /> : <Music className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
+                        {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-white" /></div>}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                     </div>
-                </div>
 
-                <div className="w-full space-y-4">
+                    <div className="w-full space-y-2 mb-8">
+                        <h2 className="text-3xl font-black font-headline leading-tight tracking-tighter">{music.title}</h2>
+                        <p className="text-primary font-bold text-xl">{music.author}</p>
+                    </div>
+
                     {audioUrl && (
                         <audio 
                             ref={audioRef} 
@@ -292,28 +339,107 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                             onEnded={() => setIsPlaying(false)}
                         />
                     )}
-                    <div className="w-full space-y-1">
-                        <div className="relative h-1.5 w-full bg-muted rounded-full overflow-hidden cursor-pointer" onClick={(e) => {
+
+                    {/* Progress Bar */}
+                    <div className="w-full space-y-2 mb-8">
+                        <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden cursor-pointer" onClick={(e) => {
                             if (!audioRef.current || !duration) return;
                             const rect = e.currentTarget.getBoundingClientRect();
                             audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
                         }}>
                             <div className="absolute h-full bg-primary transition-all duration-100" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
                         </div>
-                        <div className="flex justify-between text-[10px] font-bold text-muted-foreground px-1 uppercase tracking-widest">
+                        <div className="flex justify-between text-[10px] font-black text-muted-foreground px-1 uppercase tracking-widest">
                             <span>{formatTime(currentTime)}</span>
                             <span>{formatTime(duration)}</span>
                         </div>
                     </div>
-                    <div className="flex items-center justify-center gap-8">
-                        <Button variant="ghost" size="icon" onClick={toggleLike} className={cn("h-12 w-12 rounded-full", isLiked && "text-red-500")}><ThumbsUp className={cn("h-6 w-6", isLiked && "fill-current")} /></Button>
-                        <Button onClick={togglePlay} disabled={isLoading} className="h-20 w-20 rounded-full bg-primary text-white shadow-xl shadow-primary/20 scale-110 active:scale-95 transition-all p-0 flex items-center justify-center">
-                            {isPlaying ? <Pause className="h-10 w-10 fill-current" /> : <Play className="h-10 w-10 fill-current ml-1" />}
+
+                    {/* Controls */}
+                    <div className="flex items-center justify-center gap-10 mb-10">
+                        <Button variant="ghost" size="icon" onClick={toggleLike} className={cn("h-14 w-14 rounded-full transition-all active:scale-90", isLiked && "text-red-500")}>
+                            <ThumbsUp className={cn("h-7 w-7", isLiked && "fill-current")} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full text-muted-foreground"><Download className="h-6 w-6" /></Button>
+                        <Button onClick={togglePlay} disabled={isLoading} className="h-24 w-24 rounded-full bg-primary text-white shadow-2xl shadow-primary/30 active:scale-95 transition-all p-0 flex items-center justify-center">
+                            {isPlaying ? <Pause className="h-12 w-12 fill-current" /> : <Play className="h-12 w-12 fill-current ml-2" />}
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-muted-foreground"><MoreHorizontal className="h-7 w-7" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="rounded-xl font-bold">
+                                <DropdownMenuItem><Download className="mr-2 h-4 w-4" /> {t('download')}</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+
+                    {/* Description Card */}
+                    {music.description && (
+                        <div className="w-full bg-muted/30 p-5 rounded-3xl border border-border/40 text-left mb-6">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">About Track</p>
+                            <p className="text-sm font-medium text-foreground/80 leading-relaxed whitespace-pre-wrap">{music.description}</p>
+                        </div>
+                    )}
+                    
+                    {/* Sender Info */}
+                    <div className="w-full bg-muted/40 p-4 rounded-3xl border border-border/50 mb-10 text-left">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-3">{t('sender_label')}</p>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-11 w-11 border-2 border-background"><AvatarImage src={sender?.avatar} /><AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback></Avatar>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-bold text-base truncate flex items-center gap-1">{sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-60">@{sender?.username?.replace('@','')}</p>
+                            </div>
+                            <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: [currentUser.uid, sender?.id].sort().join('_') } }))}>Message</Button>
+                        </div>
+                    </div>
+
+                    {/* Comments Section */}
+                    <div className="w-full text-left space-y-6">
+                        <h3 className="text-xl font-black font-headline uppercase tracking-tighter ml-1">{t('comments')} ({comments?.length || 0})</h3>
+                        <div className="flex gap-3 mb-6">
+                            <Avatar className="h-10 w-10 shrink-0"><AvatarImage src={currentUser.avatar} /><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar>
+                            <div className="flex-1 flex gap-2">
+                                <Input 
+                                    value={commentText} 
+                                    onChange={e => setCommentText(e.target.value)} 
+                                    placeholder="Add a comment..." 
+                                    className="rounded-2xl h-11 bg-muted/50 border-none px-4"
+                                    onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                                    maxLength={1600}
+                                />
+                                <Button size="icon" onClick={handleAddComment} disabled={!commentText.trim() || isSendingComment} className="rounded-full h-11 w-11 shrink-0 bg-primary/10 text-primary hover:bg-primary/20">
+                                    {isSendingComment ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className="h-5 w-5" />}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {commentsLoading ? (
+                                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary opacity-20" /></div>
+                            ) : comments && comments.length > 0 ? (
+                                comments.map(comment => (
+                                    <div key={comment.id} className="flex gap-3 group">
+                                        <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={commentAuthors[comment.userId]?.avatar} /><AvatarFallback>{comment.userName.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <p className="font-bold text-sm truncate">{comment.userName}</p>
+                                                <span className="text-[10px] text-muted-foreground font-medium">{formatDistanceToNow(comment.timestamp?.toMillis() || Date.now(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })}</span>
+                                            </div>
+                                            <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-10 opacity-30">
+                                    <MessageSquare className="h-10 w-10 mx-auto mb-2" />
+                                    <p className="text-xs font-bold uppercase tracking-widest">{t('no_comments_yet')}</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            </ScrollArea>
         </div>
     );
 }
