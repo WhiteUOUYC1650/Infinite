@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square, Zap } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -442,10 +442,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   const removeFileToSend = (index: number) => { setFilesToSend(prev => prev.filter((_, i) => i !== index)); };
   
-  const handleSendMessage = async (customPoll?: Poll) => {
-    const finalC = messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
+  const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
+    const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
-    setIsSending(true); setMessageContent(''); setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    setIsSending(true); if (textOverride === undefined) setMessageContent(''); setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], ...(customPoll && { poll: customPoll }), ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
@@ -512,7 +512,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
   const isOwner = item.ownerId === currentUser.uid; const isAdminUser = currentUser.username === '@Infinite'; const isDM = item.type === 'dm'; const isSavedMessages = item.id === currentUser.uid; const isGeneralChat = item.id === 'GENERAL_CHAT'; const canWrite = item.type !== 'channel' || isOwner;
-  
+  const isOfficialBot = otherUser?.username === '@Infinite' || otherUser?.username === '@InfiniteBot' || item.link === '/B/Infinite';
+  const showStartButton = !messagesLoading && isDM && otherUser?.isBot && !isOfficialBot && (!messages || messages.length === 0);
+
   const headerContent = (
     <div className={cn("flex items-center w-full transition-all duration-300 gap-2", experimentalDesign ? "h-14 px-1" : "p-2 h-14")}>
         <div className={cn(experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center", experimentalDesign && !glassEffect && "bg-card/40")}>
@@ -574,8 +576,161 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyToMessage(null)}><X className="h-4 w-4" /></Button>
                 </div>
             )}
-            {filesToSend.length > 0 && (<div className="bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2"><ScrollArea className="w-full"><div className="flex items-center gap-3 pb-2">{filesToSend.map((fItem, idx) => (<div key={idx} className="relative group shrink-0"><div className="w-16 h-16 rounded-lg overflow-hidden border bg-background flex items-center justify-center">{fItem.type === 'image' ? <img src={fItem.previewUrl} className="w-full h-full object-cover" alt="Preview" /> : fItem.type === 'video' ? <VideoIcon className="h-6 w-6 text-orange-500" /> : fItem.type === 'music' ? <MusicIcon className="h-6 w-6 text-purple-500" /> : <FileIcon className="h-6 w-6 text-primary" />}</div><Button variant="destructive" size="icon" className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full shadow-md" onClick={() => removeFileToSend(idx)}><X className="h-3 w-3" /></Button></div>))}</div><ScrollBar orientation="horizontal" /></ScrollArea></div>)}
-            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-end gap-2 relative w-full"><Textarea placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} onKeyDown={(e) => { if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className={cn("min-h-[44px] h-[44px] max-h-32 py-3 resize-none border rounded-2xl transition-all duration-300", (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input")} maxLength={1600} /><div className="flex items-center gap-1.5 shrink-0 h-[44px]"><DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")}><Paperclip className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className={cn("w-56 rounded-xl p-1 shadow-2xl", (experimentalDesign || glassEffect) ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl")}><DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">{t('max_file_size_label', { size: maxSizeText })}</DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')} className="font-bold"><ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('video')} className="font-bold"><VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('music')} className="font-bold"><MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}</DropdownMenuItem><DropdownMenuItem onSelect={() => handleAttachmentSelection('file')} className="font-bold"><FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}</DropdownMenuItem><DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="font-bold"><ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu><input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} multiple />{messageContent.trim() || filesToSend.length > 0 ? <Button type="submit" size="icon" disabled={isSending} className={cn("h-10 w-10 rounded-full transition-all active:scale-95", (experimentalDesign || glassEffect) ? "bg-primary/60 backdrop-blur-xl border border-white/20" : "")}>{isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}</Button> : <div className="flex items-center gap-1.5"><Button type="button" variant="ghost" size="icon" className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} onMouseDown={() => startRecording('circle')} onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} onTouchEnd={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }}><Camera className="h-5 w-5" /></Button><Button type="button" variant="ghost" size="icon" className={cn("h-10 w-10 text-muted-foreground transition-all", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full")} onMouseDown={() => startRecording('voice')} onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} onTouchEnd={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }}><Mic className="h-5 w-5" /></Button></div>}</div></form>
+            {filesToSend.length > 0 && (
+                <div className="bg-muted p-2 rounded-xl mb-2 animate-in slide-in-from-bottom-2">
+                    <ScrollArea className="w-full">
+                        <div className="flex items-center gap-3 pb-2">
+                            {filesToSend.map((fItem, idx) => (
+                                <div key={idx} className="relative group shrink-0">
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden border bg-background flex items-center justify-center">
+                                        {fItem.type === 'image' ? <img src={fItem.previewUrl} className="w-full h-full object-cover" alt="Preview" /> : fItem.type === 'video' ? <VideoIcon className="h-6 w-6 text-orange-500" /> : fItem.type === 'music' ? <MusicIcon className="h-6 w-6 text-purple-500" /> : <FileIcon className="h-6 w-6 text-primary" />}
+                                    </div>
+                                    <Button variant="destructive" size="icon" className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full shadow-md" onClick={() => removeFileToSend(idx)}>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                </div>
+            )}
+            {showStartButton ? (
+                <div className="w-full py-1 animate-in zoom-in duration-300">
+                    <Button 
+                        onClick={() => handleSendMessage(undefined, '/start')}
+                        className={cn(
+                            "w-full h-12 rounded-2xl font-black text-lg tracking-widest gap-3 shadow-xl transition-all active:scale-95",
+                            (experimentalDesign || glassEffect) ? "bg-primary/80 backdrop-blur-xl border border-white/20" : "bg-primary hover:bg-primary/90"
+                        )}
+                    >
+                        <Zap className="h-5 w-5 fill-current" />
+                        СТАРТ
+                    </Button>
+                </div>
+            ) : (
+                <form 
+                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} 
+                    className="flex items-end gap-2 relative w-full"
+                >
+                    <Textarea 
+                        placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} 
+                        value={messageContent} 
+                        onChange={(e) => setMessageContent(e.target.value)} 
+                        onKeyDown={(e) => { 
+                            if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { 
+                                e.preventDefault(); 
+                                handleSendMessage(); 
+                            } 
+                        }} 
+                        className={cn(
+                            "min-h-[44px] h-[44px] max-h-32 py-3 resize-none border rounded-2xl transition-all duration-300", 
+                            (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
+                        )} 
+                        maxLength={1600} 
+                    />
+                    <div className="flex items-center gap-1.5 shrink-0 h-[44px]">
+                        <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className={cn(
+                                        "h-10 w-10 text-muted-foreground transition-all", 
+                                        (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full"
+                                    )}
+                                >
+                                    <Paperclip className="h-5 w-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent 
+                                align="end" 
+                                side="top" 
+                                className={cn(
+                                    "w-56 rounded-xl p-1 shadow-2xl", 
+                                    (experimentalDesign || glassEffect) ? "glass-menu backdrop-blur-2xl" : "bg-popover/95 backdrop-blur-xl"
+                                )}
+                            >
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-2 py-2">
+                                    {t('max_file_size_label', { size: maxSizeText })}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => handleAttachmentSelection('photo')} className="font-bold">
+                                    <ImageIcon className="mr-3 h-4 w-4 text-blue-500" /> {t('photo')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentSelection('video')} className="font-bold">
+                                    <VideoIcon className="mr-3 h-4 w-4 text-orange-500" /> {t('video')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentSelection('music')} className="font-bold">
+                                    <MusicIcon className="mr-3 h-4 w-4 text-purple-500" /> {t('music')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleAttachmentSelection('file')} className="font-bold">
+                                    <FileIcon className="mr-3 h-4 w-4 text-green-500" /> {t('file')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setShowNewPoll(true)} className="font-bold">
+                                    <ListTodo className="mr-3 h-4 w-4 text-red-500" /> {t('poll')}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            onChange={handleFileSelect} 
+                            multiple 
+                        />
+                        
+                        {messageContent.trim() || filesToSend.length > 0 ? (
+                            <Button 
+                                type="submit" 
+                                size="icon" 
+                                disabled={isSending} 
+                                className={cn(
+                                    "h-10 w-10 rounded-full transition-all active:scale-95", 
+                                    (experimentalDesign || glassEffect) ? "bg-primary/60 backdrop-blur-xl border border-white/20" : ""
+                                )}
+                            >
+                                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}
+                            </Button>
+                        ) : (
+                            <div className="flex items-center gap-1.5">
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className={cn(
+                                        "h-10 w-10 text-muted-foreground transition-all", 
+                                        (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full"
+                                    )} 
+                                    onMouseDown={() => startRecording('circle')} 
+                                    onTouchStart={(e) => { e.preventDefault(); startRecording('circle'); }} 
+                                    onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
+                                    onTouchEnd={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }}
+                                >
+                                    <Camera className="h-5 w-5" />
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className={cn(
+                                        "h-10 w-10 text-muted-foreground transition-all", 
+                                        (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border border-white/20 rounded-xl" : "rounded-full"
+                                    )} 
+                                    onMouseDown={() => startRecording('voice')} 
+                                    onTouchStart={(e) => { e.preventDefault(); startRecording('voice'); }} 
+                                    onMouseUp={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }} 
+                                    onTouchEnd={() => { if (recordingDuration < 1.5) stopRecording(false); else setIsRecordingLocked(true); }}
+                                >
+                                    <Mic className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </form>
+            )}
           </div>
         </footer>
       ) : (
