@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -117,7 +118,7 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
                         <div className="flex items-center gap-2 overflow-hidden">
-                            <Music className="h-7 w-7 text-primary shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infmusic_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
+                            <Music className="h-7 w-7 text-primary shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infmusic_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">1.1.1</Badge>
                         </div>
                     </div>
                     <div className="flex-1 max-w-sm mx-4 hidden md:block"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
@@ -150,33 +151,6 @@ function UploadMusicView({ onClose, onUpload, isUploading, maxSizeText, maxSizeI
             const selectedFile = e.target.files[0]; 
             if (selectedFile.size > maxSizeInBytes) { toast({ variant: 'destructive', title: t('max_file_size_label', { size: maxSizeText }) }); return; } 
             setFile(selectedFile); 
-            
-            if (selectedFile.type === 'audio/mpeg' || selectedFile.name.endsWith('.mp3')) {
-                try {
-                    const jsmediatags = (await import('jsmediatags')).default;
-                    new jsmediatags.Reader(selectedFile).read({
-                        onSuccess: (tag) => {
-                            const { title: fTitle, artist } = tag.tags;
-                            if (fTitle && !title) setTitle(fTitle);
-                            if (artist && !author) setAuthor(artist);
-                            
-                            const image = tag.tags.picture;
-                            if (image) {
-                                let base64String = "";
-                                for (let i = 0; i < image.data.length; i++) {
-                                    base64String += String.fromCharCode(image.data[i]);
-                                }
-                                const base64 = "data:" + image.format + ";base64," + btoa(base64String);
-                                setCoverPreview(base64);
-                                fetch(base64).then(res => res.blob()).then(blob => {
-                                    setCover(new File([blob], "artwork.jpg", { type: image.format }));
-                                });
-                            }
-                        },
-                        onError: (error) => console.log('Error reading tags', error)
-                    });
-                } catch (e) { console.error("jsmediatags dynamic import failed", e); }
-            }
             if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, "")); 
         } 
     };
@@ -318,7 +292,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                     </div>
 
-                    <div className="w-full space-y-2 mb-8">
+                    <div className="w-full space-y-2 mb-8 text-center">
                         <h2 className="text-3xl font-black font-headline leading-tight tracking-tighter">{music.title}</h2>
                         <p className="text-primary font-bold text-xl">{music.author}</p>
                     </div>
@@ -333,35 +307,39 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         />
                     )}
 
-                    <div className="w-full space-y-2 mb-8">
-                        <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden cursor-pointer" onClick={(e) => {
-                            if (!audioRef.current || !duration) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
-                        }}>
-                            <div className="absolute h-full bg-primary transition-all duration-100" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
+                    {/* Pill Player Design */}
+                    <div className="w-full bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] mb-10 space-y-4">
+                        <div className="flex items-center gap-6">
+                            <Button onClick={togglePlay} disabled={isLoading} className="h-16 w-16 rounded-full bg-primary text-white shadow-xl active:scale-95 transition-all p-0 flex items-center justify-center shrink-0">
+                                {isPlaying ? <Pause className="h-8 w-8 fill-current" /> : <Play className="h-8 w-8 fill-current ml-1" />}
+                            </Button>
+                            <div className="flex-1 space-y-2">
+                                <div className="relative h-2 w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden cursor-pointer" onClick={(e) => {
+                                    if (!audioRef.current || !duration) return;
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+                                }}>
+                                    <div className="absolute h-full bg-primary transition-all duration-100" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
+                                </div>
+                                <div className="flex justify-between text-[11px] font-mono font-bold opacity-60">
+                                    <span>{formatTime(currentTime)}</span>
+                                    <span>{formatTime(duration)}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex justify-between text-[10px] font-black text-muted-foreground px-1 uppercase tracking-widest">
-                            <span>{formatTime(currentTime)}</span>
-                            <span>{formatTime(duration)}</span>
+                        <div className="flex items-center justify-center gap-8 pt-2">
+                            <Button variant="ghost" size="icon" onClick={toggleLike} className={cn("h-12 w-12 rounded-full transition-all active:scale-90", isLiked && "text-red-500 bg-red-500/10")}>
+                                <ThumbsUp className={cn("h-6 w-6", isLiked && "fill-current")} />
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full text-muted-foreground bg-black/5"><MoreHorizontal className="h-6 w-6" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="rounded-xl font-bold">
+                                    <DropdownMenuItem onClick={() => { if (audioUrl) { const a = document.createElement('a'); a.href = audioUrl; a.download = `${music.title}.mp3`; a.click(); } }}><Download className="mr-2 h-4 w-4" /> {t('download')}</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-10 mb-10">
-                        <Button variant="ghost" size="icon" onClick={toggleLike} className={cn("h-14 w-14 rounded-full transition-all active:scale-90", isLiked && "text-red-500")}>
-                            <ThumbsUp className={cn("h-7 w-7", isLiked && "fill-current")} />
-                        </Button>
-                        <Button onClick={togglePlay} disabled={isLoading} className="h-24 w-24 rounded-full bg-primary text-white shadow-2xl shadow-primary/30 active:scale-95 transition-all p-0 flex items-center justify-center">
-                            {isPlaying ? <Pause className="h-12 w-12 fill-current" /> : <Play className="h-12 w-12 fill-current ml-2" />}
-                        </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-muted-foreground"><MoreHorizontal className="h-7 w-7" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="rounded-xl font-bold">
-                                <DropdownMenuItem onClick={() => { if (audioUrl) { const a = document.createElement('a'); a.href = audioUrl; a.download = `${music.title}.mp3`; a.click(); } }}><Download className="mr-2 h-4 w-4" /> {t('download')}</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                     </div>
 
                     {music.description && (

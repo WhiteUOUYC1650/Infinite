@@ -50,7 +50,6 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "genkit": "^1.0.3",
-    "jsmediatags": "^3.9.5",
     "lucide-react": "^0.475.0",
     "next": "15.5.12",
     "patch-package": "^8.0.0",
@@ -71,7 +70,6 @@
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
-    "@types/jsmediatags": "^3.9.6",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
