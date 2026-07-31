@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -129,8 +130,17 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
 
   useEffect(() => {
     setMounted(true);
+    // Listen for back button
+    if (Capacitor.isNativePlatform()) {
+        import('@capacitor/app').then(({ App }) => {
+            const l = App.addListener('backButton', () => {
+                onClose();
+            });
+            return () => l.then(v => v.remove());
+        });
+    }
     return () => setMounted(false);
-  }, []);
+  }, [onClose]);
 
   const currentStory = stories[currentIndex];
   const isOwner = userId === currentUser.uid;
@@ -208,6 +218,45 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
       console.error("Failed to delete story", e);
     } finally {
         setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleCopyText = () => {
+    if (currentStory.caption) {
+        navigator.clipboard.writeText(currentStory.caption);
+        toast({ title: t('copy_success_toast') });
+    }
+  };
+
+  const handleSaveToDevice = async () => {
+    if (!currentStory.mediaUrl) return;
+    const fileName = `Story_${currentStory.id}.jpg`;
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const { Filesystem, Directory } = await import('@capacitor/filesystem');
+            const base64Data = currentStory.mediaUrl.includes(',') ? currentStory.mediaUrl.split(',')[1] : currentStory.mediaUrl;
+            
+            // For Android, we try to use the public Download folder
+            const path = `Infinite/${fileName}`;
+            try { await Filesystem.mkdir({ path: 'Infinite', directory: Directory.ExternalStorage, recursive: true }); } catch (e) {}
+
+            await Filesystem.writeFile({
+                path: `Download/${path}`,
+                data: base64Data,
+                directory: Directory.ExternalStorage,
+            });
+            toast({ title: t('dm_success'), description: `Saved to Download/Infinite/${fileName}` });
+        } catch (e) {
+            console.error("Save error:", e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to save to Download folder.' });
+        }
+    } else {
+        const link = document.createElement('a');
+        link.href = currentStory.mediaUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
   };
 
@@ -303,9 +352,21 @@ export function StoryViewer({ userId, stories, onClose, currentUser, user }: Sto
                     <MoreVertical className="w-6 h-6" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-xl z-[10000] w-48">
+                <DropdownMenuContent align="end" className="rounded-xl z-[10000] w-48 font-bold">
+                  {currentStory.caption && (
+                    <DropdownMenuItem onClick={handleCopyText}>
+                        <Copy className="w-4 h-4 mr-2" />
+                        {t('copy_text')}
+                    </DropdownMenuItem>
+                  )}
+                  {currentStory.mediaUrl && (
+                    <DropdownMenuItem onClick={handleSaveToDevice}>
+                        <Download className="w-4 h-4 mr-2" />
+                        {t('save_to_device')}
+                    </DropdownMenuItem>
+                  )}
                   {isOwner && (
-                    <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10 font-bold">
+                    <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="w-4 h-4 mr-2" />
                       {t('delete')}
                     </DropdownMenuItem>

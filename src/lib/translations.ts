@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -554,6 +555,13 @@ export const translations = {
       'tos_label': 'Terms of Service (Markdown)',
       'privacy_label': 'Privacy Policy (Markdown)',
       'tos_update_broadcast': 'Our Terms of Service and Privacy Policy have been updated. Please review them.',
+      'archive': 'Archive',
+      'archived': 'Archived',
+      'archive_chat': 'Archive Chat',
+      'unarchive_chat': 'Unarchive Chat',
+      'no_archived_chats': 'Your archive is empty.',
+      'archive_pull_hint': 'Pull down to view archive',
+      'archive_stories': 'Archived Stories',
     },
     ru: {
       'settings': 'Настройки',
@@ -1108,6 +1116,13 @@ export const translations = {
       'tos_label': 'Условия использования (Markdown)',
       'privacy_label': 'Политика конфиденциальности (Markdown)',
       'tos_update_broadcast': 'Наши Условия использования и Политика конфиденциальности были обновлены. Пожалуйста, ознакомьтесь с ними.',
+      'archive': 'Архив',
+      'archived': 'В архиве',
+      'archive_chat': 'В архив',
+      'unarchive_chat': 'Вернуть из архива',
+      'no_archived_chats': 'Ваш архив пуст.',
+      'archive_pull_hint': 'Потяните вниз для входа в архив',
+      'archive_stories': 'Архивные истории',
     }
 };
 

@@ -272,7 +272,43 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
         loadMedia(); 
     }, [message.id, db, message.videoStatus, message.musicStatus, message.voiceStatus, message.circleStatus, message.fileStatus, message.imageUrl, onMediaLoad, message.videoMimeType, message.musicMimeType, message.voiceMimeType, message.circleMimeType, message.fileMimeType]);
 
-    const handleSaveToDevice = async () => { if (!mediaUrl) return; const fileName = message.fileName || `Infinite_${message.id}.${(message.imageUrl ? 'jpg' : (message.videoMimeType?.split('/')[1] || 'bin'))}`; if (Capacitor.isNativePlatform()) { try { const { Filesystem, Directory } = await import('@capacitor/filesystem'); const cleanBase64 = mediaUrl.includes(',') ? mediaUrl.split(',')[1] : mediaUrl; try { await Filesystem.mkdir({ path: 'Infinite', directory: Directory.Documents, recursive: true }); } catch (e) {} await Filesystem.writeFile({ path: `Infinite/${fileName}`, data: cleanBase64, directory: Directory.Documents, }); toast({ title: t('dm_success'), description: `Saved to Documents/Infinite/${fileName}` }); } catch (e) { console.error(e); } } else { const link = document.createElement('a'); link.href = mediaUrl; link.download = fileName; document.body.appendChild(link); link.click(); document.body.removeChild(link); } };
+    const handleSaveToDevice = async () => { 
+        if (!mediaUrl) return; 
+        const fileName = message.fileName || `Infinite_${message.id}.${(message.imageUrl ? 'jpg' : (message.videoMimeType?.split('/')[1] || 'bin'))}`; 
+        if (Capacitor.isNativePlatform()) { 
+            try { 
+                const { Filesystem, Directory } = await import('@capacitor/filesystem'); 
+                const cleanBase64 = mediaUrl.includes(',') ? mediaUrl.split(',')[1] : mediaUrl; 
+                
+                // Try to use Download folder on Android
+                const path = `Infinite/${fileName}`;
+                try { 
+                    await Filesystem.mkdir({ 
+                        path: 'Infinite', 
+                        directory: Directory.ExternalStorage, 
+                        recursive: true 
+                    }); 
+                } catch (e) {} 
+
+                await Filesystem.writeFile({ 
+                    path: `Download/${path}`, 
+                    data: cleanBase64, 
+                    directory: Directory.ExternalStorage, 
+                }); 
+                toast({ title: t('dm_success'), description: `Saved to Download/Infinite/${fileName}` }); 
+            } catch (e) { 
+                console.error(e); 
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to save to Download folder.' });
+            } 
+        } else { 
+            const link = document.createElement('a'); 
+            link.href = mediaUrl; 
+            link.download = fileName; 
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link); 
+        } 
+    };
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
     const canCopy = message.content && !message.poll; const isAdmin = currentUser.username === '@Infinite'; const canDelete = isAdmin || (sender?.username !== '@Infinite' && (isCurrentUser || chat.ownerId === currentUser.uid || chat.type === 'dm'));
     const isLikedByMe = (emoji: string) => message.reactions?.[emoji]?.includes(currentUser.uid);
@@ -525,7 +561,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </div>
       {isDM && otherUser?.isCustomBot && botApps.length > 0 && (<div className={cn("absolute bottom-[calc(60px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[45] animate-in slide-in-from-bottom-4 duration-500", (experimentalDesign || glassEffect) ? "mb-6" : "mb-2")}><Button onClick={() => setProfileDialogUser(otherUser)} className={cn("rounded-full shadow-2xl text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all", glassEffect ? "glass-button bg-primary/60" : "bg-primary")}><LayoutGrid className="h-5 w-5" />{botApps.length === 1 ? t('open_mini_app_button') : t('open_mini_apps_menu')}</Button></div>)}
       {isMember && (canWrite ? (
-        <footer className={cn("flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0" : "bg-background border-t")}>
+        <footer className={cn("flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className="absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl bg-background w-full h-full">
               <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" /><span className="font-mono font-bold text-base">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span><span className="text-[10px] text-muted-foreground ml-2 font-black uppercase tracking-widest">{isRecordingCircle ? 'VIDEO CIRCLE' : t('voice_message')}</span>{isRecordingLocked && <div className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full"><Clock className="h-3 w-3 text-red-500" /><span className="text-[9px] font-black text-red-500 uppercase tracking-tighter">LOCKED</span></div>}</div>
