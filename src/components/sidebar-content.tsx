@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -20,7 +21,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Music, Archive, ArchiveX, MoreHorizontal, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Music, Archive, ArchiveX, MoreHorizontal, ChevronDown, ChevronUp, ArrowLeft, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, arrayRemove } from 'firebase/firestore';
@@ -750,7 +751,7 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
       <DropdownMenuContent align="start" className="w-56 rounded-xl font-bold p-1 shadow-2xl">
         <DropdownMenuItem onSelect={onArchive} className="h-10 rounded-lg">
             <Archive className="w-4 h-4 mr-3 text-primary" />
-            {onArchive ? t('archive_chat') : t('unarchive_chat')}
+            {t('archive_chat')}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onSelect(item)} className="h-10 rounded-lg">
             <MessageSquare className="w-4 h-4 mr-3 text-primary" />
@@ -842,7 +843,7 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
         <DropdownMenuContent align="start" className="w-56 rounded-xl font-bold p-1 shadow-2xl">
             <DropdownMenuItem onSelect={onArchive} className="h-10 rounded-lg">
                 <Archive className="w-4 h-4 mr-3 text-primary" />
-                {onArchive ? t('archive_chat') : t('unarchive_chat')}
+                {t('archive_chat')}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onSelect(item)} className="h-10 rounded-lg">
                 <MessageSquare className="w-4 h-4 mr-3 text-primary" />
