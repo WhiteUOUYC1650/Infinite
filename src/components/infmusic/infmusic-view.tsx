@@ -118,7 +118,7 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
                         <div className="flex items-center gap-2 overflow-hidden">
-                            <Music className="h-7 w-7 text-primary shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infmusic_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">1.1.1</Badge>
+                            <Music className="h-7 w-7 text-primary shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infmusic_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">1.1.1.1</Badge>
                         </div>
                     </div>
                     <div className="flex-1 max-w-sm mx-4 hidden md:block"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
@@ -286,7 +286,6 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
             
             <ScrollArea className="flex-1 overflow-y-auto">
                 <div className="flex flex-col p-6 max-w-lg mx-auto w-full pb-24">
-                    {/* Header Section: Compact Cover + Title/Author */}
                     <div className="flex items-center gap-6 mb-8">
                         <div className="w-24 h-24 rounded-2xl bg-muted shadow-xl overflow-hidden shrink-0 relative">
                             {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" alt="Cover" /> : <Music className="w-10 h-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
@@ -308,7 +307,6 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         />
                     )}
 
-                    {/* Pill Player Design */}
                     <div className="w-full bg-black/5 dark:bg-white/5 p-6 rounded-[2.5rem] mb-10 space-y-4">
                         <div className="flex items-center gap-6">
                             <Button onClick={togglePlay} disabled={isLoading} className="h-16 w-16 rounded-full bg-primary text-white shadow-xl active:scale-95 transition-all p-0 flex items-center justify-center shrink-0">

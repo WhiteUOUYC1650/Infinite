@@ -707,21 +707,20 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
   
   const displayContent = lastMessage?.content || attachmentText;
 
-  // Refined Long-press logic
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{x: number, y: number} | null>(null);
 
   const startPress = (e: React.MouseEvent | React.TouchEvent) => {
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
       touchStartPos.current = { x: clientX, y: clientY };
       pressTimer.current = setTimeout(() => {
           setIsMenuOpen(true);
           if ('vibrate' in navigator) navigator.vibrate(50);
-      }, 1000); // 1 second delay
+      }, 1000); // Strictly 1 second
   };
 
-  const cancelPress = (e: React.MouseEvent | React.TouchEvent) => {
+  const cancelPress = () => {
       if (pressTimer.current) clearTimeout(pressTimer.current);
       pressTimer.current = null;
       touchStartPos.current = null;
@@ -731,7 +730,7 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
       if (!touchStartPos.current) return;
       const moveX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
       const moveY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
-      if (moveX > 15 || moveY > 15) { // 15px threshold
+      if (moveX > 15 || moveY > 15) { // 15px threshold for movement detection
           if (pressTimer.current) clearTimeout(pressTimer.current);
           pressTimer.current = null;
       }
@@ -846,18 +845,17 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
     if (lastMessage.senderName) senderPrefix = `${lastMessage.senderName}: `;
   }
 
-  // Refined Long-press logic
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{x: number, y: number} | null>(null);
 
   const startPress = (e: React.MouseEvent | React.TouchEvent) => {
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
       touchStartPos.current = { x: clientX, y: clientY };
       pressTimer.current = setTimeout(() => {
           setIsMenuOpen(true);
           if ('vibrate' in navigator) navigator.vibrate(50);
-      }, 1000);
+      }, 1000); // Strictly 1 second
   };
 
   const cancelPress = () => {
@@ -947,4 +945,3 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
   );
 });
 ChatItemComponent.displayName = 'ChatItemComponent';
-
