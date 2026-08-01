@@ -285,16 +285,17 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
             </header>
             
             <ScrollArea className="flex-1 overflow-y-auto">
-                <div className="flex flex-col items-center p-8 text-center max-w-lg mx-auto w-full pb-24">
-                    <div className="w-full aspect-square max-w-[320px] rounded-3xl bg-muted shadow-2xl overflow-hidden mb-10 relative">
-                        {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" alt="Cover" /> : <Music className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
-                        {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-white" /></div>}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-                    </div>
-
-                    <div className="w-full space-y-2 mb-8 text-center">
-                        <h2 className="text-3xl font-black font-headline leading-tight tracking-tighter">{music.title}</h2>
-                        <p className="text-primary font-bold text-xl">{music.author}</p>
+                <div className="flex flex-col p-6 max-w-lg mx-auto w-full pb-24">
+                    {/* Header Section: Compact Cover + Title/Author */}
+                    <div className="flex items-center gap-6 mb-8">
+                        <div className="w-24 h-24 rounded-2xl bg-muted shadow-xl overflow-hidden shrink-0 relative">
+                            {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" alt="Cover" /> : <Music className="w-10 h-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
+                            {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-2xl font-black font-headline leading-tight tracking-tighter truncate">{music.title}</h2>
+                            <p className="text-primary font-bold text-lg truncate">{music.author}</p>
+                        </div>
                     </div>
 
                     {audioUrl && (
