@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -118,7 +117,7 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                         <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
                         <div className="flex items-center gap-2 overflow-hidden">
-                            <Music className="h-7 w-7 text-primary shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infmusic_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">1.1.1.1</Badge>
+                            <Music className="h-7 w-7 text-primary shrink-0" /><h1 className="text-xl font-bold font-headline truncate">{t('infmusic_title')}</h1><Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
                         </div>
                     </div>
                     <div className="flex-1 max-w-sm mx-4 hidden md:block"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('search_placeholder')} className="pl-9 h-10 bg-muted/50 rounded-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div>
@@ -292,8 +291,8 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                             {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-2xl font-black font-headline leading-tight tracking-tighter truncate">{music.title}</h2>
-                            <p className="text-primary font-bold text-lg truncate">{music.author}</p>
+                            <h2 className="text-2xl font-black font-headline leading-tight tracking-tighter break-words whitespace-normal">{music.title}</h2>
+                            <p className="text-primary font-bold text-lg break-words whitespace-normal">{music.author}</p>
                         </div>
                     </div>
 
@@ -344,7 +343,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                     {music.description && (
                         <div className="w-full bg-muted/30 p-5 rounded-3xl border border-border/40 text-left mb-6">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">About Track</p>
-                            <p className="text-sm font-medium text-foreground/80 leading-relaxed whitespace-pre-wrap">{music.description}</p>
+                            <p className="text-sm font-medium text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">{music.description}</p>
                         </div>
                     )}
                     
@@ -391,7 +390,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                                                 <p className="font-bold text-sm truncate">{comment.userName}</p>
                                                 <span className="text-[10px] text-muted-foreground font-medium">{formatDistanceToNow(comment.timestamp?.toMillis() || Date.now(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })}</span>
                                             </div>
-                                            <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                                            <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{comment.text}</p>
                                         </div>
                                     </div>
                                 ))
