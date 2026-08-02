@@ -46,7 +46,12 @@ service cloud.firestore {
     match /music/{musicId} {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn() && isValidText(request.resource.data.description, 1600);
-      allow update, delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid || 
+        isAdmin() || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['listens', 'likedBy'])
+      );
+      allow delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin());
       match /comments/{commentId} { 
         allow read, list: if isSignedIn();
         allow write: if isSignedIn() && isValidText(request.resource.data.text, 1600);
@@ -56,7 +61,12 @@ service cloud.firestore {
     match /videos/{videoId} {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn() && isValidText(request.resource.data.description, 1600);
-      allow update, delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid || 
+        isAdmin() || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likedBy'])
+      );
+      allow delete: if isSignedIn() && (resource.data.senderId == request.auth.uid || isAdmin());
       match /comments/{commentId} { 
         allow read, list: if isSignedIn();
         allow write: if isSignedIn() && isValidText(request.resource.data.text, 1600);

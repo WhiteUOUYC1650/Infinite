@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -927,8 +928,8 @@ export const translations = {
       'create_bot': 'Создать бота',
       'my_bots': 'Мои боты',
       'edit_logic': 'Изменить скрит',
-      'block_action_send_image': 'Отправить фото',
-      'block_action_send_video': 'Отправить видео',
+      'block_action_send_image': 'Фотография',
+      'block_action_send_video': 'Видеозапись',
       'block_action_send_music': 'Аудиозапись',
       'block_action_send_file': 'Файл',
       'block_event_received': 'При сообщении',
