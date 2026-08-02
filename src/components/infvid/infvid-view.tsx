@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, Timestamp, setDoc, getDoc, query, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, writeBatch, where, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
 import type { AuthenticatedUser, SharedVideo, User, VideoComment } from '@/types';
-import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare, Download } from 'lucide-react';
+import { Loader2, Upload, Play, X, User as UserIcon, Share2, MoreVertical, Search, PlusCircle, ArrowLeft, PlayCircle, Send, ThumbsUp, ImageIcon, ChevronDown, ChevronUp, AlertCircle, Zap, Clock, Trash2, Pencil, RefreshCw, MessageSquare, Download, Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -203,7 +203,47 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                     </Tabs>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto"><div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">{videosLoading ? (<div className="flex h-full items-center justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : filteredVideos.length > 0 ? (<div className={cn("grid gap-6 max-w-7xl mx-auto", activeTab === 'shorts' ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>{filteredVideos.map((video) => (<VideoCard key={video.id} video={video} sender={senders[video.senderId]} onClick={() => setSelectedVideoId(video.id)} isShortMode={activeTab === 'shorts'} currentUser={currentUser} onToggleWatchLater={() => toggleWatchLater(video.id)} onDelete={() => handleDeleteVideo(video.id)} onRetry={() => handleRetryUpload(video.id)} onEdit={() => setEditingVideo(video)} />))}</div>) : (<div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20"><PlayCircle className="h-20 w-20 mb-4 opacity-20" /><h3 className="text-xl font-semibold">{activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}</h3></div>)}</div></main>
+            <main className="flex-1 overflow-y-auto">
+                <div className={cn("bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]", activeTab === 'shorts' ? "h-full" : "p-4 md:p-6")}>
+                    {videosLoading ? (
+                        <div className="flex h-full items-center justify-center py-20">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        </div>
+                    ) : filteredVideos.length > 0 ? (
+                        activeTab === 'shorts' ? (
+                            <InfShortsPlayer 
+                                videos={filteredVideos} 
+                                senders={senders} 
+                                currentUser={currentUser} 
+                                onToggleWatchLater={toggleWatchLater}
+                            />
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                                {filteredVideos.map((video) => (
+                                    <VideoCard 
+                                        key={video.id} 
+                                        video={video} 
+                                        sender={senders[video.senderId]} 
+                                        onClick={() => setSelectedVideoId(video.id)} 
+                                        currentUser={currentUser} 
+                                        onToggleWatchLater={() => toggleWatchLater(video.id)} 
+                                        onDelete={() => handleDeleteVideo(video.id)} 
+                                        onRetry={() => handleRetryUpload(video.id)} 
+                                        onEdit={() => setEditingVideo(video)} 
+                                    />
+                                ))}
+                            </div>
+                        )
+                    ) : (
+                        <div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20">
+                            <PlayCircle className="h-20 w-20 mb-4 opacity-20" />
+                            <h3 className="text-xl font-semibold">
+                                {activeTab === 'watch_later' ? 'Список пуст.' : activeTab === 'shorts' ? 'Нет коротких видео.' : t('infvid_no_videos')}
+                            </h3>
+                        </div>
+                    )}
+                </div>
+            </main>
           </>
       ) : (
           <UploadView 
@@ -220,6 +260,143 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
       {editingVideo && (<VideoEditDialog video={editingVideo} onClose={() => setEditingVideo(null)} db={db!} t={t} />)}
     </div>
   );
+}
+
+function InfShortsPlayer({ videos, senders, currentUser, onToggleWatchLater }: { videos: SharedVideo[], senders: Record<string, User>, currentUser: AuthenticatedUser, onToggleWatchLater: (id: string) => void }) {
+    return (
+        <div className="h-full w-full overflow-y-auto snap-y snap-mandatory no-scrollbar flex flex-col items-center">
+            {videos.map((video) => (
+                <ShortItem 
+                    key={video.id} 
+                    video={video} 
+                    sender={senders[video.senderId]} 
+                    currentUser={currentUser} 
+                    onToggleWatchLater={() => onToggleWatchLater(video.id)} 
+                />
+            ))}
+        </div>
+    );
+}
+
+function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: SharedVideo, sender?: User, currentUser: AuthenticatedUser, onToggleWatchLater: () => void }) {
+    const { t } = useLanguage();
+    const db = useFirestore();
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isLiked, setIsLiked] = useState(video.likedBy?.includes(currentUser.uid) || false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!db || !video.videoChunkIds) return;
+        const load = async () => {
+            const cached = await getCachedFile(video.id);
+            if (cached) { setVideoUrl(cached); return; }
+            try {
+                const chunksData: { part: number, data: string }[] = [];
+                for (const chunkId of video.videoChunkIds!) {
+                    const snap = await getDoc(doc(db, 'videoChunks', chunkId));
+                    if (snap.exists()) chunksData.push(snap.data() as any);
+                }
+                chunksData.sort((a, b) => a.part - b.part);
+                const dataUrl = `data:${video.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+                await cacheFile(video.id, dataUrl);
+                setVideoUrl(await getCachedFile(video.id));
+            } catch (e) { console.error(e); }
+        };
+        load();
+    }, [video.id, db, video.videoChunkIds, video.videoMimeType]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    setIsPlaying(true);
+                    videoRef.current?.play().catch(() => {});
+                    if (db) updateDoc(doc(db, 'videos', video.id), { views: increment(1) });
+                } else {
+                    setIsPlaying(false);
+                    videoRef.current?.pause();
+                }
+            });
+        }, { threshold: 0.8 });
+
+        if (containerRef.current) observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, [db, video.id]);
+
+    const handleToggleLike = async () => {
+        if (!db) return;
+        const ref = doc(db, 'videos', video.id);
+        try {
+            if (isLiked) { await updateDoc(ref, { likedBy: arrayRemove(currentUser.uid) }); setIsLiked(false); }
+            else { await updateDoc(ref, { likedBy: arrayUnion(currentUser.uid) }); setIsLiked(true); }
+        } catch(e) {}
+    };
+
+    return (
+        <div ref={containerRef} className="h-full w-full max-w-md snap-start shrink-0 relative bg-black flex items-center justify-center overflow-hidden">
+            {videoUrl ? (
+                <video 
+                    ref={videoRef} 
+                    src={videoUrl} 
+                    loop 
+                    playsInline 
+                    className="h-full w-full object-cover" 
+                    onClick={() => {
+                        if (isPlaying) { videoRef.current?.pause(); setIsPlaying(false); }
+                        else { videoRef.current?.play(); setIsPlaying(true); }
+                    }}
+                />
+            ) : (
+                <div className="flex flex-col items-center gap-4 text-white/20">
+                    <Loader2 className="h-10 w-10 animate-spin" />
+                </div>
+            )}
+
+            {!isPlaying && videoUrl && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Play className="h-20 w-20 text-white/50 fill-white/20" />
+                </div>
+            )}
+
+            {/* Overlays */}
+            <div className="absolute right-4 bottom-24 flex flex-col gap-6 z-10">
+                <div className="flex flex-col items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 transition-all active:scale-125", isLiked && "text-red-500 bg-red-500/10")}>
+                        <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
+                    </Button>
+                    <span className="text-[10px] font-black text-white drop-shadow-md">{video.likedBy?.length || 0}</span>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId: video.id } }))} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10">
+                    <MessageCircle className="h-6 w-6" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={onToggleWatchLater} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10", currentUser.watchLater?.includes(video.id) && "text-primary")}>
+                    <Bookmark className={cn("h-6 w-6", currentUser.watchLater?.includes(video.id) && "fill-current")} />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(`/IV/T/${video.id}`); toast({ title: t('video_link_copied') }); }} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10">
+                    <Share2 className="h-6 w-6" />
+                </Button>
+            </div>
+
+            <div className="absolute bottom-6 left-4 right-16 z-10 text-white drop-shadow-xl text-left pointer-events-none">
+                <div className="flex items-center gap-2 mb-3">
+                    <Avatar className="h-9 w-9 border-2 border-white/20">
+                        <AvatarImage src={sender?.avatar} />
+                        <AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                        <p className="font-bold text-sm truncate flex items-center gap-1">
+                            {sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}
+                        </p>
+                        <p className="text-[10px] opacity-70 uppercase tracking-tighter">@{sender?.username?.replace('@','')}</p>
+                    </div>
+                </div>
+                <h3 className="font-bold text-base leading-tight break-words whitespace-normal line-clamp-3">{video.title}</h3>
+                {video.description && <p className="text-xs opacity-80 mt-1 line-clamp-2 leading-relaxed">{video.description}</p>}
+            </div>
+        </div>
+    );
 }
 
 function VideoEditDialog({ video, onClose, db, t }: { video: SharedVideo, onClose: () => void, db: any, t: any }) {
@@ -629,7 +806,7 @@ function CommentItem({ comment, author, onReply, isReply, t, language }: { comme
                     <p className={cn("font-bold truncate", isReply ? "text-xs" : "text-sm")}>{comment.userName}</p>
                     <span className="text-[10px] text-muted-foreground font-medium">{formatDistanceToNow(comment.timestamp?.toMillis() || Date.now(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })}</span>
                 </div>
-                <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{comment.text}</p>
+                <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{comment.text}</p>
                 <div className="flex items-center gap-4 mt-1.5">
                     <button onClick={onReply} className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">{t('reply')}</button>
                 </div>
