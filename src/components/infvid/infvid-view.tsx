@@ -67,6 +67,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const [activeTab, setActiveTab] = useState<'all' | 'shorts' | 'watch_later'>('all');
   const [retryVideoId, setRetryVideoId] = useState<string | null>(null);
   const [editingVideo, setEditingVideo] = useState<SharedVideo | null>(null);
+  const [isShortsPlayerOpen, setIsShortsPlayerOpen] = useState(false);
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
 
   const videosQuery = useMemo(() => { 
@@ -94,19 +95,48 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [videos, searchQuery, senders, activeTab, currentUser.watchLater]);
 
   useEffect(() => {
-    const handleSystemBack = () => { if (selectedVideoId) { setSelectedVideoId(null); setFetchedExternalVideo(null); } else if (isUploadOpen) { setIsUploadOpen(false); setRetryVideoId(null); } else if (editingVideo) { setEditingVideo(null); } else { onClose(); } };
+    const handleSystemBack = () => { 
+        if (isShortsPlayerOpen) {
+            setIsShortsPlayerOpen(false);
+            setSelectedVideoId(null);
+        } else if (selectedVideoId) { 
+            setSelectedVideoId(null); 
+            setFetchedExternalVideo(null); 
+        } else if (isUploadOpen) { 
+            setIsUploadOpen(false); 
+            setRetryVideoId(null); 
+        } else if (editingVideo) { 
+            setEditingVideo(null); 
+        } else { 
+            onClose(); 
+        } 
+    };
     let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); }
     return () => { if (backListener) { backListener.then((l: any) => l.remove()); } };
-  }, [selectedVideoId, isUploadOpen, onClose, editingVideo]);
+  }, [selectedVideoId, isUploadOpen, onClose, editingVideo, isShortsPlayerOpen]);
 
   useEffect(() => {
     if (!initialVideoId || !db) return;
     const checkAndLoadVideo = async () => {
         const foundInList = videos?.find(v => v.id === initialVideoId);
-        if (foundInList) { setSelectedVideoId(initialVideoId); return; }
+        if (foundInList) { 
+            const video = foundInList;
+            if (video.isShort === 1) {
+                setIsShortsPlayerOpen(true);
+            }
+            setSelectedVideoId(initialVideoId); 
+            return; 
+        }
         try {
             const videoSnap = await getDoc(doc(db, 'videos', initialVideoId));
-            if (videoSnap.exists()) { const videoData = { id: videoSnap.id, ...videoSnap.data() } as SharedVideo; setFetchedExternalVideo(videoData); setSelectedVideoId(initialVideoId); }
+            if (videoSnap.exists()) { 
+                const videoData = { id: videoSnap.id, ...videoSnap.data() } as SharedVideo; 
+                setFetchedExternalVideo(videoData); 
+                if (videoData.isShort === 1) {
+                    setIsShortsPlayerOpen(true);
+                }
+                setSelectedVideoId(initialVideoId); 
+            }
             else { toast({ variant: 'destructive', title: t('video_not_found') }); }
         } catch (e) { console.error("Error loading initial video:", e); }
     };
@@ -174,6 +204,13 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
       setSelectedVideoId(null); 
   };
 
+  const handleVideoClick = (video: SharedVideo) => {
+      setSelectedVideoId(video.id);
+      if (video.isShort === 1) {
+          setIsShortsPlayerOpen(true);
+      }
+  };
+
   return (
     <div className="flex flex-col h-svh bg-background overflow-hidden relative">
       {!isUploadOpen ? (
@@ -204,36 +241,33 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
                 </div>
             </header>
             <main className="flex-1 overflow-y-auto">
-                <div className={cn("bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]", activeTab === 'shorts' ? "h-full" : "p-4 md:p-6")}>
+                <div className="p-4 md:p-6 bg-muted/10 pb-[calc(2rem+env(safe-area-inset-bottom))]">
                     {videosLoading ? (
                         <div className="flex h-full items-center justify-center py-20">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
                         </div>
                     ) : filteredVideos.length > 0 ? (
-                        activeTab === 'shorts' ? (
-                            <InfShortsPlayer 
-                                videos={filteredVideos} 
-                                senders={senders} 
-                                currentUser={currentUser} 
-                                onToggleWatchLater={toggleWatchLater}
-                            />
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
-                                {filteredVideos.map((video) => (
-                                    <VideoCard 
-                                        key={video.id} 
-                                        video={video} 
-                                        sender={senders[video.senderId]} 
-                                        onClick={() => setSelectedVideoId(video.id)} 
-                                        currentUser={currentUser} 
-                                        onToggleWatchLater={() => toggleWatchLater(video.id)} 
-                                        onDelete={() => handleDeleteVideo(video.id)} 
-                                        onRetry={() => handleRetryUpload(video.id)} 
-                                        onEdit={() => setEditingVideo(video)} 
-                                    />
-                                ))}
-                            </div>
-                        )
+                        <div className={cn(
+                            "grid gap-6 max-w-7xl mx-auto",
+                            activeTab === 'shorts' 
+                                ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" 
+                                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                        )}>
+                            {filteredVideos.map((video) => (
+                                <VideoCard 
+                                    key={video.id} 
+                                    video={video} 
+                                    sender={senders[video.senderId]} 
+                                    onClick={() => handleVideoClick(video)} 
+                                    isShortMode={activeTab === 'shorts'}
+                                    currentUser={currentUser} 
+                                    onToggleWatchLater={() => toggleWatchLater(video.id)} 
+                                    onDelete={() => handleDeleteVideo(video.id)} 
+                                    onRetry={() => handleRetryUpload(video.id)} 
+                                    onEdit={() => setEditingVideo(video)} 
+                                />
+                            ))}
+                        </div>
                     ) : (
                         <div className="flex h-full flex-col items-center justify-center text-muted-foreground text-center py-20">
                             <PlayCircle className="h-20 w-20 mb-4 opacity-20" />
@@ -256,15 +290,62 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
             retryVideoId={retryVideoId}
           />
       )}
-      {selectedVideo && (<VideoDetailOverlay key={selectedVideo.id} video={selectedVideo} sender={senders[selectedVideo.senderId]} onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} currentUser={currentUser} onDelete={() => handleDeleteVideo(selectedVideo.id)} onRetry={handleRetryUpload} onEdit={() => setEditingVideo(selectedVideo)} />)}
+      
+      {/* Full-screen Shorts Player */}
+      {isShortsPlayerOpen && (
+          <div className="fixed inset-0 z-[110] bg-black flex flex-col animate-in fade-in zoom-in duration-300">
+              <header className="absolute top-0 left-0 right-0 h-14 flex items-center px-4 z-[120] bg-gradient-to-b from-black/60 to-transparent pt-[calc(0.5rem+env(safe-area-inset-top))]">
+                  <Button variant="ghost" size="icon" onClick={() => { setIsShortsPlayerOpen(false); setSelectedVideoId(null); }} className="text-white hover:bg-white/10 rounded-full">
+                      <ArrowLeft className="h-6 w-6" />
+                  </Button>
+                  <div className="ml-4">
+                      <p className="text-white font-black uppercase tracking-widest text-xs">{t('infshorts_title')}</p>
+                  </div>
+              </header>
+              <InfShortsPlayer 
+                  videos={filteredVideos} 
+                  senders={senders} 
+                  currentUser={currentUser} 
+                  onToggleWatchLater={toggleWatchLater}
+                  initialVideoId={selectedVideoId || undefined}
+              />
+          </div>
+      )}
+
+      {/* Standard Video Detail (for non-shorts) */}
+      {selectedVideo && !isShortsPlayerOpen && (
+          <VideoDetailOverlay 
+            key={selectedVideo.id} 
+            video={selectedVideo} 
+            sender={senders[selectedVideo.senderId]} 
+            onClose={() => { setSelectedVideoId(null); setFetchedExternalVideo(null); }} 
+            currentUser={currentUser} 
+            onDelete={() => handleDeleteVideo(selectedVideo.id)} 
+            onRetry={handleRetryUpload} 
+            onEdit={() => setEditingVideo(selectedVideo)} 
+          />
+      )}
+
       {editingVideo && (<VideoEditDialog video={editingVideo} onClose={() => setEditingVideo(null)} db={db!} t={t} />)}
     </div>
   );
 }
 
-function InfShortsPlayer({ videos, senders, currentUser, onToggleWatchLater }: { videos: SharedVideo[], senders: Record<string, User>, currentUser: AuthenticatedUser, onToggleWatchLater: (id: string) => void }) {
+function InfShortsPlayer({ videos, senders, currentUser, onToggleWatchLater, initialVideoId }: { videos: SharedVideo[], senders: Record<string, User>, currentUser: AuthenticatedUser, onToggleWatchLater: (id: string) => void, initialVideoId?: string }) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (initialVideoId && scrollContainerRef.current) {
+            const index = videos.findIndex(v => v.id === initialVideoId);
+            if (index !== -1) {
+                const height = scrollContainerRef.current.clientHeight;
+                scrollContainerRef.current.scrollTop = index * height;
+            }
+        }
+    }, [initialVideoId, videos]);
+
     return (
-        <div className="h-full w-full overflow-y-auto snap-y snap-mandatory no-scrollbar flex flex-col items-center">
+        <div ref={scrollContainerRef} className="h-full w-full overflow-y-auto snap-y snap-mandatory no-scrollbar flex flex-col items-center bg-black">
             {videos.map((video) => (
                 <ShortItem 
                     key={video.id} 
@@ -299,7 +380,8 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
                     if (snap.exists()) chunksData.push(snap.data() as any);
                 }
                 chunksData.sort((a, b) => a.part - b.part);
-                const dataUrl = `data:${video.videoMimeType};base64,${chunksData.map(c => c.data).join('')}`;
+                const assembled = chunksData.map(c => c.data).join('');
+                const dataUrl = `data:${video.videoMimeType};base64,${assembled}`;
                 await cacheFile(video.id, dataUrl);
                 setVideoUrl(await getCachedFile(video.id));
             } catch (e) { console.error(e); }
@@ -368,9 +450,11 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
                     </Button>
                     <span className="text-[10px] font-black text-white drop-shadow-md">{video.likedBy?.length || 0}</span>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId: video.id } }))} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10">
-                    <MessageCircle className="h-6 w-6" />
-                </Button>
+                <div className="flex flex-col items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId: video.id } }))} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10">
+                        <MessageCircle className="h-6 w-6" />
+                    </Button>
+                </div>
                 <Button variant="ghost" size="icon" onClick={onToggleWatchLater} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10", currentUser.watchLater?.includes(video.id) && "text-primary")}>
                     <Bookmark className={cn("h-6 w-6", currentUser.watchLater?.includes(video.id) && "fill-current")} />
                 </Button>
@@ -386,9 +470,10 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
                         <AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                        <p className="font-bold text-sm truncate flex items-center gap-1">
-                            {sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}
-                        </p>
+                        <div className="flex items-center gap-1">
+                            <p className="font-bold text-sm truncate">{sender?.name}</p>
+                            {sender?.isAdmin && <VerifiedBadge className="w-3 h-3" />}
+                        </div>
                         <p className="text-[10px] opacity-70 uppercase tracking-tighter">@{sender?.username?.replace('@','')}</p>
                     </div>
                 </div>
@@ -688,7 +773,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser, onDelete, onR
                     <ScrollArea className="flex-1">
                         <div className="p-6 space-y-6">
                             <div className="space-y-2">
-                                <h2 className="text-xl font-black font-headline leading-tight">{video.title}</h2>
+                                <h2 className="text-xl font-black font-headline leading-tight whitespace-pre-wrap break-words">{video.title}</h2>
                                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
                                     <span>{video.views || 0} views</span>
                                     <span>•</span>
@@ -748,7 +833,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser, onDelete, onR
                                     </div>
                                     <Button variant="outline" size="sm" className="rounded-xl font-bold" onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: [currentUser.uid, sender?.id || ''].sort().join('_') } }))}>Message</Button>
                                 </div>
-                                {video.description && <p className="mt-4 text-xs font-medium text-foreground/80 leading-relaxed whitespace-pre-wrap">{video.description}</p>}
+                                {video.description && <p className="mt-4 text-xs font-medium text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">{video.description}</p>}
                             </div>
 
                             <CommentSection video={video} comments={comments || []} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setCommentText} commentAuthors={commentAuthors} />
