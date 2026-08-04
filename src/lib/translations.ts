@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru';
 
 export const translations = {
@@ -137,10 +136,10 @@ export const translations = {
       'you_left_the_group': 'You have left this group',
       'welcome_title': 'Welcome to Infinite!',
       'welcome_subtitle': 'Experience the future of communication.',
-      'beta_badge': '1.1.1.1.1 RELEASE',
+      'beta_badge': '1.2 RELEASE',
       'welcome_message': 'Thank you for choosing Infinite.',
       'continue_button': 'Continue',
-      'thank_you_beta': 'Welcome to the 1.1.1.1.1 Release!',
+      'thank_you_beta': 'Welcome to the 1.2 Release!',
       'update_required_title': 'New Features',
       'update_required_description': 'Please keep the app up to date.',
       'update_available_title': 'Update Available',
@@ -224,8 +223,8 @@ export const translations = {
       'faq_prem_a': "**Infinite Prem** is a subscription service that unlocks exclusive features: a special profile badge, access to the 'Shining Gold' theme, and increased file upload limits (up to 4GB). It can be purchased for 500 InfGold per month.",
       'faq_infvid_title': 'What is InfVid?',
       'faq_infvid_a': "**InfVid** is our built-in video-sharing platform. You can upload videos (up to 1GB for free, 4GB for Prem), like other people's videos, and leave comments. It's like a mini-social network inside your messenger.",
-      'faq_beta_badge_q': 'What does version 1.1.1.1.1 Release mean?',
-      'faq_beta_badge_a': "It means the app has introduced InfMusic comments and stabilized core services. All features are functional and the platform is open for global use.",
+      'faq_beta_badge_q': 'What does version 1.2 Release mean?',
+      'faq_beta_badge_a': "It means the app has introduced Enhanced Glassmorphism and stabilized core services. All features are functional and the platform is open for global use.",
       'faq_poll_q': 'How do I create a poll?',
       'faq_poll_a': "In the attachment menu (paperclip), select **Poll**. Enter your question and add multiple options. Users can vote in real-time, and you can see the results immediately in the chat bubble.",
       'faq_story_q': 'How do I add a story?',
@@ -274,7 +273,7 @@ export const translations = {
       'come_back_tomorrow': 'Come back tomorrow!',
       'you_won': 'You won!',
       'whats_new': "What's New",
-      'whats_new_desc': "Official 1.1.1.1.1 changes.",
+      'whats_new_desc': "Official 1.2 changes.",
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Upload Video',
       'infvid_video_limits': 'Up to {size}',
@@ -567,6 +566,8 @@ export const translations = {
       'wn_mp3_tags_desc': 'Fixed issues with file metadata parsing.',
       'wn_music_comments_title': 'Music Comments',
       'wn_music_comments_desc': 'Discuss your favorite tracks directly in the InfMusic player.',
+      'wn_glass_design_title': 'Deep Glass Interface',
+      'wn_glass_design_desc': 'New ultra-blurred frosted glass effect in Experimental Design mode.',
     },
     ru: {
       'settings': 'Настройки',
@@ -703,10 +704,10 @@ export const translations = {
       'you_left_the_group': 'Вы покинули эту группу',
       'welcome_title': 'Добро пожаловать в Infinite!',
       'welcome_subtitle': 'Будущее общения уже здесь.',
-      'beta_badge': '1.1.1.1.1 РЕЛИЗ',
+      'beta_badge': '1.2 РЕЛИЗ',
       'welcome_message': 'Спасибо за выбор Infinite.',
       'continue_button': 'Продолжить',
-      'thank_you_beta': 'Добро пожаловать в релиз 1.1.1.1.1!',
+      'thank_you_beta': 'Добро пожаловать в релиз 1.2!',
       'update_required_title': 'Новые функции',
       'update_required_description': 'Рекомендуем обновить приложение.',
       'update_available_title': 'Доступно обновление',
@@ -790,8 +791,8 @@ export const translations = {
       'faq_prem_a': "**Infinite Prem** — это подписка, открывающая эксклюзивные возможности: специальный значок в профиле, доступ к теме «Сияющее золото» и увеличенные лимиты на загрузку файлов (до 4 Г Б). Стоимость — 500 InfGold в месяц.",
       'faq_infvid_title': 'Что такое InfVid?',
       'faq_infvid_a': "**InfVid** — это наша встроенная платформа для обмена видео. Вы можете загружать видео (бесплатно до 1 Г Б, для Prem до 4 ГБ), ставить лайки и оставлять комментарии.",
-      'faq_beta_badge_q': 'Что означает версия 1.1.1.1.1?',
-      'faq_beta_badge_a': "Это означает, что приложение представило комментарии в InfMusic и стабилизировало работу всех сервисов. Платформа открыта для всех желающих.",
+      'faq_beta_badge_q': 'Что означает версия 1.2?',
+      'faq_beta_badge_a': "Это означает, что приложение представило Улучшенный Эффект Стекла и стабилизировало работу всех сервисов. Платформа открыта для всех желающих.",
       'faq_poll_q': 'Как создать опрос?',
       'faq_poll_a': "В меню вложений (скрепка) выберите пункт **Опрос**. Введите вопрос и добавьте варианты ответа. Пользователи смогут голосовать в реальном времени, а вы увидите результаты прямо в облачке сообщения.",
       'faq_story_q': 'Как добавить историю?',
@@ -840,7 +841,7 @@ export const translations = {
       'come_back_tomorrow': 'Возвращайтесь завтра!',
       'you_won': 'Вы выиграли!',
       'whats_new': "Что нового",
-      'whats_new_desc': "Изменения версии 1.1.1.1.1.",
+      'whats_new_desc': "Изменения версии 1.2.",
       'infvid_title': 'InfVid',
       'infvid_upload_title': 'Загрузить видео',
       'infvid_video_limits': 'До {size}',
@@ -1133,6 +1134,8 @@ export const translations = {
       'wn_mp3_tags_desc': 'Исправлено отображение длинных названий в InfMusic.',
       'wn_music_comments_title': 'Комментарии к музыке',
       'wn_music_comments_desc': 'Обсуждайте любимые треки прямо в плеере InfMusic.',
+      'wn_glass_design_title': 'Эффект глубокого стекла',
+      'wn_glass_design_desc': 'Новый ультра-размытый дизайн матового стекла в экспериментальном режиме.',
     }
 };
 

@@ -121,8 +121,8 @@ body.use-system-font h4 {
 /* Experimental Design Specifics */
 [data-experimental-design="true"] div[data-state="open"] > div.fixed.inset-0.bg-black\/80 {
   background-color: hsla(0, 0%, 0%, 0.2) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(32px) !important;
+  -webkit-backdrop-filter: blur(32px) !important;
 }
 
 /* Material 3 (M3) Specifics */
@@ -154,32 +154,32 @@ body.use-system-font h4 {
   color: #000 !important;
 }
 
-/* Glass UI Elements - Optimized for Readability (0.92) */
+/* Glass UI Elements - Ultra Deep 1.2 Update */
 [data-glass-effect="true"] .glass-panel,
 [data-glass-effect="true"] .glass-menu {
-  @apply backdrop-blur-3xl border shadow-2xl relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.88) !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  @apply backdrop-blur-[64px] border shadow-2xl relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.7) !important;
+  border-color: hsla(0, 0%, 100%, 0.3) !important;
 }
 
 [data-glass-effect="true"] .glass-input {
-  @apply backdrop-blur-2xl border shadow-inner relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.5) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  @apply backdrop-blur-[48px] border shadow-inner relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.4) !important;
+  border-color: hsla(0, 0%, 100%, 0.2) !important;
 }
 
 [data-glass-effect="true"] .glass-msg {
-  @apply backdrop-blur-3xl border shadow-lg relative overflow-hidden;
-  background-color: hsla(var(--card) / 0.92) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  @apply backdrop-blur-[48px] border shadow-lg relative overflow-hidden;
+  background-color: hsla(var(--card) / 0.8) !important;
+  border-color: hsla(0, 0%, 100%, 0.25) !important;
 }
 
 [data-glass-effect="true"] .glass-msg.align-right {
-  background-color: hsla(var(--primary) / 0.92) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  background-color: hsla(var(--primary) / 0.8) !important;
+  border-color: hsla(0, 0%, 100%, 0.3) !important;
 }
 
-/* Aero Glossy Highlights */
+/* Aero Glossy Highlights - Ultra (1.2) */
 [data-glass-effect="true"] .glass-panel::before,
 [data-glass-effect="true"] .glass-input::before,
 [data-glass-effect="true"] .glass-msg::before,
@@ -190,27 +190,27 @@ body.use-system-font h4 {
   top: 0;
   left: 0;
   right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 90%, transparent 100%);
+  height: 45%;
+  background: linear-gradient(180deg, hsla(0, 0%, 100%, 0.3) 0%, hsla(0, 0%, 100%, 0.1) 85%, transparent 100%);
   pointer-events: none;
   z-index: 1;
 }
 
 /* Interactive Elements Glass */
 [data-glass-effect="true"] button.glass-button {
-  @apply backdrop-blur-xl border shadow-md relative overflow-hidden transition-all active:scale-95;
-  background-color: hsla(var(--primary) / 0.75) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  @apply backdrop-blur-[48px] border shadow-md relative overflow-hidden transition-all active:scale-95;
+  background-color: hsla(var(--primary) / 0.6) !important;
+  border-color: hsla(0, 0%, 100%, 0.4) !important;
 }
 
 [data-glass-effect="true"] .glass-switch {
-  @apply backdrop-blur-lg border relative overflow-hidden;
-  background-color: hsla(var(--muted) / 0.6) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  @apply backdrop-blur-[32px] border relative overflow-hidden;
+  background-color: hsla(var(--muted) / 0.5) !important;
+  border-color: hsla(0, 0%, 100%, 0.2) !important;
 }
 
 [data-glass-effect="true"] .glass-switch[data-state="checked"] {
-  background-color: hsla(var(--primary) / 0.85) !important;
+  background-color: hsla(var(--primary) / 0.75) !important;
 }
 
 /* Global Layout Fixes */
