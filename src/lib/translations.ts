@@ -568,6 +568,8 @@ export const translations = {
       'wn_music_comments_desc': 'Discuss your favorite tracks directly in the InfMusic player.',
       'wn_glass_design_title': 'Deep Glass Interface',
       'wn_glass_design_desc': 'New ultra-blurred frosted glass effect in Experimental Design mode.',
+      'wn_scroll_anchoring_title': 'Scroll Anchoring',
+      'wn_scroll_anchoring_desc': 'Messages no longer jump when loading older history while scrolling up.',
     },
     ru: {
       'settings': 'Настройки',
@@ -1136,6 +1138,8 @@ export const translations = {
       'wn_music_comments_desc': 'Обсуждайте любимые треки прямо в плеере InfMusic.',
       'wn_glass_design_title': 'Эффект глубокого стекла',
       'wn_glass_design_desc': 'Новый ультра-размытый дизайн матового стекла в экспериментальном режиме.',
+      'wn_scroll_anchoring_title': 'Привязка прокрутки',
+      'wn_scroll_anchoring_desc': 'Сообщения больше не «прыгают» при загрузке старой истории сообщений во время скроллинга вверх.',
     }
 };
 
