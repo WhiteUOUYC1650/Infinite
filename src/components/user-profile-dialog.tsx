@@ -104,7 +104,8 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     if (!user.status) return '';
     let statusText = t(statusTranslations[user.status] || 'offline');
     if (user.status === 'offline' && user.lastSeen) {
-      statusText = `${t('was_online')} ${format(new Date(user.lastSeen.seconds * 1000), 'dd.MM.yyyy, HH:mm')}`;
+      const lastSeenDate = new Date(user.lastSeen.seconds * 1000);
+      statusText = `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
     }
     return statusText;
   }
@@ -193,7 +194,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             {experimentalDesign ? (
                                 <div className="absolute top-0 left-0 right-0 flex justify-between items-center -mt-4">
                                     <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10 glass-button border-none bg-black/10"><ArrowLeft className="h-5 w-5" /></Button>
-                                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10 glass-button border-none bg-black/10 font-bold text-xs">Edit</Button>
+                                    <div className="w-10 h-10" /> {/* Placeholder for alignment */}
                                 </div>
                             ) : (
                                 <>
@@ -278,10 +279,12 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                                     <div className="grid grid-cols-1 gap-2">
                                         {gifts?.map(gift => (
                                             <div key={gift.id} className={cn("border p-3 rounded-2xl flex flex-col gap-2", experimentalDesign ? "glass-panel border-none bg-muted/20" : "bg-muted/30 border-border/50")}>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-2xl">{gift.emoji}</span>
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-2xl">{gift.emoji}</span>
+                                                        <div className="min-w-0">
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 {gift.message && (

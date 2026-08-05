@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe, Eraser } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe, Eraser, Search, MoreHorizontal } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc, writeBatch, deleteField } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +47,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
 import { COMMON_EMOJIS } from './chat-view';
+import { Separator } from '../ui/separator';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -213,7 +214,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh] rounded-lg")}>
+      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh]", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card/60 backdrop-blur-3xl" : "rounded-lg")}>
         <DialogTitle className="sr-only">{chat.name || 'Chat Profile'}</DialogTitle>
         {imageToCrop ? (
             <div className="p-6 h-full flex flex-col">
@@ -267,79 +268,156 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                     <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button>
                 </div>
                 <ScrollArea className="flex-1" onScroll={e => setShowCompactHeader(e.currentTarget.scrollTop > 100)}>
-                    <div className={cn(experimentalDesign && "bg-gradient-to-b from-primary/10 to-transparent pt-10 pb-6 px-6")}>
+                    <div className={cn(experimentalDesign ? "bg-gradient-to-b from-primary/15 to-transparent pt-10 pb-6 px-6" : "pt-8 pb-4 px-6")}>
                         <DialogHeader className="p-0 relative">
                             <DialogTitle className="sr-only">{chat.name}</DialogTitle>
-                            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-6 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
-                            <div className='relative mx-auto flex justify-center'><Avatar className="w-32 h-32 text-4xl shadow-xl border-4 border-background rounded-full">{chat.avatar ? (<AvatarImage src={chat.avatar} />) : (<AvatarFallback><Icon className="h-16 w-16" /></AvatarFallback>)}</Avatar></div>
+                            {experimentalDesign ? (
+                                <div className="absolute top-0 left-0 right-0 flex justify-between items-center -mt-4">
+                                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10 glass-button border-none bg-black/10"><ArrowLeft className="h-5 w-5" /></Button>
+                                    {isOwner && (
+                                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="rounded-full h-10 px-4 glass-button border-none bg-black/10 font-bold text-xs">Edit</Button>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 left-0 z-10 rounded-full", showCompactHeader && "hidden")}><ArrowLeft className="h-5 w-5" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className={cn("absolute -top-4 -right-2 z-10 rounded-full", showCompactHeader && "hidden")}><X className="h-5 w-5" /></Button>
+                                </>
+                            )}
+                            <div className='relative mx-auto flex justify-center mt-4'>
+                                <Avatar className={cn("text-4xl shadow-2xl border-4 border-background rounded-full", experimentalDesign ? "w-32 h-32 experimental-glow" : "w-28 h-28")}>
+                                    {chat.avatar ? (<AvatarImage src={chat.avatar} />) : (<AvatarFallback><Icon className="h-16 w-16" /></AvatarFallback>)}
+                                </Avatar>
+                            </div>
                         </DialogHeader>
-                        <div className="text-center pt-4"><div className="flex items-center justify-center gap-2"><h2 className="text-2xl font-bold font-headline truncate max-w-[250px]">{chat.name}</h2>{(chat.link === '/G/Infinite' || chat.link === '/C/Infinite') && <VerifiedBadge />}</div><p className="text-muted-foreground font-medium">{chat.link}</p></div>
-                        <div className={cn("grid gap-3 w-full mt-6 px-6", chat.type === 'channel' ? "grid-cols-3" : "grid-cols-2")}>
-                            {chat.type === 'channel' && (<button onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className={cn("flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm transition-all active:scale-95", !chat.discussionChatId ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-md")}><div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight">{t('join_discussion_button')}</span></button>)}
-                            <button onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className="w-10 h-10 rounded-full bg-orange-500/15 flex items-center justify-center"><Share2 className="w-5 h-5 text-orange-500" /></div><span className="text-[10px] font-bold uppercase tracking-tight text-orange-600">{t('copy_text')}</span></button>
-                            <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border shadow-sm hover:shadow-md transition-all active:scale-95"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isMuted ? "bg-red-500/15" : "bg-muted")}>{isMuted ? <BellOff className="w-5 h-5 text-red-500" /> : <Bell className="h-5 w-5 text-muted-foreground" />}</div><span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">{t('mute')}</span></button>
+                        <div className="text-center py-6">
+                            <div className="flex items-center justify-center gap-2">
+                                <h2 className={cn("font-bold font-headline truncate max-w-[250px]", experimentalDesign ? "text-3xl" : "text-2xl")}>{chat.name}</h2>
+                                {(chat.link === '/G/Infinite' || chat.link === '/C/Infinite') && <VerifiedBadge />}
+                            </div>
+                            <p className={cn("uppercase tracking-widest font-black text-muted-foreground/80 mt-1", experimentalDesign ? "text-xs" : "text-sm")}>
+                                {chat.link}
+                            </p>
+                        </div>
+                        
+                        {experimentalDesign && (
+                            <div className="flex justify-center items-center gap-3 w-full px-2 mb-8">
+                                {chat.type === 'channel' && (
+                                    <button onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className={cn("w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl transition-all", !chat.discussionChatId && "opacity-30 grayscale cursor-not-allowed")}>
+                                        <MessageSquare className="w-5 h-5" />
+                                    </button>
+                                )}
+                                <button onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl">
+                                    <Share2 className="w-5 h-5" />
+                                </button>
+                                <button onClick={() => setIsMuted(!isMuted)} className={cn("w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl", isMuted && "text-red-500 bg-red-500/10")}>
+                                    {isMuted ? <BellOff className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                                </button>
+                                <button className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl">
+                                    <Search className="w-5 h-5" />
+                                </button>
+                                <button className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl">
+                                    <MoreHorizontal className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="px-2 space-y-6">
+                            {experimentalDesign ? (
+                                <div className="glass-panel p-6 rounded-[2.5rem] border-none shadow-inner space-y-6">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">link</p>
+                                        <p className="font-bold text-lg">{chat.link}</p>
+                                    </div>
+                                    <Separator className="bg-white/10" />
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">about</p>
+                                        <p className="font-medium text-sm leading-relaxed">{chat.description || 'No description provided.'}</p>
+                                    </div>
+                                    <Separator className="bg-white/10" />
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">members</p>
+                                        <p className="font-medium text-sm">
+                                            {chat.type === 'group' 
+                                                ? t('members_count', { count: chat.members?.length || 0 })
+                                                : t('subscribers_count', { count: chat.members?.length || 0 })}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {chat.description && (<div className="text-center p-4 bg-muted/50 rounded-2xl border-none"><p className="text-sm italic text-muted-foreground leading-relaxed">"{chat.description}"</p></div>)}
+                                    <div className="flex flex-col items-center gap-2 py-4">
+                                        <p className="text-sm font-bold text-muted-foreground">
+                                            {chat.type === 'group' 
+                                                ? t('members_count', { count: chat.members?.length || 0 })
+                                                : t('subscribers_count', { count: chat.members?.length || 0 })}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2 w-full pt-4">
+                                            {chat.type === 'channel' && (<Button variant="outline" onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className="rounded-xl"><MessageSquare className="mr-2 h-4 w-4" />{t('join_discussion_button')}</Button>)}
+                                            <Button variant="outline" onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="rounded-xl"><Share2 className="mr-2 h-4 w-4" />{t('copy_text')}</Button>
+                                            <Button variant="outline" onClick={() => setIsMuted(!isMuted)} className="rounded-xl">{isMuted ? <BellOff className="mr-2 h-4 w-4" /> : <Bell className="mr-2 h-4 w-4" />}{isMuted ? t('unmute') : t('mute')}</Button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                            
+                            <div className="space-y-2 pb-10">
+                                {chat.id !== 'GENERAL_CHAT' && (
+                                    <div className="flex flex-col gap-2 w-full pt-2">
+                                        {isOwner && chat.type !== 'dm' && !experimentalDesign && (
+                                            <Button variant="outline" onClick={() => setIsEditing(true)} className="rounded-xl h-12 font-bold"><Pencil className="mr-2 h-4 w-4" />{t('edit')}</Button>
+                                        )}
+                                        
+                                        {(isOwner || isAdmin || chat.type === 'dm') && (
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="outline" disabled={isClearing} className={cn("rounded-xl h-12 font-bold text-destructive border-destructive/20 hover:bg-destructive/5", experimentalDesign && "glass-button border-none bg-red-500/10 h-14 rounded-[1.5rem]")}>
+                                                        <Eraser className="mr-3 h-5 w-5" />
+                                                        {isClearing ? t('loading') : t('clear_history')}
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                                        <AlertDialogDescription>{t('clear_history_confirm_desc')}</AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleClearHistory} disabled={isClearing} className="rounded-xl bg-destructive hover:bg-destructive/90">{t('ok')}</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                        
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" disabled={isDeleting || isLeaving} className={cn("rounded-xl h-12 font-bold", experimentalDesign && "glass-button border-none h-14 rounded-[1.5rem] mt-2")}>
+                                                    {isOwner || isAdmin ? <Trash2 className="mr-3 h-5 w-5" /> : <LogOut className="mr-3 h-5 w-5" />}
+                                                    {isOwner || isAdmin ? (isDeleting ? t('deleting') : t('delete_chat')) : (isLeaving ? t('leaving') : t('leave_chat'))}
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        {isOwner || isAdmin ? t('delete_chat_confirm') : t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={isOwner || isAdmin ? handleDeleteChat : handleLeaveChat} disabled={isDeleting || isLeaving} className="rounded-xl bg-destructive">
+                                                        {isOwner || isAdmin ? t('delete') : t('leave')}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                    <div className={cn("px-6 space-y-6", experimentalDesign ? "pb-8" : "py-4")}>
-                        {chat.description && (<div className="text-center p-4 bg-muted/50 rounded-2xl"><p className="text-sm italic text-muted-foreground leading-relaxed">"{chat.description}"</p></div>)}
-                    </div>
                 </ScrollArea>
-                <div className={cn('shrink-0 flex flex-col gap-2 px-6 pb-6 pt-4 border-t', experimentalDesign ? "bg-muted/30" : "bg-background")}>
-                    {chat.id !== 'GENERAL_CHAT' && (<div className="flex gap-2 w-full">
-                        {isOwner && chat.type !== 'dm' && (<Button variant="outline" onClick={() => setIsEditing(true)} className="flex-1 rounded-xl"><Pencil className="mr-2 h-4 w-4" />{t('edit')}</Button>)}
-                        {(isOwner || isAdmin || chat.type === 'dm') && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" disabled={isClearing} className="flex-1 rounded-xl text-destructive border-destructive/20 hover:bg-destructive/5"><Eraser className="mr-3 h-4 w-4" />{isClearing ? t('loading') : t('clear_history')}</Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="rounded-2xl">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                                  <AlertDialogDescription>{t('clear_history_confirm_desc')}</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleClearHistory} disabled={isClearing} className="rounded-xl bg-destructive hover:bg-destructive/90">{t('ok')}</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                        {isOwner || isAdmin ? (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isDeleting} className="flex-1 rounded-xl"><Trash2 className="mr-2 h-4 w-4" />{isDeleting ? t('deleting') : t('delete')}</Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="rounded-2xl">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                                  <AlertDialogDescription>{t('delete_chat_confirm')}</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className="rounded-xl">{t('delete')}</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                        ) : (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isLeaving} className="flex-1 rounded-xl"><LogOut className="mr-2 h-4 w-4" />{isLeaving ? t('leaving') : t('leave')}</Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="rounded-2xl">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>{t('are_you_sure')}</AlertDialogTitle>
-                                  <AlertDialogDescription>{t(chat.type === 'group' ? 'leave_group_confirm' : 'leave_channel_confirm')}</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleLeaveChat} disabled={isLeaving} className="rounded-xl">{t('leave')}</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                    </div>)}
-                </div>
             </div>
         )}
       </DialogContent>
