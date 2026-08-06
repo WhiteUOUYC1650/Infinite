@@ -301,7 +301,7 @@ function AdminPage() {
     if (!db || !apkFile || !newVersion.trim() || isUploadingApk) return;
     setIsUploadingApk(true);
     try {
-        const CHUNK_SIZE = 500 * 1024; // 500KB chunks
+        const CHUNK_SIZE = 384 * 1024; // 384KB - Multiple of 3 for Base64 integrity
         const chunkIds: string[] = [];
         const totalChunks = Math.ceil(apkFile.size / CHUNK_SIZE);
 
@@ -504,7 +504,7 @@ function AdminPage() {
                             </div>
 
                             <div className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer" onClick={() => apkInputRef.current?.click()}>
-                                <input type="file" apkInputRef={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                                <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
                                 {apkFile ? <div className="text-center"><FileJson className="h-8 w-8 text-primary mx-auto mb-2" /><p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p></div> : <p className="text-sm text-muted-foreground">Select APK file</p>}
                             </div>
                             <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">

@@ -144,7 +144,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [initialVideoId, db, videosLoading, videos, t, toast]);
 
   const uploadVideoData = async (videoId: string, file: File, senderId: string) => {
-      const CHUNK_SIZE = 500 * 1024; // 500KB chunks
+      const CHUNK_SIZE = 384 * 1024; // 384KB - Must be multiple of 3 to avoid Base64 padding issues
       const chunkIds: string[] = [];
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 

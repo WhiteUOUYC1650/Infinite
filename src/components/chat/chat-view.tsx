@@ -221,7 +221,7 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
             }
         };
         load();
-    }, [attachment, db, onMediaLoad]);
+    }, [attachment, db, onPreviewImage, onMediaLoad]);
     if (!mediaUrl && attachment.type !== 'file') return <div className="h-20 w-full flex items-center justify-center bg-muted animate-pulse rounded-lg"><Loader2 className="h-5 w-5 animate-spin" /></div>;
     switch (attachment.type) {
         case 'image': return <img src={mediaUrl!} onClick={() => onPreviewImage(mediaUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer my-1" onLoad={onMediaLoad} alt="Attachment" />;
@@ -464,7 +464,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], ...(customPoll && { poll: customPoll }), ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
         
-        const CHUNK_SIZE = 500 * 1024; // Use robust 500KB chunks
+        const CHUNK_SIZE = 384 * 1024; // 384KB - Multiple of 3 for Base64 integrity
 
         for (const fItem of filesToSend) {
             const attachment: MessageAttachment = { id: Math.random().toString(36).substring(7), type: fItem.type, fileName: fItem.file.name, fileMimeType: fItem.file.type, status: 'complete' };
