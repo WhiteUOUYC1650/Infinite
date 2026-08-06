@@ -144,16 +144,39 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [initialVideoId, db, videosLoading, videos, t, toast]);
 
   const uploadVideoData = async (videoId: string, file: File, senderId: string) => {
-      const videoBase64 = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve((reader.result as string).split(',')[1]); });
-      const CHUNK_SIZE = 900 * 1024;
+      const CHUNK_SIZE = 500 * 1024; // 500KB chunks
       const chunkIds: string[] = [];
-      for (let i = 0; i < videoBase64.length; i += CHUNK_SIZE) {
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+      for (let i = 0; i < totalChunks; i++) {
+          const start = i * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const chunk = file.slice(start, end);
+          
+          const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(chunk);
+              reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          });
+
           const chunkRef = doc(collection(db!, 'videoChunks'));
-          await setDoc(chunkRef, { data: videoBase64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: senderId, videoId: videoId });
+          await setDoc(chunkRef, { 
+              data: base64, 
+              part: i, 
+              senderId: senderId, 
+              videoId: videoId,
+              timestamp: serverTimestamp()
+          });
           chunkIds.push(chunkRef.id);
-          await new Promise(res => setTimeout(res, 50));
+          
+          if (i % 5 === 0) await new Promise(res => setTimeout(res, 50));
       }
-      await updateDoc(doc(db!, 'videos', videoId), { videoStatus: 'complete', videoChunkIds: chunkIds, isProcessed: 1 });
+      
+      await updateDoc(doc(db!, 'videos', videoId), { 
+          videoStatus: 'complete', 
+          videoChunkIds: chunkIds, 
+          isProcessed: 1 
+      });
   };
 
   const handleUploadVideo = async (file: File, thumbnailFile: File | null, title: string, description: string, isShort: number) => {
@@ -291,7 +314,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
           />
       )}
       
-      {/* Full-screen Shorts Player */}
       {isShortsPlayerOpen && (
           <div className="fixed inset-0 z-[110] bg-black flex flex-col animate-in fade-in zoom-in duration-300">
               <header className="absolute top-0 left-0 right-0 h-14 flex items-center px-4 z-[120] bg-gradient-to-b from-black/60 to-transparent pt-[calc(0.5rem+env(safe-area-inset-top))]">
@@ -312,7 +334,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
           </div>
       )}
 
-      {/* Standard Video Detail (for non-shorts) */}
       {selectedVideo && !isShortsPlayerOpen && (
           <VideoDetailOverlay 
             key={selectedVideo.id} 
@@ -442,7 +463,6 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
                 </div>
             )}
 
-            {/* Overlays */}
             <div className="absolute right-4 bottom-24 flex flex-col gap-6 z-10">
                 <div className="flex flex-col items-center gap-1">
                     <Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 transition-all active:scale-125", isLiked && "text-red-500 bg-red-500/10")}>

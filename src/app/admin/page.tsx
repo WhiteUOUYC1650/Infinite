@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -72,7 +71,7 @@ function AdminPage() {
   // Update System State
   const [isUploadingApk, setIsUploadingApk] = useState(false);
   const [apkFile, setApkFile] = useState<File | null>(null);
-  const [newVersion, setNewVersion] = useState('1.1');
+  const [newVersion, setNewVersion] = useState('1.2');
   const [isClosedBeta, setIsClosedBeta] = useState(false);
   const [notifyUpdate, setNotifyUpdate] = useState(true);
   const apkInputRef = useRef<HTMLInputElement>(null);
@@ -302,21 +301,32 @@ function AdminPage() {
     if (!db || !apkFile || !newVersion.trim() || isUploadingApk) return;
     setIsUploadingApk(true);
     try {
-        const apkBase64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(apkFile);
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        });
-        const CHUNK_SIZE = 900 * 1024;
+        const CHUNK_SIZE = 500 * 1024; // 500KB chunks
         const chunkIds: string[] = [];
-        for (let i = 0; i < apkBase64.length; i += CHUNK_SIZE) {
+        const totalChunks = Math.ceil(apkFile.size / CHUNK_SIZE);
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, apkFile.size);
+            const chunk = apkFile.slice(start, end);
+            
+            const base64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(chunk);
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            });
+
             const chunkRef = doc(collection(db, 'apkChunks'));
-            await setDoc(chunkRef, { data: apkBase64.substring(i, i + CHUNK_SIZE), part: i / CHUNK_SIZE, timestamp: serverTimestamp() });
+            await setDoc(chunkRef, { 
+                data: base64, 
+                part: i, 
+                timestamp: serverTimestamp() 
+            });
             chunkIds.push(chunkRef.id);
-            await new Promise(r => setTimeout(r, 50));
+            if (i % 5 === 0) await new Promise(r => setTimeout(r, 50));
         }
+
         const verRef = doc(db, 'info', 'ver');
-        
         const updateData: any = { 
             apkChunkIds: chunkIds, 
             updatedAt: serverTimestamp() 
@@ -339,7 +349,7 @@ function AdminPage() {
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Upload Failed', description: e.message });
     } finally {
-        setIsUpdatingApk(false);
+        setIsUploadingApk(false);
     }
   };
 
@@ -482,7 +492,7 @@ function AdminPage() {
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Version Name</Label>
-                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 1.1" />
+                                <Input value={newVersion} onChange={e => setNewVersion(e.target.value)} placeholder="e.g. 1.2" />
                             </div>
 
                             <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
@@ -494,7 +504,7 @@ function AdminPage() {
                             </div>
 
                             <div className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer" onClick={() => apkInputRef.current?.click()}>
-                                <input type="file" ref={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
+                                <input type="file" apkInputRef={apkInputRef} accept=".apk" className="hidden" onChange={e => e.target.files?.[0] && setApkFile(e.target.files[0])} />
                                 {apkFile ? <div className="text-center"><FileJson className="h-8 w-8 text-primary mx-auto mb-2" /><p className="font-bold text-sm truncate max-w-[200px]">{apkFile.name}</p></div> : <p className="text-sm text-muted-foreground">Select APK file</p>}
                             </div>
                             <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">

@@ -86,13 +86,31 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
         const timestamp = Timestamp.now();
         let coverUrl = ''; if (coverFile) { coverUrl = await compressImage(coverFile); }
         
-        const musicBase64 = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve((reader.result as string).split(',')[1]); });
-        const CHUNK_SIZE = 900 * 1024;
+        const CHUNK_SIZE = 500 * 1024; // 500KB slices
         const chunkIds: string[] = [];
-        for (let i = 0; i < musicBase64.length; i += CHUNK_SIZE) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+            
+            const base64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(chunk);
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            });
+
             const chunkRef = doc(collection(db, 'musicChunks'));
-            await setDoc(chunkRef, { data: musicBase64.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid, musicId: musicDocRef.id });
+            await setDoc(chunkRef, { 
+                data: base64, 
+                part: i, 
+                senderId: currentUser.uid, 
+                musicId: musicDocRef.id,
+                timestamp: serverTimestamp()
+            });
             chunkIds.push(chunkRef.id);
+            if (i % 5 === 0) await new Promise(res => setTimeout(res, 50));
         }
 
         const musicData: any = { title, author, description, senderId: currentUser.uid, timestamp, musicMimeType: file.type, musicStatus: 'complete', musicChunkIds: chunkIds, listens: 0, likedBy: [], coverUrl };
@@ -198,8 +216,8 @@ function MusicCard({ music, sender, onClick }: { music: SharedMusic, sender?: Us
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"><Play className="h-5 w-5 fill-current" /></div>
             </div>
             <div className="min-w-0 flex-1">
-                <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{music.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{music.author}</p>
+                <p className="font-bold text-sm truncate group-hover:text-primary transition-colors whitespace-pre-wrap break-words">{music.title}</p>
+                <p className="text-xs text-muted-foreground truncate whitespace-pre-wrap break-words">{music.author}</p>
                 <p className="text-[10px] text-muted-foreground/60 mt-1 uppercase font-bold tracking-tighter">by {sender?.name}</p>
             </div>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><MoreVertical className="h-4 w-4" /></Button>
@@ -285,14 +303,14 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
             
             <ScrollArea className="flex-1 overflow-y-auto">
                 <div className="flex flex-col p-6 max-w-lg mx-auto w-full pb-24">
-                    <div className="flex items-center gap-6 mb-8">
-                        <div className="w-24 h-24 rounded-2xl bg-muted shadow-xl overflow-hidden shrink-0 relative">
-                            {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" alt="Cover" /> : <Music className="w-10 h-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
-                            {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="w-20 h-20 rounded-xl bg-muted shadow-xl overflow-hidden shrink-0 relative">
+                            {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" alt="Cover" /> : <Music className="w-8 h-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20" />}
+                            {isLoading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-white" /></div>}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-2xl font-black font-headline leading-tight tracking-tighter break-words whitespace-normal">{music.title}</h2>
-                            <p className="text-primary font-bold text-lg break-words whitespace-normal">{music.author}</p>
+                            <h2 className="text-xl font-black font-headline leading-tight tracking-tighter break-words whitespace-pre-wrap">{music.title}</h2>
+                            <p className="text-primary font-bold text-base break-words whitespace-pre-wrap">{music.author}</p>
                         </div>
                     </div>
 

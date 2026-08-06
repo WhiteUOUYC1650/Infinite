@@ -464,24 +464,39 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], ...(customPoll && { poll: customPoll }), ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
         
+        const CHUNK_SIZE = 500 * 1024; // Use robust 500KB chunks
+
         for (const fItem of filesToSend) {
             const attachment: MessageAttachment = { id: Math.random().toString(36).substring(7), type: fItem.type, fileName: fItem.file.name, fileMimeType: fItem.file.type, status: 'complete' };
-            
-            const reader = new FileReader(); 
-            reader.readAsDataURL(fItem.file);
-            await new Promise<void>((resolve, reject) => {
-                reader.onload = async () => {
-                    try {
-                        const base64String = (reader.result as string).split(',')[1]; const CHUNK_SIZE = 900 * 1024; const chunkIds: string[] = [];
-                        const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
-                        for (let i = 0; i < base64String.length; i += CHUNK_SIZE) {
-                            const cref = doc(collection(db, col)); await setDoc(cref, { data: base64String.substring(i, i + CHUNK_SIZE), part: i/CHUNK_SIZE, senderId: currentUser.uid }); chunkIds.push(cref.id);
-                        }
-                        attachment.chunkIds = chunkIds; data.attachments.push(attachment); resolve();
-                    } catch(e) { reject(e); }
-                };
-                reader.onerror = () => reject(new Error("File read failed"));
-            });
+            const chunkIds: string[] = [];
+            const totalChunks = Math.ceil(fItem.file.size / CHUNK_SIZE);
+            const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
+
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, fItem.file.size);
+                const fileChunk = fItem.file.slice(start, end);
+
+                const base64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(fileChunk);
+                    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                });
+
+                const cref = doc(collection(db, col));
+                await setDoc(cref, { 
+                    data: base64, 
+                    part: i, 
+                    senderId: currentUser.uid,
+                    chatId: item.id,
+                    messageId: mref.id,
+                    timestamp: serverTimestamp() 
+                });
+                chunkIds.push(cref.id);
+                if (i % 5 === 0) await new Promise(res => setTimeout(res, 50));
+            }
+            attachment.chunkIds = chunkIds;
+            data.attachments.push(attachment);
         }
         
         await setDoc(mref, data);
