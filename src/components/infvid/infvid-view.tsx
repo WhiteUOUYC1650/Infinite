@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -144,7 +145,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   }, [initialVideoId, db, videosLoading, videos, t, toast]);
 
   const uploadVideoData = async (videoId: string, file: File, senderId: string) => {
-      const CHUNK_SIZE = 384 * 1024; // 384KB - Must be multiple of 3 to avoid Base64 padding issues
+      const CHUNK_SIZE = 384 * 1024; // 384KB - Multiple of 3 for Base64 integrity
       const chunkIds: string[] = [];
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
@@ -169,7 +170,8 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
           });
           chunkIds.push(chunkRef.id);
           
-          if (i % 5 === 0) await new Promise(res => setTimeout(res, 50));
+          // Throttling to prevent [code=resource-exhausted]
+          if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
       }
       
       await updateDoc(doc(db!, 'videos', videoId), { 
@@ -606,7 +608,7 @@ function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInByte
                 <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
                     <Loader2 className="h-12 w-12 animate-spin text-primary mb-8" />
                     <h3 className="text-3xl font-bold font-headline mb-6">{t('infvid_upload_warning_title')}</h3>
-                    <p className="text-muted-foreground leading-relaxed max-w-md mx-auto mb-8 text-lg">{t('infvid_upload_warning_desc')}</p>
+                    <p className="text-muted-foreground leading-relaxed max-md mx-auto mb-8 text-lg">{t('infvid_upload_warning_desc')}</p>
                     <div className="flex items-center gap-3 text-primary font-black animate-pulse uppercase tracking-widest text-sm">
                         <AlertCircle className="h-5 w-5" />{t('processing_video')}
                     </div>
@@ -671,7 +673,7 @@ function VideoCard({ video, sender, onClick, isShortMode, currentUser, onToggleW
                         </Avatar>
                     )}
                     <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-sm leading-tight line-clamp-2 mb-1">{video.title}</h3>
+                        <h3 className="font-bold text-sm leading-tight line-clamp-2 mb-1 whitespace-pre-wrap break-words">{video.title}</h3>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black truncate">{sender?.name}</p>
                     </div>
                     <DropdownMenu>
@@ -817,7 +819,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser, onDelete, onR
                                     onClick={() => {
                                         const isSaved = currentUser.watchLater?.includes(video.id);
                                         updateDoc(doc(db!, 'users', currentUser.uid), {
-                                            watchLater: isSaved ? arrayRemove(video.id) : arrayUnion(video.id)
+                                            watch_later: isSaved ? arrayRemove(video.id) : arrayUnion(video.id)
                                         });
                                         toast({ title: t('dm_success') });
                                     }}
@@ -848,7 +850,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser, onDelete, onR
                                 <div className="flex items-center gap-3">
                                     <Avatar className="h-10 w-10 border-2 border-background"><AvatarImage src={sender?.avatar} /><AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback></Avatar>
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-bold text-sm truncate flex items-center gap-1">{sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}</p>
+                                        <p className="font-bold text-base truncate flex items-center gap-1">{sender?.name}{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}</p>
                                         <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-60">@{sender?.username?.replace('@','')}</p>
                                     </div>
                                     <Button variant="outline" size="sm" className="rounded-xl font-bold" onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: { chatId: [currentUser.uid, sender?.id || ''].sort().join('_') } }))}>Message</Button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
@@ -323,7 +324,9 @@ function AdminPage() {
                 timestamp: serverTimestamp() 
             });
             chunkIds.push(chunkRef.id);
-            if (i % 5 === 0) await new Promise(r => setTimeout(r, 50));
+            
+            // Throttling to prevent [code=resource-exhausted]
+            if (i % 5 === 0) await new Promise(r => setTimeout(r, 100));
         }
 
         const verRef = doc(db, 'info', 'ver');

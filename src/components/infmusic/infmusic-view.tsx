@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -86,7 +87,7 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
         const timestamp = Timestamp.now();
         let coverUrl = ''; if (coverFile) { coverUrl = await compressImage(coverFile); }
         
-        const CHUNK_SIZE = 384 * 1024; // 384KB - Must be multiple of 3 to avoid Base64 padding issues
+        const CHUNK_SIZE = 384 * 1024; // 384KB - Multiple of 3 for Base64 integrity
         const chunkIds: string[] = [];
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
@@ -110,7 +111,9 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
                 timestamp: serverTimestamp()
             });
             chunkIds.push(chunkRef.id);
-            if (i % 5 === 0) await new Promise(res => setTimeout(res, 50));
+            
+            // Throttling to prevent [code=resource-exhausted]
+            if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
         }
 
         const musicData: any = { title, author, description, senderId: currentUser.uid, timestamp, musicMimeType: file.type, musicStatus: 'complete', musicChunkIds: chunkIds, listens: 0, likedBy: [], coverUrl };

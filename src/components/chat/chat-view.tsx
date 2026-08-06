@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -493,7 +494,8 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     timestamp: serverTimestamp() 
                 });
                 chunkIds.push(cref.id);
-                if (i % 5 === 0) await new Promise(res => setTimeout(res, 50));
+                // Throttling to prevent [code=resource-exhausted]
+                if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
             }
             attachment.chunkIds = chunkIds;
             data.attachments.push(attachment);
@@ -763,7 +765,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </footer>
       ) : (
-        <footer className={cn("flex-shrink-0 p-3 h-auto min-h-[56px] flex items-center justify-center z-40 pb-[calc(1rem+env(safe-area-inset-bottom))]", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}><Button variant="ghost" className={cn("w-full h-12 font-bold uppercase tracking-widest gap-2 shadow-lg transition-all active:scale-95", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary")} onClick={() => { setIsMutedLocal(!isMutedLocal); toast({ title: isMutedLocal ? t('unmute') : t('mute') }); }}>{isMutedLocal ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></footer>
+        <footer className={cn("flex-shrink-0 p-3 h-auto min-h-[56px] flex items-center justify-center z-40 pb-[calc(1rem+env(safe-area-inset-bottom))]", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}><Button variant="ghost" className={cn("w-full h-12 font-bold uppercase tracking-widest gap-2 shadow-lg transition-all active:scale-95", (experimentalDesign || glassEffect) ? "glass-panel bg-card/40 backdrop-blur-xl border-white/20 text-primary rounded-2xl" : "text-primary")} onClick={() => { setIsMutedLocal(!isMutedLocal); toast({ title: iMutedLocal ? t('unmute') : t('mute') }); }}>{isMutedLocal ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}{isMutedLocal ? t('unmute') : t('mute')}</Button></footer>
       ))}
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} recipient={profileDialogUser} currentUser={currentUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} onJoinDiscussion={onSelectChat as any} />}
