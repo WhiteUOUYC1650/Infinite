@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
+const compressImage = (file: File, quality = 0.7, maxDimension = 600): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -84,12 +84,16 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
     if (!db) return; setIsUploading(true);
     try {
         const musicDocRef = doc(collection(db, 'music')); 
-        const timestamp = Timestamp.now();
         let coverUrl = ''; if (coverFile) { coverUrl = await compressImage(coverFile); }
         
-        const CHUNK_SIZE = 384 * 1024; // 384KB - Multiple of 3 for Base64 integrity
-        const chunkIds: string[] = [];
+        await setDoc(musicDocRef, {
+            title, author, description, senderId: currentUser.uid, timestamp: serverTimestamp(),
+            musicMimeType: file.type, musicStatus: 'uploading', listens: 0, likedBy: [], coverUrl
+        });
+
+        const CHUNK_SIZE = 384 * 1024;
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const chunkIds: string[] = [];
 
         for (let i = 0; i < totalChunks; i++) {
             const start = i * CHUNK_SIZE;
@@ -103,21 +107,13 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
             });
 
             const chunkRef = doc(collection(db, 'musicChunks'));
-            await setDoc(chunkRef, { 
-                data: base64, 
-                part: i, 
-                senderId: currentUser.uid, 
-                musicId: musicDocRef.id,
-                timestamp: serverTimestamp()
-            });
+            await setDoc(chunkRef, { data: base64, part: i, senderId: currentUser.uid, musicId: musicDocRef.id, timestamp: serverTimestamp() });
             chunkIds.push(chunkRef.id);
             
-            // Throttling to prevent [code=resource-exhausted]
             if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
         }
 
-        const musicData: any = { title, author, description, senderId: currentUser.uid, timestamp, musicMimeType: file.type, musicStatus: 'complete', musicChunkIds: chunkIds, listens: 0, likedBy: [], coverUrl };
-        await setDoc(musicDocRef, musicData);
+        await updateDoc(musicDocRef, { musicStatus: 'complete', musicChunkIds: chunkIds });
         
         toast({ title: t('dm_success'), description: t('infmusic_upload_success') }); 
         setIsUploadOpen(false);

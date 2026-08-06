@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const compressImage = (file: File, quality = 0.75, maxDimension = 800): Promise<string> => {
+const compressImage = (file: File, quality = 0.7, maxDimension = 600): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -146,8 +146,8 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
 
   const uploadVideoData = async (videoId: string, file: File, senderId: string) => {
       const CHUNK_SIZE = 384 * 1024; // 384KB - Multiple of 3 for Base64 integrity
-      const chunkIds: string[] = [];
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      const chunkIds: string[] = [];
 
       for (let i = 0; i < totalChunks; i++) {
           const start = i * CHUNK_SIZE;
@@ -170,7 +170,6 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
           });
           chunkIds.push(chunkRef.id);
           
-          // Throttling to prevent [code=resource-exhausted]
           if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
       }
       
