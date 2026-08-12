@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -276,7 +275,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
         } catch(e) {}
     };
 
-    const handleAddComment = async () => {
+    const handleAddComment = async (replyTo?: VideoComment) => {
         if (!db || !commentText.trim() || isSendingComment) return;
         setIsSendingComment(true);
         try {
@@ -286,6 +285,7 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                 userAvatar: currentUser.avatar || null,
                 text: commentText.trim(),
                 timestamp: serverTimestamp(),
+                ...(replyTo?.id && { parentId: replyTo.id })
             });
             setCommentText('');
         } catch (e) { console.error(e); }
@@ -376,51 +376,66 @@ function MusicPlayerOverlay({ music, sender, onClose, currentUser }: { music: Sh
                         </div>
                     </div>
 
-                    <div className="w-full text-left space-y-6">
-                        <h3 className="text-xl font-black font-headline uppercase tracking-tighter ml-1">{t('comments')} ({comments?.length || 0})</h3>
-                        <div className="flex gap-3 mb-6">
-                            <Avatar className="h-10 w-10 shrink-0"><AvatarImage src={currentUser.avatar} /><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar>
-                            <div className="flex-1 flex gap-2">
-                                <Input 
-                                    value={commentText} 
-                                    onChange={e => setCommentText(e.target.value)} 
-                                    placeholder="Add a comment..." 
-                                    className="rounded-2xl h-11 bg-muted/50 border-none px-4"
-                                    onKeyDown={e => e.key === 'Enter' && handleAddComment()}
-                                    maxLength={1600}
-                                />
-                                <Button size="icon" onClick={handleAddComment} disabled={!commentText.trim() || isSendingComment} className="rounded-full h-11 w-11 shrink-0 bg-primary/10 text-primary hover:bg-primary/20">
-                                    {isSendingComment ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className="h-5 w-5" />}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {commentsLoading ? (
-                                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary opacity-20" /></div>
-                            ) : comments && comments.length > 0 ? (
-                                comments.map(comment => (
-                                    <div key={comment.id} className="flex gap-3 group">
-                                        <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={commentAuthors[comment.userId]?.avatar} /><AvatarFallback>{comment.userName.charAt(0)}</AvatarFallback></Avatar>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <p className="font-bold text-sm truncate">{comment.userName}</p>
-                                                <span className="text-[10px] text-muted-foreground font-medium">{formatDistanceToNow(comment.timestamp?.toMillis() || Date.now(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })}</span>
-                                            </div>
-                                            <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{comment.text}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-10 opacity-30">
-                                    <MessageSquare className="h-10 w-10 mx-auto mb-2" />
-                                    <p className="text-xs font-bold uppercase tracking-widest">{t('no_comments_yet')}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <CommentSection video={music as any} comments={comments || []} currentUser={currentUser} onAddComment={handleAddComment} commentText={commentText} setAddCommentText={setCommentText} commentAuthors={commentAuthors} />
                 </div>
             </ScrollArea>
+        </div>
+    );
+}
+
+function CommentSection({ video, comments, currentUser, onAddComment, commentText, setAddCommentText, commentAuthors }: { video: SharedMusic, comments: VideoComment[], currentUser: AuthenticatedUser, onAddComment: (replyTo?: VideoComment) => void, commentText: string, setAddCommentText: (t: string) => void, commentAuthors: Record<string, User> }) {
+    const { t, language } = useLanguage(); const [replyingTo, setReplyTo] = useState<VideoComment | null>(null);
+    const parentComments = comments.filter(c => !c.parentId);
+    const getReplies = (parentId: string) => comments.filter(c => c.parentId === parentId).sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+
+    return (
+        <div className="flex flex-col h-full gap-4 text-left">
+            <h3 className="text-xl font-black font-headline uppercase tracking-tighter ml-1">{t('comments')} ({comments.length})</h3>
+            <div className="flex gap-3 mb-6">
+                <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={currentUser.avatar} /><AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback></Avatar>
+                <div className="flex-1 space-y-2">
+                    {replyingTo && (<div className="flex items-center justify-between bg-muted/50 p-2 rounded-lg text-[10px]"><p className="font-bold text-muted-foreground">{t('replying_to', { name: replyingTo.userName })}</p><Button variant="ghost" size="icon" className="h-3 w-3" onClick={() => setReplyTo(null)}><X className="h-3 w-3" /></Button></div>)}
+                    <div className="flex gap-2">
+                        <Input value={commentText} onChange={e => setAddCommentText(e.target.value)} placeholder="Add a comment..." className="rounded-xl h-10 border-none bg-muted/50 px-4" onKeyDown={e => e.key === 'Enter' && (onAddComment(replyingTo || undefined), setReplyTo(null))} maxLength={1600} />
+                        <Button size="icon" onClick={() => { onAddComment(replyingTo || undefined); setReplyTo(null); }} className="rounded-full h-10 w-10 shrink-0 bg-primary/10 text-primary hover:bg-primary/20">
+                            <Send className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </div>
+            <div className="space-y-6">
+                {parentComments.length > 0 ? parentComments.map(comment => (
+                    <div key={comment.id} className="space-y-4">
+                        <CommentItem comment={comment} author={commentAuthors[comment.userId]} onReply={() => setReplyTo(comment)} t={t} language={language} />
+                        <div className="ml-10 space-y-4 border-l pl-4">
+                            {getReplies(comment.id).map(reply => (
+                                <CommentItem key={reply.id} comment={reply} author={commentAuthors[reply.userId]} onReply={() => setReplyTo(reply)} isReply t={t} language={language} />
+                            ))}
+                        </div>
+                    </div>
+                )) : (<div className="text-center py-10 opacity-30"><MessageSquare className="h-10 w-10 mx-auto mb-2" /><p className="text-xs font-bold uppercase tracking-widest">{t('no_comments_yet')}</p></div>)}
+            </div>
+        </div>
+    );
+}
+
+function CommentItem({ comment, author, onReply, isReply, t, language }: { comment: VideoComment, author?: User, onReply: () => void, isReply?: boolean, t: any, language: string }) {
+    return (
+        <div className="flex gap-3 group">
+            <Avatar className={cn(isReply ? "h-7 w-7" : "h-9 w-9", "shrink-0")}>
+                <AvatarImage src={author?.avatar} />
+                <AvatarFallback>{comment.userName.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <p className={cn("font-bold truncate", isReply ? "text-xs" : "text-sm")}>{comment.userName}</p>
+                    <span className="text-[10px] text-muted-foreground font-medium">{formatDistanceToNow(comment.timestamp?.toMillis() || Date.now(), { addSuffix: true, locale: language === 'ru' ? ru : enUS })}</span>
+                </div>
+                <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{comment.text}</p>
+                <div className="flex items-center gap-4 mt-1.5">
+                    <button onClick={onReply} className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">{t('reply')}</button>
+                </div>
+            </div>
         </div>
     );
 }

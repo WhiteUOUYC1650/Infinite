@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -31,6 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 const compressImage = (file: File, quality = 0.7, maxDimension = 600): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -389,6 +389,7 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
     const [isLiked, setIsLiked] = useState(video.likedBy?.includes(currentUser.uid) || false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [showComments, setShowComments] = useState(false);
 
     useEffect(() => {
         if (!db || !video.videoChunkIds) return;
@@ -472,9 +473,22 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
                     <span className="text-[10px] font-black text-white drop-shadow-md">{video.likedBy?.length || 0}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent('open-infvid', { detail: { videoId: video.id } }))} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10">
-                        <MessageCircle className="h-6 w-6" />
-                    </Button>
+                    <Sheet open={showComments} onOpenChange={setShowComments}>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10">
+                                <MessageCircle className="h-6 w-6" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="h-[70vh] rounded-t-[2.5rem] p-0 overflow-hidden bg-background border-none shadow-2xl">
+                            <SheetHeader className="p-6 border-b shrink-0 h-16 flex-row items-center justify-between">
+                                <SheetTitle className="text-xl font-bold font-headline uppercase tracking-tighter">{t('comments')}</SheetTitle>
+                                <Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="rounded-full"><X className="h-5 w-5" /></Button>
+                            </SheetHeader>
+                            <div className="flex-1 overflow-hidden h-full">
+                                <ShortCommentsView video={video} currentUser={currentUser} />
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
                 <Button variant="ghost" size="icon" onClick={onToggleWatchLater} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10", currentUser.watchLater?.includes(video.id) && "text-primary")}>
                     <Bookmark className={cn("h-6 w-6", currentUser.watchLater?.includes(video.id) && "fill-current")} />
@@ -500,6 +514,70 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
                 </div>
                 <h3 className="font-bold text-base leading-tight break-words whitespace-normal line-clamp-3">{video.title}</h3>
                 {video.description && <p className="text-xs opacity-80 mt-1 line-clamp-2 leading-relaxed">{video.description}</p>}
+            </div>
+        </div>
+    );
+}
+
+function ShortCommentsView({ video, currentUser }: { video: SharedVideo, currentUser: AuthenticatedUser }) {
+    const db = useFirestore();
+    const { t } = useLanguage();
+    const [commentText, setCommentText] = useState('');
+    const [isSending, setIsSending] = useState(false);
+
+    const commentsQuery = useMemo(() => (db ? query(collection(db, 'videos', video.id, 'comments'), orderBy('timestamp', 'desc'), limit(50)) : null), [db, video.id]);
+    const { data: comments, loading: commentsLoading } = useCollection<VideoComment>(commentsQuery);
+    const commentUserIds = useMemo(() => Array.from(new Set(comments?.map(c => c.userId) || [])), [comments]);
+    const { users: commentAuthors } = useBatchUsers(commentUserIds);
+
+    const handleAddComment = async () => {
+        if (!db || !commentText.trim() || isSending) return;
+        setIsSending(true);
+        try {
+            await addDoc(collection(db, 'videos', video.id, 'comments'), {
+                userId: currentUser.uid,
+                userName: currentUser.name || currentUser.username,
+                userAvatar: currentUser.avatar || null,
+                text: commentText.trim(),
+                timestamp: serverTimestamp(),
+            });
+            setCommentText('');
+        } catch (e) { console.error(e); }
+        finally { setIsSending(false); }
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-background">
+            <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6 pb-20">
+                    {commentsLoading ? (
+                        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary opacity-20" /></div>
+                    ) : comments && comments.length > 0 ? (
+                        comments.map(comment => (
+                            <CommentItem key={comment.id} comment={comment} author={commentAuthors[comment.userId]} onReply={() => {}} t={t} language="ru" />
+                        ))
+                    ) : (
+                        <div className="text-center py-20 opacity-30">
+                            <MessageSquare className="h-10 w-10 mx-auto mb-2" />
+                            <p className="text-xs font-bold uppercase tracking-widest">{t('no_comments_yet')}</p>
+                        </div>
+                    )}
+                </div>
+            </ScrollArea>
+            <div className="p-4 border-t bg-background shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <div className="flex gap-2 max-w-2xl mx-auto">
+                    <Input 
+                        value={commentText} 
+                        onChange={e => setCommentText(e.target.value)} 
+                        placeholder={t('no_comments_yet')} 
+                        className="rounded-2xl h-11 bg-muted/50 border-none px-4"
+                        onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                        maxLength={1600}
+                    />
+                    <Button size="icon" onClick={handleAddComment} disabled={!commentText.trim() || isSending} className="rounded-full h-11 w-11 shrink-0 bg-primary/10 text-primary hover:bg-primary/20">
+                        {isSending ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className="h-5 w-5" />}
+                    </Button>
+                </div>
             </div>
         </div>
     );
@@ -751,7 +829,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser, onDelete, onR
         } catch(e) {}
     };
 
-    const handleAddComment = async (parentId?: string) => {
+    const handleAddComment = async (replyTo?: VideoComment) => {
         if (!db || !commentText.trim() || isSendingComment) return;
         setIsSendingComment(true);
         try {
@@ -761,7 +839,7 @@ function VideoDetailOverlay({ video, sender, onClose, currentUser, onDelete, onR
                 userAvatar: currentUser.avatar || null,
                 text: commentText.trim(),
                 timestamp: serverTimestamp(),
-                ...(parentId && { parentId })
+                ...(replyTo?.id && { parentId: replyTo.id })
             });
             setCommentText('');
         } catch (e) { console.error(e); }

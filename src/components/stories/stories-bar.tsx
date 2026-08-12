@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -70,7 +69,10 @@ export function StoriesBar({ currentUser, filterArchived = false }: { currentUse
       .filter(uid => {
           if (uid === currentUser.uid) return !filterArchived; // Self is always main unless we explicitly hide
           const isArchived = archivedUsersWithChats.has(uid);
-          return filterArchived ? isArchived : !isArchived && (usersWithChats.has(uid));
+          const hasMainChat = usersWithChats.has(uid);
+          
+          if (filterArchived) return isArchived;
+          return hasMainChat;
       })
       .map(uid => storySenders[uid])
       .filter(Boolean)
