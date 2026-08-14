@@ -214,7 +214,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh]", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card/60 backdrop-blur-3xl" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh]", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card" : "rounded-lg")}>
         <DialogTitle className="sr-only">{chat.name || 'Chat Profile'}</DialogTitle>
         {imageToCrop ? (
             <div className="p-6 h-full flex flex-col">

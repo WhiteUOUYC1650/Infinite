@@ -155,7 +155,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card/60 backdrop-blur-3xl" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card" : "rounded-lg")}>
         <DialogTitle className="sr-only">{activeMiniApp ? activeMiniApp.name : displayName}</DialogTitle>
         {activeMiniApp ? (
             <div className="flex flex-col h-full bg-background animate-in slide-in-from-right duration-300">
