@@ -56,7 +56,6 @@ interface ChatProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCloseChat: () => void;
-  onJoinDiscussion?: (id: string) => void;
 }
 
 const chatEditSchema = z.object({
@@ -93,7 +92,7 @@ async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<
   });
 }
 
-export function ChatProfileDialog({ chat, members: initialMembers, currentUser, open, onOpenChange, onCloseChat, onJoinDiscussion }: ChatProfileDialogProps) {
+export function ChatProfileDialog({ chat, members: initialMembers, currentUser, open, onOpenChange, onCloseChat }: ChatProfileDialogProps) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -210,6 +209,14 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     }
   };
 
+  const handleOpenDiscussion = () => {
+      if (!chat.discussionChatId) return;
+      onOpenChange(false);
+      window.dispatchEvent(new CustomEvent('open-chat', { 
+          detail: { chatId: chat.discussionChatId } 
+      }));
+  };
+
   const Icon = chat.id === 'GENERAL_CHAT' ? Globe : (chat.type === 'group' ? Users : Megaphone);
   
   return (
@@ -302,8 +309,8 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                         
                         {experimentalDesign && (
                             <div className="flex justify-center items-center gap-3 w-full px-2 mb-8">
-                                {chat.type === 'channel' ? (
-                                    <button onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className={cn("w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl transition-all", !chat.discussionChatId && "opacity-30 grayscale cursor-not-allowed")}>
+                                {chat.type === 'channel' && chat.discussionChatId ? (
+                                    <button onClick={handleOpenDiscussion} className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl transition-all">
                                         <MessageSquare className="w-5 h-5" />
                                     </button>
                                 ) : null}
@@ -354,7 +361,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                                                 : t('subscribers_count', { count: chat.members?.length || 0 })}
                                         </p>
                                         <div className="grid grid-cols-2 gap-2 w-full pt-4">
-                                            {chat.type === 'channel' && (<Button variant="outline" onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className="rounded-xl"><MessageSquare className="mr-2 h-4 w-4" />{t('join_discussion_button')}</Button>)}
+                                            {chat.type === 'channel' && chat.discussionChatId && (<Button variant="outline" onClick={handleOpenDiscussion} className="rounded-xl"><MessageSquare className="mr-2 h-4 w-4" />{t('join_discussion_button')}</Button>)}
                                             <Button variant="outline" onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="rounded-xl"><Share2 className="mr-2 h-4 w-4" />{t('copy_text')}</Button>
                                             <Button variant="outline" onClick={() => setIsMuted(!isMuted)} className="rounded-xl">{isMuted ? <BellOff className="mr-2 h-4 w-4" /> : <Bell className="mr-2 h-4 w-4" />}{isMuted ? t('unmute') : t('mute')}</Button>
                                         </div>
