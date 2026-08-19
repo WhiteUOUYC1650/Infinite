@@ -193,7 +193,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   }
 
   const handleClearHistory = async () => {
-    if (!db || chat.id === 'GENERAL_CHAT') return;
+    if (!db || chat.id === 'GENERAL_CHAT' || (!isOwner && !isAdmin)) return;
     setIsClearing(true);
     try {
         const snap = await getDocs(collection(db, 'chats', chat.id, 'messages'));
@@ -214,7 +214,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh]", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh] bg-card", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl" : "rounded-lg")}>
         <DialogTitle className="sr-only">{chat.name || 'Chat Profile'}</DialogTitle>
         {imageToCrop ? (
             <div className="p-6 h-full flex flex-col">
@@ -302,11 +302,11 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                         
                         {experimentalDesign && (
                             <div className="flex justify-center items-center gap-3 w-full px-2 mb-8">
-                                {chat.type === 'channel' && (
+                                {chat.type === 'channel' ? (
                                     <button onClick={() => chat.discussionChatId && onJoinDiscussion?.(chat.discussionChatId)} disabled={!chat.discussionChatId} className={cn("w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl transition-all", !chat.discussionChatId && "opacity-30 grayscale cursor-not-allowed")}>
                                         <MessageSquare className="w-5 h-5" />
                                     </button>
-                                )}
+                                ) : null}
                                 <button onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl">
                                     <Share2 className="w-5 h-5" />
                                 </button>
@@ -369,7 +369,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                                             <Button variant="outline" onClick={() => setIsEditing(true)} className="rounded-xl h-12 font-bold"><Pencil className="mr-2 h-4 w-4" />{t('edit')}</Button>
                                         )}
                                         
-                                        {(isOwner || isAdmin || chat.type === 'dm') && (
+                                        {(isOwner || isAdmin) && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="outline" disabled={isClearing} className={cn("rounded-xl h-12 font-bold text-destructive border-destructive/20 hover:bg-destructive/5", experimentalDesign && "glass-button border-none bg-red-500/10 h-14 rounded-[1.5rem]")}>
