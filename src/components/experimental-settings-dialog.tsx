@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -55,6 +55,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { GiftPickerDialog } from './gifts/gift-picker-dialog';
 import { LegalDialog } from './legal-dialog';
+import { Input } from './ui/input';
 import React from 'react';
 
 type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates';
@@ -136,6 +137,47 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false); const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
   const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
+
+  // PIN State
+  const [pinLockEnabled, setPinLockEnabled] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinStep, setPinSetupStep] = useState<'current' | 'new'>('new');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('app-local-pin');
+    setPinLockEnabled(!!saved);
+  }, []);
+
+  const handleTogglePin = (enabled: boolean) => {
+    if (enabled) {
+        setPinSetupStep('new');
+        setPinInput('');
+        setShowPinSetup(true);
+    } else {
+        setPinSetupStep('current');
+        setPinInput('');
+        setShowPinSetup(true);
+    }
+  };
+
+  const handlePinSubmit = () => {
+    if (pinStep === 'new') {
+        if (pinInput.length < 4) { toast({ variant: 'destructive', title: 'Error', description: t('pin_too_short') }); return; }
+        if (pinInput.length > 16) { toast({ variant: 'destructive', title: 'Error', description: t('pin_too_long') }); return; }
+        localStorage.setItem('app-local-pin', pinInput);
+        setPinLockEnabled(true);
+        toast({ title: t('dm_success'), description: t('local_pin_lock') });
+    } else {
+        const saved = localStorage.getItem('app-local-pin');
+        if (pinInput !== saved) { toast({ variant: 'destructive', title: 'Error', description: t('pin_error_mismatch') }); return; }
+        localStorage.removeItem('app-local-pin');
+        setPinLockEnabled(false);
+        toast({ title: t('dm_success') });
+    }
+    setShowPinSetup(false);
+    setPinInput('');
+  };
 
   const userId = currentUser.uid || currentUser.id || '';
 
@@ -265,6 +307,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
               <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />
               {currentUser.loginProtectionEnabled && (<SettingsItem icon={Lock} label={t('cloud_password_label')} onClick={() => {}} description={t('cloud_password_desc')} glassEffect={glassEffect} />)}
+              <SettingsSwitchItem id="local-pin" label={t('local_pin_lock')} checked={pinLockEnabled} onCheckedChange={handleTogglePin} description={t('local_pin_lock_desc')} glassEffect={glassEffect} />
               <div className={cn("p-4 space-y-3 rounded-xl", glassEffect && "glass-panel border-none")}><Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{t('story_expiration_label')}</Label><Select value={(currentUser.storyExpirationDuration ?? 24).toString()} onValueChange={(v) => handleSetStoryExpiration(parseInt(v))}><SelectTrigger className={cn("h-12 rounded-xl border-none font-bold", glassEffect ? "glass-input" : "bg-muted/50")}><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="12">12 {t('hours')}</SelectItem><SelectItem value="24">24 {t('hours')}</SelectItem><SelectItem value="48">48 {t('hours')}</SelectItem><SelectItem value="72">72 {t('hours')}</SelectItem><SelectItem value="0">{t('story_expiration_never')}</SelectItem></SelectContent></Select></div>
             </div>
           );
@@ -307,6 +350,39 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl"><AlertDialogHeader className="items-center text-center space-y-4"><div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center"><Trash2 className="h-8 w-8 text-destructive" /></div><div className="space-y-2"><AlertDialogTitle className="text-2xl font-bold font-headline">{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground leading-relaxed">{t('delete_account_confirm_desc')}</AlertDialogDescription></div></AlertDialogHeader><AlertDialogFooter className="flex flex-col gap-2 pt-4 sm:flex-col sm:justify-center"><AlertDialogAction onClick={handleDeleteAccount} disabled={isDeletingAccount} className={cn(buttonVariants({ variant: 'destructive' }), "w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-destructive/20")}>{isDeletingAccount ? <Loader2 className="animate-spin" /> : t('delete_account')}</AlertDialogAction><AlertDialogCancel className="w-full h-12 rounded-2xl font-medium border-none hover:bg-muted">{t('cancel')}</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
     <GiftPickerDialog open={showSelfGiftPicker} onOpenChange={setShowSelfGiftPicker} recipient={currentUser as any} currentUser={currentUser} />
     <LegalDialog open={!!showLegalType} onOpenChange={(open) => !open && setShowLegalType(null)} type={showLegalType || 'tos'} />
+    
+    <Dialog open={showPinSetup} onOpenChange={setShowPinSetup}>
+        <DialogContent className="max-w-xs rounded-3xl p-8 border-none shadow-2xl space-y-6">
+            <DialogHeader className="items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-2">
+                    <KeyRound className="h-8 w-8 text-primary" />
+                </div>
+                <DialogTitle className="text-xl font-bold font-headline">
+                    {pinStep === 'new' ? t('set_pin') : t('disable_pin')}
+                </DialogTitle>
+                <DialogDescription>
+                    {pinStep === 'new' ? t('enter_new_pin') : t('enter_current_pin')}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+                <Input 
+                    type="password"
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value)}
+                    placeholder="••••"
+                    className="text-center text-2xl font-black h-14 rounded-2xl bg-muted/50 border-none"
+                    maxLength={16}
+                    autoFocus
+                />
+                <Button className="w-full h-12 rounded-xl font-bold" onClick={handlePinSubmit} disabled={pinInput.length < 4}>
+                    {t('ok')}
+                </Button>
+                <Button variant="ghost" className="w-full rounded-xl" onClick={() => setShowPinSetup(false)}>
+                    {t('cancel')}
+                </Button>
+            </div>
+        </DialogContent>
+    </Dialog>
     </>
   );
 }

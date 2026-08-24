@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/app-shell';
@@ -12,6 +11,7 @@ import { Capacitor } from '@capacitor/core';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
 import { BypassOverlay } from '@/components/proxy/bypass-overlay';
+import { PinLockOverlay } from '@/components/security/pin-lock-overlay';
 
 export default function Home() {
   const { user, loading: authLoading } = useUser();
@@ -23,9 +23,18 @@ export default function Home() {
   
   const [isVerifying, setIsVerifying] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [isLockedByPin, setIsLockedByPin] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const sessionRegistered = useRef(false);
   const connectivityTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Check for local PIN lock
+    const localPin = localStorage.getItem('app-local-pin');
+    if (localPin) {
+        setIsLockedByPin(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Start connectivity monitor
@@ -206,6 +215,10 @@ export default function Home() {
       decrementSession();
     };
   }, [user, authLoading, router, db, auth, sessionId, t, toast]);
+
+  if (isLockedByPin) {
+      return <PinLockOverlay onUnlock={() => setIsLockedByPin(false)} />;
+  }
 
   if (isBlocked) {
       return <BypassOverlay onRetry={() => window.location.reload()} />;
