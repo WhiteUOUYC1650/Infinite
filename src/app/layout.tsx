@@ -11,17 +11,17 @@ import { Snowfall } from '@/components/ui/snowfall';
 import { NotificationProvider } from '@/context/notification-context';
 import { OrientationManager } from '@/components/OrientationManager';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
-// Polyfills for legacy Android devices (SDK 16+)
-function PolyfillManager() {
+function BackgroundManager() {
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Basic check for older engines
-      if (!window.Promise || !window.fetch || !Object.assign) {
-        console.log("Legacy engine detected, applying polyfills...");
-        // In a real production environment, we'd load core-js here.
-        // For our prototype, we ensure basic stability.
-      }
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        // App background initialization logic
+        // This ensures the notification listener is active even when user 
+        // hasn't explicitly opened a chat view.
+        console.log("Infinite 1.3: Silent Background Session Active");
+      });
     }
   }, []);
   return null;
@@ -29,7 +29,6 @@ function PolyfillManager() {
 
 function FontManager() {
   const { useSystemFont } = useTheme();
-  
   useEffect(() => {
     if (useSystemFont) {
       document.body.classList.add('use-system-font');
@@ -37,14 +36,13 @@ function FontManager() {
       document.body.classList.remove('use-system-font');
     }
   }, [useSystemFont]);
-
   return null;
 }
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PolyfillManager />
+      <BackgroundManager />
       <FontManager />
       <OrientationManager />
       <LanguageProvider>

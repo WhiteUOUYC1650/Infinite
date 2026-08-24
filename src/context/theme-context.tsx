@@ -305,6 +305,8 @@ interface ThemeContextType {
   toggleM3Design: () => void;
   glassEffect: boolean;
   toggleGlassEffect: () => void;
+  dynamicPalette: boolean;
+  toggleDynamicPalette: () => void;
   glassIntensity: number;
   showFeed: boolean;
   toggleShowFeed: () => void;
@@ -324,6 +326,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [experimentalDesign, setExperimentalDesign] = useState(false);
   const [m3Design, setM3Design] = useState(false);
   const [glassEffect, setGlassEffect] = useState(false);
+  const [dynamicPalette, setDynamicPalette] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
   const [useSystemFont, setUseSystemFont] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
@@ -338,6 +341,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedExperimental = localStorage.getItem('app-experimental-design');
     const storedM3Design = localStorage.getItem('app-m3-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
+    const storedDynamicPalette = localStorage.getItem('app-dynamic-palette');
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
 
@@ -358,6 +362,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedExperimental) setExperimentalDesign(storedExperimental === 'true');
     if (storedM3Design) setM3Design(storedM3Design === 'true');
     if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
+    if (storedDynamicPalette) setDynamicPalette(storedDynamicPalette === 'true');
     if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
     if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
 
@@ -443,19 +448,35 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
   const handleToggleExperimentalDesign = () => {
     setExperimentalDesign(prev => {
-      localStorage.setItem('app-experimental-design', String(!prev));
-      return !prev;
+      const next = !prev;
+      localStorage.setItem('app-experimental-design', String(next));
+      if (next) {
+          setM3Design(false);
+          localStorage.setItem('app-m3-design', 'false');
+      }
+      return next;
     });
   };
   const toggleM3Design = () => {
     setM3Design(prev => {
-      localStorage.setItem('app-m3-design', String(!prev));
-      return !prev;
+      const next = !prev;
+      localStorage.setItem('app-m3-design', String(next));
+      if (next) {
+          setExperimentalDesign(false);
+          localStorage.setItem('app-experimental-design', 'false');
+      }
+      return next;
     });
   };
   const toggleGlassEffect = () => {
     setGlassEffect(prev => {
       localStorage.setItem('app-glass-effect', String(!prev));
+      return !prev;
+    });
+  };
+  const toggleDynamicPalette = () => {
+    setDynamicPalette(prev => {
+      localStorage.setItem('app-dynamic-palette', String(!prev));
       return !prev;
     });
   };
@@ -491,6 +512,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleM3Design,
     glassEffect,
     toggleGlassEffect,
+    dynamicPalette,
+    toggleDynamicPalette,
     glassIntensity: glassEffect ? 70 : 0,
     showFeed,
     toggleShowFeed,
