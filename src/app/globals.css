@@ -114,24 +114,6 @@ body.use-system-font h4 {
   body { @apply bg-background text-foreground; }
 }
 
-/* Material 3 (M3) Specifics */
-[data-m3-design="true"] {
-  --radius: 1.75rem; /* 28px standard M3 radius */
-}
-
-[data-m3-design="true"] .m3-bubble {
-    border-radius: 1.75rem !important;
-}
-
-[data-m3-design="true"] button {
-    @apply rounded-full;
-}
-
-[data-m3-design="true"] input, 
-[data-m3-design="true"] textarea {
-    @apply rounded-2xl;
-}
-
 /* Glass UI Elements - Ultra Deep 1.2 Update */
 [data-glass-effect="true"] .glass-panel,
 [data-glass-effect="true"] .glass-menu {
