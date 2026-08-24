@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -341,7 +342,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className={cn("text-xl font-bold font-headline transition-all", isOnline ? "text-primary" : "text-muted-foreground animate-pulse")}>
-              Infinite 1.3
+              Infinite
             </h1>
           </div>
           <div className='flex items-center'>

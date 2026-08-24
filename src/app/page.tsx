@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/app-shell';
@@ -10,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
+import { BypassOverlay } from '@/components/proxy/bypass-overlay';
 
 export default function Home() {
   const { user, loading: authLoading } = useUser();
@@ -20,8 +22,21 @@ export default function Home() {
   const { t } = useLanguage();
   
   const [isVerifying, setIsVerifying] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const sessionRegistered = useRef(false);
+  const connectivityTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Start connectivity monitor
+    connectivityTimeout.current = setTimeout(() => {
+        if (isVerifying && !isBlocked) {
+            setIsBlocked(true);
+        }
+    }, 6000); // 6s timeout for Firebase connection
+
+    return () => { if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current); };
+  }, [isVerifying, isBlocked]);
 
   useEffect(() => {
     const isDeleting = typeof window !== 'undefined' && sessionStorage.getItem('isDeletingAccount');
@@ -97,6 +112,7 @@ export default function Home() {
                 }
                 
                 setIsVerifying(false);
+                if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current);
                 incrementSession();
 
                 const justLoggedIn = localStorage.getItem('justLoggedIn');
@@ -154,10 +170,11 @@ export default function Home() {
                 }
             } else {
                 setIsVerifying(false);
+                if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current);
             }
         } catch (e) {
             console.error("Security check failed:", e);
-            setIsVerifying(false);
+            // Don't clear timeout here, let it reach 6s to show bypass UI
         }
     };
 
@@ -189,6 +206,10 @@ export default function Home() {
       decrementSession();
     };
   }, [user, authLoading, router, db, auth, sessionId, t, toast]);
+
+  if (isBlocked) {
+      return <BypassOverlay onRetry={() => window.location.reload()} />;
+  }
 
   if (authLoading || isVerifying || !user) {
     return (
