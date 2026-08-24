@@ -231,28 +231,28 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className="text-center space-y-2 mb-2">
                       <h2 className='text-4xl font-black font-headline text-primary'>{t('whats_new')}</h2>
-                      <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion}</p>
+                      <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion} Official</p>
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Smartphone className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><MessageSquare className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Фоновое подключение</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Уведомления приходят мгновенно благодаря оптимизированной фоновой сессии.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Модерация</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Управляйте комментариями в InfVid и InfMusic через новое меню действий.</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><MessageSquare className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Smartphone className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Управление комментариями</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Редактируйте и удаляйте свои отзывы в InfVid и InfMusic.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Фоновая сессия</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Оптимизированная работа уведомлений без лишней нагрузки на аккумулятор.</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><Archive className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Стабильность</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Исправлены ошибки при загрузке медиа и улучшена привязка скролла.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Умный Архив</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Истории из архивированных чатов теперь отображаются только в разделе Архива.</p>
                           </div>
                       </div>
                   </div>

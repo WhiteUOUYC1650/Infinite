@@ -69,8 +69,11 @@ export function InfMusicView({ currentUser, onClose }: { currentUser: Authentica
   const handleUploadMusic = async (file: File, coverFile: File | null, title: string, author: string, description: string) => {
     if (!db) return; setIsUploading(true);
     try {
-        const musicDocRef = doc(collection(db, 'music')); let coverUrl = ''; if (coverFile) { coverUrl = await compressImage(coverFile); }
-        await setDoc(musicDocRef, { title, author, description, senderId: currentUser.uid, timestamp: serverTimestamp(), musicMimeType: file.type, musicStatus: 'uploading', listens: 0, likedBy: [], coverUrl });
+        const musicDocRef = retryVideoId ? doc(db, 'music', retryVideoId) : doc(collection(db, 'music')); 
+        let coverUrl = ''; if (coverFile) { coverUrl = await compressImage(coverFile); }
+        const musicData: any = { title, author, description, senderId: currentUser.uid, timestamp: serverTimestamp(), musicMimeType: file.type, musicStatus: 'uploading', listens: 0, likedBy: [], coverUrl };
+        await setDoc(musicDocRef, musicData);
+
         const CHUNK_SIZE = 384 * 1024; const totalChunks = Math.ceil(file.size / CHUNK_SIZE); const chunkIds: string[] = [];
         for (let i = 0; i < totalChunks; i++) {
             const start = i * CHUNK_SIZE; const end = Math.min(start + CHUNK_SIZE, file.size); const chunk = file.slice(start, end);
