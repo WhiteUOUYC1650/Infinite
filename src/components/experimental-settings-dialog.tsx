@@ -277,31 +277,40 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><MessageSquare className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><ShieldCheck className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Модерация</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Управляйте комментариями в InfVid и InfMusic через новое меню действий.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_bypass_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_bypass_desc')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Smartphone className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><KeyRound className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Фоновая сессия</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Оптимизированная работа уведомлений без лишней нагрузки на аккумулятор.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_pin_lock_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_pin_lock_desc')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><Archive className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><Languages className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Умный Архив</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Истории из архивированных чатов теперь отображаются только в разделе Архива.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_languages_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_languages_desc')}</p>
                           </div>
                       </div>
                   </div>
               </div>
           );
           case 'theme': return (<RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">{['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'].map(tName => { const isPremTheme = tName === 'shining_gold'; return (<div key={tName} className={cn("flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}><div className="flex items-center space-x-3"><RadioGroupItem value={tName} id={tName} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} /><Label htmlFor={tName} className='capitalize cursor-pointer font-bold'>{t(tName as any)}</Label></div>{isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}</div>); })}</RadioGroup>);
-          case 'language': return <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300"><RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1"><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div><div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div></RadioGroup></div>;
+          case 'language': return (
+            <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1">
+                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div>
+                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div>
+                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="es" id="es" /><Label htmlFor="es" className="font-bold">Español</Label></div>
+                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="pt-BR" id="pt-br" /><Label htmlFor="pt-BR" className="font-bold">Português (Brasil)</Label></div>
+                </RadioGroup>
+            </div>
+          );
           case 'chat': return (<div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'><SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} /><SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} /><SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} /></div>);
           case 'privacy': return (
             <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>

@@ -19,7 +19,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (storedLang && translations[storedLang]) {
       setLanguage(storedLang);
     } else {
-      localStorage.setItem('app-lang', 'ru');
+      // Try to detect browser language
+      const browserLang = navigator.language.split('-')[0];
+      if (browserLang === 'es') setLanguage('es');
+      else if (browserLang === 'pt') setLanguage('pt-BR');
+      else if (browserLang === 'ru') setLanguage('ru');
+      else setLanguage('en');
     }
   }, []);
 

@@ -373,9 +373,11 @@ export default function LoginPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
+            <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as any)}>
               <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="es">Español</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="pt-BR">Português (Brasil)</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -400,7 +402,7 @@ export default function LoginPage() {
                     <div className="space-y-1">
                         <h2 className="text-2xl font-bold font-headline">{t('forgot_password_title')}</h2>
                         <p className="text-muted-foreground text-sm">
-                            {t('enter_email_for_recovery')}
+                            {t('forgot_password_desc')}
                         </p>
                     </div>
                 </div>
