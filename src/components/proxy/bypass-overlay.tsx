@@ -1,23 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShieldAlert, Globe, ArrowRight, Loader2, CheckCircle2, XCircle, Zap } from 'lucide-react';
+import { ShieldAlert, Globe, ArrowRight, Loader2, CheckCircle2, XCircle, Zap, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/context/language-context';
 import { proxyService } from '@/lib/proxy-service';
+import { useToast } from '@/hooks/use-toast';
 
-export function BypassOverlay({ onRetry }: { onRetry: () => void }) {
+export function BypassOverlay({ onRetry, onBypassSuccess }: { onRetry: () => void, onBypassSuccess?: () => void }) {
     const { t } = useLanguage();
+    const { toast } = useToast();
     const [domain, setDomain] = useState('vk.com');
     const [isChecking, setIsChecking] = useState(false);
     const [isConnectingProxy, setIsConnectingProxy] = useState(false);
     const [status, setStatus] = useState<'idle' | 'ok' | 'blocked'>('idle');
+    const [error, setError] = useState<string | null>(null);
 
     const checkConnectivity = async () => {
         setIsChecking(true);
         setStatus('idle');
+        setError(null);
         try {
             // Using no-cors to bypass CORS blocks for testing reachability
             const resp = await fetch(`https://${domain}`, { mode: 'no-cors' });
@@ -31,14 +35,22 @@ export function BypassOverlay({ onRetry }: { onRetry: () => void }) {
 
     const handleConnectProxy = async () => {
         setIsConnectingProxy(true);
+        setError(null);
         try {
             // Using wss:// protocol for secure connection on HTTPS pages
             const relayUrl = 'wss://relay.infinite.white'; 
             await proxyService.connect(relayUrl, domain);
-            // After connection logic, we would trigger a refresh or state change in page.tsx
-            onRetry(); 
-        } catch (e) {
+            
+            toast({ title: t('dm_success'), description: "Proxy tunnel established!" });
+            
+            if (onBypassSuccess) {
+                onBypassSuccess();
+            } else {
+                onRetry();
+            }
+        } catch (e: any) {
             console.error(e);
+            setError(e.message || "Failed to establish proxy connection.");
         } finally {
             setIsConnectingProxy(false);
         }
@@ -46,7 +58,7 @@ export function BypassOverlay({ onRetry }: { onRetry: () => void }) {
 
     return (
         <div className="fixed inset-0 z-[200] bg-background flex items-center justify-center p-6 animate-in fade-in duration-500">
-            <div className="max-w-md w-full glass-panel p-10 rounded-[3rem] border-none shadow-2xl space-y-8 text-center bg-card/60 backdrop-blur-3xl">
+            <div className="max-w-md w-full glass-panel p-10 rounded-[3rem] border-none shadow-2xl space-y-8 text-center bg-card/60 backdrop-blur-3xl relative">
                 <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-4 experimental-glow">
                     <Globe className="h-10 w-10 text-primary animate-pulse" />
                 </div>
@@ -79,8 +91,15 @@ export function BypassOverlay({ onRetry }: { onRetry: () => void }) {
                     </p>
                 </div>
 
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center gap-3 text-red-500 text-xs font-bold animate-in zoom-in">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <p>{error}</p>
+                    </div>
+                )}
+
                 <div className="flex flex-col gap-3">
-                    <Button onClick={handleConnectProxy} disabled={isConnectingProxy} className="w-full h-14 rounded-2xl font-black text-lg gap-3 shadow-xl bg-indigo-600 hover:bg-indigo-700">
+                    <Button onClick={handleConnectProxy} disabled={isConnectingProxy} className="w-full h-14 rounded-2xl font-black text-lg gap-3 shadow-xl bg-indigo-600 hover:bg-indigo-700 transition-all active:scale-95">
                         {isConnectingProxy ? <Loader2 className="animate-spin h-5 w-5" /> : <Zap className="h-5 w-5 fill-current" />}
                         {t('launch_via_proxy')}
                     </Button>

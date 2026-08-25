@@ -467,7 +467,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
-    setIsSending(true); if (textOverride === undefined) setMessageContent(''); setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    setIsSending(true); if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '44px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], ...(customPoll && { poll: customPoll }), ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
@@ -575,8 +575,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         if (snap.exists()) {
             const channelData = { id: snap.id, ...snap.data() } as PopulatedChat;
             onSelectChat(channelData);
-            // Optionally close current view or handle layered navigation
-            // For now, we reuse the existing select logic which triggers view change
         }
     } catch (e) { console.error(e); }
   };
@@ -680,14 +678,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                     className="flex items-end gap-2 relative w-full"
                 >
                     <Textarea 
+                        id="message-textarea"
                         placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} 
                         value={messageContent} 
                         onChange={(e) => setMessageContent(e.target.value)} 
                         onInput={(e) => {
                             const target = e.currentTarget;
-                            target.style.height = '44px';
+                            target.style.height = 'auto'; // Reset to auto to calculate true scrollHeight
                             const newHeight = Math.min(target.scrollHeight, window.innerHeight / 3);
-                            target.style.height = `${newHeight}px`;
+                            target.style.height = `${Math.max(newHeight, 44)}px`;
                         }}
                         onKeyDown={(e) => { 
                             if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { 

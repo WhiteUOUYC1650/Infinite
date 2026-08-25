@@ -24,6 +24,7 @@ export default function Home() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isLockedByPin, setIsLockedByPin] = useState(false);
+  const [bypassActive, setBypassActive] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const sessionRegistered = useRef(false);
   const connectivityTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -39,13 +40,13 @@ export default function Home() {
   useEffect(() => {
     // Start connectivity monitor
     connectivityTimeout.current = setTimeout(() => {
-        if (isVerifying && !isBlocked) {
+        if (isVerifying && !isBlocked && !bypassActive) {
             setIsBlocked(true);
         }
     }, 6000); // 6s timeout for Firebase connection
 
     return () => { if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current); };
-  }, [isVerifying, isBlocked]);
+  }, [isVerifying, isBlocked, bypassActive]);
 
   useEffect(() => {
     const isDeleting = typeof window !== 'undefined' && sessionStorage.getItem('isDeletingAccount');
@@ -220,8 +221,8 @@ export default function Home() {
       return <PinLockOverlay onUnlock={() => setIsLockedByPin(false)} />;
   }
 
-  if (isBlocked) {
-      return <BypassOverlay onRetry={() => window.location.reload()} />;
+  if (isBlocked && !bypassActive) {
+      return <BypassOverlay onRetry={() => window.location.reload()} onBypassSuccess={() => { setBypassActive(true); setIsBlocked(false); setIsVerifying(false); }} />;
   }
 
   if (authLoading || isVerifying || !user) {
