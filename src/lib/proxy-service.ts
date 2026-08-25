@@ -1,4 +1,3 @@
-
 'use client';
 /**
  * @fileOverview Singleton service for masked WebSocket communication (WEB Proxy).
@@ -24,10 +23,13 @@ class ProxyService {
         if (this.ws) this.ws.close();
 
         const token = await generateHmacToken();
-        const wsUrl = `${proxyUrl}/tunnel?auth=${encodeURIComponent(token)}&mask=${whiteDomain}`;
+        let wsUrl = `${proxyUrl}/tunnel?auth=${encodeURIComponent(token)}&mask=${whiteDomain}`;
 
-        // In a real browser we can't fully spoof Origin headers in WebSocket constructor,
-        // but the Proxy relay on Node side will check the dynamic token.
+        // Ensure secure websocket on HTTPS pages to prevent Mixed Content errors
+        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && wsUrl.startsWith('ws:')) {
+            wsUrl = wsUrl.replace('ws:', 'wss:');
+        }
+
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onmessage = async (event) => {
@@ -37,6 +39,7 @@ class ProxyService {
             }
         };
 
+        this.ws.onopen = () => console.log("Proxy Tunnel Connected");
         this.ws.onerror = (err) => console.error("Proxy Tunnel Error", err);
     }
 

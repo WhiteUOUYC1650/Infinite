@@ -32,8 +32,8 @@ export function BypassOverlay({ onRetry }: { onRetry: () => void }) {
     const handleConnectProxy = async () => {
         setIsConnectingProxy(true);
         try {
-            // We use a predefined relay URL or build one based on the white domain
-            const relayUrl = 'ws://relay.infinite.white'; // Example
+            // Using wss:// protocol for secure connection on HTTPS pages
+            const relayUrl = 'wss://relay.infinite.white'; 
             await proxyService.connect(relayUrl, domain);
             // After connection logic, we would trigger a refresh or state change in page.tsx
             onRetry(); 
