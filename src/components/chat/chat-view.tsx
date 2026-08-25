@@ -232,7 +232,7 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
     }
 };
 
-const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
+const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, onChannelClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, onChannelClick: (channelId: string) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
     const { t } = useLanguage(); const db = useFirestore(); 
     const isChannelPost = !!message.fromChannelId;
     const alignRight = !isChannelPost && isCurrentUser && message.type !== 'announcement' && chatType !== 'channel';
@@ -315,16 +315,24 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const displayName = isChannelPost ? message.senderName : (message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name));
     const displayAvatar = isChannelPost ? message.senderAvatar : (message.type === 'announcement' ? message.senderAvatar : sender?.avatar);
     
+    const handleSenderClick = () => {
+        if (isChannelPost && message.fromChannelId) {
+            onChannelClick(message.fromChannelId);
+        } else if (!isChannelPost && sender && !sender.isDeleted && !isCurrentUser) {
+            onAvatarClick(sender);
+        }
+    };
+
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
                 <div className="w-10 h-10 flex-shrink-0">
-                    <button onClick={() => !isChannelPost && sender && onAvatarClick(sender)} disabled={isCurrentUser || isChannelPost || (sender && !!sender.isDeleted)}><UserAvatarWithStatus user={isChannelPost ? ({ id: 'channel', name: displayName, avatar: displayAvatar } as any) : (message.type === 'announcement' ? { id: 'bot', name: displayName, avatar: displayAvatar, isBot: true } as any : sender!)} /></button>
+                    <button onClick={handleSenderClick}><UserAvatarWithStatus user={isChannelPost ? ({ id: 'channel', name: displayName, avatar: displayAvatar } as any) : (message.type === 'announcement' ? { id: 'bot', name: displayName, avatar: displayAvatar, isBot: true } as any : sender!)} /></button>
                 </div>
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-primary-foreground shadow-sm" : "bg-card text-card-foreground shadow-sm"), isCircleComplete ? "rounded-full" : (alignRight ? "rounded-lg rounded-br-none" : "rounded-lg rounded-bl-none"), !isCircleComplete && "px-2 pb-1 pt-1.5", "max-w-[85%] md:max-w-[70%]", glassEffect && "glass-msg", glassEffect && alignRight && "align-right")}>
                 {isChannelPost && <div className="absolute -top-3 -right-1 z-10 flex items-center bg-background/50 backdrop-blur-md px-1.5 rounded-full border border-primary/20 shadow-sm pointer-events-none"><span className="text-[8px] font-black uppercase tracking-tighter text-primary/80">{t('channel_badge')}</span></div>}
-                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5"><span className="truncate">{displayName}</span>{(isChannelPost && chat.link === '/C/Infinite') && <VerifiedBadge className='w-3 h-3' />}{(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3' />}</div>)}
+                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div onClick={handleSenderClick} className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5 cursor-pointer hover:opacity-80"><span className="truncate">{displayName}</span>{(isChannelPost && chat.link === '/C/Infinite') && <VerifiedBadge className='w-3 h-3' />}{(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3' />}</div>)}
                 {message.replyTo && !isCircleComplete && (<div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}><p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p><p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p></div>)}
                 {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} alt="Message" /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={message.videoMimeType && message.videoMimeType.includes('mp4') ? `${mediaUrl}#t=0.1` : mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
@@ -504,8 +512,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
         if (item.type === 'channel' && item.discussionChatId) {
             const discRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-            await setDoc(discRef, { ...data, fromChannelId: item.id, channelMessageId: mref.id });
-            await updateDoc(doc(db, 'chats', item.discussionChatId), { lastMessage: { id: discRef.id, content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''), senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+            // Mirror message but set identity as the channel
+            await setDoc(discRef, { 
+                ...data, 
+                fromChannelId: item.id, 
+                channelMessageId: mref.id,
+                senderName: item.name,
+                senderAvatar: item.avatar || null
+            });
+            await updateDoc(doc(db, 'chats', item.discussionChatId), { 
+                lastMessage: { 
+                    id: discRef.id, 
+                    content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''), 
+                    senderId: item.id, 
+                    senderName: item.name, 
+                    timestamp: Timestamp.now() 
+                } 
+            });
         }
 
         let lastMsgContent = finalC.trim();
@@ -545,6 +568,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const isOfficialBot = otherUser?.username === '@Infinite' || otherUser?.username === '@InfiniteBot' || item.link === '/B/Infinite';
   const showStartButton = !messagesLoading && isDM && otherUser?.isBot && !isOfficialBot && (!messages || messages.length === 0);
 
+  const handleOpenChannelProfile = async (channelId: string) => {
+    if (!db) return;
+    try {
+        const snap = await getDoc(doc(db, 'chats', channelId));
+        if (snap.exists()) {
+            const channelData = { id: snap.id, ...snap.data() } as PopulatedChat;
+            onSelectChat(channelData);
+            // Optionally close current view or handle layered navigation
+            // For now, we reuse the existing select logic which triggers view change
+        }
+    } catch (e) { console.error(e); }
+  };
+
   const headerContent = (
     <div className={cn("flex items-center w-full transition-all duration-300 gap-2", experimentalDesign ? "h-14 px-1" : "p-2 h-14")}>
         <div className={cn(experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center", experimentalDesign && !glassEffect && "bg-card/40")}>
@@ -580,7 +616,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             {messages?.map((m, i) => {
                 const msgDate = getSafeDate(m.timestamp); const prevMsg = messages[i - 1]; const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
                 let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
-                return (<React.Fragment key={m.id}>{showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} /></React.Fragment>);
+                return (<React.Fragment key={m.id}>{showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} onChannelClick={handleOpenChannelProfile} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} /></React.Fragment>);
             })}
             <div className={cn("shrink-0 pointer-events-none", (experimentalDesign || glassEffect) ? "h-20" : "h-2")} aria-hidden="true" />
           </div>
@@ -647,19 +683,26 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         placeholder={item.type === 'channel' ? t('publish_placeholder') : t('message_placeholder')} 
                         value={messageContent} 
                         onChange={(e) => setMessageContent(e.target.value)} 
+                        onInput={(e) => {
+                            const target = e.currentTarget;
+                            target.style.height = '44px';
+                            const newHeight = Math.min(target.scrollHeight, window.innerHeight / 3);
+                            target.style.height = `${newHeight}px`;
+                        }}
                         onKeyDown={(e) => { 
                             if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { 
                                 e.preventDefault(); 
                                 handleSendMessage(); 
+                                e.currentTarget.style.height = '44px';
                             } 
                         }} 
                         className={cn(
-                            "min-h-[44px] h-[44px] max-h-32 py-3 resize-none border rounded-2xl transition-all duration-300", 
+                            "min-h-[44px] h-[44px] max-h-[33vh] py-3 resize-none border rounded-2xl transition-all duration-75 overflow-y-auto no-scrollbar", 
                             (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                         )} 
                         maxLength={1600} 
                     />
-                    <div className="flex items-center gap-1.5 shrink-0 h-[44px]">
+                    <div className="flex items-center gap-1.5 shrink-0 h-[44px] self-end">
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button 
