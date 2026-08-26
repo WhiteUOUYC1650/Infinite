@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -669,6 +668,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         onChange={(e) => setMessageContent(e.target.value)} 
                         onInput={(e) => {
                             const target = e.currentTarget;
+                            // Pre-reset to 40px (min-height) to force recalculation of scrollHeight
                             target.style.height = '40px'; 
                             const scrollHeight = target.scrollHeight;
                             const finalHeight = Math.min(Math.max(scrollHeight, 40), window.innerHeight / 3);

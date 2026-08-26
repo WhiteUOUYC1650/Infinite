@@ -23,7 +23,7 @@ export function BypassOverlay({ onRetry, onBypassSuccess }: { onRetry: () => voi
         setStatus('idle');
         setError(null);
         try {
-            // Using no-cors to bypass CORS blocks for testing reachability
+            // Using no-cors to check if the "white" domain is reachable
             await fetch(`https://${domain}`, { mode: 'no-cors' });
             setStatus('ok');
         } catch (e) {
@@ -37,18 +37,18 @@ export function BypassOverlay({ onRetry, onBypassSuccess }: { onRetry: () => voi
         setIsConnectingProxy(true);
         setError(null);
         try {
-            // Using wss:// protocol for secure connection on HTTPS pages
+            // Stealth logic: We are masking our traffic as if it's going to the whitelisted domain.
             const relayUrl = 'wss://relay.infinite.white'; 
             await proxyService.connect(relayUrl, domain);
             
-            toast({ title: t('dm_success'), description: "Proxy tunnel established!" });
+            toast({ title: t('dm_success'), description: `Traffic masked under ${domain}!` });
             
             if (onBypassSuccess) {
                 onBypassSuccess();
             }
         } catch (e: any) {
             console.error(e);
-            setError(e.message || "Failed to establish proxy connection.");
+            setError(e.message || "Failed to establish masked tunnel.");
         } finally {
             setIsConnectingProxy(false);
         }
@@ -62,7 +62,7 @@ export function BypassOverlay({ onRetry, onBypassSuccess }: { onRetry: () => voi
                 </div>
                 
                 <div className="space-y-2">
-                    <h2 className="text-3xl font-black font-headline tracking-tighter">Infinite Bypass</h2>
+                    <h2 className="text-3xl font-black font-headline tracking-tighter">Infinite Stealth</h2>
                     <p className="text-muted-foreground text-sm leading-relaxed font-medium">
                         {t('bypass_description')}
                     </p>
