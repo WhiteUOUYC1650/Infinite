@@ -19,28 +19,55 @@ class ProxyService {
         return ProxyService.instance;
     }
 
-    public async connect(proxyUrl: string, whiteDomain: string = 'vk.com') {
+    public async connect(proxyUrl: string, whiteDomain: string = 'vk.com'): Promise<void> {
         if (this.ws) this.ws.close();
 
-        const token = await generateHmacToken();
-        let wsUrl = `${proxyUrl}/tunnel?auth=${encodeURIComponent(token)}&mask=${whiteDomain}`;
+        return new Promise(async (resolve, reject) => {
+            try {
+                const token = await generateHmacToken();
+                let wsUrl = `${proxyUrl}/tunnel?auth=${encodeURIComponent(token)}&mask=${whiteDomain}`;
 
-        // Ensure secure websocket on HTTPS pages to prevent Mixed Content errors
-        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && wsUrl.startsWith('ws:')) {
-            wsUrl = wsUrl.replace('ws:', 'wss:');
-        }
+                // Ensure secure websocket on HTTPS pages to prevent Mixed Content errors
+                if (typeof window !== 'undefined' && window.location.protocol === 'https:' && wsUrl.startsWith('ws:')) {
+                    wsUrl = wsUrl.replace('ws:', 'wss:');
+                }
 
-        this.ws = new WebSocket(wsUrl);
+                const socket = new WebSocket(wsUrl);
+                this.ws = socket;
 
-        this.ws.onmessage = async (event) => {
-            const decrypted = await decryptPacket(event.data);
-            if (decrypted) {
-                this.listeners.forEach(l => l(decrypted));
+                // Timeout for connection
+                const timeout = setTimeout(() => {
+                    socket.close();
+                    reject(new Error("Connection timed out."));
+                }, 10000);
+
+                socket.onopen = () => {
+                    clearTimeout(timeout);
+                    console.log("Proxy Tunnel Connected");
+                    resolve();
+                };
+
+                socket.onmessage = async (event) => {
+                    const decrypted = await decryptPacket(event.data);
+                    if (decrypted) {
+                        this.listeners.forEach(l => l(decrypted));
+                    }
+                };
+
+                socket.onerror = (err) => {
+                    clearTimeout(timeout);
+                    console.error("Proxy Tunnel Error", err);
+                    reject(new Error("Failed to connect to proxy server."));
+                };
+                
+                socket.onclose = () => {
+                    console.log("Proxy Tunnel Closed");
+                };
+
+            } catch (e) {
+                reject(e);
             }
-        };
-
-        this.ws.onopen = () => console.log("Proxy Tunnel Connected");
-        this.ws.onerror = (err) => console.error("Proxy Tunnel Error", err);
+        });
     }
 
     public async send(payload: any) {

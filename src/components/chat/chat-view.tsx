@@ -668,11 +668,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         onChange={(e) => setMessageContent(e.target.value)} 
                         onInput={(e) => {
                             const target = e.currentTarget;
-                            target.style.height = '1px'; 
+                            target.style.height = '40px'; 
                             const scrollHeight = target.scrollHeight;
-                            const minHeight = 40;
-                            const maxHeight = window.innerHeight / 3;
-                            const finalHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+                            const finalHeight = Math.min(Math.max(scrollHeight, 40), window.innerHeight / 3);
                             target.style.height = `${finalHeight}px`;
                         }}
                         onKeyDown={(e) => { 
@@ -683,7 +681,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                             } 
                         }} 
                         className={cn(
-                            "min-h-[40px] max-h-[33vh] py-[9px] resize-none border rounded-2xl transition-all duration-75 overflow-y-auto no-scrollbar", 
+                            "h-[40px] max-h-[33vh] py-[10px] leading-[20px] resize-none border rounded-2xl transition-all duration-75 overflow-y-auto no-scrollbar", 
                             (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                         )} 
                         maxLength={1600} 

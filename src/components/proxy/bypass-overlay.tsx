@@ -24,7 +24,7 @@ export function BypassOverlay({ onRetry, onBypassSuccess }: { onRetry: () => voi
         setError(null);
         try {
             // Using no-cors to bypass CORS blocks for testing reachability
-            const resp = await fetch(`https://${domain}`, { mode: 'no-cors' });
+            await fetch(`https://${domain}`, { mode: 'no-cors' });
             setStatus('ok');
         } catch (e) {
             setStatus('blocked');
@@ -45,8 +45,6 @@ export function BypassOverlay({ onRetry, onBypassSuccess }: { onRetry: () => voi
             
             if (onBypassSuccess) {
                 onBypassSuccess();
-            } else {
-                onRetry();
             }
         } catch (e: any) {
             console.error(e);
