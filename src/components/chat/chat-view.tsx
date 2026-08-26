@@ -324,7 +324,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     };
 
     return (
-        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
+        <div className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
             {showSenderAvatar ? (
                 <div className="w-10 h-10 flex-shrink-0">
                     <button onClick={handleSenderClick}><UserAvatarWithStatus user={isChannelPost ? ({ id: 'channel', name: displayName, avatar: displayAvatar } as any) : (message.type === 'announcement' ? { id: 'bot', name: displayName, avatar: displayAvatar, isBot: true } as any : sender!)} /></button>
@@ -467,7 +467,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
-    setIsSending(true); if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '44px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    setIsSending(true); if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '40px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], ...(customPoll && { poll: customPoll }), ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }) };
@@ -541,22 +541,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } finally { 
         setIsSending(false); 
     }
-  };
-  
-  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
-    if (!db || blob.size < 500) return; setIsSending(true);
-    try {
-      const reader = new FileReader(); reader.readAsDataURL(blob);
-      reader.onload = async () => {
-        if (isRecordingCanceledRef.current) return;
-        const base64 = (reader.result as string).split(',')[1]; const chunkCol = type === 'voice' ? 'voiceChunks' : 'circleChunks';
-        const mref = doc(collection(db, chunkCol)); await setDoc(mref, { data: base64, part: 0, senderId: currentUser.uid });
-        const ts = serverTimestamp(); const msgData: any = { senderId: currentUser.uid, timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, content: '' };
-        if (type === 'voice') { msgData.voiceMimeType = blob.type; msgData.voiceStatus = 'complete'; msgData.voiceChunkIds = [mref.id]; msgData.voiceDuration = recordingDuration; } 
-        else { msgData.circleMimeType = blob.type; msgData.circleStatus = 'complete'; msgData.circleChunkIds = [mref.id]; msgData.circleDuration = recordingDuration; }
-        const msgRef = doc(collection(db, 'chats', item.id, 'messages')); await setDoc(msgRef, msgData); await updateDoc(doc(db, 'chats', item.id), { lastMessage: { ...msgData, id: msgRef.id, content: type === 'voice' ? t('voice_message_short') : '[Video Circle]', timestamp: Timestamp.now() } });
-      };
-    } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
   
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid!)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${e}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
@@ -684,24 +668,27 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         onChange={(e) => setMessageContent(e.target.value)} 
                         onInput={(e) => {
                             const target = e.currentTarget;
-                            target.style.height = 'auto'; // Reset to auto to calculate true scrollHeight
-                            const newHeight = Math.min(target.scrollHeight, window.innerHeight / 3);
-                            target.style.height = `${Math.max(newHeight, 44)}px`;
+                            target.style.height = '1px'; 
+                            const scrollHeight = target.scrollHeight;
+                            const minHeight = 40;
+                            const maxHeight = window.innerHeight / 3;
+                            const finalHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+                            target.style.height = `${finalHeight}px`;
                         }}
                         onKeyDown={(e) => { 
                             if (sendOnEnter && e.key === 'Enter' && !e.shiftKey) { 
                                 e.preventDefault(); 
                                 handleSendMessage(); 
-                                e.currentTarget.style.height = '44px';
+                                e.currentTarget.style.height = '40px';
                             } 
                         }} 
                         className={cn(
-                            "min-h-[44px] h-[44px] max-h-[33vh] py-3 resize-none border rounded-2xl transition-all duration-75 overflow-y-auto no-scrollbar", 
+                            "min-h-[40px] max-h-[33vh] py-[9px] resize-none border rounded-2xl transition-all duration-75 overflow-y-auto no-scrollbar", 
                             (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                         )} 
                         maxLength={1600} 
                     />
-                    <div className="flex items-center gap-1.5 shrink-0 h-[44px] self-end">
+                    <div className="flex items-center gap-1.5 shrink-0 h-[40px] self-end">
                         <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                                 <Button 

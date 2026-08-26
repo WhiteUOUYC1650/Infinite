@@ -297,6 +297,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                               <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_languages_desc')}</p>
                           </div>
                       </div>
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-gray-500/10 flex items-center justify-center text-gray-600 shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_minor_changes')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">UI fixes and stability improvements.</p>
+                          </div>
+                      </div>
                   </div>
               </div>
           );
