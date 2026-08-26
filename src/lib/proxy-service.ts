@@ -1,3 +1,4 @@
+
 'use client';
 /**
  * @fileOverview Singleton service for masked WebSocket communication (WEB Proxy).
@@ -20,7 +21,9 @@ class ProxyService {
     }
 
     public async connect(proxyUrl: string, whiteDomain: string = 'vk.com'): Promise<void> {
-        if (this.ws) this.ws.close();
+        if (this.ws) {
+            try { this.ws.close(); } catch (e) {}
+        }
 
         return new Promise(async (resolve, reject) => {
             try {
@@ -32,13 +35,16 @@ class ProxyService {
                     wsUrl = wsUrl.replace('ws:', 'wss:');
                 }
 
+                console.log(`Connecting to proxy: ${wsUrl}`);
                 const socket = new WebSocket(wsUrl);
                 this.ws = socket;
 
                 // Timeout for connection
                 const timeout = setTimeout(() => {
-                    socket.close();
-                    reject(new Error("Connection timed out."));
+                    if (socket.readyState !== WebSocket.OPEN) {
+                        socket.close();
+                        reject(new Error("Connection timed out."));
+                    }
                 }, 10000);
 
                 socket.onopen = () => {
@@ -56,15 +62,16 @@ class ProxyService {
 
                 socket.onerror = (err) => {
                     clearTimeout(timeout);
-                    console.error("Proxy Tunnel Error", err);
-                    reject(new Error("Failed to connect to proxy server."));
+                    console.error("Proxy Tunnel Error:", err);
+                    reject(new Error("Failed to connect to proxy server. Please check the address or your network."));
                 };
                 
-                socket.onclose = () => {
-                    console.log("Proxy Tunnel Closed");
+                socket.onclose = (event) => {
+                    console.log("Proxy Tunnel Closed", event.code, event.reason);
                 };
 
             } catch (e) {
+                console.error("Proxy Initialization Error:", e);
                 reject(e);
             }
         });
