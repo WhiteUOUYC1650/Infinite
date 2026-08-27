@@ -10,14 +10,13 @@ let firestore: Firestore;
 function initializeFirebase() {
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
-    // Initialize Firestore with persistent cache, but without the multiple tab manager 
-    // to avoid assertion errors in specific browser/workstation environments.
+    // Initialize Firestore with persistent cache, but wrap in try-catch to handle IndexedDB corruption gracefully
     try {
       firestore = initializeFirestore(app, {
         localCache: persistentLocalCache({})
       });
     } catch (e) {
-      console.warn("Firestore persistence failed to initialize, falling back to default", e);
+      console.warn("Firestore persistent cache failed (possible IndexedDB corruption), falling back to default.", e);
       firestore = getFirestore(app);
     }
   } else {
