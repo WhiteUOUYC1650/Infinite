@@ -682,7 +682,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                             } 
                         }} 
                         className={cn(
-                            "min-h-10 h-10 max-h-[33vh] py-[10px] leading-[20px] resize-none border rounded-2xl transition-all duration-75 overflow-y-auto no-scrollbar", 
+                            "min-h-10 h-10 max-h-[33vh] py-[10px] leading-[20px] resize-none border rounded-2xl overflow-y-auto no-scrollbar", 
                             (experimentalDesign || glassEffect) ? "glass-input backdrop-blur-xl bg-card/40 border-white/20" : "bg-muted/50 border-input"
                         )} 
                         maxLength={1600} 
