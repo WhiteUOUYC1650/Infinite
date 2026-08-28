@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -32,11 +31,13 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-context';
-import { Loader2, Dices, ArrowLeft, X, ShoppingBag, Coins, Sparkles, MessageCircle, Megaphone, Users } from 'lucide-react';
+import { Loader2, Dices, ArrowLeft, X, ShoppingBag, Coins, Sparkles, MessageCircle, Megaphone, Users, ListTodo, Plus, Trash2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
+import { Switch } from './ui/switch';
+import { ScrollArea } from './ui/scroll-area';
 
 const dmFormSchema = z.object({
   username: z.string()
@@ -49,6 +50,7 @@ const groupFormSchema = z.object({
   link: z.string().min(4, { message: 'Link must be at least 4 characters.'})
         .refine(value => !/\s/.test(value), { message: 'Link must not contain spaces.'})
         .refine(value => /^[a-zA-Z0-9_]+$/.test(value), { message: 'Link can only contain English letters, numbers, and underscores.'}),
+  isSupergroup: z.boolean().default(false),
 });
 
 const channelFormSchema = z.object({
@@ -92,6 +94,11 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const [linkForSale, setLinkOnSale] = useState<{ price: number, link: string } | null>(null);
   const [showBuyLinkDialog, setShowBuyLinkDialog] = useState(false);
 
+  // Topics for Supergroup
+  const [topics, setTopics] = useState<{ name: string, icon: string }[]>([]);
+  const [newTopicName, setNewTopicName] = useState('');
+  const [newTopicIcon, setNewTopicIcon] = useState('💬');
+
   const groupDebounceTimeout = useRef<NodeJS.Timeout>();
   const channelDebounceTimeout = useRef<NodeJS.Timeout>();
 
@@ -103,7 +110,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   const groupForm = useForm<z.infer<typeof groupFormSchema>>({
     resolver: zodResolver(groupFormSchema),
-    defaultValues: { name: '', link: '' },
+    defaultValues: { name: '', link: '', isSupergroup: false },
     mode: 'onChange',
   });
 
@@ -115,6 +122,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
 
   const dmUsernameValue = dmForm.watch('username');
   const groupLinkValue = groupForm.watch('link');
+  const groupIsSupergroupValue = groupForm.watch('isSupergroup');
   const channelLinkValue = channelForm.watch('link');
 
   useEffect(() => {
@@ -243,6 +251,16 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     finally { setIsCreating(false); }
   };
 
+  const addTopic = () => {
+      if (!newTopicName.trim()) return;
+      setTopics([...topics, { name: newTopicName.trim(), icon: newTopicIcon }]);
+      setNewTopicName('');
+  };
+
+  const removeTopic = (index: number) => {
+      setTopics(topics.filter((_, i) => i !== index));
+  };
+
   const onGroupSubmit = async (values: z.infer<typeof groupFormSchema>) => {
     if (!db || isCreating) return;
     setIsCreating(true);
@@ -253,8 +271,28 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             const linkDoc = await transaction.get(linkRef);
             if (linkDoc.exists()) throw new Error(t('link_taken'));
             const newChatRef = doc(collection(db, "chats"));
-            const newGroup = { type: 'group', name: values.name, members: [currentUser.uid], icon: 'Users', ownerId: currentUser.uid, link: linkWithPrefix, unreadCounts: { [currentUser.uid]: 0 } };
-            transaction.set(newChatRef, newGroup);
+            
+            const groupData: any = { 
+                type: 'group', 
+                name: values.name, 
+                members: [currentUser.uid], 
+                icon: 'Users', 
+                ownerId: currentUser.uid, 
+                link: linkWithPrefix, 
+                unreadCounts: { [currentUser.uid]: 0 },
+                isSupergroup: values.isSupergroup
+            };
+
+            if (values.isSupergroup) {
+                // Ensure there's always a general topic
+                const finalTopics = [{ id: 'general', name: t('general_topic'), icon: '💬', createdAt: Timestamp.now() }];
+                topics.forEach(t => {
+                    finalTopics.push({ id: Math.random().toString(36).substring(7), name: t.name, icon: t.icon, createdAt: Timestamp.now() });
+                });
+                groupData.topics = finalTopics;
+            }
+
+            transaction.set(newChatRef, groupData);
             transaction.set(linkRef, { chatId: newChatRef.id, ownerId: currentUser.uid });
             if (onChatCreated) onChatCreated(newChatRef.id);
         });
@@ -302,7 +340,52 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
                     <TabsTrigger value="channel" className="rounded-lg">{t('new_channel_tab')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="dm"><Form {...dmForm}><form onSubmit={dmForm.handleSubmit(onDmSubmit)} className="space-y-4 pt-2"><FormField control={dmForm.control} name="username" render={({ field }) => (<FormItem><FormLabel>{t('username_label')}</FormLabel><FormControl><Input placeholder={t('username_placeholder_short')} {...field} /></FormControl><FormMessage /></FormItem>)} /><div className='flex justify-end'><Button type="submit" disabled={isCreating || isCheckingUsername || !usernameExists} className="rounded-xl px-8 h-12 font-bold">{isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('start_chat')}</Button></div></form></Form></TabsContent>
-                <TabsContent value="group"><Form {...groupForm}><form onSubmit={groupForm.handleSubmit(onGroupSubmit)} className="space-y-4 pt-2"><FormField control={groupForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>{t('group_name_label')}</FormLabel><FormControl><Input placeholder={t('group_name_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>)} /><FormField control={groupForm.control} name="link" render={({ field }) => (<FormItem><FormLabel>{t('group_link_label')}</FormLabel><div className="flex items-center gap-2"><div className="relative flex-1"><span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">/G/</span><FormControl><Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} /></FormControl></div><Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink} className="rounded-lg h-10 w-10">{isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}</Button></div><FormMessage /></FormItem>)} />{linkForSale && (<button type="button" onClick={() => setShowBuyLinkDialog(true)} className="w-full p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between text-left animate-in zoom-in group hover:bg-amber-500/20 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><ShoppingBag className="h-5 w-5" /></div><div><p className="text-xs font-bold text-amber-700 leading-tight">{t('link_on_sale', { amount: linkForSale.price })}</p><p className="text-[10px] uppercase font-black tracking-widest text-amber-600/60 mt-0.5">{t('buy_link_button')}</p></div></div><Coins className="h-5 w-5 text-amber-500" /></button>)}<div className='flex justify-end'><Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid} className="rounded-xl px-8 h-12 font-bold">{isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('create_group')}</Button></div></form></Form></TabsContent>
+                <TabsContent value="group">
+                    <Form {...groupForm}>
+                        <form onSubmit={groupForm.handleSubmit(onGroupSubmit)} className="space-y-4 pt-2">
+                            <FormField control={groupForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>{t('group_name_label')}</FormLabel><FormControl><Input placeholder={t('group_name_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={groupForm.control} name="link" render={({ field }) => (<FormItem><FormLabel>{t('group_link_label')}</FormLabel><div className="flex items-center gap-2"><div className="relative flex-1"><span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">/G/</span><FormControl><Input placeholder={t('group_link_placeholder')} className="pl-9" {...field} /></FormControl></div><Button type="button" variant="outline" size="icon" onClick={handleGenerateGroupLink} disabled={isGeneratingLink} className="rounded-lg h-10 w-10">{isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}</Button></div><FormMessage /></FormItem>)} />
+                            
+                            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <Label className="font-bold">{t('supergroup_label')}</Label>
+                                        <p className="text-[10px] text-muted-foreground leading-tight">{t('supergroup_desc')}</p>
+                                    </div>
+                                    <FormField control={groupForm.control} name="isSupergroup" render={({ field }) => (
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    )} />
+                                </div>
+
+                                {groupIsSupergroupValue && (
+                                    <div className="space-y-3 animate-in fade-in zoom-in duration-300">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('topics')}</Label>
+                                        <div className="flex gap-2">
+                                            <Input value={newTopicIcon} onChange={e => setNewTopicIcon(e.target.value)} className="w-12 text-center h-10 px-0 rounded-xl bg-muted/50 border-none" maxLength={2} />
+                                            <Input value={newTopicName} onChange={e => setNewTopicName(e.target.value)} placeholder={t('topic_name_label')} className="flex-1 h-10 rounded-xl bg-muted/50 border-none font-bold text-xs" />
+                                            <Button type="button" size="icon" onClick={addTopic} className="rounded-xl h-10 w-10"><Plus className="h-4 w-4" /></Button>
+                                        </div>
+                                        {topics.length > 0 && (
+                                            <ScrollArea className="max-h-32">
+                                                <div className="space-y-1">
+                                                    {topics.map((topic, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between p-2 bg-background rounded-lg border text-xs">
+                                                            <div className="flex items-center gap-2"><span>{topic.icon}</span><span className="font-bold">{topic.name}</span></div>
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeTopic(idx)} className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {linkForSale && (<button type="button" onClick={() => setShowBuyLinkDialog(true)} className="w-full p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between text-left animate-in zoom-in group hover:bg-amber-500/20 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><ShoppingBag className="h-5 w-5" /></div><div><p className="text-xs font-bold text-amber-700 leading-tight">{t('link_on_sale', { amount: linkForSale.price })}</p><p className="text-[10px] uppercase font-black tracking-widest text-amber-600/60 mt-0.5">{t('buy_link_button')}</p></div></div><Coins className="h-5 w-5 text-amber-500" /></button>)}
+                            <div className='flex justify-end'><Button type="submit" disabled={isCreating || isCheckingGroupLink || !groupForm.formState.isValid} className="rounded-xl px-8 h-12 font-bold">{isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('create_group')}</Button></div>
+                        </form>
+                    </Form>
+                </TabsContent>
                 <TabsContent value="channel"><Form {...channelForm}><form onSubmit={channelForm.handleSubmit(onChannelSubmit)} className="space-y-4 pt-2"><FormField control={channelForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>{t('channel_name_label')}</FormLabel><FormControl><Input placeholder={t('channel_name_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>)} /><FormField control={channelForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('description_label')}</FormLabel><FormControl><Textarea placeholder={t('description_placeholder')} {...field} className="rounded-xl bg-muted/50 border-none min-h-[100px]" /></FormControl><FormMessage /></FormItem>)} /><FormField control={channelForm.control} name="link" render={({ field }) => (<FormItem><FormLabel>{t('unique_link_label')}</FormLabel><FormControl><div className="relative"><span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">/C/</span><Input placeholder={t('link_placeholder')} className="pl-9" {...field} /></div></FormControl><FormMessage /></FormItem>)} />{linkForSale && (<button type="button" onClick={() => setShowBuyLinkDialog(true)} className="w-full p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between text-left animate-in zoom-in group hover:bg-amber-500/20 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform"><ShoppingBag className="h-5 w-5" /></div><div><p className="text-xs font-bold text-amber-700 leading-tight">{t('link_on_sale', { amount: linkForSale.price })}</p><p className="text-[10px] uppercase font-black tracking-widest text-amber-600/60 mt-0.5">{t('buy_link_button')}</p></div></div><Coins className="h-5 w-5 text-amber-500" /></button>)}<div className='flex justify-end'><Button type="submit" disabled={isCreating || isCheckingChannelLink || !channelForm.formState.isValid} className="rounded-xl px-8 h-12 font-bold">{isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('create_channel')}</Button></div></form></Form></TabsContent>
             </Tabs>
         </div>

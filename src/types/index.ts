@@ -115,6 +115,7 @@ export type Message = {
   reactions?: Record<string, string[]>; 
   poll?: Poll;
   fromChannelId?: string;
+  topicId?: string;
 };
 
 export type BotBlockType = 
@@ -229,6 +230,13 @@ export type MusicChunk = {
   senderId: string;
 };
 
+export type ChatTopic = {
+    id: string;
+    name: string;
+    icon?: string;
+    createdAt: Timestamp;
+};
+
 export type Chat = {
   id: string;
   type: "dm" | "group" | "channel";
@@ -243,6 +251,8 @@ export type Chat = {
   link?: string;
   discussionChatId?: string;
   allowedReactions?: string[]; 
+  isSupergroup?: boolean;
+  topics?: ChatTopic[];
 };
 
 export type ChatLink = {

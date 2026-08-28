@@ -252,6 +252,12 @@
         "discussionChatId": {
           "type": "string",
           "description": "The ID of the group chat linked to this channel for discussions."
+        },
+        "isSupergroup": {
+            "type": "boolean"
+        },
+        "topics": {
+            "type": "array"
         }
       },
       "required": ["type", "members"]
