@@ -606,6 +606,10 @@ export const translations = {
       'no_chats_to_apply': 'No eligible chats found.',
       'link_transfer_success': 'Link purchased and transferred!',
       'swap_not_possible_general': 'Cannot swap links for General Chat.',
+      'wn_bug_fixes_title': 'Bug Fixes',
+      'wn_bug_fixes_desc': 'Improved UI responsiveness and fixed critical player issues.',
+      'wn_link_sale_title': 'Link Marketplace',
+      'wn_link_sale_desc': 'Ability to sell and purchase internal chat links using InfGold.',
     },
     ru: {
       'settings': 'Настройки',
@@ -1211,6 +1215,10 @@ export const translations = {
       'no_chats_to_apply': 'Подходящие чаты не найдены.',
       'link_transfer_success': 'Ссылка куплена и перенесена!',
       'swap_not_possible_general': 'Нельзя менять ссылку общего чата.',
+      'wn_bug_fixes_title': 'Исправления багов',
+      'wn_bug_fixes_desc': 'Оптимизирована работа интерфейса и исправлены ошибки плееров.',
+      'wn_link_sale_title': 'Продажа ссылок',
+      'wn_link_sale_desc': 'Появилась возможность продавать и покупать внутренние ссылки на чаты за InfGold.',
     },
     es: {
       'settings': 'Ajustes',
@@ -1245,6 +1253,10 @@ export const translations = {
       'infvid_title': 'InfVid',
       'infmusic_title': 'InfMusic',
       'infgames_title': 'InfGames',
+      'wn_bug_fixes_title': 'Corrección de errores',
+      'wn_bug_fixes_desc': 'Se mejoró la respuesta de la interfaz y se corrigieron errores en los reproductores.',
+      'wn_link_sale_title': 'Mercado de enlaces',
+      'wn_link_sale_desc': 'Ahora puedes vender y comprar enlaces internos de chats por InfGold.',
     },
     'pt-BR': {
       'settings': 'Configurações',
@@ -1279,6 +1291,10 @@ export const translations = {
       'infvid_title': 'InfVid',
       'infmusic_title': 'InfMusic',
       'infgames_title': 'InfGames',
+      'wn_bug_fixes_title': 'Correções de bugs',
+      'wn_bug_fixes_desc': 'Melhoria na fluidez da interface e correção de erros nos players.',
+      'wn_link_sale_title': 'Mercado de links',
+      'wn_link_sale_desc': 'Agora você pode vender e comprar links internos de chats por InfGold.',
     }
 };
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -32,7 +33,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -241,7 +242,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       switch(page) {
           case 'main': return (
               <div className="animate-in fade-in duration-300">
-                {(experimentalDesign || glassEffect) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div></div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
+                {(experimentalDesign || glassEffect) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} /><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div></div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
                 <div className={cn("border-t p-2 space-y-1", (experimentalDesign || glassEffect) && "mt-2")}>
                   <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
                   <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" glassEffect={glassEffect} />
@@ -277,31 +278,17 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><ShieldCheck className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><RefreshCw className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_bypass_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_bypass_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_bug_fixes_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_bug_fixes_desc')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><KeyRound className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0"><ShoppingBag className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_pin_lock_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_pin_lock_desc')}</p>
-                          </div>
-                      </div>
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><Languages className="h-6 w-6" /></div>
-                          <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_languages_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_languages_desc')}</p>
-                          </div>
-                      </div>
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-gray-500/10 flex items-center justify-center text-gray-600 shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
-                          <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_minor_changes')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">UI fixes and stability improvements.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_link_sale_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_link_sale_desc')}</p>
                           </div>
                       </div>
                   </div>
