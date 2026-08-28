@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "AppConfig": {
@@ -265,14 +264,6 @@
           "chatId": {
               "type": "string",
               "description": "The chat ID associated with this link."
-          },
-          "ownerId": {
-              "type": "string",
-              "description": "The owner of the chat this link points to."
-          },
-          "price": {
-              "type": "number",
-              "description": "The price of the link in InfGold if it is for sale."
           }
       },
       "required": ["chatId"]
@@ -288,6 +279,20 @@
           }
       },
       "required": ["botId"]
+    },
+    "CustomGame": {
+        "title": "Custom Game",
+        "description": "A block-based interactive game.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "ownerId": { "type": "string" },
+            "scripts": { "type": "array" },
+            "isActive": { "type": "boolean" },
+            "installs": { "type": "number" }
+        },
+        "required": ["name", "ownerId"]
     }
   },
   "auth": {
@@ -347,6 +352,12 @@
         "$ref": "#/backend/entities/BotLink"
       },
       "description": "Used to enforce unique links for bots."
+    },
+    "/customGames/{gameId}": {
+        "schema": {
+            "$ref": "#/backend/entities/CustomGame"
+        },
+        "description": "Stores custom block-based games."
     }
   }
 }

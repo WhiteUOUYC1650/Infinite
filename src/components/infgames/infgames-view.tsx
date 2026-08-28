@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/context/language-context';
-import { useFirestore } from '@/firebase';
-import { doc, updateDoc, increment } from 'firebase/firestore';
-import type { AuthenticatedUser } from '@/types';
-import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap, Smartphone, ShieldCheck, Lock, AlertTriangle, MessageCircle, X, Send } from 'lucide-react';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, where, orderBy, doc, updateDoc, increment, limit } from 'firebase/firestore';
+import type { AuthenticatedUser, CustomGame } from '@/types';
+import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap, Smartphone, ShieldCheck, Lock, AlertTriangle, MessageCircle, X, Send, Code2, LayoutGrid, Coins } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
@@ -16,13 +16,22 @@ import { useTheme } from '@/context/theme-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
 import { Capacitor } from '@capacitor/core';
+import { GameStudioView } from './game-studio-view';
+import { GamePlayer } from './game-player';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-type GameType = 'none' | 'gold_clicker' | 'max_simulator';
+type GameType = 'none' | 'gold_clicker' | 'max_simulator' | 'studio' | 'player';
 
 export function InfGamesView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
   const { t } = useLanguage();
   const { theme: colorTheme } = useTheme();
+  const db = useFirestore();
   const [selectedGame, setSelectedGame] = useState<GameType>('none');
+  const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
+  const [playingGameId, setPlayingGameId] = useState<string | null>(null);
+
+  const publicGamesQuery = useMemo(() => (db ? query(collection(db, 'customGames'), where('isActive', '==', true), orderBy('installs', 'desc'), limit(50)) : null), [db]);
+  const { data: publicGames } = useCollection<CustomGame>(publicGamesQuery);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -38,6 +47,9 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
   }, [selectedGame, onClose]);
 
   const renderContent = () => {
+    if (selectedGame === 'studio') return <GameStudioView currentUser={currentUser} onClose={() => setSelectedGame('none')} />;
+    if (selectedGame === 'player' && playingGameId) return <GamePlayer gameId={playingGameId} currentUser={currentUser} onBack={() => setSelectedGame('none')} />;
+    
     switch (selectedGame) {
       case 'gold_clicker':
         return <GoldClickerGame currentUser={currentUser} onBack={() => setSelectedGame('none')} />;
@@ -45,25 +57,54 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
         return <MaxSimulatorGame onBack={() => setSelectedGame('none')} />;
       default:
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto pb-[calc(2rem+env(safe-area-inset-bottom))] animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <GameCard 
-              title={t('game_gold_clicker')}
-              description={t('game_gold_clicker_desc')}
-              icon={MousePointer2}
-              color="bg-amber-500"
-              onClick={() => setSelectedGame('gold_clicker')}
-            />
-            <GameCard 
-              title={t('game_max_simulator')}
-              description={t('game_max_simulator_desc')}
-              icon={Smartphone}
-              color="bg-indigo-600"
-              onClick={() => setSelectedGame('max_simulator')}
-            />
-            <div className="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-muted-foreground/40 gap-4">
-                <Gamepad2 className="h-12 w-12" />
-                <p className="font-bold uppercase tracking-widest text-xs text-center">{t('placeholder_title')}</p>
+          <div className="max-w-7xl mx-auto space-y-8 pb-[calc(2rem+env(safe-area-inset-bottom))] animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between px-2">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full max-w-xs">
+                    <TabsList className="bg-muted/50 p-1 rounded-xl w-full">
+                        <TabsTrigger value="all" className="rounded-lg font-black text-[10px] uppercase tracking-widest flex-1">{t('all_videos')}</TabsTrigger>
+                        <TabsTrigger value="my" className="rounded-lg font-black text-[10px] uppercase tracking-widest flex-1">{t('my_games')}</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                <Button variant="ghost" onClick={() => setSelectedGame('studio')} className="rounded-full gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-primary/10 hover:text-primary transition-all">
+                    <Code2 className="h-4 w-4" />
+                    <span>Studio</span>
+                </Button>
             </div>
+
+            {activeTab === 'all' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <GameCard 
+                        title={t('game_gold_clicker')}
+                        description={t('game_gold_clicker_desc')}
+                        icon={MousePointer2}
+                        color="bg-amber-500"
+                        onClick={() => setSelectedGame('gold_clicker')}
+                    />
+                    <GameCard 
+                        title={t('game_max_simulator')}
+                        description={t('game_max_simulator_desc')}
+                        icon={Smartphone}
+                        color="bg-indigo-600"
+                        onClick={() => setSelectedGame('max_simulator')}
+                    />
+                    {publicGames?.map(game => (
+                        <GameCard 
+                            key={game.id}
+                            title={game.name}
+                            description={game.description || 'Custom block-based logic game.'}
+                            icon={LayoutGrid}
+                            color="bg-primary"
+                            onClick={() => { setPlayingGameId(game.id); setSelectedGame('player'); }}
+                        />
+                    ))}
+                    <div className="border-2 border-dashed rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-muted-foreground/30 gap-4 min-h-[200px]">
+                        <Gamepad2 className="h-12 w-12" />
+                        <p className="font-bold uppercase tracking-widest text-[10px] text-center">{t('placeholder_title')}</p>
+                    </div>
+                </div>
+            ) : (
+                <GameStudioView currentUser={currentUser} onClose={() => setActiveTab('all')} />
+            )}
           </div>
         );
     }
@@ -82,9 +123,9 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
             <div className="flex items-center gap-2 overflow-hidden">
                 <Gamepad2 className="h-8 w-8 text-primary shrink-0" />
                 <h1 className="text-xl font-bold font-headline truncate">
-                    {selectedGame === 'none' ? t('infgames_title') : t(`game_${selectedGame}` as any)}
+                    {selectedGame === 'none' ? t('infgames_title') : (selectedGame === 'studio' ? t('game_studio_title') : t(`game_${selectedGame}` as any))}
                 </h1>
-                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0">BETA</Badge>
+                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0 font-black">1.4</Badge>
             </div>
         </div>
       </header>
@@ -97,10 +138,10 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
 
       {selectedGame === 'none' && (
         <div className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-20 pointer-events-none">
-            <div className="bg-card/80 backdrop-blur-xl border-2 border-primary/20 p-4 rounded-3xl shadow-2xl flex flex-col items-end gap-1 animate-in slide-in-from-bottom-4 duration-500">
-                <p className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">{t('inf_gold_balance')}</p>
-                <div className="flex items-center gap-2 text-2xl font-black text-primary">
-                    <InfGoldIcon className="w-6 h-6 experimental-glow" />
+            <div className="bg-card/80 backdrop-blur-xl border-2 border-primary/20 p-5 rounded-[2rem] shadow-2xl flex flex-col items-end gap-1 animate-in slide-in-from-bottom-4 duration-500">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('inf_gold_balance')}</p>
+                <div className="flex items-center gap-3 text-3xl font-black text-primary">
+                    <InfGoldIcon className="w-7 h-7 experimental-glow" />
                     <span>{Math.round(currentUser.infGoldBalance || 0)}</span>
                 </div>
             </div>
@@ -113,16 +154,16 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
 function GameCard({ title, description, icon: Icon, color, onClick }: { title: string, description: string, icon: any, color: string, onClick: () => void }) {
     const { t } = useLanguage();
     return (
-        <div className="group bg-card border rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col gap-4 overflow-hidden relative" onClick={onClick}>
-            <div className={cn("absolute -top-10 -right-10 w-32 h-32 blur-3xl opacity-20 transition-opacity group-hover:opacity-40", color)} />
-            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg", color)}>
-                <Icon className="h-8 w-8" />
+        <div className="group bg-card border rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col gap-6 overflow-hidden relative border-border/10" onClick={onClick}>
+            <div className={cn("absolute -top-12 -right-12 w-40 h-40 blur-3xl opacity-10 transition-opacity group-hover:opacity-30", color)} />
+            <div className={cn("w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl transition-transform group-hover:scale-110 duration-500", color)}>
+                <Icon className="h-9 w-9" />
             </div>
-            <div className="space-y-1">
-                <h3 className="text-xl font-bold font-headline whitespace-normal leading-tight break-words">{title}</h3>
-                <p className="text-sm text-muted-foreground whitespace-normal leading-relaxed break-words">{description}</p>
+            <div className="space-y-2 flex-1">
+                <h3 className="text-2xl font-black font-headline whitespace-normal leading-tight uppercase tracking-tighter">{title}</h3>
+                <p className="text-sm text-muted-foreground font-medium whitespace-normal leading-relaxed line-clamp-2">{description}</p>
             </div>
-            <Button className="w-full mt-auto rounded-2xl font-bold bg-primary group-hover:scale-105 transition-transform">
+            <Button className={cn("w-full h-14 rounded-2xl font-black text-lg uppercase tracking-widest transition-all", color, "hover:brightness-110 shadow-lg text-white")}>
                 {t('play')}
             </Button>
         </div>

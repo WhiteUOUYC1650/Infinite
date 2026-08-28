@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -122,6 +121,8 @@ export type BotBlockType =
   | 'event_start' 
   | 'event_message'
   | 'event_button_click'
+  | 'event_game_start'
+  | 'event_game_click'
   | 'action_send' 
   | 'action_reply' 
   | 'action_wait' 
@@ -139,6 +140,8 @@ export type BotBlockType =
   | 'action_send_video'
   | 'action_send_music'
   | 'action_send_file'
+  | 'action_game_win'
+  | 'action_game_lose'
   | 'ui_header'
   | 'ui_text'
   | 'ui_button'
@@ -172,6 +175,18 @@ export type CustomBot = {
   miniApps?: BotMiniApp[];
   isActive: boolean;
   createdAt: Timestamp;
+};
+
+export type CustomGame = {
+  id: string;
+  name: string;
+  ownerId: string;
+  avatar?: string;
+  description?: string;
+  scripts: BotScript[];
+  isActive: boolean;
+  createdAt: Timestamp;
+  installs: number;
 };
 
 export type BotMarketItem = {

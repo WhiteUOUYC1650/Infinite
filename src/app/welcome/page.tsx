@@ -55,7 +55,7 @@ export default function WelcomePage() {
                 <div className="absolute inset-0 animate-ping bg-white/20 rounded-full scale-150" />
                 <Rocket className="h-20 w-20 text-white relative z-10 fill-white" />
             </div>
-            <h1 className="text-4xl font-bold font-headline">Infinite 1.3.1</h1>
+            <h1 className="text-4xl font-bold font-headline">Infinite 1.4</h1>
             <p className="max-w-md text-lg opacity-90">{t('thank_you_beta')}</p>
             <Button
               onClick={() => router.push('/')}
@@ -86,7 +86,7 @@ export default function WelcomePage() {
         'absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] transition-colors duration-700',
         step === 2 ? 'text-gray-900' : 'text-white'
       )}>
-        <Badge variant="outline" className="border-current text-current font-bold">1.3.1 OFFICIAL</Badge>
+        <Badge variant="outline" className="border-current text-current font-bold">1.4 OFFICIAL</Badge>
       </div>
     </div>
   );
