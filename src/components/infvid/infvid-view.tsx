@@ -259,7 +259,8 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
 }
 
 function VideoDetailOverlay({ video, sender, onClose, currentUser, onToggleWatchLater }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onToggleWatchLater: () => void }) {
-    const { t, language } = useLanguage(); const db = useFirestore(); const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [isLiked, setIsLiked] = useState(video.likedBy?.includes(currentUser.uid) || false); const [commentText, setCommentText] = useState(''); const [isSendingComment, setIsSendingComment] = useState(false);
+    const { t, language } = useLanguage(); const db = useFirestore(); const { toast } = useToast();
+    const [videoUrl, setVideoUrl] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(true); const [isLiked, setIsLiked] = useState(video.likedBy?.includes(currentUser.uid) || false); const [commentText, setCommentText] = useState(''); const [isSendingComment, setIsSendingComment] = useState(false);
     const commentsQuery = useMemo(() => (db ? query(collection(db, 'videos', video.id, 'comments'), orderBy('timestamp', 'desc'), limit(50)) : null), [db, video.id]);
     const { data: comments } = useCollection<VideoComment>(commentsQuery);
     const commentUserIds = useMemo(() => Array.from(new Set(comments?.map(c => c.userId) || [])), [comments]);
