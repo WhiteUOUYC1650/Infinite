@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -8,12 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AuthenticatedUser, PopulatedChat, User, type Chat } from '@/types';
+import { AuthenticatedUser, PopulatedChat, User, type Chat, type ChatLink } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe, Eraser, Search, MoreHorizontal } from 'lucide-react';
+import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe, Eraser, Search, MoreHorizontal, ShoppingBag, Coins } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc, writeBatch, deleteField } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayRemove, deleteDoc, query, where, getDocs, getDoc, writeBatch, deleteField, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
@@ -48,6 +49,7 @@ import { useTheme } from '@/context/theme-context';
 import { cn } from '@/lib/utils';
 import { COMMON_EMOJIS } from './chat-view';
 import { Separator } from '../ui/separator';
+import { Label } from '../ui/label';
 
 interface ChatProfileDialogProps {
   chat: PopulatedChat;
@@ -64,6 +66,7 @@ const chatEditSchema = z.object({
   discussionChatId: z.string().optional(),
   avatar: z.string().optional(),
   allowedReactions: z.array(z.string()).optional(),
+  linkPrice: z.string().optional(),
 });
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
@@ -105,6 +108,7 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   const [ownedGroups, setOwnedGroups] = useState<Chat[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [currentLinkPrice, setCurrentLinkPrice] = useState<number>(0);
   const isOwner = chat.ownerId === currentUser.uid;
   const isAdmin = currentUser.username === '@Infinite';
 
@@ -125,8 +129,21 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
         discussionChatId: chat.discussionChatId || '',
         avatar: chat.avatar || '',
         allowedReactions: chat.allowedReactions || COMMON_EMOJIS,
+        linkPrice: '0',
     },
   });
+
+  useEffect(() => {
+    if (open && chat.link && db) {
+        getDoc(doc(db, 'chatLinks', encodeURIComponent(chat.link))).then(snap => {
+            if (snap.exists()) {
+                const price = snap.data().price || 0;
+                setCurrentLinkPrice(price);
+                form.setValue('linkPrice', price.toString());
+            }
+        });
+    }
+  }, [open, chat.link, db, form]);
 
   useEffect(() => {
     if (isEditing && chat.type === 'channel' && db) {
@@ -143,10 +160,10 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
 
   useEffect(() => {
     if (open) {
-        form.reset({ name: chat.name || '', description: chat.description || '', discussionChatId: chat.discussionChatId || '', avatar: chat.avatar || '', allowedReactions: chat.allowedReactions || COMMON_EMOJIS, });
+        form.reset({ name: chat.name || '', description: chat.description || '', discussionChatId: chat.discussionChatId || '', avatar: chat.avatar || '', allowedReactions: chat.allowedReactions || COMMON_EMOJIS, linkPrice: currentLinkPrice.toString() });
         setAvatarPreview(chat.avatar); setImageToCrop(''); setIsEditing(false); setShowCompactHeader(false);
     }
-  }, [chat, form, open]);
+  }, [chat, form, open, currentLinkPrice]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.[0]) {
@@ -170,7 +187,19 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
     const data: any = { name: values.name, avatar: values.avatar, allowedReactions: values.allowedReactions };
     if (chat.type === 'channel' || chat.type === 'group') { data.description = values.description; }
     if (chat.type === 'channel') { data.discussionChatId = values.discussionChatId === 'none' ? '' : values.discussionChatId; }
-    try { await updateDoc(doc(db, 'chats', chat.id), data); toast({ title: t('dm_success'), description: t('chat_update_success') }); setIsEditing(false); }
+    
+    try { 
+        await updateDoc(doc(db, 'chats', chat.id), data); 
+        
+        if (chat.link) {
+            const priceNum = parseInt(values.linkPrice || '0');
+            const linkRef = doc(db, 'chatLinks', encodeURIComponent(chat.link));
+            await setDoc(linkRef, { price: priceNum > 0 ? priceNum : deleteField(), ownerId: currentUser.uid }, { merge: true });
+        }
+
+        toast({ title: t('dm_success'), description: t('chat_update_success') }); 
+        setIsEditing(false); 
+    }
     catch (e) { toast({ variant: 'destructive', title: 'Error', description: t('chat_update_error')}); }
     finally { setIsSaving(false); }
   };
@@ -186,7 +215,11 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   const handleDeleteChat = async () => {
     if (!db || (!isOwner && !isAdmin)) return;
     setIsDeleting(true);
-    try { await deleteDoc(doc(db, 'chats', chat.id)); toast({ title: t('dm_success'), description: t('delete_chat_success')}); onOpenChange(false); onCloseChat(); }
+    try { 
+        if (chat.link) { await deleteDoc(doc(db, 'chatLinks', encodeURIComponent(chat.link))); }
+        await deleteDoc(doc(db, 'chats', chat.id)); 
+        toast({ title: t('dm_success'), description: t('delete_chat_success')}); onOpenChange(false); onCloseChat(); 
+    }
     catch (e) { toast({ variant: 'destructive', title: 'Error', description: t('delete_chat_error')}); }
     finally { setIsDeleting(false); }
   }
@@ -263,6 +296,27 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                                     </FormItem>
                                 )} />
                             )}
+                            
+                            {isOwner && chat.link && (
+                                <div className="space-y-4 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                                    <div className="flex items-center gap-2 text-primary">
+                                        <ShoppingBag className="h-4 w-4" />
+                                        <Label className="font-bold uppercase text-[10px] tracking-widest">{t('link_market_title')}</Label>
+                                    </div>
+                                    <FormField control={form.control} name="linkPrice" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs">{t('set_price_label')}</FormLabel>
+                                            <div className="relative">
+                                                <FormControl><Input type="number" min="0" max="100000" {...field} className={cn(experimentalDesign && "glass-input", "pr-10")} /></FormControl>
+                                                <Coins className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500 opacity-50" />
+                                            </div>
+                                            <p className="text-[9px] text-muted-foreground leading-tight italic">{t('link_price_help')}</p>
+                                        </FormItem>
+                                    )} />
+                                    <p className="text-[10px] text-muted-foreground leading-relaxed">{t('link_sale_desc')}</p>
+                                </div>
+                            )}
+
                             <div className="space-y-3"><div className="flex items-center gap-2"><SmilePlus className="h-4 w-4 text-muted-foreground" /><FormLabel>{t('manage_reactions_label')}</FormLabel></div><div className="grid grid-cols-5 gap-2 p-3 bg-muted/30 rounded-xl border">{COMMON_EMOJIS.map(emoji => (<FormField key={emoji} control={form.control} name="allowedReactions" render={({ field }) => (<FormItem className="flex flex-col items-center gap-1 space-y-0"><FormControl><button type="button" onClick={() => { const cur = field.value || []; if (cur.includes(emoji)) { field.onChange(cur.filter(e => e !== emoji)); } else { field.onChange([...cur, emoji]); } }} className={cn("w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all", field.value?.includes(emoji) ? "bg-primary/20 border-primary" : "bg-background border border-border/50 opacity-50 grayscale hover:opacity-100 hover:grayscale-0")}>{emoji}</button></FormControl></FormItem>)} />))}</div></div>
                     </div></div>
                     <DialogFooter className="shrink-0 mt-auto p-6 border-t gap-2"><Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>{t('cancel')}</Button><Button type="submit" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t('save')}</Button></DialogFooter>
@@ -350,6 +404,21 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                                                 : t('subscribers_count', { count: chat.members?.length || 0 })}
                                         </p>
                                     </div>
+                                    {currentLinkPrice > 0 && (
+                                        <>
+                                            <Separator className="bg-white/10" />
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">link price</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Coins className="h-5 w-5 text-amber-500" />
+                                                        <span className="font-black text-xl text-amber-600">{currentLinkPrice}</span>
+                                                    </div>
+                                                </div>
+                                                <Badge className="bg-green-500 text-white rounded-full font-black text-[10px]">FOR SALE</Badge>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
                                 <>
@@ -360,6 +429,12 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
                                                 ? t('members_count', { count: chat.members?.length || 0 })
                                                 : t('subscribers_count', { count: chat.members?.length || 0 })}
                                         </p>
+                                        {currentLinkPrice > 0 && (
+                                            <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-2xl flex items-center gap-2 mb-2">
+                                                <Coins className="h-4 w-4 text-amber-600" />
+                                                <span className="text-xs font-black text-amber-700">Link for sale: {currentLinkPrice} G</span>
+                                            </div>
+                                        )}
                                         <div className="grid grid-cols-2 gap-2 w-full pt-4">
                                             {chat.type === 'channel' && chat.discussionChatId && (<Button variant="outline" onClick={handleOpenDiscussion} className="rounded-xl"><MessageSquare className="mr-2 h-4 w-4" />{t('join_discussion_button')}</Button>)}
                                             <Button variant="outline" onClick={() => { if (chat.link) { navigator.clipboard.writeText(chat.link); toast({ title: t('copy_success_toast') }); } }} className="rounded-xl"><Share2 className="mr-2 h-4 w-4" />{t('copy_text')}</Button>

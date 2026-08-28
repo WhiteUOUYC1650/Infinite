@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -31,6 +32,7 @@ export type User = {
   activeSessionId?: string | null;
   watchLater?: string[];
   activeGiftEmoji?: string | null;
+  archivedChats?: string[];
   birthday?: {
     day: number;
     month: number;
@@ -226,6 +228,12 @@ export type Chat = {
   link?: string;
   discussionChatId?: string;
   allowedReactions?: string[]; 
+};
+
+export type ChatLink = {
+    chatId: string;
+    ownerId?: string;
+    price?: number;
 };
 
 export type Call = {
