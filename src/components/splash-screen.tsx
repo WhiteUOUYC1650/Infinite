@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -81,14 +82,6 @@ export function SplashScreen() {
         ) : (
             <DefaultLogo />
         )}
-        <div className="flex flex-col items-center gap-2">
-            {!isOnline && (
-                <p className="text-white font-bold font-headline text-xl animate-pulse">
-                    {t('searching')}
-                </p>
-            )}
-            <p className="text-white/40 font-black text-[10px] tracking-[0.4em] uppercase mt-4">Version 1.4 Official</p>
-        </div>
       </div>
     </div>
   );

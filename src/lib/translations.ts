@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru' | 'es' | 'pt-BR';
 
 export const translations = {
@@ -612,8 +613,10 @@ export const translations = {
       'block_ui_draw_text': 'Draw Text',
       'reward_amount_label': 'InfGold Reward',
       'reward_help': 'Amount given to player on win.',
-      'wn_game_studio_title': 'Game Studio',
+      'wn_game_studio_title': 'Game Editor',
       'wn_game_studio_desc': 'Create and publish your own interactive games with rewards.',
+      'wn_supergroups_title': 'Supergroups',
+      'wn_supergroups_desc': 'Organize your community with multiple discussion topics.',
       'supergroup_label': 'Supergroup Mode',
       'supergroup_desc': 'Organize discussion into topics.',
       'topics': 'Topics',
@@ -1172,7 +1175,7 @@ export const translations = {
       'archive_stories': 'Архивные истории',
       'wn_mp3_tags_title': 'Метаданные',
       'wn_mp3_tags_desc': 'Исправлено отображение длинных названий в InfMusic.',
-      'wn_music_comments_title': 'Комментарии к музыке',
+      'wn_music_comments_title': 'Music Comments',
       'wn_music_comments_desc': 'Обсуждайте любимые треки прямо в плеере InfMusic.',
       'wn_glass_design_title': 'Эффект глубокого стекла',
       'wn_glass_design_desc': 'Новый ультра-размытый дизайн матового стекла в экспериментальном режиме.',
@@ -1215,7 +1218,7 @@ export const translations = {
       'swap_not_possible_general': 'Нельзя менять ссылку общего чата.',
       'wn_bug_fixes_title': 'Исправления багов',
       'wn_bug_fixes_desc': 'Оптимизирована работа интерфейса и исправлены ошибки плееров.',
-      'wn_link_sale_title': 'Продажа ссылок',
+      'wn_link_sale_title': 'Рынок ссылок',
       'wn_link_sale_desc': 'Появилась возможность продавать и покупать внутренние ссылки на чаты за InfGold.',
       'game_studio_title': 'Game Studio',
       'game_studio_desc': 'Создавайте свои игры на блоках.',
@@ -1233,8 +1236,10 @@ export const translations = {
       'block_ui_draw_text': 'Отрисовать текст',
       'reward_amount_label': 'Награда в InfGold',
       'reward_help': 'Сумма, выдаваемая за победу.',
-      'wn_game_studio_title': 'Game Studio',
+      'wn_game_studio_title': 'Редактор игр',
       'wn_game_studio_desc': 'Создавайте и публикуйте свои интерактивные игры с наградами.',
+      'wn_supergroups_title': 'Супер-группы',
+      'wn_supergroups_desc': 'Разделение обсуждений на темы (топики) для удобства сообществ.',
       'supergroup_label': 'Режим супергруппы',
       'supergroup_desc': 'Разделение обсуждений на темы.',
       'topics': 'Темы',
