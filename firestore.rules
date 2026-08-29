@@ -37,7 +37,8 @@ service cloud.firestore {
           (
             isAdmin() ||
             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members ||
-            (request.resource.data.fromChannelId != null && get(/databases/$(database)/documents/chats/$(request.resource.data.fromChannelId)).data.ownerId == request.auth.uid)
+            (request.resource.data.fromChannelId != null && get(/databases/$(database)/documents/chats/$(request.resource.data.fromChannelId)).data.ownerId == request.auth.uid) ||
+            (request.resource.data.topicId != null)
           );
         allow update, delete: if isSignedIn();
       }

@@ -23,7 +23,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, runTransaction, query, where, increment, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, runTransaction, query, where, increment, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
 import type { AuthenticatedUser, Chat, ChatLink } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -86,7 +86,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const [isCreating, setIsCreating] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameExists, setUsernameExists] = useState(false);
-  const debounceTimeout = useRef<NodeJS.Timeout>();
+  const debounceTimeout = useRef<NodeJS.Timeout>(null);
 
   const [isCheckingGroupLink, setIsCheckingGroupLink] = useState(false);
   const [isCheckingChannelLink, setIsCheckingChannelLink] = useState(false);
@@ -99,8 +99,8 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const [newTopicName, setNewTopicName] = useState('');
   const [newTopicIcon, setNewTopicIcon] = useState('💬');
 
-  const groupDebounceTimeout = useRef<NodeJS.Timeout>();
-  const channelDebounceTimeout = useRef<NodeJS.Timeout>();
+  const groupDebounceTimeout = useRef<NodeJS.Timeout>(null);
+  const channelDebounceTimeout = useRef<NodeJS.Timeout>(null);
 
   const dmForm = useForm<z.infer<typeof dmFormSchema>>({
     resolver: zodResolver(dmFormSchema),
@@ -232,6 +232,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
   const onDmSubmit = async (values: z.infer<typeof dmFormSchema>) => {
     if (!db || isCreating || !usernameExists) return;
     setIsCreating(true);
+    let createdChatId = '';
     try {
         const usernameRef = doc(db, 'usernames', values.username);
         const usernameSnap = await getDoc(usernameRef);
@@ -239,6 +240,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
         const targetUserId = usernameSnap.data().uid;
         const members = [currentUser.uid, targetUserId].sort();
         const chatId = members.join('_');
+        createdChatId = chatId;
         await runTransaction(db, async (transaction) => {
             const chatRef = doc(db, 'chats', chatId);
             const chatSnap = await transaction.get(chatRef);
@@ -246,7 +248,7 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             transaction.set(chatRef, { type: 'dm', members, unreadCounts: members.reduce((acc, id) => ({ ...acc, [id]: 0 }), {}) });
         });
         onOpenChange(false);
-        if(onChatCreated) onChatCreated(chatId);
+        if(onChatCreated && createdChatId) onChatCreated(createdChatId);
     } catch (e) { console.error(e); }
     finally { setIsCreating(false); }
   };
@@ -265,12 +267,14 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     if (!db || isCreating) return;
     setIsCreating(true);
     const linkWithPrefix = '/G/' + values.link;
+    let createdChatId = '';
     try {
         await runTransaction(db, async (transaction) => {
             const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
             const linkDoc = await transaction.get(linkRef);
             if (linkDoc.exists()) throw new Error(t('link_taken'));
             const newChatRef = doc(collection(db, "chats"));
+            createdChatId = newChatRef.id;
             
             const groupData: any = { 
                 type: 'group', 
@@ -284,7 +288,6 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             };
 
             if (values.isSupergroup) {
-                // Ensure there's always a general topic
                 const finalTopics = [{ id: 'general', name: t('general_topic'), icon: '💬', createdAt: Timestamp.now() }];
                 topics.forEach(t => {
                     finalTopics.push({ id: Math.random().toString(36).substring(7), name: t.name, icon: t.icon, createdAt: Timestamp.now() });
@@ -293,10 +296,10 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
             }
 
             transaction.set(newChatRef, groupData);
-            transaction.set(linkRef, { chatId: newChatRef.id, ownerId: currentUser.uid });
-            if (onChatCreated) onChatCreated(newChatRef.id);
+            transaction.set(linkRef, { chatId: createdChatId, ownerId: currentUser.uid });
         });
         onOpenChange(false);
+        if (onChatCreated && createdChatId) onChatCreated(createdChatId);
     } catch (error: any) { 
         if (error.message.includes(t('link_taken'))) groupForm.setError('link', { message: error.message });
     } finally { setIsCreating(false); }
@@ -306,18 +309,20 @@ export function NewChatDialog({ currentUser, open, onOpenChange, onChatCreated }
     if (!db || isCreating) return;
     setIsCreating(true);
     const linkWithPrefix = '/C/' + values.link;
+    let createdChatId = '';
     try {
         await runTransaction(db, async (transaction) => {
             const linkRef = doc(db, 'chatLinks', encodeURIComponent(linkWithPrefix));
             const linkDoc = await transaction.get(linkRef);
             if (linkDoc.exists()) throw new Error(t('link_taken'));
             const newChatRef = doc(collection(db, "chats"));
+            createdChatId = newChatRef.id;
             const newChannel = { type: 'channel', name: values.name, description: values.description, members: [currentUser.uid], icon: 'Megaphone', ownerId: currentUser.uid, link: linkWithPrefix, unreadCounts: { [currentUser.uid]: 0 } };
             transaction.set(newChatRef, newChannel);
-            transaction.set(linkRef, { chatId: newChatRef.id, ownerId: currentUser.uid });
-            if (onChatCreated) onChatCreated(newChatRef.id);
+            transaction.set(linkRef, { chatId: createdChatId, ownerId: currentUser.uid });
         });
         onOpenChange(false);
+        if (onChatCreated && createdChatId) onChatCreated(createdChatId);
     } catch (error: any) {
         if (error.message.includes(t('link_taken'))) channelForm.setError('link', { message: error.message });
     } finally { setIsCreating(false); }
