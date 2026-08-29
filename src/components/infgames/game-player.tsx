@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
-import type { AuthenticatedUser, CustomGame, BotBlock } from '@/types';
+import type { AuthenticatedUser, CustomGame, BotBlock, User } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, ArrowLeft, Trophy, Ban, X, Coins, Sparkles, RefreshCw } from 'lucide-react';
+import { Loader2, ArrowLeft, Trophy, Ban, X, Coins, Sparkles, RefreshCw, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
@@ -18,10 +18,10 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
     const { toast } = useToast();
     
     const [game, setGame] = useState<CustomGame | null>(null);
+    const [owner, setOwner] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [gameState, setGameState] = useState<'playing' | 'win' | 'lose'>('playing');
     const [gameVars, setGameVars] = useState<Record<string, any>>({});
-    const [uiBlocks, setUiBlocks] = useState<BotBlock[]>([]);
     const [winReward, setWinReward] = useState(0);
 
     const resolveVars = (text: string = '', vars: Record<string, any>) => text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
@@ -81,12 +81,6 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
                     case 'action_wait':
                         await new Promise(res => setTimeout(res, (block.params?.seconds || 1) * 1000));
                         break;
-                    case 'ui_header':
-                    case 'ui_text':
-                    case 'ui_button':
-                    case 'ui_separator':
-                        // UI blocks are handled by filtering current scripts for active UI
-                        break;
                 }
                 i++;
             }
@@ -96,13 +90,22 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
 
     useEffect(() => {
         if (!db || !gameId) return;
-        getDoc(doc(db, 'customGames', gameId)).then(snap => {
+        const fetchGame = async () => {
+            setIsLoading(true);
+            const snap = await getDoc(doc(db, 'customGames', gameId));
             if (snap.exists()) {
-                const data = snap.id ? { id: snap.id, ...snap.data() } as CustomGame : null;
-                setGame(data);
-                setIsLoading(false);
+                const gData = { id: snap.id, ...snap.data() } as CustomGame;
+                setGame(gData);
+                
+                // Fetch owner name
+                const ownerSnap = await getDoc(doc(db, 'users', gData.ownerId));
+                if (ownerSnap.exists()) {
+                    setOwner({ id: ownerSnap.id, ...ownerSnap.data() } as User);
+                }
             }
-        });
+            setIsLoading(false);
+        };
+        fetchGame();
     }, [db, gameId]);
 
     useEffect(() => {
@@ -125,7 +128,6 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
 
     const currentUI = useMemo(() => {
         if (!game) return [];
-        // Extract all UI blocks from the main "flow"
         const blocks: BotBlock[] = [];
         game.scripts.forEach(s => {
             s.blocks.forEach(b => {
@@ -144,8 +146,13 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
                 <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full h-10 w-10">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <div className="flex-1 text-center">
-                    <h2 className="text-sm font-black font-headline uppercase tracking-widest">{game.name}</h2>
+                <div className="flex-1 text-center min-w-0 px-2">
+                    <h2 className="text-sm font-black font-headline uppercase tracking-widest truncate">{game.name}</h2>
+                    {owner && (
+                        <div className="flex items-center justify-center gap-1 opacity-60">
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em]">by {owner.name}</span>
+                        </div>
+                    )}
                 </div>
                 <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full h-10 w-10">
                     <X className="h-5 w-5" />
@@ -158,9 +165,9 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
                         <div className="p-8 max-w-md mx-auto space-y-6">
                             <div className="flex flex-wrap gap-2 justify-center mb-8">
                                 {Object.entries(gameVars).map(([name, val]) => (
-                                    <Badge key={name} variant="outline" className="bg-primary/5 border-primary/20 text-primary font-black uppercase text-[10px] px-3 py-1">
+                                    <div key={name} className="bg-primary/5 border border-primary/20 text-primary font-black uppercase text-[10px] px-3 py-1 rounded-full">
                                         {name}: {val}
-                                    </Badge>
+                                    </div>
                                 ))}
                             </div>
                             

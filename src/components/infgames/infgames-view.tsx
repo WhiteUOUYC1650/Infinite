@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, increment, limit } from 'firebase/firestore';
 import type { AuthenticatedUser, CustomGame } from '@/types';
-import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap, Smartphone, ShieldCheck, Lock, AlertTriangle, MessageCircle, X, Send, Code2, LayoutGrid, Coins } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Trophy, MousePointer2, Loader2, Sparkles, ShieldAlert, Ban, Zap, Smartphone, ShieldCheck, Lock, AlertTriangle, MessageCircle, X, Send, Code2, LayoutGrid, Coins, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
@@ -19,6 +19,7 @@ import { Capacitor } from '@capacitor/core';
 import { GameStudioView } from './game-studio-view';
 import { GamePlayer } from './game-player';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useBatchUsers } from '@/hooks/use-batch-users';
 
 type GameType = 'none' | 'gold_clicker' | 'max_simulator' | 'studio' | 'player';
 
@@ -32,6 +33,9 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
 
   const publicGamesQuery = useMemo(() => (db ? query(collection(db, 'customGames'), where('isActive', '==', true), orderBy('installs', 'desc'), limit(50)) : null), [db]);
   const { data: publicGames } = useCollection<CustomGame>(publicGamesQuery);
+
+  const ownerIds = useMemo(() => Array.from(new Set(publicGames?.map(g => g.ownerId) || [])), [publicGames]);
+  const { users: authors } = useBatchUsers(ownerIds);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -79,6 +83,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
                         icon={MousePointer2}
                         color="bg-amber-500"
                         onClick={() => setSelectedGame('gold_clicker')}
+                        author="Infinite Team"
                     />
                     <GameCard 
                         title={t('game_max_simulator')}
@@ -86,6 +91,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
                         icon={Smartphone}
                         color="bg-indigo-600"
                         onClick={() => setSelectedGame('max_simulator')}
+                        author="Infinite Team"
                     />
                     {publicGames?.map(game => (
                         <GameCard 
@@ -95,6 +101,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
                             icon={LayoutGrid}
                             color="bg-primary"
                             onClick={() => { setPlayingGameId(game.id); setSelectedGame('player'); }}
+                            author={authors[game.ownerId]?.name}
                         />
                     ))}
                     <div className="border-2 border-dashed rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-muted-foreground/30 gap-4 min-h-[200px]">
@@ -151,13 +158,21 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
   );
 }
 
-function GameCard({ title, description, icon: Icon, color, onClick }: { title: string, description: string, icon: any, color: string, onClick: () => void }) {
+function GameCard({ title, description, icon: Icon, color, onClick, author }: { title: string, description: string, icon: any, color: string, onClick: () => void, author?: string }) {
     const { t } = useLanguage();
     return (
         <div className="group bg-card border rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col gap-6 overflow-hidden relative border-border/10" onClick={onClick}>
             <div className={cn("absolute -top-12 -right-12 w-40 h-40 blur-3xl opacity-10 transition-opacity group-hover:opacity-30", color)} />
-            <div className={cn("w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl transition-transform group-hover:scale-110 duration-500", color)}>
-                <Icon className="h-9 w-9" />
+            <div className="flex items-center justify-between">
+                <div className={cn("w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl transition-transform group-hover:scale-110 duration-500", color)}>
+                    <Icon className="h-9 w-9" />
+                </div>
+                {author && (
+                    <div className="text-right">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">{t('sender_label')}</p>
+                        <p className="text-[10px] font-bold text-primary truncate max-w-[120px]">{author}</p>
+                    </div>
+                )}
             </div>
             <div className="space-y-2 flex-1">
                 <h3 className="text-2xl font-black font-headline whitespace-normal leading-tight uppercase tracking-tighter">{title}</h3>
