@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -6,7 +5,7 @@ import { useFirestore } from '@/firebase';
 import { doc, updateDoc, onSnapshot, collection, setDoc, serverTimestamp, runTransaction, getDoc } from 'firebase/firestore';
 import type { CustomGame, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Clock, Code2, ChevronDown, ChevronUp, Split, Database, Check, Zap, Pencil, Settings, Loader2, ListTree, X, PlusCircle, MinusCircle, Ban, LayoutGrid, MousePointer2, Dice5, CircleHelp, Type, Minus, Trophy, Coins, Globe, Share2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Clock, Code2, ChevronDown, ChevronUp, Split, Database, Check, Zap, Pencil, Settings, Loader2, ListTree, X, PlusCircle, MinusCircle, Ban, LayoutGrid, MousePointer2, Dice5, CircleHelp, Type, Minus, Trophy, Coins, Globe, Share2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const BLOCK_COLORS: Record<string, string> = {
   event_game_start: 'bg-indigo-600 border-indigo-700',
@@ -282,63 +282,88 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
       </Dialog>
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[75vh]">
-              <DialogHeader className="items-center text-center p-8 border-b bg-muted/10">
-                <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 mb-2">
-                    <Settings className="h-8 w-8" />
+          <DialogContent className="max-w-[95vw] sm:max-w-lg rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[85vh]">
+              <DialogHeader className="items-center text-center p-10 pb-6 border-b bg-muted/10 shrink-0">
+                <div className="w-20 h-20 rounded-[2rem] bg-indigo-500/10 flex items-center justify-center text-indigo-600 mb-4 shadow-inner">
+                    <Settings className="h-10 w-10" />
                 </div>
-                <DialogTitle className="text-2xl font-black font-headline uppercase tracking-tighter">Настройки игры</DialogTitle>
-                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Manage your InfGame project</DialogDescription>
+                <DialogTitle className="text-3xl font-black font-headline uppercase tracking-tighter">Настройки игры</DialogTitle>
+                <DialogDescription className="font-bold text-[11px] uppercase tracking-[0.2em] text-muted-foreground mt-2 opacity-60">Manage your InfGame project</DialogDescription>
               </DialogHeader>
-              <ScrollArea className="flex-1 p-8 bg-muted/5">
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('game_name_label')}</Label>
-                        <Input value={gameName} onChange={e => setGameName(e.target.value)} className="rounded-2xl h-14 bg-card border-none focus-visible:ring-primary font-bold text-lg px-6 shadow-inner" />
+              
+              <ScrollArea className="flex-1 bg-background">
+                <div className="p-10 space-y-8 pb-20">
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">{t('game_name_label')}</Label>
+                        <Input 
+                            value={gameName} 
+                            onChange={e => setGameName(e.target.value)} 
+                            className="rounded-2xl h-16 bg-muted/50 border-none focus-visible:ring-primary font-bold text-xl px-8 shadow-inner" 
+                        />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Версия игры</Label>
-                            <Input value={gameVersion} onChange={e => setGameVersion(e.target.value)} placeholder="1.0" className="rounded-2xl h-14 bg-card border-none focus-visible:ring-primary font-bold text-center px-4 shadow-inner" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">Версия игры</Label>
+                            <Input 
+                                value={gameVersion} 
+                                onChange={e => setGameVersion(e.target.value)} 
+                                placeholder="1.0" 
+                                className="rounded-2xl h-16 bg-muted/50 border-none focus-visible:ring-primary font-bold text-center px-6 shadow-inner text-lg" 
+                            />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ID Проекта</Label>
-                            <div className="h-14 rounded-2xl bg-muted/50 flex items-center justify-center font-mono text-[10px] opacity-40 px-4">#{game.id.substring(0,8)}</div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('game_desc_label')}</Label>
-                        <Textarea value={gameDescription} onChange={e => setGameDescription(e.target.value)} className="rounded-2xl bg-card border-none focus-visible:ring-primary min-h-[120px] p-6 text-sm shadow-inner resize-none" />
-                    </div>
-
-                    <div className="pt-4 space-y-4">
-                        <Separator />
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Публикация</Label>
-                                <p className="text-xs font-bold text-muted-foreground">{gameLink ? 'Игра опубликована' : 'Проект в разработке'}</p>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">ID Проекта</Label>
+                            <div className="h-16 rounded-2xl bg-muted/20 flex items-center justify-center font-mono text-xs opacity-50 px-6 border-2 border-dashed">
+                                #{game.id.substring(0,12)}
                             </div>
-                            <Button variant={gameLink ? "outline" : "default"} className="rounded-xl h-10 px-6 font-bold" onClick={handlePublish} disabled={isPublishing}>
-                                {isPublishing ? <Loader2 className="animate-spin h-4 w-4" /> : (gameLink ? <RefreshCw className="h-4 w-4 mr-2" /> : <Globe className="h-4 w-4 mr-2" />)}
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">{t('game_desc_label')}</Label>
+                        <Textarea 
+                            value={gameDescription} 
+                            onChange={e => setGameDescription(e.target.value)} 
+                            className="rounded-3xl bg-muted/50 border-none focus-visible:ring-primary min-h-[160px] p-8 text-base shadow-inner resize-none font-medium leading-relaxed" 
+                        />
+                    </div>
+
+                    <div className="pt-6 space-y-6">
+                        <Separator className="opacity-10" />
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="space-y-1 text-center sm:text-left">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Статус публикации</Label>
+                                <p className="text-sm font-bold text-muted-foreground">{gameLink ? 'Игра видна всем по ссылке' : 'Проект еще не опубликован'}</p>
+                            </div>
+                            <Button variant={gameLink ? "outline" : "default"} className="rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-xs" onClick={handlePublish} disabled={isPublishing}>
+                                {isPublishing ? <Loader2 className="animate-spin h-5 w-5" /> : (gameLink ? <RefreshCw className="h-5 w-5 mr-2" /> : <Globe className="h-5 w-5 mr-2" />)}
                                 {gameLink ? 'Обновить' : 'Опубликовать'}
                             </Button>
                         </div>
+                        
                         {gameLink && (
-                            <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between animate-in zoom-in">
-                                <div className="min-w-0">
-                                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Ваша ссылка</p>
-                                    <code className="text-sm font-black truncate block text-indigo-700">{gameLink}</code>
+                            <div className="p-6 bg-indigo-500/5 border-2 border-indigo-500/20 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-4 animate-in zoom-in duration-300">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-2">Адрес вашей игры</p>
+                                    <code className="text-lg font-black truncate block text-indigo-700 bg-indigo-500/10 px-4 py-1 rounded-lg w-fit">{gameLink}</code>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(gameLink); toast({ title: 'Ссылка скопирована' }); }} className="text-indigo-600 hover:bg-indigo-500/10"><Share2 className="h-4 w-4" /></Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="lg" 
+                                    onClick={() => { navigator.clipboard.writeText(gameLink); toast({ title: 'Ссылка скопирована' }); }} 
+                                    className="text-indigo-600 hover:bg-indigo-500/10 rounded-2xl h-14 px-6 font-bold"
+                                >
+                                    <Share2 className="h-5 w-5 mr-2" /> Копировать
+                                </Button>
                             </div>
                         )}
                     </div>
                 </div>
               </ScrollArea>
-              <DialogFooter className="p-8 border-t bg-muted/20 shrink-0">
-                <Button onClick={() => setIsSettingsOpen(false)} className="w-full h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">Применить</Button>
+              
+              <DialogFooter className="p-10 border-t bg-muted/20 shrink-0">
+                <Button onClick={() => setIsSettingsOpen(false)} className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl shadow-primary/20 uppercase tracking-widest active:scale-95 transition-all">Применить</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -427,8 +452,4 @@ function GameBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDe
             <div className="w-full whitespace-pre-wrap">{renderParams()}</div>
         </div>
     );
-}
-
-function Separator() {
-    return <div className="h-px bg-muted-foreground/10 w-full" />;
 }
