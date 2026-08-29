@@ -99,6 +99,10 @@ service cloud.firestore {
         allow create: if isSignedIn();
         allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+    match /gameLinks/{linkId} {
+        allow get: if true;
+        allow create, delete: if isSignedIn();
+    }
     match /marketItems/{itemId} {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn();

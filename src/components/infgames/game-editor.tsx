@@ -1,16 +1,17 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useFirestore } from '@/firebase';
-import { doc, updateDoc, onSnapshot, collection, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, collection, setDoc, serverTimestamp, runTransaction, getDoc } from 'firebase/firestore';
 import type { CustomGame, BotBlock, BotBlockType, BotScript } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { ArrowLeft, Save, Plus, Trash2, Clock, Code2, ChevronDown, ChevronUp, Split, Database, Check, Zap, Pencil, Settings, Loader2, ListTree, X, PlusCircle, MinusCircle, Ban, LayoutGrid, MousePointer2, Dice5, CircleHelp, Type, Minus, Trophy, Coins } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Clock, Code2, ChevronDown, ChevronUp, Split, Database, Check, Zap, Pencil, Settings, Loader2, ListTree, X, PlusCircle, MinusCircle, Ban, LayoutGrid, MousePointer2, Dice5, CircleHelp, Type, Minus, Trophy, Coins, Globe, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,6 +55,15 @@ const BLOCK_ICONS: Record<string, any> = {
   ui_separator: Minus,
 };
 
+const generateRandomLink = (length: number): string => {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+};
+
 export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => void }) {
   const { t } = useLanguage();
   const db = useFirestore();
@@ -62,7 +72,10 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
   const [scripts, setScripts] = useState<BotScript[]>(game.scripts || []);
   const [gameName, setGameName] = useState(game.name);
   const [gameDescription, setGameDescription] = useState(game.description || '');
+  const [gameVersion, setGameVersion] = useState(game.version || '1.0');
+  const [gameLink, setGameLink] = useState(game.link || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [blockSelectorOpen, setBlockSelectorOpen] = useState(false);
 
@@ -74,6 +87,8 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
             setScripts(data.scripts || []);
             setGameName(data.name);
             setGameDescription(data.description || '');
+            setGameVersion(data.version || '1.0');
+            setGameLink(data.link || '');
         }
     });
   }, [game.id, db]);
@@ -87,12 +102,39 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
             scripts, 
             name: gameName, 
             description: gameDescription,
+            version: gameVersion,
             updatedAt: serverTimestamp()
         });
         toast({ title: t('dm_success'), description: "Game saved!" });
     } catch (e: any) { 
         toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally { setIsSaving(false); }
+  };
+
+  const handlePublish = async () => {
+      if (!db || isPublishing) return;
+      setIsPublishing(true);
+      try {
+          const randomSuffix = generateRandomLink(8);
+          const fullLink = '/IG/' + randomSuffix;
+
+          await runTransaction(db, async (tx) => {
+              const linkRef = doc(db, 'gameLinks', encodeURIComponent(fullLink));
+              const linkSnap = await tx.get(linkRef);
+              if (linkSnap.exists()) throw new Error("Generated link conflict. Try again.");
+              
+              const gameRef = doc(db, 'customGames', game.id);
+              tx.update(gameRef, { link: fullLink, updatedAt: serverTimestamp() });
+              tx.set(linkRef, { gameId: game.id, ownerId: game.ownerId });
+          });
+
+          setGameLink(fullLink);
+          toast({ title: t('dm_success'), description: "Game published! Link generated." });
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: e.message });
+      } finally {
+          setIsPublishing(false);
+      }
   };
 
   const onAddBlock = (type: BotBlockType) => {
@@ -145,8 +187,11 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
                 <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="min-w-0 flex-1">
-                <h1 className="text-base font-black font-headline truncate leading-tight uppercase tracking-tighter">{gameName}</h1>
-                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Game Logic 1.0</p>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-base font-black font-headline truncate leading-tight uppercase tracking-tighter">{gameName}</h1>
+                    <Badge variant="outline" className="text-[8px] font-black h-4 px-1 leading-none border-primary/20 text-primary">{gameVersion}</Badge>
+                </div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">{gameLink || 'Logic Draft'}</p>
             </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -236,10 +281,64 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
       </Dialog>
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[60vh]">
-              <DialogHeader className="items-center text-center p-8 border-b"><DialogTitle className="text-2xl font-black font-headline uppercase tracking-tighter">Настройки игры</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-8"><div className="space-y-6"><div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('game_name_label')}</Label><Input value={gameName} onChange={e => setGameName(e.target.value)} className="rounded-2xl h-14 bg-muted/50 border-none focus-visible:ring-primary font-bold text-lg px-6" /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('game_desc_label')}</Label><Textarea value={gameDescription} onChange={e => setGameDescription(e.target.value)} className="rounded-2xl bg-muted/50 border-none focus-visible:ring-primary min-h-[120px] p-6 text-sm" /></div></div></ScrollArea>
-              <DialogFooter className="p-8 border-t bg-muted/20 shrink-0"><Button onClick={() => setIsSettingsOpen(false)} className="w-full h-14 rounded-2xl font-black text-lg shadow-xl">Apply Changes</Button></DialogFooter>
+          <DialogContent className="max-w-[95vw] sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[75vh]">
+              <DialogHeader className="items-center text-center p-8 border-b bg-muted/10">
+                <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 mb-2">
+                    <Settings className="h-8 w-8" />
+                </div>
+                <DialogTitle className="text-2xl font-black font-headline uppercase tracking-tighter">Настройки игры</DialogTitle>
+                <DialogDescription className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Manage your InfGame project</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 p-8 bg-muted/5">
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('game_name_label')}</Label>
+                        <Input value={gameName} onChange={e => setGameName(e.target.value)} className="rounded-2xl h-14 bg-card border-none focus-visible:ring-primary font-bold text-lg px-6 shadow-inner" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Версия игры</Label>
+                            <Input value={gameVersion} onChange={e => setGameVersion(e.target.value)} placeholder="1.0" className="rounded-2xl h-14 bg-card border-none focus-visible:ring-primary font-bold text-center px-4 shadow-inner" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">ID Проекта</Label>
+                            <div className="h-14 rounded-2xl bg-muted/50 flex items-center justify-center font-mono text-[10px] opacity-40 px-4">#{game.id.substring(0,8)}</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('game_desc_label')}</Label>
+                        <Textarea value={gameDescription} onChange={e => setGameDescription(e.target.value)} className="rounded-2xl bg-card border-none focus-visible:ring-primary min-h-[120px] p-6 text-sm shadow-inner resize-none" />
+                    </div>
+
+                    <div className="pt-4 space-y-4">
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Публикация</Label>
+                                <p className="text-xs font-bold text-muted-foreground">{gameLink ? 'Игра опубликована' : 'Проект в разработке'}</p>
+                            </div>
+                            <Button variant={gameLink ? "outline" : "default"} className="rounded-xl h-10 px-6 font-bold" onClick={handlePublish} disabled={isPublishing}>
+                                {isPublishing ? <Loader2 className="animate-spin h-4 w-4" /> : (gameLink ? <RefreshCw className="h-4 w-4 mr-2" /> : <Globe className="h-4 w-4 mr-2" />)}
+                                {gameLink ? 'Обновить' : 'Опубликовать'}
+                            </Button>
+                        </div>
+                        {gameLink && (
+                            <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between animate-in zoom-in">
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Ваша ссылка</p>
+                                    <code className="text-sm font-black truncate block text-indigo-700">{gameLink}</code>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(gameLink); toast({ title: 'Ссылка скопирована' }); }} className="text-indigo-600 hover:bg-indigo-500/10"><Share2 className="h-4 w-4" /></Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter className="p-8 border-t bg-muted/20 shrink-0">
+                <Button onClick={() => setIsSettingsOpen(false)} className="w-full h-14 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest">Применить</Button>
+              </DialogFooter>
           </DialogContent>
       </Dialog>
     </div>
@@ -327,4 +426,8 @@ function GameBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDe
             <div className="w-full whitespace-pre-wrap">{renderParams()}</div>
         </div>
     );
+}
+
+function Separator() {
+    return <div className="h-px bg-muted-foreground/10 w-full" />;
 }

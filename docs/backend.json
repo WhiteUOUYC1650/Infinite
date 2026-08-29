@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "AppConfig": {
@@ -296,7 +297,9 @@
             "ownerId": { "type": "string" },
             "scripts": { "type": "array" },
             "isActive": { "type": "boolean" },
-            "installs": { "type": "number" }
+            "installs": { "type": "number" },
+            "version": { "type": "string" },
+            "link": { "type": "string" }
         },
         "required": ["name", "ownerId"]
     }

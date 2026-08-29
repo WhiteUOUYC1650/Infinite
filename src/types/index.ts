@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { LucideIcon } from "lucide-react";
@@ -188,6 +189,8 @@ export type CustomGame = {
   isActive: boolean;
   createdAt: Timestamp;
   installs: number;
+  version?: string;
+  link?: string;
 };
 
 export type BotMarketItem = {

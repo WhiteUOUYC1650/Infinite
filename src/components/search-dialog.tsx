@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -21,13 +22,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore } from '@/firebase';
 import { arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
-import type { AuthenticatedUser, Chat, User } from '@/types';
+import type { AuthenticatedUser, Chat, User, CustomGame } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
-import { Loader2, Search, Users, Megaphone, ArrowLeft, X } from 'lucide-react';
+import { Loader2, Search, Users, Megaphone, ArrowLeft, X, Gamepad2 } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -42,16 +43,18 @@ const searchFormSchema = z.object({
 
 type SearchResult = 
     | { type: 'user', data: User }
-    | { type: 'chat', data: Chat };
+    | { type: 'chat', data: Chat }
+    | { type: 'game', data: CustomGame };
 
 interface SearchDialogProps {
   currentUser: AuthenticatedUser;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChatSelected: (chat: Chat) => void;
+  onGameSelected?: (gameId: string) => void;
 }
 
-export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }: SearchDialogProps) {
+export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected, onGameSelected }: SearchDialogProps) {
   const db = useFirestore();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -114,17 +117,34 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     }
                 }
             }
+        } else if (searchQuery.startsWith('/IG/')) {
+            const linkRef = doc(db, 'gameLinks', encodeURIComponent(searchQuery));
+            const linkSnap = await getDoc(linkRef);
+            if (linkSnap.exists()) {
+                const gameRef = doc(db, 'customGames', linkSnap.data().gameId);
+                const gameSnap = await getDoc(gameRef);
+                if (gameSnap.exists()) {
+                    foundResults.push({ type: 'game', data: { id: gameSnap.id, ...gameSnap.data() } as CustomGame });
+                }
+            }
         } else {
             const searchPromises = [];
             const chatsCollection = collection(db, 'chats');
             const chatNameQuery = query(chatsCollection, where('type', 'in', ['group', 'channel']), where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
             searchPromises.push(getDocs(chatNameQuery));
+            
             const usersCollection = collection(db, 'users');
             const userNameQuery = query(usersCollection, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
             searchPromises.push(getDocs(userNameQuery));
-            const [chatSnapshots, userSnapshots] = await Promise.all(searchPromises);
+
+            const gamesCollection = collection(db, 'customGames');
+            const gamesNameQuery = query(gamesCollection, where('isActive', '==', true), where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
+            searchPromises.push(getDocs(gamesNameQuery));
+
+            const [chatSnapshots, userSnapshots, gameSnapshots] = await Promise.all(searchPromises);
             chatSnapshots.forEach((doc) => { foundResults.push({ type: 'chat', data: { id: doc.id, ...doc.data() } as Chat }); });
             userSnapshots.forEach((doc) => { if (!foundResults.some(r => r.type === 'user' && r.data.id === doc.id)) { foundResults.push({ type: 'user', data: { id: doc.id, ...doc.data() } as User }); } });
+            gameSnapshots.forEach((doc) => { foundResults.push({ type: 'game', data: { id: doc.id, ...doc.data() } as CustomGame }); });
         }
         setResults(foundResults);
         if (foundResults.length === 0) { searchForm.setError('query', { message: t('no_results_found') }); }
@@ -154,6 +174,15 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
           onOpenChange(false);
           onChatSelected({ ...chat, members: [...chat.members, currentUser.uid] });
       } catch (serverError) { console.error("Error joining chat:", serverError); }
+  };
+
+  const handlePlayGame = (gameId: string) => {
+      onOpenChange(false);
+      if (onGameSelected) {
+          onGameSelected(gameId);
+      } else {
+          window.dispatchEvent(new CustomEvent('open-infgames', { detail: { gameId } }));
+      }
   };
 
   return (
@@ -190,14 +219,27 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected }
                     {results.length > 0 ? (
                         <div className='space-y-2'>
                         {results.map((result) => (
-                            <div key={result.type + '-' + result.data.id} className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent">
-                            {result.type === 'user' ? (<UserAvatarWithStatus user={result.data} />) : (<Avatar><AvatarFallback>{result.data.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />}</AvatarFallback></Avatar>)}
+                            <div key={result.type + '-' + result.data.id} className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent transition-colors">
+                            {result.type === 'user' ? (
+                                <UserAvatarWithStatus user={result.data as User} />
+                            ) : result.type === 'chat' ? (
+                                <Avatar><AvatarFallback>{result.data.type === 'group' ? <Users className='h-5 w-5 text-muted-foreground' /> : <Megaphone className='h-5 w-5 text-muted-foreground' />}</AvatarFallback></Avatar>
+                            ) : (
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600"><Gamepad2 className="h-5 w-5" /></div>
+                            )}
                             <div className="flex-1 min-w-0">
-                                <p className="font-bold flex items-center gap-2 truncate">{result.data.name}{result.type === 'user' && (result.data as User).isBot && <Badge variant="secondary" className="text-[9px] h-4">BOT</Badge>}</p>
-                                <p className="text-xs text-muted-foreground truncate">{result.type === 'user' ? (result.data as User).username : result.data.link}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold truncate">{result.data.name}</p>
+                                    {result.type === 'user' && (result.data as User).isBot && <Badge variant="secondary" className="text-[9px] h-4 leading-none px-1 font-black">BOT</Badge>}
+                                    {result.type === 'game' && <Badge variant="outline" className="text-[8px] h-3.5 leading-none px-1 border-indigo-200 text-indigo-600 font-black">GAME</Badge>}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {result.type === 'user' ? (result.data as User).username : (result.data as any).link}
+                                </p>
                             </div>
-                            {result.type === 'user' && result.data.id !== currentUser.uid && (<Button size="sm" variant="outline" className="rounded-xl h-8" onClick={() => handleMessage(result.data as User)}>{t('message')}</Button>)}
-                            {result.type === 'chat' && (<Button size="sm" variant="outline" className="rounded-xl h-8" onClick={() => handleJoin(result.data as Chat)}>{(result.data as Chat).members.includes(currentUser.uid) ? t('open') : t('join')}</Button>)}
+                            {result.type === 'user' && result.data.id !== currentUser.uid && (<Button size="sm" variant="outline" className="rounded-xl h-8 font-bold" onClick={() => handleMessage(result.data as User)}>{t('message')}</Button>)}
+                            {result.type === 'chat' && (<Button size="sm" variant="outline" className="rounded-xl h-8 font-bold" onClick={() => handleJoin(result.data as Chat)}>{(result.data as Chat).members.includes(currentUser.uid) ? t('open') : t('join')}</Button>)}
+                            {result.type === 'game' && (<Button size="sm" className="rounded-xl h-8 font-bold bg-indigo-600 hover:bg-indigo-700" onClick={() => handlePlayGame(result.data.id)}>{t('play')}</Button>)}
                             </div>
                         ))}
                         </div>
