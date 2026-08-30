@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/app-shell';
@@ -11,7 +10,6 @@ import { Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
-import { BypassOverlay } from '@/components/proxy/bypass-overlay';
 import { PinLockOverlay } from '@/components/security/pin-lock-overlay';
 
 export default function Home() {
@@ -23,11 +21,8 @@ export default function Home() {
   const { t } = useLanguage();
   
   const [isVerifying, setIsVerifying] = useState(true);
-  const [isBlocked, setIsBlocked] = useState(false);
   const [isLockedByPin, setIsLockedByPin] = useState(false);
-  const [bypassActive, setBypassActive] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
-  const connectivityTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const localPin = localStorage.getItem('app-local-pin');
@@ -35,24 +30,6 @@ export default function Home() {
         setIsLockedByPin(true);
     }
   }, []);
-
-  useEffect(() => {
-    connectivityTimeout.current = setTimeout(() => {
-        if (isVerifying && !isBlocked && !bypassActive) {
-            setIsBlocked(true);
-        }
-    }, 8000); 
-
-    const handleTriggerBypass = () => {
-        setIsBlocked(true);
-    };
-    window.addEventListener('trigger-bypass', handleTriggerBypass);
-
-    return () => { 
-        if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current); 
-        window.removeEventListener('trigger-bypass', handleTriggerBypass);
-    };
-  }, [isVerifying, isBlocked, bypassActive]);
 
   useEffect(() => {
     const isDeleting = typeof window !== 'undefined' && sessionStorage.getItem('isDeletingAccount');
@@ -116,7 +93,6 @@ export default function Home() {
                 }
                 
                 setIsVerifying(false);
-                if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current);
 
                 const justLoggedIn = localStorage.getItem('justLoggedIn');
                 if (justLoggedIn) {
@@ -173,7 +149,6 @@ export default function Home() {
                 }
             } else {
                 setIsVerifying(false);
-                if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current);
             }
         } catch (e) {
             console.error("Security check failed:", e);
@@ -212,10 +187,6 @@ export default function Home() {
 
   if (isLockedByPin) {
       return <PinLockOverlay onUnlock={() => setIsLockedByPin(false)} />;
-  }
-
-  if (isBlocked && !bypassActive) {
-      return <BypassOverlay onRetry={() => window.location.reload()} onBypassSuccess={() => { setBypassActive(true); setIsBlocked(false); setIsVerifying(false); }} />;
   }
 
   if (authLoading || isVerifying || !user) {

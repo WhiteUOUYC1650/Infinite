@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -311,7 +310,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />
               {currentUser.loginProtectionEnabled && (<SettingsItem icon={Lock} label={t('cloud_password_label')} onClick={() => {}} description={t('cloud_password_desc')} glassEffect={glassEffect} />)}
               <SettingsSwitchItem id="local-pin" label={t('local_pin_lock')} checked={pinLockEnabled} onCheckedChange={handleTogglePin} description={t('local_pin_lock_desc')} glassEffect={glassEffect} />
-              <SettingsItem icon={Zap} label={t('wn_bypass_title')} onClick={() => { window.dispatchEvent(new CustomEvent('trigger-bypass')); onOpenChange(false); }} description={t('wn_bypass_desc')} showExpColors iconBg="bg-indigo-500/20" iconColor="text-indigo-600" glassEffect={glassEffect} />
               <div className={cn("p-4 space-y-3 rounded-xl", glassEffect && "glass-panel border-none")}><Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{t('story_expiration_label')}</Label><Select value={(currentUser.storyExpirationDuration ?? 24).toString()} onValueChange={(v) => handleSetStoryExpiration(parseInt(v))}><SelectTrigger className={cn("h-12 rounded-xl border-none font-bold", glassEffect ? "glass-input" : "bg-muted/50")}><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="12">12 {t('hours')}</SelectItem><SelectItem value="24">24 {t('hours')}</SelectItem><SelectItem value="48">48 {t('hours')}</SelectItem><SelectItem value="72">72 {t('hours')}</SelectItem><SelectItem value="0">{t('story_expiration_never')}</SelectItem></SelectContent></Select></div>
             </div>
           );
