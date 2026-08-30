@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/app-shell';
@@ -71,31 +70,25 @@ export default function Home() {
                 updatedAt: serverTimestamp()
             }, { merge: true });
         } catch (e) {
-            // Ignore errors during background sync or shutdown
+            // Silent catch for background errors
         }
     };
 
+    // Global presence reconciliation
     const reconciliationUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'sessions'), (snapshot) => {
         const anyActive = snapshot.docs.some(d => d.data().active === true);
         const newStatus = anyActive ? 'online' : 'offline';
         
-        // Use a small delay to avoid rapid status flipping
-        const timeout = setTimeout(async () => {
-            try {
-                const snap = await getDoc(userRef);
-                if (snap.exists() && snap.data().status !== newStatus) {
-                    await updateDoc(userRef, { 
-                        status: newStatus, 
-                        lastSeen: serverTimestamp(),
-                        activeSessionId: anyActive ? sessionId : null 
-                    });
-                }
-            } catch (e) {
-                // User doc might not be accessible during logout/deletion
+        // Update global status only if changed
+        getDoc(userRef).then(snap => {
+            if (snap.exists() && snap.data().status !== newStatus) {
+                updateDoc(userRef, { 
+                    status: newStatus, 
+                    lastSeen: serverTimestamp(),
+                    activeSessionId: anyActive ? sessionId : null 
+                }).catch(() => {});
             }
-        }, 1000);
-
-        return () => clearTimeout(timeout);
+        }).catch(() => {});
     });
 
     updateSessionPresence(true);
@@ -195,8 +188,7 @@ export default function Home() {
     window.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleBeforeUnload = () => { 
-        // Cleanup session on close
-        deleteDoc(sessionRef); 
+        deleteDoc(sessionRef).catch(() => {});
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -207,7 +199,7 @@ export default function Home() {
       reconciliationUnsubscribe();
       deleteDoc(sessionRef).catch(() => {});
     };
-  }, [user?.uid, authLoading, router, db, auth, sessionId, t, toast]);
+  }, [user?.uid, authLoading, router, db, auth, sessionId]);
 
   if (isLockedByPin) {
       return <PinLockOverlay onUnlock={() => setIsLockedByPin(false)} />;

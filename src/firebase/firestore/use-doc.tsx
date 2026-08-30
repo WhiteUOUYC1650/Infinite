@@ -15,20 +15,24 @@ export function useDoc<T extends DocumentData>(
   useEffect(() => {
     if (!docRef) {
       setLoading(false);
+      setData(null);
       return;
     }
+
+    setLoading(true);
 
     const unsubscribe = onSnapshot(
       docRef,
       (doc) => {
         if (doc.exists()) {
-          setData({ id: doc.id, ...doc.data() });
+          setData({ id: doc.id, ...doc.data() } as T & { id: string });
         } else {
           setData(null);
         }
         setLoading(false);
       },
       (err) => {
+        console.warn("Firestore onSnapshot error:", err);
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'get',
@@ -39,8 +43,14 @@ export function useDoc<T extends DocumentData>(
       }
     );
 
-    return () => unsubscribe();
-  }, [docRef]);
+    return () => {
+        try {
+            unsubscribe();
+        } catch (e) {
+            // Ignore unsubscription errors during cleanup
+        }
+    };
+  }, [docRef?.path]); // Depend on path to keep listener stable
 
   return { data, loading, error };
 }

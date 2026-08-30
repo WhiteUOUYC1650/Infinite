@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { getFirestore, type Firestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { firebaseConfig } from './config';
 
 let app: FirebaseApp;
@@ -10,13 +10,15 @@ let firestore: Firestore;
 function initializeFirebase() {
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
-    // Initialize Firestore with persistent cache, but wrap in try-catch to handle IndexedDB corruption gracefully
+    // Initialize Firestore with robust multi-tab persistent cache
     try {
       firestore = initializeFirestore(app, {
-        localCache: persistentLocalCache({})
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
       });
     } catch (e) {
-      console.warn("Firestore persistent cache failed (possible IndexedDB corruption), falling back to default.", e);
+      console.warn("Firestore persistent cache failed, falling back to default.", e);
       firestore = getFirestore(app);
     }
   } else {

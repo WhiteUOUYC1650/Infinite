@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -241,7 +240,16 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const showSenderAvatar = isChannelPost || (chatType !== 'channel' && !isOfficialBotChat && ((chatType === 'group' && !isCurrentUser) || (message.type === 'announcement' && chatType !== 'dm')));
     const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
     const isCircleComplete = message.circleStatus === 'complete';
-    const isRead = useMemo(() => { if (!isCurrentUser || !message.readBy) return false; if (chatType === 'dm') { const otherId = chat.members.find(id => id !== currentUser.uid); return otherId ? message.readBy.includes(otherId) : false; } return message.readBy.some(id => id !== currentUser.uid); }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
+    
+    // Improved real-time read logic
+    const isRead = useMemo(() => { 
+        if (!isCurrentUser || !message.readBy) return false; 
+        if (chatType === 'dm') { 
+            const otherId = chat.members.find(id => id !== currentUser.uid); 
+            return otherId ? message.readBy.includes(otherId) : false; 
+        } 
+        return message.readBy.some(id => id !== currentUser.uid); 
+    }, [isCurrentUser, message.readBy, chat.members, chatType, currentUser.uid]);
     
     useEffect(() => { 
         const loadMedia = async () => { 
@@ -395,7 +403,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const scrollContainerRef = useRef<HTMLDivElement>(null); const listInnerRef = useRef<HTMLDivElement>(null); const fileInputRef = useRef<HTMLInputElement>(null); const prevScrollHeightRef = useRef<number>(0); const isAtBottomRef = useRef(true); const autoScrollGuardRef = useRef<number>(0); const [stickyDate, setStickyDate] = useState<string | null>(null); const [showStickyDate, setShowStickyDate] = useState(false); const stickyHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showScrollDown, setShowScrollDown] = useState(false); const [showNewPoll, setShowNewPoll] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
-  const isRecordingCanceledRef = useRef(false); const [isMutedLocal, setIsMutedLocal] = useState(false);
+  const isRecordingCanceledRef = useRef(false);
 
   // Typing Status Logic
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
@@ -416,6 +424,35 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
   const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
+
+  // Real-time listener for the interlocutor in DM
+  const otherUserId = useMemo(() => { 
+    if (item.type !== 'dm') return null;
+    return item.members.find(m => m !== currentUser.uid); 
+  }, [item.id, item.type, item.members, currentUser.uid]);
+  const otherUserRef = useMemoFirebase(() => (db && otherUserId) ? doc(db, 'users', otherUserId) : null, [db, otherUserId]);
+  const { data: realTimeOtherUser } = useDoc<User>(otherUserRef);
+  const otherUser = realTimeOtherUser || (otherUserId ? memberDetails[otherUserId] : null);
+
+  // Mark as read logic
+  useEffect(() => {
+    if (!db || !messages || messages.length === 0 || !isMember || !currentUser.uid) return;
+    
+    const lastMsg = messages[messages.length - 1];
+    const isUnreadByMe = !lastMsg.readBy?.includes(currentUser.uid) && lastMsg.senderId !== currentUser.uid;
+    
+    if (isUnreadByMe) {
+        // Mark specific message as read
+        updateDoc(doc(db, 'chats', item.id, 'messages', lastMsg.id), {
+            readBy: arrayUnion(currentUser.uid)
+        }).catch(() => {});
+
+        // Reset unread count for this chat
+        updateDoc(doc(db, 'chats', item.id), {
+            [`unreadCounts.${currentUser.uid}`]: 0
+        }).catch(() => {});
+    }
+  }, [db, messages, item.id, isMember, currentUser.uid]);
   
   const scrollToBottom = useCallback((b: ScrollBehavior = 'auto') => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight; }, []);
   const handleScroll = useCallback(() => { if (!scrollContainerRef.current) return; const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; if (scrollTop < 100 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(p => p + 50); } setShowStickyDate(true); if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current); stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000); const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker'); let currentTopDate = null; markers.forEach((marker: any) => { if (marker.offsetTop <= scrollTop + 100) { currentTopDate = marker.getAttribute('data-date'); } }); setStickyDate(currentTopDate); setShowScrollDown(!atBottom); }, [hasMore, messagesLoading, messages, messageLimit]);
@@ -460,7 +497,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); isRecordingCanceledRef.current = canceled; if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
   
-  const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item.id, item.type, item.members, currentUser.uid, memberDetails]);
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
   
@@ -500,9 +536,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         } else {
             await deleteDoc(typingRef).catch(() => {});
         }
-    } catch (e) {
-        // Silently catch permission or connectivity errors for status updates
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -519,7 +553,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const getStatusLine = () => { 
     if (item.id === currentUser.uid) return null; 
     
-    // Typing status has priority
     if (typingUsers.length > 0) {
         const first = typingUsers[0];
         if (item.type === 'dm') return <span className="text-primary font-bold animate-pulse">{t('typing')}</span>;
@@ -558,11 +591,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
-    setIsSending(true); 
-    
-    // Clear typing immediately on send
-    updateTypingState(false);
-    
+    setIsSending(true); updateTypingState(false);
     if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '40px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
