@@ -132,7 +132,7 @@ export function InfGamesView({ currentUser, onClose }: { currentUser: Authentica
                 <h1 className="text-xl font-bold font-headline truncate">
                     {selectedGame === 'none' ? t('infgames_title') : (selectedGame === 'studio' ? t('game_studio_title') : t(`game_${selectedGame}` as any))}
                 </h1>
-                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0 font-black">1.4</Badge>
+                <Badge variant="secondary" className="text-[10px] h-4 px-1 leading-none shrink-0 font-black">1.4.1</Badge>
             </div>
         </div>
       </header>

@@ -20,7 +20,7 @@ import { Separator } from '@/components/ui/separator';
 
 const BLOCK_COLORS: Record<string, string> = {
   event_game_start: 'bg-indigo-600 border-indigo-700',
-  event_game_click: 'bg-indigo-500 border-indigo-600',
+  event_button_click: 'bg-indigo-500 border-indigo-600',
   action_game_win: 'bg-green-600 border-green-700',
   action_game_lose: 'bg-red-600 border-red-700',
   logic_if: 'bg-purple-600 border-purple-700',
@@ -39,7 +39,7 @@ const BLOCK_COLORS: Record<string, string> = {
 
 const BLOCK_ICONS: Record<string, any> = {
   event_game_start: Zap,
-  event_game_click: MousePointer2,
+  event_button_click: MousePointer2,
   action_game_win: Trophy,
   action_game_lose: Ban,
   logic_if: Split,
@@ -256,7 +256,7 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
                   <ScrollArea className="flex-1 p-6">
                       <TabsContent value="events" className="mt-0 space-y-2">
                           <PaletteItem type="event_game_start" label={t('block_event_game_start')} onClick={onAddBlock} />
-                          <PaletteItem type="event_game_click" label={t('block_event_game_click')} onClick={onAddBlock} />
+                          <PaletteItem type="event_button_click" label={t('block_event_button_click')} onClick={onAddBlock} />
                       </TabsContent>
                       <TabsContent value="actions" className="mt-0 space-y-2">
                           <PaletteItem type="action_game_win" label={t('block_action_game_win')} onClick={onAddBlock} />
@@ -264,6 +264,8 @@ export function GameEditor({ game, onBack }: { game: CustomGame, onBack: () => v
                           <PaletteItem type="action_wait" label="Подождать" onClick={onAddBlock} />
                           <PaletteItem type="variable_set" label="Записать в память" onClick={onAddBlock} />
                           <PaletteItem type="variable_math" label="Математика" onClick={onAddBlock} />
+                          <PaletteItem type="variable_random" label="Случайное число" onClick={onAddBlock} />
+                          <PaletteItem type="variable_clear" label="Сбросить переменную" onClick={onAddBlock} />
                       </TabsContent>
                       <TabsContent value="logic" className="mt-0 space-y-2">
                           <PaletteItem type="logic_if" label={t('block_if')} onClick={onAddBlock} />
@@ -388,6 +390,13 @@ function GameBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDe
 
     const renderParams = () => {
         switch (block.type) {
+            case 'event_button_click':
+                return (
+                    <div className="space-y-1 mt-1 w-full">
+                        <Label className="text-[8px] font-black uppercase opacity-50 ml-1">{t('button_id_label')}</Label>
+                        <Input placeholder="my_button_id" value={block.params?.buttonId || ''} onChange={e => onUpdate(sIdx, bIdx, 'buttonId', e.target.value.toLowerCase().replace(/\s/g, '_'))} className="h-9 bg-black/10 border-none text-white font-mono text-xs" />
+                    </div>
+                );
             case 'action_game_win':
                 return (
                     <div className="space-y-2 mt-1 w-full">
@@ -428,6 +437,8 @@ function GameBlockComponent({ block, sIdx, bIdx, isFirst, isLast, onUpdate, onDe
                         </div>
                     </div>
                 );
+            case 'variable_clear':
+                return <Input placeholder="Имя переменной для сброса" value={block.params?.name || ''} onChange={e => onUpdate(sIdx, bIdx, 'name', e.target.value)} className="h-9 bg-black/10 border-none text-white font-bold text-xs mt-1" />;
             case 'action_wait':
                 return <div className="flex items-center gap-2 mt-1"><Input type="number" min="1" max="60" value={block.params?.seconds || 1} onChange={e => onUpdate(sIdx, bIdx, 'seconds', parseInt(e.target.value))} className="w-20 h-9 bg-black/10 border-none text-white font-bold text-xs" /><span className="text-[10px] font-bold opacity-60">секунд</span></div>;
             default: return null;

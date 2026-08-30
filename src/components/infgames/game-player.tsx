@@ -26,12 +26,19 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
 
     const resolveVars = (text: string = '', vars: Record<string, any>) => text.replace(/\{(\w+)\}/g, (match, key) => vars[key] || match);
 
-    const executeLogic = useCallback(async (triggerType: string, params?: any) => {
-        if (!game || gameState !== 'playing') return;
+    const executeLogic = useCallback(async (triggerType: string, eventParams?: any) => {
+        if (!game || (gameState !== 'playing' && triggerType !== 'event_game_start')) return;
 
         for (const script of game.scripts) {
             const blocks = script.blocks;
             if (!blocks || blocks.length === 0 || blocks[0].type !== triggerType) continue;
+
+            // Special check for button click ID
+            if (triggerType === 'event_button_click') {
+                const triggerId = String(blocks[0].params?.buttonId || '').trim().toLowerCase();
+                const clickedId = String(eventParams?.buttonId || '').trim().toLowerCase();
+                if (triggerId !== clickedId) continue;
+            }
 
             let i = 1;
             const ifStack: boolean[] = [];
@@ -49,25 +56,29 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
                         const cond = resolveVars(block.params?.condition, currentVars);
                         if (cond.includes('==')) {
                             const [left, right] = cond.split('==').map(s => s.trim());
-                            ifStack.push(left === right);
+                            ifStack.push(String(left) === String(right));
                         } else if (cond.includes('!=')) {
                             const [left, right] = cond.split('!=').map(s => s.trim());
-                            ifStack.push(left !== right);
+                            ifStack.push(String(left) !== String(right));
                         } else { ifStack.push(false); }
                         break;
                     case 'variable_set':
                         currentVars[block.params?.name] = resolveVars(block.params?.value, currentVars);
                         break;
                     case 'variable_math':
-                        const val = parseInt(currentVars[block.params?.name] || '0');
+                        const name = block.params?.name;
+                        const val = parseInt(currentVars[name] || '0');
                         const delta = parseInt(resolveVars(block.params?.value, currentVars) || '0');
-                        if (block.params?.op === 'sub') currentVars[block.params?.name] = (val - delta);
-                        else if (block.params?.op === 'mul') currentVars[block.params?.name] = (val * delta);
-                        else currentVars[block.params?.name] = (val + delta);
+                        if (block.params?.op === 'sub') currentVars[name] = (val - delta).toString();
+                        else if (block.params?.op === 'mul') currentVars[name] = (val * delta).toString();
+                        else currentVars[name] = (val + delta).toString();
                         break;
                     case 'variable_random':
                         const max = parseInt(resolveVars(block.params?.value, currentVars) || '100');
-                        currentVars[block.params?.name] = Math.floor(Math.random() * (max + 1));
+                        currentVars[block.params?.name] = Math.floor(Math.random() * (max + 1)).toString();
+                        break;
+                    case 'variable_clear':
+                        delete currentVars[block.params?.name];
                         break;
                     case 'action_game_win':
                         setWinReward(parseInt(block.params?.reward || '0'));
@@ -159,17 +170,19 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
                 </Button>
             </header>
 
-            <main className="flex-1 relative overflow-hidden" onClick={() => executeLogic('event_game_click')}>
+            <main className="flex-1 relative overflow-hidden">
                 {gameState === 'playing' ? (
                     <ScrollArea className="h-full">
                         <div className="p-8 max-w-md mx-auto space-y-6">
-                            <div className="flex flex-wrap gap-2 justify-center mb-8">
-                                {Object.entries(gameVars).map(([name, val]) => (
-                                    <div key={name} className="bg-primary/5 border border-primary/20 text-primary font-black uppercase text-[10px] px-3 py-1 rounded-full">
-                                        {name}: {val}
-                                    </div>
-                                ))}
-                            </div>
+                            {Object.keys(gameVars).length > 0 && (
+                                <div className="flex flex-wrap gap-2 justify-center mb-8">
+                                    {Object.entries(gameVars).map(([name, val]) => (
+                                        <div key={name} className="bg-primary/5 border border-primary/20 text-primary font-black uppercase text-[10px] px-3 py-1 rounded-full">
+                                            {name}: {val}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             
                             <div className="space-y-4">
                                 {currentUI.map(block => {
@@ -177,7 +190,7 @@ export function GamePlayer({ gameId, currentUser, onBack }: { gameId: string, cu
                                     switch (block.type) {
                                         case 'ui_header': return <h3 key={block.id} className="text-3xl font-black font-headline text-center text-primary leading-none uppercase tracking-tighter">{text}</h3>;
                                         case 'ui_text': return <p key={block.id} className="text-center font-bold text-muted-foreground leading-relaxed whitespace-pre-wrap">{text}</p>;
-                                        case 'ui_button': return <Button key={block.id} onClick={(e) => { e.stopPropagation(); executeLogic('event_button_click', { buttonId: block.params?.buttonId }); }} className="w-full h-16 rounded-[1.5rem] font-black text-lg shadow-xl uppercase tracking-widest">{text}</Button>;
+                                        case 'ui_button': return <Button key={block.id} onClick={() => executeLogic('event_button_click', { buttonId: block.params?.buttonId })} className="w-full h-16 rounded-[1.5rem] font-black text-lg shadow-xl uppercase tracking-widest">{text}</Button>;
                                         case 'ui_separator': return <Separator key={block.id} className="my-8 opacity-40" />;
                                         default: return null;
                                     }
