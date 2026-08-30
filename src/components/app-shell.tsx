@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -82,7 +83,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
       };
       checkMembership();
     }
-  }, [currentUser, db]);
+  }, [currentUser.uid, db]);
 
   const handleSubscribeToChannel = async () => {
     if (!db || !targetChannelId || !currentUser) return;
@@ -127,8 +128,10 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             const chatData = change.doc.data() as Chat;
             const lastMsg = chatData.lastMessage;
             if (lastMsg && lastMsg.id && lastMsg.senderId === currentUser.uid) {
+                // Only the leader session processes bot logic to prevent multi-tab loops
                 const currentLeader = (userData as any).activeSessionId;
                 if (currentLeader && currentLeader !== sessionId) return;
+                
                 if (processedMsgIds.current.has(lastMsg.id)) return;
                 const msgTime = lastMsg.timestamp?.toMillis() || 0;
                 if (msgTime < engineStartedAt.current - 5000) { processedMsgIds.current.add(lastMsg.id); return; }
@@ -263,7 +266,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
         unsubscribe();
         window.removeEventListener('bot-button-click', handleBotButtonClick);
     };
-  }, [db, currentUser, userData, sessionId]);
+  }, [db, currentUser.uid, (userData as any)?.activeSessionId, sessionId]);
 
   useEffect(() => {
     if (!db || !currentUser) return;
@@ -283,7 +286,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
       }
     });
     return () => unsubscribe();
-  }, [db, currentUser, incomingCall, showCallNotification]);
+  }, [db, currentUser.uid, incomingCall, showCallNotification]);
 
   useEffect(() => {
     const handleOpenChat = async (event: any) => {

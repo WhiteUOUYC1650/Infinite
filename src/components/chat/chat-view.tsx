@@ -402,7 +402,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid!) ?? false, [initialItem?.members, currentUser.uid]);
-  const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem, liveChatData]);
+  const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem.id, liveChatData]);
   
   const messagesQuery = useMemoFirebase(() => { 
     if (!db || !isMember) return null; 
@@ -460,7 +460,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); isRecordingCanceledRef.current = canceled; if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
   
-  const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item, currentUser.uid, memberDetails]);
+  const otherUser = useMemo(() => { const id = item.type === 'dm' ? item.members.find(m => m !== currentUser.uid) : null; return id ? memberDetails[id] : null; }, [item.id, item.type, item.members, currentUser.uid, memberDetails]);
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
   
@@ -468,15 +468,18 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   useEffect(() => {
     if (!db || !isMember || item.type === 'channel') return;
 
-    const q = query(
-        collection(db, 'chats', item.id, 'typing'),
-        where('timestamp', '>', Timestamp.fromMillis(Date.now() - 5000))
-    );
+    const q = query(collection(db, 'chats', item.id, 'typing'));
 
     const unsub = onSnapshot(q, (snapshot) => {
+        const now = Date.now();
         const statuses = snapshot.docs
             .map(d => d.data() as TypingStatus)
-            .filter(s => s.userId !== currentUser.uid && (!item.isSupergroup || s.topicId === activeTopicId));
+            .filter(s => {
+                const isRecent = s.timestamp?.toMillis() > (now - 5000);
+                const isOtherUser = s.userId !== currentUser.uid;
+                const isMatchingTopic = !item.isSupergroup || s.topicId === activeTopicId;
+                return isRecent && isOtherUser && isMatchingTopic;
+            });
         setTypingUsers(statuses);
     });
 
@@ -486,15 +489,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const updateTypingState = async (typing: boolean) => {
     if (!db || item.type === 'channel') return;
     const typingRef = doc(db, 'chats', item.id, 'typing', currentUser.uid);
-    if (typing) {
-        await setDoc(typingRef, {
-            userId: currentUser.uid,
-            userName: currentUser.name || currentUser.username,
-            timestamp: serverTimestamp(),
-            topicId: activeTopicId || null
-        });
-    } else {
-        await deleteDoc(typingRef).catch(() => {});
+    try {
+        if (typing) {
+            await setDoc(typingRef, {
+                userId: currentUser.uid,
+                userName: currentUser.name || currentUser.username,
+                timestamp: serverTimestamp(),
+                topicId: activeTopicId || null
+            });
+        } else {
+            await deleteDoc(typingRef).catch(() => {});
+        }
+    } catch (e) {
+        // Silently catch permission or connectivity errors for status updates
     }
   };
 
@@ -507,7 +514,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         updateTypingState(false);
     }
     return () => { if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); };
-  }, [messageContent]);
+  }, [messageContent, item.id]);
 
   const getStatusLine = () => { 
     if (item.id === currentUser.uid) return null; 
@@ -804,7 +811,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </footer>
       )}
-      {profileDialogUser && <UserProfileDialog user={profileDialogUser} recipient={profileDialogUser} currentUser={currentUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
+      {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onCreate={(p) => handleSendMessage(p)} />
     </div>

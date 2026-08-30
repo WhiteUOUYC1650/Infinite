@@ -71,7 +71,7 @@ export default function Home() {
                 updatedAt: serverTimestamp()
             }, { merge: true });
         } catch (e) {
-            console.error("Session sync failed:", e);
+            // Ignore errors during background sync or shutdown
         }
     };
 
@@ -79,16 +79,23 @@ export default function Home() {
         const anyActive = snapshot.docs.some(d => d.data().active === true);
         const newStatus = anyActive ? 'online' : 'offline';
         
-        // We only update the parent User doc if the status actually needs changing
-        getDoc(userRef).then(snap => {
-            if (snap.exists() && snap.data().status !== newStatus) {
-                updateDoc(userRef, { 
-                    status: newStatus, 
-                    lastSeen: serverTimestamp(),
-                    activeSessionId: anyActive ? sessionId : null 
-                });
+        // Use a small delay to avoid rapid status flipping
+        const timeout = setTimeout(async () => {
+            try {
+                const snap = await getDoc(userRef);
+                if (snap.exists() && snap.data().status !== newStatus) {
+                    await updateDoc(userRef, { 
+                        status: newStatus, 
+                        lastSeen: serverTimestamp(),
+                        activeSessionId: anyActive ? sessionId : null 
+                    });
+                }
+            } catch (e) {
+                // User doc might not be accessible during logout/deletion
             }
-        });
+        }, 1000);
+
+        return () => clearTimeout(timeout);
     });
 
     updateSessionPresence(true);
@@ -188,7 +195,7 @@ export default function Home() {
     window.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleBeforeUnload = () => { 
-        // Sync before closing
+        // Cleanup session on close
         deleteDoc(sessionRef); 
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -198,9 +205,9 @@ export default function Home() {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       if (appListener) appListener.remove();
       reconciliationUnsubscribe();
-      deleteDoc(sessionRef);
+      deleteDoc(sessionRef).catch(() => {});
     };
-  }, [user, authLoading, router, db, auth, sessionId, t, toast]);
+  }, [user?.uid, authLoading, router, db, auth, sessionId, t, toast]);
 
   if (isLockedByPin) {
       return <PinLockOverlay onUnlock={() => setIsLockedByPin(false)} />;
