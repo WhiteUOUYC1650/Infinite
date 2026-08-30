@@ -23,6 +23,10 @@ service cloud.firestore {
         allow create: if isSignedIn() && isValidText(request.resource.data.message, 1600);
         allow delete: if request.auth.uid == userId || isAdmin();
       }
+
+      match /sessions/{sessionId} {
+        allow read, write: if isSignedIn() && userId == request.auth.uid;
+      }
     }
     
     match /chats/{chatId} {
@@ -41,6 +45,11 @@ service cloud.firestore {
             (request.resource.data.topicId != null)
           );
         allow update, delete: if isSignedIn();
+      }
+
+      match /typing/{userId} {
+        allow read, list: if isSignedIn();
+        allow write: if isSignedIn() && userId == request.auth.uid;
       }
     }
     

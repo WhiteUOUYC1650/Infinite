@@ -119,6 +119,13 @@ export type Message = {
   topicId?: string;
 };
 
+export type TypingStatus = {
+    userId: string;
+    userName: string;
+    timestamp: Timestamp;
+    topicId?: string | null;
+};
+
 export type BotBlockType = 
   | 'event_start' 
   | 'event_message'

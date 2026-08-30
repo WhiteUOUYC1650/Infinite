@@ -1,14 +1,15 @@
+
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment, ChatTopic } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment, ChatTopic, TypingStatus } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square, Zap, ArrowLeft } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch, increment, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, Timestamp, setDoc, arrayUnion, deleteDoc, serverTimestamp, orderBy, limit, arrayRemove, query, runTransaction, deleteField, getDoc, getDocs, writeBatch, increment, where, onSnapshot } from 'firebase/firestore';
 import { useMemo, useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { format, isSameDay, isYesterday } from 'date-fns';
 import { useLanguage } from '@/context/language-context';
@@ -396,6 +397,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const isRecordingCanceledRef = useRef(false); const [isMutedLocal, setIsMutedLocal] = useState(false);
 
+  // Typing Status Logic
+  const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid!) ?? false, [initialItem?.members, currentUser.uid]);
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem, liveChatData]);
   
@@ -459,7 +464,73 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
   
-  const getStatusLine = () => { if (item.id === currentUser.uid) return null; if (item.id === 'GENERAL_CHAT') return t('public_chat_description'); if (item.type === 'dm' && otherUser) { if (otherUser.isBot) return t('bot_status'); if (otherUser.status === 'online') return <span className="text-primary font-bold">{t('online')}</span>; if (otherUser.lastSeen) return `${t('was_online')} ${format(new Date(otherUser.lastSeen.seconds * 1000), 'dd.MM.yyyy, HH:mm')}`; return t('offline'); } if (item.type === 'group') return t('members_count', { count: item.members?.length || 0 }); if (item.type === 'channel') return t('subscribers_count', { count: item.members?.length || 0 }); return null; };
+  // Typing Status Implementation
+  useEffect(() => {
+    if (!db || !isMember || item.type === 'channel') return;
+
+    const q = query(
+        collection(db, 'chats', item.id, 'typing'),
+        where('timestamp', '>', Timestamp.fromMillis(Date.now() - 5000))
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+        const statuses = snapshot.docs
+            .map(d => d.data() as TypingStatus)
+            .filter(s => s.userId !== currentUser.uid && (!item.isSupergroup || s.topicId === activeTopicId));
+        setTypingUsers(statuses);
+    });
+
+    return () => unsub();
+  }, [db, item.id, item.type, isMember, currentUser.uid, activeTopicId, item.isSupergroup]);
+
+  const updateTypingState = async (typing: boolean) => {
+    if (!db || item.type === 'channel') return;
+    const typingRef = doc(db, 'chats', item.id, 'typing', currentUser.uid);
+    if (typing) {
+        await setDoc(typingRef, {
+            userId: currentUser.uid,
+            userName: currentUser.name || currentUser.username,
+            timestamp: serverTimestamp(),
+            topicId: activeTopicId || null
+        });
+    } else {
+        await deleteDoc(typingRef).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    if (messageContent.length > 0) {
+        updateTypingState(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => updateTypingState(false), 3000);
+    } else {
+        updateTypingState(false);
+    }
+    return () => { if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); };
+  }, [messageContent]);
+
+  const getStatusLine = () => { 
+    if (item.id === currentUser.uid) return null; 
+    
+    // Typing status has priority
+    if (typingUsers.length > 0) {
+        const first = typingUsers[0];
+        if (item.type === 'dm') return <span className="text-primary font-bold animate-pulse">{t('typing')}</span>;
+        if (typingUsers.length === 1) return <span className="text-primary font-bold animate-pulse">{t('user_typing', { name: first.userName })}</span>;
+        return <span className="text-primary font-bold animate-pulse">{t('users_typing', { name: first.userName, count: typingUsers.length - 1 })}</span>;
+    }
+
+    if (item.id === 'GENERAL_CHAT') return t('public_chat_description'); 
+    if (item.type === 'dm' && otherUser) { 
+        if (otherUser.isBot) return t('bot_status'); 
+        if (otherUser.status === 'online') return <span className="text-primary font-bold">{t('online')}</span>; 
+        if (otherUser.lastSeen) return `${t('was_online')} ${format(new Date(otherUser.lastSeen.seconds * 1000), 'dd.MM.yyyy, HH:mm')}`; 
+        return t('offline'); 
+    } 
+    if (item.type === 'group') return t('members_count', { count: item.members?.length || 0 }); 
+    if (item.type === 'channel') return t('subscribers_count', { count: item.members?.length || 0 }); 
+    return null; 
+  };
   
   const handleClearHistory = async () => { if (!db || item.id === 'GENERAL_CHAT') return; try { const snap = await getDocs(collection(db, 'chats', item.id, 'messages')); const batch = writeBatch(db); snap.forEach(d => batch.delete(d.ref)); await batch.commit(); await updateDoc(doc(db, 'chats', item.id), { lastMessage: deleteField() }); toast({ title: t('dm_success') }); } catch(e) { console.error(e); } };
   
@@ -480,7 +551,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
-    setIsSending(true); if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '40px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
+    setIsSending(true); 
+    
+    // Clear typing immediately on send
+    updateTypingState(false);
+    
+    if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '40px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { 
@@ -578,9 +654,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         <h2 className={cn("text-[15px] font-bold font-headline truncate leading-none")}>{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
                         {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}
                     </div>
-                    <p className="text-[9px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5">
-                        {item.isSupergroup && activeTopicId ? `${item.topics?.find(t => t.id === activeTopicId)?.icon} ${item.topics?.find(t => t.id === activeTopicId)?.name}` : getStatusLine()}
-                    </p>
+                    <div className="text-[9px] text-muted-foreground truncate font-black uppercase tracking-widest mt-0.5 min-h-[12px]">
+                        {item.isSupergroup && activeTopicId && typingUsers.length === 0 ? `${item.topics?.find(t => t.id === activeTopicId)?.icon} ${item.topics?.find(t => t.id === activeTopicId)?.name}` : getStatusLine()}
+                    </div>
                 </div>
             </button>
         </div>

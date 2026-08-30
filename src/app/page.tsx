@@ -1,10 +1,11 @@
+
 'use client';
 
 import { AppShell } from '@/components/app-shell';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { doc, setDoc, getDoc, collection, addDoc, Timestamp, updateDoc, increment, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc, Timestamp, updateDoc, increment, runTransaction, serverTimestamp, onSnapshot, deleteDoc } from 'firebase/firestore';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -26,11 +27,9 @@ export default function Home() {
   const [isLockedByPin, setIsLockedByPin] = useState(false);
   const [bypassActive, setBypassActive] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
-  const sessionRegistered = useRef(false);
   const connectivityTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Check for local PIN lock
     const localPin = localStorage.getItem('app-local-pin');
     if (localPin) {
         setIsLockedByPin(true);
@@ -38,12 +37,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Start connectivity monitor
     connectivityTimeout.current = setTimeout(() => {
         if (isVerifying && !isBlocked && !bypassActive) {
             setIsBlocked(true);
         }
-    }, 6000); // 6s timeout for Firebase connection
+    }, 8000); 
 
     return () => { if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current); };
   }, [isVerifying, isBlocked, bypassActive]);
@@ -62,51 +60,38 @@ export default function Home() {
     if (!db || !auth) return;
 
     const userRef = doc(db, 'users', user.uid);
+    const sessionRef = doc(db, 'users', user.uid, 'sessions', sessionId);
 
-    const incrementSession = async () => {
-      if (sessionRegistered.current) return;
-      sessionRegistered.current = true;
-      try {
-        await updateDoc(userRef, { 
-          'current-sessions': increment(1),
-          status: 'online',
-          lastSeen: serverTimestamp(),
-          activeSessionId: sessionId
-        });
-      } catch (e) {
-        console.error("Failed to increment session:", e);
-      }
+    // Multi-device Presence Logic
+    const updateSessionPresence = async (active: boolean) => {
+        try {
+            await setDoc(sessionRef, {
+                active,
+                lastSeen: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (e) {
+            console.error("Session sync failed:", e);
+        }
     };
 
-    const decrementSession = async () => {
-      if (!sessionRegistered.current) return;
-      sessionRegistered.current = false;
-      
-      try {
-        await runTransaction(db, async (transaction) => {
-          const snap = await transaction.get(userRef);
-          if (!snap.exists()) return;
-          
-          const data = snap.data();
-          const current = data?.['current-sessions'] || 0;
-          const newVal = Math.max(0, current - 1);
-          
-          const updateData: any = { 'current-sessions': newVal };
-          if (newVal === 0) {
-            updateData.status = 'offline';
-            updateData.lastSeen = serverTimestamp();
-          }
-          
-          if (data?.activeSessionId === sessionId) {
-              updateData.activeSessionId = null;
-          }
-          
-          transaction.update(userRef, updateData);
+    const reconciliationUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'sessions'), (snapshot) => {
+        const anyActive = snapshot.docs.some(d => d.data().active === true);
+        const newStatus = anyActive ? 'online' : 'offline';
+        
+        // We only update the parent User doc if the status actually needs changing
+        getDoc(userRef).then(snap => {
+            if (snap.exists() && snap.data().status !== newStatus) {
+                updateDoc(userRef, { 
+                    status: newStatus, 
+                    lastSeen: serverTimestamp(),
+                    activeSessionId: anyActive ? sessionId : null 
+                });
+            }
         });
-      } catch (e) {
-        console.error("Failed to decrement session:", e);
-      }
-    };
+    });
+
+    updateSessionPresence(true);
 
     const checkSecurity = async () => {
         try {
@@ -123,7 +108,6 @@ export default function Home() {
                 
                 setIsVerifying(false);
                 if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current);
-                incrementSession();
 
                 const justLoggedIn = localStorage.getItem('justLoggedIn');
                 if (justLoggedIn) {
@@ -184,7 +168,6 @@ export default function Home() {
             }
         } catch (e) {
             console.error("Security check failed:", e);
-            // Don't clear timeout here, let it reach 6s to show bypass UI
         }
     };
 
@@ -194,26 +177,28 @@ export default function Home() {
     if (Capacitor.isNativePlatform()) {
       import('@capacitor/app').then(({ App }) => {
         appListener = App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) incrementSession();
-          else decrementSession();
+          updateSessionPresence(isActive);
         });
       });
     }
 
-    const handleBeforeUnload = () => { decrementSession(); };
+    const handleVisibilityChange = () => {
+        updateSessionPresence(document.visibilityState === 'visible');
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handleBeforeUnload = () => { 
+        // Sync before closing
+        deleteDoc(sessionRef); 
+    };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    const interval = setInterval(() => {
-      if (auth.currentUser && document.visibilityState === 'visible') {
-        setDoc(userRef, { status: 'online', lastSeen: serverTimestamp(), activeSessionId: sessionId }, { merge: true });
-      }
-    }, 120000);
-
     return () => {
-      clearInterval(interval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
       if (appListener) appListener.remove();
-      decrementSession();
+      reconciliationUnsubscribe();
+      deleteDoc(sessionRef);
     };
   }, [user, authLoading, router, db, auth, sessionId, t, toast]);
 

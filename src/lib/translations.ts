@@ -626,6 +626,9 @@ export const translations = {
       'no_topics': 'No topics created yet.',
       'create_topic_button': 'Create Topic',
       'general_topic': 'General',
+      'typing': 'typing...',
+      'user_typing': '{name} is typing...',
+      'users_typing': '{name} and {count} more are typing...',
     },
     ru: {
       'settings': 'Настройки',
@@ -1249,6 +1252,9 @@ export const translations = {
       'no_topics': 'Темы еще не созданы.',
       'create_topic_button': 'Создать тему',
       'general_topic': 'Общая',
+      'typing': 'печатает...',
+      'user_typing': '{name} печатает...',
+      'users_typing': '{name} и еще {count, plural, one {#} few {#} other {#}} печатают...',
     }
 };
 
