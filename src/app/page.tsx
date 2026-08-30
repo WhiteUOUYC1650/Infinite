@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/app-shell';
@@ -42,7 +43,15 @@ export default function Home() {
         }
     }, 8000); 
 
-    return () => { if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current); };
+    const handleTriggerBypass = () => {
+        setIsBlocked(true);
+    };
+    window.addEventListener('trigger-bypass', handleTriggerBypass);
+
+    return () => { 
+        if (connectivityTimeout.current) clearTimeout(connectivityTimeout.current); 
+        window.removeEventListener('trigger-bypass', handleTriggerBypass);
+    };
   }, [isVerifying, isBlocked, bypassActive]);
 
   useEffect(() => {

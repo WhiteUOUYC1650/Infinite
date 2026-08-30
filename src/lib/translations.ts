@@ -628,7 +628,7 @@ export const translations = {
       'general_topic': 'General',
       'typing': 'typing...',
       'user_typing': '{name} is typing...',
-      'users_typing': '{name} and {count} more are typing...',
+      'users_typing': '{name} and {count, plural, one {#} other {#}} more are typing...',
     },
     ru: {
       'settings': 'Настройки',
@@ -1168,7 +1168,7 @@ export const translations = {
       'admin_legal_tab': 'Юр. данные',
       'tos_label': 'Условия использования (Markdown)',
       'privacy_label': 'Политика конфиденциальности (Markdown)',
-      'tos_update_broadcast': 'Наши Условия использования и Политика конфиденциальности были обновлены. Пожалуйста, ознакомьтесь с ними.',
+      'tos_update_broadcast': 'Наши Условия использования и Политика конфиденциальности были обновлены. Пожалуйста, ознакомись с ними.',
       'archive': 'Архив',
       'archived': 'В архиве',
       'archive_chat': 'В архив',
