@@ -277,17 +277,24 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Code2 className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><RefreshCw className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_game_studio_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_game_studio_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_live_status_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_live_status_desc')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><LayoutGrid className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_supergroups_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_supergroups_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_read_receipts_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_read_receipts_desc')}</p>
+                          </div>
+                      </div>
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><MessageSquare className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_typing_indicator_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_typing_indicator_desc')}</p>
                           </div>
                       </div>
                   </div>

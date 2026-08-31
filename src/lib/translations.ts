@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'ru' | 'es' | 'pt-BR';
 
 export const translations = {
@@ -622,6 +621,12 @@ export const translations = {
       'typing': 'typing...',
       'user_typing': '{name} is typing...',
       'users_typing': '{name} and {count, plural, one {#} other {#}} more are typing...',
+      'wn_live_status_title': 'Live Statuses',
+      'wn_live_status_desc': 'Real-time online/offline indicators across all your devices.',
+      'wn_read_receipts_title': 'Read Receipts',
+      'wn_read_receipts_desc': 'The return of double-checkmarks for message read status.',
+      'wn_typing_indicator_title': 'Advanced Typing',
+      'wn_typing_indicator_desc': 'Smarter typing status that shows who is active in groups and topics.',
     },
     ru: {
       'settings': 'Настройки',
@@ -1242,6 +1247,12 @@ export const translations = {
       'typing': 'печатает...',
       'user_typing': '{name} печатает...',
       'users_typing': '{name} и еще {count, plural, one {#} few {#} other {#}} печатают...',
+      'wn_live_status_title': 'Живые статусы',
+      'wn_live_status_desc': 'Индикаторы онлайн в реальном времени на всех ваших устройствах.',
+      'wn_read_receipts_title': 'Галочки прочтения',
+      'wn_read_receipts_desc': 'Возвращение двух галочек для статуса прочтения сообщений.',
+      'wn_typing_indicator_title': 'Умный статус «печатает»',
+      'wn_typing_indicator_desc': 'Статус ввода текста, который показывает активных участников в группах и темах.',
     }
 };
 
