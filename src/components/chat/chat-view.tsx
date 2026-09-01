@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { UserProfileDialog } from '../user-profile-dialog';
 import { ChatProfileDialog } from './chat-profile-dialog';
 import { Capacitor } from '@capacitor/core';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -527,14 +529,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const typingRef = doc(db, 'chats', item.id, 'typing', currentUser.uid);
     try {
         if (typing) {
-            await setDoc(typingRef, {
+            setDoc(typingRef, {
                 userId: currentUser.uid,
                 userName: currentUser.name || currentUser.username,
                 timestamp: serverTimestamp(),
                 topicId: activeTopicId || null
-            });
+            }).catch(() => {});
         } else {
-            await deleteDoc(typingRef).catch(() => {});
+            deleteDoc(typingRef).catch(() => {});
         }
     } catch (e) {}
   };
@@ -627,7 +629,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 });
 
                 const cref = doc(collection(db, col));
-                await setDoc(cref, { data: base64, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() });
+                setDoc(cref, { data: base64, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() }).catch(() => {});
                 chunkIds.push(cref.id);
                 if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
             }
@@ -635,20 +637,32 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             data.attachments.push(attachment);
         }
         
-        await setDoc(mref, data);
+        // Optimistic Send: No await
+        setDoc(mref, data).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: mref.path,
+                operation: 'create',
+                requestResourceData: data,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 
         if (item.type === 'channel' && item.discussionChatId) {
             const discRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
-            await setDoc(discRef, { ...data, fromChannelId: item.id, channelMessageId: mref.id, senderName: item.name, senderAvatar: item.avatar || null });
-            await updateDoc(doc(db, 'chats', item.discussionChatId), { lastMessage: { id: discRef.id, content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''), senderId: item.id, senderName: item.name, timestamp: Timestamp.now() } });
+            setDoc(discRef, { ...data, fromChannelId: item.id, channelMessageId: mref.id, senderName: item.name, senderAvatar: item.avatar || null }).catch(() => {});
+            updateDoc(doc(db, 'chats', item.discussionChatId), { lastMessage: { id: discRef.id, content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''), senderId: item.id, senderName: item.name, timestamp: Timestamp.now() } }).catch(() => {});
         }
 
         let lastMsgContent = finalC.trim();
         if (customPoll) lastMsgContent = `Poll: ${customPoll.question}`;
         else if (!lastMsgContent && data.attachments.length > 0) { lastMsgContent = data.attachments.length === 1 ? t(data.attachments[0].type as any) : `${t('file')} (${data.attachments.length})`; }
-        await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: lastMsgContent, senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+        
+        updateDoc(doc(db, 'chats', item.id), { 
+            lastMessage: { id: mref.id, content: lastMsgContent, senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } 
+        }).catch(() => {});
+        
     } catch (e: any) { 
-        console.error("Failed to send message:", e);
+        console.error("Failed to prepare message:", e);
         toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not send message.' });
     } finally { 
         setIsSending(false); 

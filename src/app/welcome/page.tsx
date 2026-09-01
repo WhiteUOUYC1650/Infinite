@@ -6,7 +6,7 @@ import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/context/language-context';
-import { Loader2, Star, Rocket } from 'lucide-react';
+import { Loader2, Star, Rocket, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function WelcomePage() {
@@ -53,10 +53,15 @@ export default function WelcomePage() {
           <div className="flex flex-col items-center space-y-8 animate-in zoom-in duration-500">
             <div className="relative">
                 <div className="absolute inset-0 animate-ping bg-white/20 rounded-full scale-150" />
-                <Rocket className="h-20 w-20 text-white relative z-10 fill-white" />
+                <div className="relative z-10 w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-2xl">
+                    <Sparkles className="h-12 w-12 text-primary fill-primary" />
+                </div>
             </div>
-            <h1 className="text-4xl font-bold font-headline">Infinite 1.4.1</h1>
-            <p className="max-w-md text-lg opacity-90">{t('thank_you_beta')}</p>
+            <div className="space-y-2">
+                <h1 className="text-4xl font-bold font-headline">Infinite 1.5</h1>
+                <p className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Codename: Aurora</p>
+            </div>
+            <p className="max-w-md text-lg opacity-90 font-medium">{t('thank_you_beta')}</p>
             <Button
               onClick={() => router.push('/')}
               size="lg"
@@ -86,7 +91,7 @@ export default function WelcomePage() {
         'absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] transition-colors duration-700',
         step === 2 ? 'text-gray-900' : 'text-white'
       )}>
-        <Badge variant="outline" className="border-current text-current font-bold">1.4.1 OFFICIAL</Badge>
+        <Badge variant="outline" className="border-current text-current font-bold">1.5 OFFICIAL</Badge>
       </div>
     </div>
   );

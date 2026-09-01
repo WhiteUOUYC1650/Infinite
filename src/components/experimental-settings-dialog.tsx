@@ -233,7 +233,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const [wheelRotation, setWheelRotation] = useState(0); const [isSpinning, setSpinning] = useState(false);
   const handleSpin = async (): Promise<void> => {
-    const totalW = PRIZES_WITH_ANGLES.reduce((sum, p) => sum + p.weight, 0); let randomW = Math.random() * totalW; const winningPrize = PRIZES_WITH_ANGLES.find(p => { randomW -= p.weight; return randomW <= 0; })!; const baseRotation = 360 * 5; const prizeAngle = winningPrize.startAngle + winningPrize.angle / 2; const randomOffset = (Math.random() - 0.5) * (winningPrize.angle * 0.8); setWheelRotation(prev => (prev - (prev % 360)) + baseRotation - prizeAngle - randomOffset);
+    const totalW = PRIZES_WITH_ANGLES.reduce((sum, p) => sum + p.weight, 0); let randomW = Math.random() * totalW; const winningPrize = PRIZES_WITH_ANGLES.find(p => { randomW -= p.weight; randomW <= 0; })!; const baseRotation = 360 * 5; const prizeAngle = winningPrize.startAngle + winningPrize.angle / 2; const randomOffset = (Math.random() - 0.5) * (winningPrize.angle * 0.8); setWheelRotation(prev => (prev - (prev % 360)) + baseRotation - prizeAngle - randomOffset);
     setTimeout(async () => { toast({ title: t('you_won'), description: `${winningPrize.value} InfGold!` }); setSpinning(false); try { await updateDoc(doc(db!, 'users', userId!), { infGoldBalance: increment(winningPrize.value), lastDailyBonusClaimed: serverTimestamp(), }); } catch (e) { console.error(e); } }, 5000);
   };
 
@@ -273,28 +273,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                   <div className="text-center space-y-2 mb-2">
                       <h2 className='text-4xl font-black font-headline text-primary'>{t('whats_new')}</h2>
-                      <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion} Official</p>
+                      <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion} Aurora</p>
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><RefreshCw className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Send className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_live_status_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_live_status_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Мгновенная отправка</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Сообщения теперь отправляются мгновенно благодаря оптимистичным обновлениям.</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Code2 className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_read_receipts_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_read_receipts_desc')}</p>
-                          </div>
-                      </div>
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0"><MessageSquare className="h-6 w-6" /></div>
-                          <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('wn_typing_indicator_title')}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('wn_typing_indicator_desc')}</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Game Studio 1.5</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Расширенная логика и переменные для ваших игр.</p>
                           </div>
                       </div>
                   </div>
@@ -332,10 +325,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                 <div className={cn("w-32 h-32 bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 rounded-[2.5rem] experimental-glow")}><InfiniteLogo className='w-20 h-20 text-white' /></div>
                 <div className="space-y-2">
-                    <h2 className='text-4xl font-black font-headline'>Infinite</h2>
-                    <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">{currentVersion}</Badge>
+                    <h2 className='text-4xl font-black font-headline'>Infinite Aurora</h2>
+                    <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">v{currentVersion}</Badge>
                 </div>
-                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Official Release</div>
+                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Aurora Release</div>
                 <div className="flex flex-col gap-2 w-full pt-4">
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
