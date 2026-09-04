@@ -68,10 +68,6 @@ export const InfVidIcon = ({ className }: { className?: string }) => (
   </div>
 );
 
-/**
- * Procedural Video Player component
- * Assembles chunks incrementally into MediaSource
- */
 function ProceduralPlayer({ video }: { video: SharedVideo }) {
     const db = useFirestore();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -99,64 +95,73 @@ function ProceduralPlayer({ video }: { video: SharedVideo }) {
             const chunk = queueRef.current.shift();
             if (chunk) sourceBufferRef.current.appendBuffer(chunk);
         } catch (e) {
-            console.error("Buffer append error", e);
+            console.warn("Buffer append warning, likely non-fragmented source.", e);
         }
     }, []);
+
+    const loadFullVideo = useCallback(async () => {
+        if (!db || !video.videoChunkIds || !videoRef.current) return;
+        try {
+            const cached = await getCachedFile(video.id);
+            if (cached) {
+                if (videoRef.current) videoRef.current.src = cached;
+                setIsBuffering(false);
+                return;
+            }
+            
+            const chunksData: string[] = [];
+            for (let i = 0; i < video.videoChunkIds.length; i++) {
+                if (abortControllerRef.current?.signal.aborted) return;
+                const snap = await getDoc(doc(db, 'videoChunks', video.videoChunkIds[i]));
+                if (snap.exists()) chunksData.push(snap.data().data);
+                setProgress(Math.round(((i + 1) / video.videoChunkIds.length) * 100));
+            }
+            
+            const assembledBase64 = chunksData.join('');
+            const dataUrl = `data:${video.videoMimeType};base64,${assembledBase64}`;
+            await cacheFile(video.id, dataUrl);
+            const finalUrl = await getCachedFile(video.id);
+            
+            if (videoRef.current && finalUrl) {
+                videoRef.current.src = finalUrl;
+                videoRef.current.play().catch(() => {});
+            }
+            setIsBuffering(false);
+        } catch (e) {
+            console.error("Full load failed", e);
+            setError("Failed to load video.");
+            setIsBuffering(false);
+        }
+    }, [db, video.id, video.videoChunkIds, video.videoMimeType]);
 
     useEffect(() => {
         if (!db || !video.videoChunkIds || !videoRef.current) return;
 
+        abortControllerRef.current = new AbortController();
+        const mime = video.videoMimeType || 'video/mp4';
+        
+        // Check if MediaSource streaming is actually viable for this mime
+        const canStream = typeof window !== 'undefined' && 'MediaSource' in window && MediaSource.isTypeSupported(mime);
+
+        if (!canStream) {
+            loadFullVideo();
+            return;
+        }
+
         const ms = new MediaSource();
         mediaSourceRef.current = ms;
         videoRef.current.src = URL.createObjectURL(ms);
-        abortControllerRef.current = new AbortController();
 
-        const onSourceOpen = () => {
-            const mime = video.videoMimeType || 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+        const onSourceOpen = async () => {
             try {
                 const sb = ms.addSourceBuffer(mime);
                 sourceBufferRef.current = sb;
                 sb.addEventListener('updateend', processQueue);
-                loadChunks();
-            } catch (e) {
-                console.error("SourceBuffer error", e);
-                setError("Streaming not supported for this format. Loading full video...");
-                // Fallback to old full loading logic
-                loadFullVideo();
-            }
-        };
 
-        const loadFullVideo = async () => {
-            try {
-                const cached = await getCachedFile(video.id);
-                if (cached) {
-                    if (videoRef.current) videoRef.current.src = cached;
-                    setIsBuffering(false);
-                    return;
-                }
-                const chunksData: string[] = [];
                 for (let i = 0; i < video.videoChunkIds!.length; i++) {
-                    const snap = await getDoc(doc(db, 'videoChunks', video.videoChunkIds![i]));
-                    if (snap.exists()) chunksData.push(snap.data().data);
-                    setProgress(Math.round(((i + 1) / video.videoChunkIds!.length) * 100));
-                }
-                const fullData = `data:${video.videoMimeType};base64,${chunksData.join('')}`;
-                await cacheFile(video.id, fullData);
-                const finalUrl = await getCachedFile(video.id);
-                if (videoRef.current && finalUrl) videoRef.current.src = finalUrl;
-                setIsBuffering(false);
-            } catch (e) {
-                setError("Failed to load video.");
-            }
-        };
-
-        const loadChunks = async () => {
-            if (!video.videoChunkIds) return;
-            try {
-                for (let i = 0; i < video.videoChunkIds.length; i++) {
                     if (abortControllerRef.current?.signal.aborted) break;
                     
-                    const chunkId = video.videoChunkIds[i];
+                    const chunkId = video.videoChunkIds![i];
                     const snap = await getDoc(doc(db, 'videoChunks', chunkId));
                     
                     if (snap.exists()) {
@@ -164,17 +169,15 @@ function ProceduralPlayer({ video }: { video: SharedVideo }) {
                         queueRef.current.push(binary);
                         processQueue();
                         
-                        // Start playing after first 2 chunks
-                        if (i === 1) {
+                        if (i === 0) {
                             setIsBuffering(false);
                             videoRef.current?.play().catch(() => {});
                         }
                     }
-                    setProgress(Math.round(((i + 1) / video.videoChunkIds.length) * 100));
+                    setProgress(Math.round(((i + 1) / video.videoChunkIds!.length) * 100));
                 }
                 
                 if (ms.readyState === 'open') {
-                    // Wait for buffer to clear before ending
                     const checkEnd = setInterval(() => {
                         if (queueRef.current.length === 0 && !sourceBufferRef.current?.updating) {
                             if (ms.readyState === 'open') ms.endOfStream();
@@ -183,7 +186,8 @@ function ProceduralPlayer({ video }: { video: SharedVideo }) {
                     }, 500);
                 }
             } catch (e) {
-                console.error("Procedural load error", e);
+                console.warn("Streaming buffer error, falling back to full load.", e);
+                loadFullVideo();
             }
         };
 
@@ -196,7 +200,7 @@ function ProceduralPlayer({ video }: { video: SharedVideo }) {
             }
             if (videoRef.current) videoRef.current.src = '';
         };
-    }, [video.id, db]);
+    }, [video.id, db, loadFullVideo, video.videoChunkIds]);
 
     return (
         <div className="relative w-full h-full bg-black flex items-center justify-center">
@@ -210,8 +214,8 @@ function ProceduralPlayer({ video }: { video: SharedVideo }) {
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 gap-4 z-10">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     <div className="space-y-1 text-center">
-                        <p className="text-white font-black uppercase tracking-widest text-xs">Streaming</p>
-                        <p className="text-white/60 text-[10px] font-bold">{progress}% buffered</p>
+                        <p className="text-white font-black uppercase tracking-widest text-xs">Буферизация</p>
+                        <p className="text-white/60 text-[10px] font-bold">{progress}% загружено</p>
                     </div>
                 </div>
             )}
@@ -419,7 +423,7 @@ function ShortItem({ video, sender, currentUser, onToggleWatchLater }: { video: 
     
     return (<div ref={containerRef} className="h-full w-full max-w-md snap-start shrink-0 relative bg-black flex items-center justify-center overflow-hidden">
         <ProceduralPlayer video={video} />
-        <div className="absolute right-4 bottom-24 flex flex-col gap-6 z-10"><div className="flex flex-col items-center gap-1"><Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 transition-all active:scale-125", isLiked && "text-red-500 bg-red-500/10")}><Heart className={cn("h-6 w-6", isLiked && "fill-current")} /></Button><span className="text-[10px] font-black text-white drop-shadow-md">{video.likedBy?.length || 0}</span></div><div className="flex flex-col items-center gap-1"><Sheet open={showComments} onOpenChange={setShowComments}><SheetTrigger asChild><Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10"><MessageCircle className="h-6 w-6" /></Button></SheetTrigger><SheetContent side="bottom" className="h-[70vh] rounded-t-[2.5rem] p-0 overflow-hidden bg-background border-none shadow-2xl"><SheetHeader className="p-6 border-b shrink-0 h-16 flex-row items-center justify-between"><SheetTitle className="text-xl font-bold font-headline uppercase tracking-tighter">{t('comments')}</SheetTitle><Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="rounded-full"><X className="h-5 w-5" /></Button></SheetHeader><div className="flex-1 overflow-hidden h-full"><ShortCommentsView video={video} currentUser={currentUser} /></div></SheetContent></Sheet></div><Button variant="ghost" size="icon" className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10", currentUser.watchLater?.includes(video.id) && "text-primary")} onClick={() => onToggleWatchLater()}><Bookmark className={cn("h-6 w-6", currentUser.watchLater?.includes(video.id) && "fill-current")} /></Button><Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(`/IV/T/${video.id}`); toast({ title: t('video_link_copied') }); }} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10"><Share2 className="h-6 w-6" /></Button></div><div className="absolute bottom-6 left-4 right-16 z-10 text-white drop-shadow-xl text-left pointer-events-none"><div className="flex items-center gap-2 mb-3"><Avatar className="h-9 w-9 border-2 border-white/20"><AvatarImage src={sender?.avatar} /><AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback></Avatar><div className="min-w-0"><div className="flex items-center gap-1"><p className="font-bold text-sm truncate">{sender?.name}</p>{sender?.isAdmin && <VerifiedBadge className="w-3 h-3" />}</div><p className="text-[10px] opacity-70 uppercase tracking-tighter">@{sender?.username?.replace('@','')}</p></div></div><h3 className="font-bold text-base leading-tight break-words whitespace-normal line-clamp-3">{video.title}</h3>{video.description && <p className="text-xs opacity-80 mt-1 line-clamp-2 leading-relaxed">{video.description}</p>}</div></div>);
+        <div className="absolute right-4 bottom-24 flex flex-col gap-6 z-10"><div className="flex flex-col items-center gap-1"><Button variant="ghost" size="icon" onClick={handleToggleLike} className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10 transition-all active:scale-125", isLiked && "text-red-500 bg-red-500/10")}><Heart className={cn("h-6 w-6", isLiked && "fill-current")} /></Button><span className="text-[10px] font-black text-white drop-shadow-md">{video.likedBy?.length || 0}</span></div><div className="flex flex-col items-center gap-1"><Sheet open={showComments} onOpenChange={setShowComments}><SheetTrigger asChild><Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10"><MessageCircle className="h-6 w-6" /></Button></SheetTrigger><SheetContent side="bottom" className="h-[70vh] rounded-t-[2.5rem] p-0 overflow-hidden bg-background border-none shadow-2xl"><SheetHeader className="p-6 border-b shrink-0 h-16 flex-row items-center justify-between"><SheetTitle className="text-xl font-bold font-headline uppercase tracking-tighter">{t('comments')}</SheetTitle><Button variant="ghost" size="icon" onClick={() => setShowComments(false)} className="rounded-full"><X className="h-5 w-5" /></Button></SheetHeader><div className="flex-1 overflow-hidden h-full"><ShortCommentsView video={video} currentUser={currentUser} /></div></SheetContent></Sheet></div><Button variant="ghost" size="icon" className={cn("h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10", currentUser.watchLater?.includes(video.id) && "text-primary")} onClick={() => onToggleWatchLater()}><Bookmark className={cn("h-6 w-6", currentUser.watchLater?.includes(video.id) && "fill-current")} /></Button><Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(`/IV/T/${video.id}`); toast({ title: t('video_link_copied') }); }} className="h-12 w-12 rounded-full bg-black/20 backdrop-blur-md text-white border border-white/10"><Share2 className="h-6 w-6" /></Button></div><div className="absolute bottom-6 left-4 right-16 z-10 text-white drop-shadow-xl text-left pointer-events-none"><div className="flex items-center gap-2 mb-3"><Avatar className="h-9 w-9 border-2 border-white/20"><AvatarImage src={sender?.avatar} /><AvatarFallback>{sender?.name?.charAt(0)}</AvatarFallback></Avatar><div className="min-w-0"><div className="flex items-center gap-1"><p className="font-bold text-sm truncate">{sender?.name}</p>{sender?.isAdmin && <VerifiedBadge className="w-3.5 h-3.5" />}</div><p className="text-[10px] opacity-70 uppercase tracking-tighter">@{sender?.username?.replace('@','')}</p></div></div><h3 className="font-bold text-base leading-tight break-words whitespace-normal line-clamp-3">{video.title}</h3>{video.description && <p className="text-xs opacity-80 mt-1 line-clamp-2 leading-relaxed">{video.description}</p>}</div></div>);
 }
 
 function VideoDetailOverlay({ video, sender, onClose, currentUser, onToggleWatchLater }: { video: SharedVideo, sender?: User, onClose: () => void, currentUser: AuthenticatedUser, onToggleWatchLater: () => void }) {
@@ -464,4 +468,3 @@ function UploadView({ onClose, onUpload, isUploading, maxSizeText, maxSizeInByte
     const handleSubmit = async () => { if (!file || !title.trim()) return; const isShort = (isVideoVertical === 1 && videoDuration < 180) ? 1 : 0; await onUpload(file, thumbnail, title, description, isShort); };
     return (<div className="flex flex-col h-full bg-background animate-in slide-in-from-right duration-300 relative">{isUploading && <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500"><Loader2 className="h-12 w-12 animate-spin text-primary mb-8" /><h3 className="text-3xl font-bold font-headline mb-6">{t('infvid_upload_warning_title')}</h3><p className="text-muted-foreground leading-relaxed max-md mx-auto mb-8 text-lg">{t('infvid_upload_warning_desc')}</p><div className="flex items-center gap-3 text-primary font-black animate-pulse uppercase tracking-widest text-sm"><AlertCircle className="h-5 w-5" />{t('processing_video')}</div></div>}<header className="h-16 flex items-center px-4 border-b shrink-0 bg-background pt-[calc(1rem+env(safe-area-inset-top))]"><Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button><div className="ml-4 flex-1"><h2 className="text-xl font-bold font-headline">{retryVideoId ? t('retry_upload') : t('infvid_upload_title')}</h2></div><Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 ml-2"><X className="h-5 w-5" /></Button></header><ScrollArea className="flex-1"><div className="space-y-10 p-6 md:p-10 max-w-4xl mx-auto pb-20"><div className={cn("border-4 border-dashed rounded-[2.5rem] p-10 md:p-16 flex flex-col items-center justify-center cursor-pointer transition-all", file ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50")} onClick={() => !isUploading && fileInputRef.current?.click()}><input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="video/*" className="hidden" />{file ? (<div className="text-center"><PlayCircle className="h-20 w-20 text-primary mx-auto mb-4" /><p className="font-black text-xl truncate max-w-[400px]">{file.name}</p><div className="flex items-center justify-center gap-3 mt-2"><p className="text-sm text-muted-foreground font-bold">{(file.size / (1024 * 1024)).toFixed(2)} MB</p><span className="text-sm text-primary font-bold uppercase">{(isVideoVertical === 1 && videoDuration < 180) ? t('infshorts_title') : t('video')}</span></div></div>) : (<div className="text-center"><Upload className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" /><p className="text-xl font-black text-muted-foreground">{retryVideoId ? t('choose_file') : t('infvid_upload_title')}</p><p className="text-xs text-muted-foreground mt-2 font-bold uppercase">{t('infvid_video_limits', { size: maxSizeText })}</p></div>)}</div><div className="grid grid-cols-1 md:grid-cols-2 gap-10"><div className="space-y-4"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_thumbnail_label')}</label><div className={cn("aspect-video border-4 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-muted/20 relative", thumbnailPreview ? "border-solid border-primary" : "hover:border-primary/50")} onClick={() => !isUploading && thumbnailInputRef.current?.click()}><input type="file" ref={thumbnailInputRef} onChange={handleThumbnailSelect} accept="image/*" className="hidden" />{thumbnailPreview ? (<img src={thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />) : (<div className="text-center"><ImageIcon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" /><p className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('infvid_select_thumbnail')}</p></div>)}</div></div><div className="space-y-6"><div className="space-y-3"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_video_title_label')}</label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('infvid_video_title_placeholder')} disabled={isUploading} className="rounded-2xl h-14 px-6 bg-muted/30 border-none font-bold" maxLength={200} /></div><div className="space-y-3"><label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{t('infvid_video_desc_label')}</label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('infvid_video_desc_placeholder')} className="resize-none rounded-2xl p-6 bg-muted/30 border-none min-h-[120px]" rows={3} disabled={isUploading} maxLength={1600} /></div></div></div><div className="pt-6 flex gap-4"><Button variant="ghost" onClick={onClose} disabled={isUploading} className="rounded-2xl flex-1 h-14 text-lg font-bold">{t('cancel')}</Button><Button onClick={handleSubmit} disabled={!file || !title.trim() || isUploading} className="rounded-2xl flex-[2] font-black h-14 text-lg shadow-xl">{isUploading ? t('loading') : t('save')}</Button></div></div></ScrollArea></div>);
 }
-

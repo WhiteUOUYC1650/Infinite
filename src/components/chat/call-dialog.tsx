@@ -218,7 +218,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                     if (isDocumentCreated.current) {
                         await updateDoc(callDocRef, {
                             [isCaller ? 'callerCandidates' : 'calleeCandidates']: arrayUnion(event.candidate.toJSON())
-                        });
+                        }).catch(() => {});
                     } else {
                         iceCandidateQueue.current.push(event.candidate);
                     }
@@ -228,23 +228,23 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             if (isCaller) {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
+                
+                // Important: Ensure document is created with initial state before ice candidates
                 await setDoc(callDocRef, {
                     callerId: currentUser.uid,
-                    calleeId: otherUser?.id,
+                    calleeId: otherUser?.id || '',
                     status: 'calling',
                     isVideo: isVideo,
                     offer: { sdp: offer.sdp, type: offer.type },
-                    callerCandidates: [],
+                    callerCandidates: iceCandidateQueue.current.map(c => c.toJSON()),
                     calleeCandidates: [],
+                    timestamp: serverTimestamp(),
                 });
+                
                 isDocumentCreated.current = true;
-                // Flush queue
-                for (const cand of iceCandidateQueue.current) {
-                    await updateDoc(callDocRef, { callerCandidates: arrayUnion(cand.toJSON()) });
-                }
                 iceCandidateQueue.current = [];
             } else {
-                isDocumentCreated.current = true; // Callee document already exists
+                isDocumentCreated.current = true;
             }
 
             const unsubscribe = onSnapshot(callDocRef, async (snapshot) => {
@@ -260,11 +260,6 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                         answer: { sdp: answer.sdp, type: answer.type },
                         status: 'active'
                     });
-                    // Flush callee candidates
-                    for (const cand of iceCandidateQueue.current) {
-                        await updateDoc(callDocRef, { calleeCandidates: arrayUnion(cand.toJSON()) });
-                    }
-                    iceCandidateQueue.current = [];
                 }
                 
                 if (isCaller && data.answer && !answerApplied.current) {
@@ -274,7 +269,11 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                 
                 const candidates = isCaller ? data.calleeCandidates : data.callerCandidates;
                 if (candidates) {
-                    candidates.forEach(c => peerConnection.current?.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}));
+                    candidates.forEach(c => {
+                        try {
+                            peerConnection.current?.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+                        } catch (e) {}
+                    });
                 }
 
                 if (data.status === 'ended') endCallLocally(false);
