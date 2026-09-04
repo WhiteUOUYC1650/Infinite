@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -127,6 +128,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const answerApplied = useRef(false);
   const offerApplied = useRef(false);
+  const isDocumentCreated = useRef(false);
+  const iceCandidateQueue = useRef<RTCIceCandidate[]>([]);
 
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
@@ -147,18 +150,11 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     if (callStatus === 'ended' && !peerConnection.current) return;
     setCallStatus('ended');
     
-    // Stop local tracks
     if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => {
-            track.stop();
-        });
+        localStreamRef.current.getTracks().forEach(track => track.stop());
     }
-
-    // Stop remote tracks
     if (remoteStreamRef.current) {
-        remoteStreamRef.current.getTracks().forEach(track => {
-            track.stop();
-        });
+        remoteStreamRef.current.getTracks().forEach(track => track.stop());
     }
     
     if (peerConnection.current) {
@@ -184,6 +180,8 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     setIsMinimized(false);
     answerApplied.current = false;
     offerApplied.current = false;
+    isDocumentCreated.current = false;
+    iceCandidateQueue.current = [];
     setDuration(0);
 
     const setupCall = async () => {
@@ -209,24 +207,21 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             }
 
             pc.ontrack = (event) => {
-                event.streams[0].getTracks().forEach(track => {
-                    remoteStream.addTrack(track);
-                });
+                event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
                 setCallStatus('connected');
             };
 
-            pc.onconnectionstatechange = () => {
-                console.log("WebRTC State:", pc.connectionState);
-                if(pc.connectionState === 'connected') setCallStatus('connected');
-                if(pc.connectionState === 'failed' || pc.connectionState === 'disconnected') endCallLocally(true);
-            };
-
             const callDocRef = doc(db, 'calls', chat.id);
+
             pc.onicecandidate = async (event) => {
                 if (event.candidate) {
-                    await updateDoc(callDocRef, {
-                        [isCaller ? 'callerCandidates' : 'calleeCandidates']: arrayUnion(event.candidate.toJSON())
-                    });
+                    if (isDocumentCreated.current) {
+                        await updateDoc(callDocRef, {
+                            [isCaller ? 'callerCandidates' : 'calleeCandidates']: arrayUnion(event.candidate.toJSON())
+                        });
+                    } else {
+                        iceCandidateQueue.current.push(event.candidate);
+                    }
                 }
             };
             
@@ -242,6 +237,14 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                     callerCandidates: [],
                     calleeCandidates: [],
                 });
+                isDocumentCreated.current = true;
+                // Flush queue
+                for (const cand of iceCandidateQueue.current) {
+                    await updateDoc(callDocRef, { callerCandidates: arrayUnion(cand.toJSON()) });
+                }
+                iceCandidateQueue.current = [];
+            } else {
+                isDocumentCreated.current = true; // Callee document already exists
             }
 
             const unsubscribe = onSnapshot(callDocRef, async (snapshot) => {
@@ -257,6 +260,11 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                         answer: { sdp: answer.sdp, type: answer.type },
                         status: 'active'
                     });
+                    // Flush callee candidates
+                    for (const cand of iceCandidateQueue.current) {
+                        await updateDoc(callDocRef, { calleeCandidates: arrayUnion(cand.toJSON()) });
+                    }
+                    iceCandidateQueue.current = [];
                 }
                 
                 if (isCaller && data.answer && !answerApplied.current) {
@@ -286,7 +294,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
         unsubPromise.then(u => u && u());
         endCallLocally(true);
     };
-  }, [open, isVideo]);
+  }, [open]);
 
   const toggleMute = () => {
       if (!localStreamRef.current) return;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -43,6 +44,7 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { StoriesBar } from './stories/stories-bar';
+import { InfVidIcon } from './infvid/infvid-view';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -462,7 +464,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 </Button>
                 <Button variant="ghost" onClick={() => { onSelect('infvid'); setOpenMobile(false); }} className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}>
                     <div className="flex items-center gap-3 w-full">
-                    <Avatar className='h-4 w-4 rounded-none'><InfiniteLogo className='text-primary' /></Avatar>
+                    <InfVidIcon className="h-5 w-5" />
                     <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm">{t('infvid_title')}</p>
                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
