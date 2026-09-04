@@ -77,6 +77,13 @@ export default function LoginPage() {
     setIsBotCodeMode(false);
   }, []);
 
+  const storeAccountLocally = (uid: string, email: string, password: string, name: string, avatar: string, username: string) => {
+      const existing = JSON.parse(localStorage.getItem('infinite-accounts') || '[]');
+      const filtered = existing.filter((acc: any) => acc.uid !== uid);
+      filtered.push({ uid, email, password, name, avatar, username });
+      localStorage.setItem('infinite-accounts', JSON.stringify(filtered));
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!auth || !db) return;
     setIsLoading(true);
@@ -100,6 +107,9 @@ export default function LoginPage() {
           setIsLoading(false);
           return;
         }
+
+        // Store account for multi-account switcher
+        storeAccountLocally(uid, values.email, values.password, userData.name || '', userData.avatar || '', userData.username || '');
 
         if (userData.loginProtectionEnabled) {
           setUserId(uid);

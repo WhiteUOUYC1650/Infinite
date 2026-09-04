@@ -20,10 +20,11 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreVertical, ChevronDown, ChevronUp, ArrowLeft, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreVertical, ChevronDown, ChevronUp, ArrowLeft, MessageSquare, MoreHorizontal, UserPlus, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, arrayRemove } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
@@ -49,6 +50,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 
 const iconMap = {
@@ -96,6 +99,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarContentProps) {
   const db = useFirestore(); 
+  const auth = useAuth();
   const { language, t } = useLanguage(); 
   const { toggleTheme, isDarkMode, experimentalDesign, glassEffect, showFeed } = useTheme(); 
   const { setOpenMobile } = useSidebar(); 
@@ -106,7 +110,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const [showNewChat, setShowNewChat] = useState(false); 
   const [showSearchDialog, setShowSearchDialog] = useState(false); 
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false); 
-  const [showUserProfilePopover, setShowUserProfilePopover] = useState(false); 
   const [showSettingsDialog, setShowSettingsDialog] = useState(false); 
   const [isOnline, setIsOnline] = useState(true);
   const [primaryBots, setPrimaryBots] = useState<User[]>([]); 
@@ -116,6 +119,14 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<number | null>(null);
   const router = useRouter();
+
+  const [storedAccounts, setStoredAccounts] = useState<any[]>([]);
+  const [isSwitching, setIsSwitching] = useState(false);
+
+  useEffect(() => {
+    const accs = JSON.parse(localStorage.getItem('infinite-accounts') || '[]');
+    setStoredAccounts(accs);
+  }, []);
 
   useEffect(() => { 
     const handleStatus = () => setIsOnline(navigator.onLine); 
@@ -303,16 +314,22 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
     } catch (e) { console.error(e); }
   };
   
-  const InfVidIcon = ({ className }: { className?: string }) => (
-    <div className={cn("relative flex items-center justify-center", className)}>
-      <svg viewBox="0 0 24 24" fill="#FF8C00" className="absolute w-full h-full">
-        <path d="M5 3l14 9-14 9V3z" />
-      </svg>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative w-3/5 h-3/5">
-        <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4zm0 0c2 2.67 4 4 6 4a4 4 0 1 0 0-8c-2 0-4 1.33-6 4z" />
-      </svg>
-    </div>
-  );
+  const handleSwitchAccount = async (account: any) => {
+      if (!auth || isSwitching || account.uid === currentUser.uid) return;
+      setIsSwitching(true);
+      try {
+          await auth.signOut();
+          await signInWithEmailAndPassword(auth, account.email, account.password);
+          window.location.reload();
+      } catch (e: any) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to switch account.' });
+          setIsSwitching(false);
+      }
+  };
+
+  const handleAddAccount = () => {
+      auth?.signOut().then(() => router.push('/login'));
+  };
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (scrollRef.current && scrollRef.current.scrollTop <= 0) {
@@ -336,7 +353,13 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   };
   
   return (
-    <div className="flex flex-col h-full bg-sidebar">
+    <div className="flex flex-col h-full bg-sidebar relative">
+      {isSwitching && (
+          <div className="absolute inset-0 z-[200] bg-background/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="font-bold text-sm animate-pulse">{t('loading')}...</p>
+          </div>
+      )}
       <SidebarHeader className="p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -439,7 +462,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                 </Button>
                 <Button variant="ghost" onClick={() => { onSelect('infvid'); setOpenMobile(false); }} className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'infvid' && 'bg-sidebar-accent text-sidebar-accent-foreground')}>
                     <div className="flex items-center gap-3 w-full">
-                    <InfVidIcon className="h-4 w-4" />
+                    <Avatar className='h-4 w-4 rounded-none'><InfiniteLogo className='text-primary' /></Avatar>
                     <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm">{t('infvid_title')}</p>
                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
@@ -606,8 +629,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <SidebarFooter className={cn("p-3 flex flex-col items-center shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] relative z-[100] border-t transition-all", (experimentalDesign || glassEffect) ? "bg-sidebar/40 backdrop-blur-3xl m-2 rounded-[2.5rem] border-white/20 shadow-2xl" : "bg-sidebar")}>
         <div className={cn("flex w-full gap-2 items-center", (experimentalDesign || glassEffect) ? "flex-col" : "flex-row")}>
-          <Popover open={showUserProfilePopover} onOpenChange={setShowUserProfilePopover}>
-            <PopoverTrigger asChild>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
               <button className={cn("flex-1 truncate p-3 rounded-2xl hover:bg-sidebar-accent/50 transition-all", (experimentalDesign || glassEffect) ? "experimental-glow flex flex-col items-center gap-3 text-center w-full py-4" : "bg-sidebar-background border border-border/50 shadow-sm flex items-center gap-2 text-left")}>
                 {currentUser.uid && currentUser.name && (
                   <div className="relative">
@@ -628,11 +651,34 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                   </p>
                 </div>
               </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className={cn("w-80 mb-2 p-0 overflow-hidden max-h-[85vh] border-none shadow-2xl rounded-xl")}>
-              <UserProfileCard user={currentUser} onEditProfile={() => { setShowUserProfilePopover(false); setShowEditProfile(true); }} />
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-80 mb-2 p-1 overflow-hidden max-h-[85vh] border-none shadow-2xl rounded-2xl">
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest opacity-40 px-3 py-2">{t('multi_account_manager')}</DropdownMenuLabel>
+              {storedAccounts.map(acc => (
+                  <DropdownMenuItem key={acc.uid} onSelect={() => handleSwitchAccount(acc)} className={cn("h-14 rounded-xl px-3 gap-3 font-bold", acc.uid === currentUser.uid && "bg-primary/10 text-primary")}>
+                      <Avatar className="h-9 w-9">
+                          <AvatarImage src={acc.avatar} />
+                          <AvatarFallback>{acc.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                          <p className="truncate">{acc.name}</p>
+                          <p className="text-[10px] opacity-60 font-medium truncate">{acc.username}</p>
+                      </div>
+                      {acc.uid === currentUser.uid && <Check className="h-4 w-4 shrink-0" />}
+                  </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleAddAccount} className="h-12 rounded-xl px-3 font-bold text-primary">
+                  <UserPlus className="mr-3 h-5 w-5" />
+                  {t('add_account')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setShowSettingsDialog(true)} className="h-12 rounded-xl px-3 font-bold">
+                  <Cog className="mr-3 h-5 w-5" />
+                  {t('settings')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           <div className={cn("flex gap-1 shrink-0", (experimentalDesign || glassEffect) ? "flex-row w-full justify-center gap-2" : "flex-col")}>
             <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-8 w-8", (experimentalDesign || glassEffect) && "glass-circle rounded-2xl h-12 w-12")}>

@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Phone, PhoneOff, Video as VideoIcon, VideoOff, Maximize2 } from 'lucide-react';
+import { Mic, MicOff, Phone, PhoneOff, Video as VideoIcon, VideoOff, Maximize2, Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, onSnapshot, setDoc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import type { PopulatedChat, AuthenticatedUser, User, Call } from '@/types';
@@ -108,7 +107,10 @@ interface CallDialogProps {
 }
 
 const servers = {
-  iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }],
+  iceServers: [
+    { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
+    { urls: ['stun:stun3.l.google.com:19302', 'stun:stun4.l.google.com:19302'] }
+  ],
   iceCandidatePoolSize: 10,
 };
 
@@ -116,6 +118,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
   const db = useFirestore();
   const { t } = useLanguage();
   const { minimizeCallOnClose } = useTheme();
+  const { toast } = useToast();
   
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -148,7 +151,6 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => {
             track.stop();
-            track.enabled = false;
         });
     }
 
@@ -156,7 +158,6 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
     if (remoteStreamRef.current) {
         remoteStreamRef.current.getTracks().forEach(track => {
             track.stop();
-            track.enabled = false;
         });
     }
     
@@ -199,7 +200,6 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             const pc = new RTCPeerConnection(servers);
             peerConnection.current = pc;
 
-            // Proper track addition for two-way audio/video
             stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
             const remoteStream = new MediaStream();
@@ -216,6 +216,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
             };
 
             pc.onconnectionstatechange = () => {
+                console.log("WebRTC State:", pc.connectionState);
                 if(pc.connectionState === 'connected') setCallStatus('connected');
                 if(pc.connectionState === 'failed' || pc.connectionState === 'disconnected') endCallLocally(true);
             };
@@ -280,9 +281,9 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
         }
     };
     
-    const unsub = setupCall();
+    const unsubPromise = setupCall();
     return () => {
-        unsub.then(u => u && u());
+        unsubPromise.then(u => u && u());
         endCallLocally(true);
     };
   }, [open, isVideo]);
@@ -357,7 +358,7 @@ export function CallDialog({ open, onOpenChange, chat, otherUser, currentUser, i
                   <div className="space-y-1 mt-4">
                     <DialogTitle className="text-3xl font-bold">{otherUser?.name}</DialogTitle>
                     <DialogDescription className="text-white/60 text-lg">
-                      {callStatus === 'connecting' && t('connecting')}
+                      {callStatus === 'connecting' && <div className='flex items-center justify-center gap-2'><Loader2 className='animate-spin' /> {t('connecting')}</div>}
                       {callStatus === 'connected' && format(new Date(duration * 1000), 'mm:ss')}
                       {callStatus === 'ended' && t('call_ended')}
                     </DialogDescription>
