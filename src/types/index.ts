@@ -263,6 +263,7 @@ export type Chat = {
   allowedReactions?: string[]; 
   isSupergroup?: boolean;
   topics?: ChatTopic[];
+  allowedReactionsList?: string[];
 };
 
 export type ChatLink = {
@@ -341,4 +342,9 @@ export type Story = {
 
 export type PopulatedChat = Chat & {
     iconComponent?: LucideIcon;
+};
+
+export type CustomThemeConfig = {
+    primary: { h: number, s: number, l: number };
+    background: { h: number, s: number, l: number };
 };

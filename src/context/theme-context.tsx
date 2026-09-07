@@ -1,9 +1,11 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { CustomThemeConfig } from '@/types';
 
-export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold';
+export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'custom';
 
 type ThemeColors = { [key: string]: string };
 
@@ -13,7 +15,12 @@ type ThemeConfig = {
   backgroundImage?: keyof typeof placeholderImages;
 };
 
-const THEMES: Record<Theme, ThemeConfig> = {
+const DEFAULT_CUSTOM_COLORS: CustomThemeConfig = {
+    primary: { h: 25, s: 95, l: 53 },
+    background: { h: 30, s: 71, l: 92 }
+};
+
+const THEMES: Record<Exclude<Theme, 'custom'>, ThemeConfig> = {
   orange: {
     light: {
       primary: '25 95% 53%',
@@ -308,6 +315,8 @@ interface ThemeContextType {
   toggleShowFeed: () => void;
   useSystemFont: boolean;
   toggleSystemFont: () => void;
+  customThemeConfig: CustomThemeConfig;
+  setCustomThemeConfig: (config: CustomThemeConfig) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -323,6 +332,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
   const [useSystemFont, setUseSystemFont] = useState(true);
+  const [customThemeConfig, setCustomThemeConfig] = useState<CustomThemeConfig>(DEFAULT_CUSTOM_COLORS);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -336,8 +346,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
+    const storedCustomColors = localStorage.getItem('app-custom-theme-config');
 
-    if (storedTheme && THEMES[storedTheme]) {
+    if (storedTheme && (THEMES[storedTheme as keyof typeof THEMES] || storedTheme === 'custom')) {
       setTheme(storedTheme);
     }
     
@@ -355,6 +366,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
     if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
     if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
+    if (storedCustomColors) {
+        try { setCustomThemeConfig(JSON.parse(storedCustomColors)); } catch(e) {}
+    }
 
     setIsMounted(true);
   }, []);
@@ -374,25 +388,49 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.remove('theme-shining-gold');
       }
       
-      const themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
+      let themeColors: ThemeColors;
+
+      if (theme === 'custom') {
+          const cfg = customThemeConfig;
+          const p = `${cfg.primary.h} ${cfg.primary.s}% ${cfg.primary.l}%`;
+          const b = isDarkMode 
+            ? `${cfg.background.h} ${Math.max(0, cfg.background.s - 50)}% ${Math.min(15, cfg.background.l / 5)}%` 
+            : `${cfg.background.h} ${cfg.background.s}% ${cfg.background.l}%`;
+          
+          themeColors = {
+              primary: p,
+              background: b,
+              foreground: isDarkMode ? '0 0% 98%' : '0 0% 10%',
+              card: isDarkMode ? `${cfg.background.h} ${Math.max(0, cfg.background.s - 50)}% ${Math.min(18, cfg.background.l / 4)}%` : b,
+              popover: b,
+              muted: isDarkMode ? '0 0% 15%' : '0 0% 92%',
+              border: isDarkMode ? '0 0% 25%' : '0 0% 85%',
+              input: isDarkMode ? '0 0% 25%' : '0 0% 85%',
+              sidebarForeground: isDarkMode ? '0 0% 95%' : '0 0% 20%',
+              sidebarAccent: isDarkMode ? '0 0% 20%' : '0 0% 90%',
+              sidebarAccentForeground: isDarkMode ? '0 0% 100%' : '0 0% 10%',
+          };
+      } else {
+          themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
+      }
       
       const varsToSet = {
         '--background': themeColors.background,
         '--primary': themeColors.primary,
-        '--primary-foreground': themeColors.foreground,
+        '--primary-foreground': themeColors.foreground || (isDarkMode ? '0 0% 98%' : '0 0% 10%'),
         '--card': themeColors.card,
         '--popover': themeColors.popover,
         '--secondary': themeColors.muted,
         '--muted': themeColors.muted,
         '--accent': themeColors.primary,
-        '--accent-foreground': themeColors.foreground,
+        '--accent-foreground': themeColors.foreground || (isDarkMode ? '0 0% 98%' : '0 0% 10%'),
         '--border': themeColors.border,
         '--input': themeColors.input,
         '--ring': themeColors.primary,
-        '--sidebar-background': themeColors['sidebar-background'],
+        '--sidebar-background': themeColors['sidebar-background'] || themeColors.card,
         '--sidebar-foreground': themeColors.sidebarForeground,
         '--sidebar-primary': themeColors.primary,
-        '--sidebar-primary-foreground': themeColors.foreground,
+        '--sidebar-primary-foreground': themeColors.foreground || (isDarkMode ? '0 0% 98%' : '0 0% 10%'),
         '--sidebar-accent': themeColors.sidebarAccent,
         '--sidebar-accent-foreground': themeColors.sidebarAccentForeground,
         '--sidebar-border': themeColors.border,
@@ -403,11 +441,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           if (value) root.style.setProperty(property, value);
       }
     }
-  }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted]);
+  }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted, customThemeConfig]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
     localStorage.setItem('app-color-theme', newTheme);
+  };
+
+  const handleSetCustomConfig = (config: CustomThemeConfig) => {
+      setCustomThemeConfig(config);
+      localStorage.setItem('app-custom-theme-config', JSON.stringify(config));
   };
 
   const handleToggleTheme = () => setIsDarkMode(prev => !prev);
@@ -483,6 +526,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleShowFeed,
     useSystemFont,
     toggleSystemFont,
+    customThemeConfig,
+    setCustomThemeConfig: handleSetCustomConfig
   };
 
   if (!isMounted) return null;

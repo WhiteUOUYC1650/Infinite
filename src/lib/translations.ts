@@ -1,3 +1,4 @@
+
 export type Language = 'en' | 'ru' | 'es' | 'pt-BR';
 
 export const translations = {
@@ -196,6 +197,7 @@ export const translations = {
       'yellow': 'Yellow',
       'pink': 'Pink',
       'shining_gold': 'Shining Gold',
+      'custom': 'Custom Theme',
       'light_mode': 'Light Mode',
       'dark_mode': 'Dark Mode',
       'help': 'Help & FAQ',
@@ -499,7 +501,7 @@ export const translations = {
       'max_chat_msg_1': 'Hi honey, did you hear about the new law?',
       'max_chat_msg_2': 'Hey, check out this forbidden joke lol',
       'max_reply_safe_1': 'Yes, long live the system!',
-      'max_reply_dangerous_1': 'Suena un poco estricto, ¿no?',
+      'max_reply_dangerous_1': 'Suena un poco estricто, ¿no?',
       'max_reply_safe_2': 'Report: Suspected extremism detected.',
       'max_reply_dangerous_2': 'Hahaha, manda aí!',
       'max_fine_title': 'MULTA IMPOSED',
@@ -632,6 +634,10 @@ export const translations = {
       'multi_account_manager': 'Multi-Account Manager',
       'wn_multi_account_title': 'Multi-Account',
       'wn_multi_account_desc': 'Seamlessly switch between multiple Infinite accounts.',
+      'customization_unlocked': 'Developer Customization Unlocked!',
+      'customize': 'Customize',
+      'primary_color': 'Primary Color',
+      'background_color': 'Background',
     },
     ru: {
       'settings': 'Настройки',
@@ -826,6 +832,7 @@ export const translations = {
       'yellow': 'Желтый',
       'pink': 'Розовый',
       'shining_gold': 'Сияющее золото',
+      'custom': 'Своя тема',
       'light_mode': 'Светлая тема',
       'dark_mode': 'Темная тема',
       'help': 'Помощь и FAQ',
@@ -1263,6 +1270,10 @@ export const translations = {
       'multi_account_manager': 'Менеджер аккаунтов',
       'wn_multi_account_title': 'Мульти-аккаунт',
       'wn_multi_account_desc': 'Бесшовное переключение между несколькими аккаунтами Infinite.',
+      'customization_unlocked': 'Разблокирован режим кастомизации!',
+      'customize': 'Кастомизация',
+      'primary_color': 'Основной цвет',
+      'background_color': 'Фон приложения',
     }
 };
 

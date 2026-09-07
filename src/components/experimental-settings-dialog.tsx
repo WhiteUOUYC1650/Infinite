@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -31,8 +32,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -58,7 +60,7 @@ import { LegalDialog } from './legal-dialog';
 import { Input } from './ui/input';
 import React from 'react';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates';
+type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates' | 'customization';
 
 const STANDARD_COLORS: Record<string, string> = {
   '0': '#000000',
@@ -136,11 +138,37 @@ const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, 
 export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
   const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']); const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward'); const page = pageHistory[pageHistory.length - 1];
   const [showEditProfile, setShowEditProfile] = useState(false); const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); const scrollAreaRef = useRef<HTMLDivElement>(null); const router = useRouter();
-  const { t, language, setLanguage } = useLanguage(); const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes } = useTheme(); const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
+  const { t, language, setLanguage } = useLanguage(); const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
   const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false); const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
   const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
+
+  // Easter Egg State
+  const [logoTaps, setLogoTaps] = useState(0);
+  const [lastTapTime, setLastTapTime] = useState(0);
+  const [customizationMode, setCustomizationMode] = useState(false);
+
+  useEffect(() => {
+    setCustomizationMode(localStorage.getItem('app-customization-mode') === 'true');
+  }, []);
+
+  const handleLogoTap = () => {
+      const now = Date.now();
+      if (now - lastTapTime > 3000) {
+          setLogoTaps(1);
+      } else {
+          const nextTaps = logoTaps + 1;
+          setLogoTaps(nextTaps);
+          if (nextTaps >= 10) {
+              localStorage.setItem('app-customization-mode', 'true');
+              setCustomizationMode(true);
+              toast({ title: "Developer Mode", description: t('customization_unlocked') || "Customization mode unlocked!" });
+              setLogoTaps(0);
+          }
+      }
+      setLastTapTime(now);
+  };
 
   // PIN State
   const [pinLockEnabled, setPinLockEnabled] = useState(false);
@@ -297,7 +325,92 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                   </div>
               </div>
           );
-          case 'theme': return (<RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="p-4 space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">{['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'].map(tName => { const isPremTheme = tName === 'shining_gold'; return (<div key={tName} className={cn("flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}><div className="flex items-center space-x-3"><RadioGroupItem value={tName} id={tName} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} /><Label htmlFor={tName} className='capitalize cursor-pointer font-bold'>{t(tName as any)}</Label></div>{isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}</div>); })}</RadioGroup>);
+          case 'theme': 
+            const themeOptions = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'];
+            if (customizationMode) themeOptions.push('custom');
+            return (
+                <div className="p-4 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
+                        {themeOptions.map(tName => { 
+                            const isPremTheme = tName === 'shining_gold'; 
+                            return (
+                                <div key={tName} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                                    <div className="flex items-center space-x-3">
+                                        <RadioGroupItem value={tName} id={tName} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
+                                        <Label htmlFor={tName} className='capitalize cursor-pointer font-bold'>{t(tName as any)}</Label>
+                                    </div>
+                                    {isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}
+                                    {tName === 'custom' && <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />}
+                                </div>
+                            ); 
+                        })}
+                    </RadioGroup>
+                    {theme === 'custom' && (
+                        <div className="pt-4 animate-in zoom-in duration-300">
+                            <Button onClick={() => navigateTo('customization')} className="w-full h-14 rounded-2xl font-black text-lg gap-3 shadow-xl bg-primary/20 text-primary hover:bg-primary/30 border-2 border-primary/20">
+                                <Palette className="h-6 w-6" />
+                                {t('customize')}
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            );
+          case 'customization':
+              return (
+                <div className='p-6 space-y-10 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
+                    <div className="space-y-2 text-center">
+                        <h2 className="text-3xl font-black font-headline uppercase tracking-tighter">Theme Studio</h2>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Personalize your Infinite experience</p>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-1.5 h-6 bg-primary rounded-full" />
+                            <h3 className="font-black uppercase tracking-widest text-sm">{t('primary_color')}</h3>
+                        </div>
+                        <div className="space-y-6 bg-muted/20 p-6 rounded-3xl border border-white/5">
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Hue (Тон)</span><span>{customThemeConfig.primary.h}°</span></div>
+                                <Slider value={[customThemeConfig.primary.h]} max={360} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, primary: { ...customThemeConfig.primary, h: v } })} />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Saturation</span><span>{customThemeConfig.primary.s}%</span></div>
+                                <Slider value={[customThemeConfig.primary.s]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, primary: { ...customThemeConfig.primary, s: v } })} />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Lightness</span><span>{customThemeConfig.primary.l}%</span></div>
+                                <Slider value={[customThemeConfig.primary.l]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, primary: { ...customThemeConfig.primary, l: v } })} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-1.5 h-6 bg-muted-foreground/40 rounded-full" />
+                            <h3 className="font-black uppercase tracking-widest text-sm">{t('background_color')}</h3>
+                        </div>
+                        <div className="space-y-6 bg-muted/20 p-6 rounded-3xl border border-white/5">
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Hue</span><span>{customThemeConfig.background.h}°</span></div>
+                                <Slider value={[customThemeConfig.background.h]} max={360} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, background: { ...customThemeConfig.background, h: v } })} />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Saturation</span><span>{customThemeConfig.background.s}%</span></div>
+                                <Slider value={[customThemeConfig.background.s]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, background: { ...customThemeConfig.background, s: v } })} />
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Lightness</span><span>{customThemeConfig.background.l}%</span></div>
+                                <Slider value={[customThemeConfig.background.l]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, background: { ...customThemeConfig.background, l: v } })} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-10 text-center">
+                        <div className="w-20 h-20 rounded-3xl mx-auto shadow-2xl transition-all duration-500" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
+                        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Preview Swatch</p>
+                    </div>
+                </div>
+              );
           case 'language': return (
             <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300">
                 <RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1">
@@ -327,7 +440,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           case 'account': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button><Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button><div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div></div>);
           case 'about': return (
               <div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'>
-                <div className={cn("w-32 h-32 bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 rounded-[2.5rem] experimental-glow")}><InfiniteLogo className='w-20 h-20 text-white' /></div>
+                <div 
+                    onClick={handleLogoTap}
+                    className={cn("w-32 h-32 bg-primary flex items-center justify-center shadow-2xl shadow-primary/20 rounded-[2.5rem] experimental-glow active:scale-95 transition-transform cursor-pointer")}
+                >
+                    <InfiniteLogo className='w-20 h-20 text-white' />
+                </div>
                 <div className="space-y-2">
                     <h2 className='text-4xl font-black font-headline'>Infinite Aurora</h2>
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">v{currentVersion}</Badge>
