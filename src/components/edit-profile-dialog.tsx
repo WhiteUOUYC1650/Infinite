@@ -22,9 +22,9 @@ import {
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useFirestore } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import type { AuthenticatedUser } from '@/types';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, doc, setDoc, query, orderBy, limit } from 'firebase/firestore';
+import type { AuthenticatedUser, SharedMusic } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -32,7 +32,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Loader2, Pencil, Cake } from 'lucide-react';
+import { Loader2, Pencil, Cake, ImageIcon, Music } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
@@ -44,11 +44,12 @@ import ReactCrop, {
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
-
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
   statusMessage: z.string().max(120, { message: 'Status must be 120 characters or less.' }).optional(),
   avatar: z.string().optional(),
+  bannerUrl: z.string().optional(),
+  profileMusicId: z.string().optional(),
   birthday: z.object({
     day: z.string(),
     month: z.string(),
@@ -57,105 +58,57 @@ const formSchema = z.object({
 }).refine((data) => {
   const { day, month, year } = data.birthday;
   const isAnyFieldFilled = (day && day !== 'none') || (month && month !== 'none') || (!!year && year !== '');
-  
-  if (isAnyFieldFilled) {
-    return day !== 'none' && month !== 'none';
-  }
+  if (isAnyFieldFilled) return day !== 'none' && month !== 'none';
   return true;
 }, {
   message: 'Day and month are required.',
   path: ['birthday.day'],
 });
 
-interface EditProfileDialogProps {
-  user: AuthenticatedUser;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
+  return centerCrop(makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight), mediaWidth, mediaHeight);
 }
 
-// Helper to center the crop
-function centerAspectCrop(
-  mediaWidth: number,
-  mediaHeight: number,
-  aspect: number
-) {
-  return centerCrop(
-    makeAspectCrop(
-      {
-        unit: '%',
-        width: 90,
-      },
-      aspect,
-      mediaWidth,
-      mediaHeight
-    ),
-    mediaWidth,
-    mediaHeight
-  );
-}
-
-// Helper to get the cropped image data URL
-async function getCroppedImg(
-  image: HTMLImageElement,
-  crop: PixelCrop
-): Promise<string> {
+async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string> {
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
-  canvas.width = crop.width;
-  canvas.height = crop.height;
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    throw new Error('No 2d context');
-  }
-
   const pixelRatio = window.devicePixelRatio;
   canvas.width = crop.width * pixelRatio;
   canvas.height = crop.height * pixelRatio;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No 2d context');
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   ctx.imageSmoothingQuality = 'high';
-
-  ctx.drawImage(
-    image,
-    crop.x * scaleX,
-    crop.y * scaleY,
-    crop.width * scaleX,
-    crop.height * scaleY,
-    0,
-    0,
-    crop.width,
-    crop.height
-  );
-
+  ctx.drawImage(image, crop.x * scaleX, crop.y * scaleY, crop.width * scaleX, crop.height * scaleY, 0, 0, crop.width, crop.height);
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error('Canvas is empty'));
-        return;
-      }
+      if (!blob) { reject(new Error('Canvas is empty')); return; }
       const reader = new FileReader();
-      reader.addEventListener('load', () => resolve(reader.result as string));
-      reader.addEventListener('error', (error) => reject(error));
+      reader.onloadend = () => resolve(reader.result as string);
       reader.readAsDataURL(blob);
     }, 'image/jpeg');
   });
 }
 
-
-export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialogProps) {
+export function EditProfileDialog({ user, open, onOpenChange }: { user: AuthenticatedUser, open: boolean, onOpenChange: (o: boolean) => void }) {
   const db = useFirestore();
   const { toast } = useToast();
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const [avatarPreview, setAvatarPreview] = useState<string | null | undefined>(user.avatar);
+  const [bannerPreview, setBannerPreview] = useState<string | null | undefined>(user.bannerUrl);
   const [imageToCrop, setImageToCrop] = useState('');
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'banner'>('avatar');
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [isCropping, setIsCropping] = useState(false);
 
+  const musicQuery = useMemo(() => db ? query(collection(db, 'music'), orderBy('timestamp', 'desc'), limit(50)) : null, [db]);
+  const { data: musicTracks } = useCollection<SharedMusic>(musicQuery);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -164,6 +117,8 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
       name: user.name || '',
       statusMessage: user.statusMessage || '',
       avatar: user.avatar || '',
+      bannerUrl: user.bannerUrl || '',
+      profileMusicId: user.profileMusicId || 'none',
       birthday: {
         day: user.birthday?.day?.toString() || 'none',
         month: user.birthday?.month?.toString() || 'none',
@@ -176,11 +131,9 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
   const watchYear = useWatch({ control: form.control, name: 'birthday.year' });
   const watchDay = useWatch({ control: form.control, name: 'birthday.day' });
 
-  // Calculate days in month
   const daysInMonth = useMemo(() => {
     const month = parseInt(watchMonth);
     if (!month || isNaN(month)) return 31;
-    
     if ([4, 6, 9, 11].includes(month)) return 30;
     if (month === 2) {
       const year = parseInt(watchYear || '0');
@@ -190,20 +143,14 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
     return 31;
   }, [watchMonth, watchYear]);
 
-  // Adjust day if month change makes current day invalid
-  useEffect(() => {
-    if (watchDay && watchDay !== 'none' && parseInt(watchDay) > daysInMonth) {
-      form.setValue('birthday.day', 'none', { shouldValidate: true });
-    }
-  }, [daysInMonth, watchDay, form]);
-
-  // Reset form and preview when dialog opens/closes or user changes
   useEffect(() => {
     if (open) {
         form.reset({
             name: user.name || '',
             statusMessage: user.statusMessage || '',
             avatar: user.avatar || '',
+            bannerUrl: user.bannerUrl || '',
+            profileMusicId: user.profileMusicId || 'none',
             birthday: {
                 day: user.birthday?.day?.toString() || 'none',
                 month: user.birthday?.month?.toString() || 'none',
@@ -211,289 +158,122 @@ export function EditProfileDialog({ user, open, onOpenChange }: EditProfileDialo
             },
         });
         setAvatarPreview(user.avatar);
+        setBannerPreview(user.bannerUrl);
         setImageToCrop('');
     }
   }, [open, user, form]);
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, target: 'avatar' | 'banner') => {
+    if (event.target.files?.[0]) {
       const file = event.target.files[0];
-      if (file.size > 2 * 1024 * 1024) {
-        toast({
-            variant: 'destructive',
-            title: 'Image too large',
-            description: 'Please select an image smaller than 2MB.',
-        });
-        return;
-      }
-      setCrop(undefined)
+      if (file.size > 5 * 1024 * 1024) { toast({ variant: 'destructive', title: 'Image too large' }); return; }
+      setCropTarget(target);
       const reader = new FileReader();
-      reader.addEventListener('load', () =>
-        setImageToCrop(reader.result?.toString() || ''),
-      )
-      reader.readAsDataURL(file)
+      reader.addEventListener('load', () => setImageToCrop(reader.result?.toString() || ''));
+      reader.readAsDataURL(file);
     }
   };
-
-  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, 1 / 1));
-  }
 
   const handleCropConfirm = async () => {
-    if (!completedCrop || !imgRef.current) {
-        toast({ variant: 'destructive', title: 'Crop Error', description: 'Could not process the crop.' });
-        return;
-    }
+    if (!completedCrop || !imgRef.current) return;
     setIsCropping(true);
     try {
-        const croppedImageUrl = await getCroppedImg(imgRef.current, completedCrop);
-        setAvatarPreview(croppedImageUrl);
-        form.setValue('avatar', croppedImageUrl, { shouldValidate: true });
-    } catch (e) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Crop Error', description: 'An error occurred while cropping.' });
-    } finally {
-        setImageToCrop('');
-        setIsCropping(false);
-    }
+        const cropped = await getCroppedImg(imgRef.current, completedCrop);
+        if (cropTarget === 'avatar') { setAvatarPreview(cropped); form.setValue('avatar', cropped); }
+        else { setBannerPreview(cropped); form.setValue('bannerUrl', cropped); }
+    } finally { setImageToCrop(''); setIsCropping(false); }
   };
 
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!db || !user) return;
-
+    if (!db || !user.uid) return;
     const userRef = doc(db, 'users', user.uid);
-    const updatedData: { [key: string]: any } = {
-        name: values.name,
-        statusMessage: values.statusMessage,
-        hasSetNickname: true,
-        avatar: values.avatar,
-        birthday: null, // Default to null if cleared
+    const updatedData: any = { 
+        name: values.name, statusMessage: values.statusMessage, avatar: values.avatar, bannerUrl: values.bannerUrl, 
+        profileMusicId: values.profileMusicId === 'none' ? null : values.profileMusicId,
+        hasSetNickname: true, birthday: null 
     };
-
-    if (values.birthday?.day && values.birthday?.day !== 'none' && values.birthday?.month && values.birthday?.month !== 'none') {
-        updatedData.birthday = {
-            day: parseInt(values.birthday.day),
-            month: parseInt(values.birthday.month),
-            year: (values.birthday.year && values.birthday.year !== '') ? parseInt(values.birthday.year) : null,
-        };
+    if (values.birthday.day !== 'none' && values.birthday.month !== 'none') {
+        updatedData.birthday = { day: parseInt(values.birthday.day), month: parseInt(values.birthday.month), year: values.birthday.year ? parseInt(values.birthday.year) : null };
     }
-
-    setDoc(userRef, updatedData, { merge: true })
-        .then(() => {
-            toast({ title: t('dm_success'), description: t('profile_update_success') });
-            onOpenChange(false);
-        })
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: userRef.path,
-                operation: 'update',
-                requestResourceData: updatedData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-      });
+    setDoc(userRef, updatedData, { merge: true }).then(() => {
+        toast({ title: t('dm_success'), description: t('profile_update_success') });
+        onOpenChange(false);
+    }).catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: userRef.path, operation: 'update', requestResourceData: updatedData }));
+    });
   };
 
   const monthNames = (t('months') || '').split(',');
 
-  const dialogContent = imageToCrop ? (
-    <div className="flex flex-col h-full max-h-[80vh]">
-        <DialogHeader className="p-6 pb-2 shrink-0">
-            <DialogTitle>Crop your new avatar</DialogTitle>
-            <DialogDescription>Adjust the selection to crop your image. It will be a 1:1 square.</DialogDescription>
-        </DialogHeader>
-        <div className="flex-1 flex items-center justify-center p-4 min-h-0">
-            <ReactCrop
-                crop={crop}
-                onChange={(_, percentCrop) => setCrop(percentCrop)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={1}
-                minWidth={100}
-                minHeight={100}
-            >
-                <img
-                    ref={imgRef}
-                    alt="Crop me"
-                    src={imageToCrop}
-                    onLoad={onImageLoad}
-                    className="max-h-full max-w-full object-contain"
-                />
-            </ReactCrop>
-        </div>
-        <DialogFooter className="p-6 pt-2 shrink-0 gap-2">
-            <Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button>
-            <Button onClick={handleCropConfirm} disabled={isCropping}>
-                {isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Crop & Save
-            </Button>
-        </DialogFooter>
-    </div>
-  ) : (
-    <div className="flex flex-col h-full max-h-[85vh]">
-        <DialogHeader className="p-6 pb-2 shrink-0">
-          <DialogTitle>{t('edit_profile')}</DialogTitle>
-          <DialogDescription>
-            {t('edit_profile_desc')}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-            <ScrollArea className="flex-1 px-6 py-4">
-              <div className="space-y-6 pb-4">
-                <div className="flex justify-center">
-                  <div className="relative">
-                    <button type="button" onClick={handleAvatarClick} className="rounded-full">
-                      <Avatar className="h-24 w-24 border-2 border-primary/20 shadow-lg">
-                        <AvatarImage src={avatarPreview || undefined} />
-                        <AvatarFallback className='bg-muted text-foreground'>{user.name?.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAvatarClick}
-                      className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <FormControl>
-                      <input
-                        type="file"
-                        accept="image/png, image/jpeg, image/gif"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                      />
-                    </FormControl>
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('nickname_label')}</FormLabel>
-                      <FormControl>
-                        <Input placeholder={t('nickname_placeholder')} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="statusMessage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('account_description_label')}</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder={t('account_description_placeholder')} {...field} className="resize-none" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-4 pt-2">
-                    <div className="flex items-center gap-2 text-primary">
-                        <Cake className="h-4 w-4" />
-                        <Label className="font-bold">{t('birthday_label')}</Label>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                        <FormField
-                            control={form.control}
-                            name="birthday.day"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
-                                                <SelectValue placeholder={t('day')} />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent position="popper" className="max-h-[200px]">
-                                            <SelectItem value="none">{t('none_label')}</SelectItem>
-                                            {Array.from({ length: daysInMonth }, (_, i) => (
-                                                <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="birthday.month"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/50 border-none">
-                                                <SelectValue placeholder={t('month_label')} />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent position="popper" className="max-h-[200px]">
-                                            <SelectItem value="none">{t('none_label')}</SelectItem>
-                                            {monthNames.map((name, i) => (
-                                                <SelectItem key={i + 1} value={(i + 1).toString()}>{name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="birthday.year"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormControl>
-                                        <Input 
-                                            type="number" 
-                                            placeholder={t('year_label')} 
-                                            {...field} 
-                                            value={field.value ?? ''}
-                                            className="h-11 rounded-xl bg-muted/50 border-none"
-                                            min="1900"
-                                            max={new Date().getFullYear()}
-                                            onBlur={(e) => {
-                                                const val = parseInt(e.target.value);
-                                                const currentYear = new Date().getFullYear();
-                                                if (val < 1900 && e.target.value !== '') form.setValue('birthday.year', '1900');
-                                                if (val > currentYear) form.setValue('birthday.year', currentYear.toString());
-                                            }}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </div>
-              </div>
-            </ScrollArea>
-
-            <DialogFooter className="p-6 pt-2 shrink-0 gap-2 border-t mt-auto">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className='rounded-xl flex-1'>
-                {t('cancel')}
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid} className='rounded-xl font-bold flex-1'>
-                {form.formState.isSubmitting ? <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> {t('saving')}</> : t('save')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-    </div>
-  );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='rounded-[2rem] p-0 overflow-hidden max-w-sm'>
-        {dialogContent}
+        {imageToCrop ? (
+            <div className="flex flex-col h-[80vh]">
+                <DialogHeader className="p-6 border-b"><DialogTitle>Crop your {cropTarget}</DialogTitle></DialogHeader>
+                <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+                    <ReactCrop crop={crop} onChange={(_, p) => setCrop(p)} onComplete={c => setCompletedCrop(c)} aspect={cropTarget === 'avatar' ? 1 : 21/9}>
+                        <img ref={imgRef} src={imageToCrop} onLoad={e => setCrop(centerAspectCrop(e.currentTarget.width, e.currentTarget.height, cropTarget === 'avatar' ? 1 : 21/9))} className="max-h-full max-w-full" />
+                    </ReactCrop>
+                </div>
+                <DialogFooter className="p-6 border-t gap-2"><Button variant="ghost" onClick={() => setImageToCrop('')}>Cancel</Button><Button onClick={handleCropConfirm} disabled={isCropping}>{isCropping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Crop & Save</Button></DialogFooter>
+            </div>
+        ) : (
+            <div className="flex flex-col h-[85vh]">
+                <DialogHeader className="p-6 border-b shrink-0"><DialogTitle>{t('edit_profile')}</DialogTitle></DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                        <ScrollArea className="flex-1 p-6">
+                            <div className="space-y-8 pb-10">
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">{t('profile_banner_label')}</Label>
+                                    <div className="relative aspect-[21/9] rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-muted-foreground/20 cursor-pointer group" onClick={() => bannerInputRef.current?.click()}>
+                                        {bannerPreview ? <img src={bannerPreview} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2"><ImageIcon className="h-6 w-6 opacity-30" /><p className="text-[10px] font-bold opacity-30">Tap to upload banner</p></div>}
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Pencil className="text-white" /></div>
+                                        <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileChange(e, 'banner')} />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-center relative">
+                                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                        <Avatar className="h-24 w-24 border-4 border-background shadow-xl"><AvatarImage src={avatarPreview || undefined} /><AvatarFallback>{user.name?.charAt(0)}</AvatarFallback></Avatar>
+                                        <div className="absolute bottom-0 right-0 h-8 w-8 bg-primary rounded-full flex items-center justify-center text-white border-2 border-background"><Pencil className="h-4 w-4" /></div>
+                                        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={e => handleFileChange(e, 'avatar')} />
+                                    </div>
+                                </div>
+
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>{t('nickname_label')}</FormLabel><FormControl><Input placeholder={t('nickname_placeholder')} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="statusMessage" render={({ field }) => (<FormItem><FormLabel>{t('account_description_label')}</FormLabel><FormControl><Textarea placeholder={t('account_description_placeholder')} {...field} className="resize-none" /></FormControl><FormMessage /></FormItem>)} />
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-primary"><Cake className="h-4 w-4" /><Label className="font-bold">{t('birthday_label')}</Label></div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <FormField control={form.control} name="birthday.day" render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 bg-muted/50 border-none"><SelectValue /></SelectTrigger></FormControl><SelectContent>{Array.from({length: daysInMonth}, (_,i) => <SelectItem key={i+1} value={(i+1).toString()}>{i+1}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+                                        <FormField control={form.control} name="birthday.month" render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 bg-muted/50 border-none"><SelectValue /></SelectTrigger></FormControl><SelectContent>{monthNames.map((n, i) => <SelectItem key={i+1} value={(i+1).toString()}>{n}</SelectItem>)}</SelectContent></Select></FormItem>)} />
+                                        <FormField control={form.control} name="birthday.year" render={({ field }) => (<FormItem><FormControl><Input type="number" placeholder={t('year_label')} {...field} className="h-11 bg-muted/50 border-none" /></FormControl></FormItem>)} />
+                                    </div>
+                                </div>
+
+                                <FormField control={form.control} name="profileMusicId" render={({ field }) => (
+                                    <FormItem>
+                                        <div className="flex items-center gap-2 text-primary mb-2"><Music className="h-4 w-4" /><FormLabel className="font-bold">{t('profile_music_label')}</FormLabel></div>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger className="h-12 bg-muted/50 border-none rounded-xl font-bold"><SelectValue placeholder="Select vibe..." /></SelectTrigger></FormControl>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="none" className="font-bold opacity-50">{t('none_label')}</SelectItem>
+                                                {musicTracks?.map(track => <SelectItem key={track.id} value={track.id} className="font-bold">{track.title} — {track.author}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </ScrollArea>
+                        <DialogFooter className="p-6 border-t gap-2 shrink-0"><Button type="button" variant="ghost" className="rounded-xl flex-1" onClick={() => onOpenChange(false)}>{t('cancel')}</Button><Button type="submit" className="rounded-xl flex-[2] font-bold">{t('save')}</Button></DialogFooter>
+                    </form>
+                </Form>
+            </div>
+        )}
       </DialogContent>
     </Dialog>
   );

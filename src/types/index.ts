@@ -11,6 +11,8 @@ export type User = {
   username: string;
   email?: string;
   avatar?: string;
+  bannerUrl?: string; // New: Profile banner
+  profileMusicId?: string; // New: ID of SharedMusic track
   status: "online" | "away" | "offline";
   statusMessage?: string;
   hasSetNickname?: boolean;
@@ -38,6 +40,20 @@ export type User = {
     month: number;
     year?: number;
   };
+};
+
+export type Sticker = {
+    id: string;
+    url: string;
+    emoji?: string;
+};
+
+export type StickerPack = {
+    id: string;
+    name: string;
+    ownerId: string;
+    stickers: Sticker[];
+    createdAt: Timestamp;
 };
 
 export type Gift = {
@@ -72,7 +88,7 @@ export type Poll = {
 
 export type MessageAttachment = {
   id: string;
-  type: 'image' | 'video' | 'music' | 'file';
+  type: 'image' | 'video' | 'music' | 'file' | 'sticker';
   url?: string;
   fileName?: string;
   fileMimeType?: string;
@@ -117,6 +133,7 @@ export type Message = {
   poll?: Poll;
   fromChannelId?: string;
   topicId?: string;
+  isSpoiler?: boolean; // New: Flag for entire message as spoiler
 };
 
 export type TypingStatus = {

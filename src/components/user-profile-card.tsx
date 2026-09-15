@@ -1,7 +1,8 @@
+
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
-import type { AuthenticatedUser, User, Gift } from '@/types';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import type { AuthenticatedUser, User, Gift, SharedMusic } from '@/types';
 import { useLanguage } from '@/context/language-context';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { cn } from '@/lib/utils';
@@ -15,12 +16,13 @@ import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Badge } from './ui/badge';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { useTheme } from '@/context/theme-context';
-import { Cake, Gift as GiftIcon, Loader2, Coins, Trash2, CheckCircle2, MessageSquareText, Bell, Search, MoreHorizontal, ArrowLeft, X } from 'lucide-react';
+import { Cake, Gift as GiftIcon, Loader2, Coins, Trash2, CheckCircle2, MessageSquareText, Bell, Search, MoreHorizontal, ArrowLeft, X, Music, Play, Pause } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { useFirestore, useCollection } from '@/firebase';
-import { doc, updateDoc, deleteDoc, increment, collection, runTransaction } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, increment, collection, runTransaction, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
+import { getCachedFile } from '@/lib/cache-utils';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -40,6 +42,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const { experimentalDesign, glassEffect } = useTheme();
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'gifts'>('info');
+  const [profileMusic, setProfileMusic] = useState<SharedMusic | null>(null);
 
   const giftsQuery = useMemo(() => {
     if (!db || !user.uid) return null;
@@ -47,6 +50,16 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   }, [db, user.uid]);
   
   const { data: gifts, loading: giftsLoading } = useCollection<Gift>(giftsQuery);
+
+  useEffect(() => {
+      if (user.profileMusicId && db) {
+          getDoc(doc(db, 'music', user.profileMusicId)).then(snap => {
+              if (snap.exists()) setProfileMusic({ id: snap.id, ...snap.data() } as SharedMusic);
+          });
+      } else {
+          setProfileMusic(null);
+      }
+  }, [user.profileMusicId, db]);
 
   const getStatusText = (user: AuthenticatedUser) => {
     if (user.isDeleted) return '';
@@ -72,13 +85,11 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
     setIsProcessing(true);
     try {
         await runTransaction(db, async (tx) => {
-            const userRef = doc(db, 'users', user.uid);
-            const giftRef = doc(db, 'users', user.uid, 'receivedGifts', gift.id);
+            const userRef = doc(db, 'users', user.uid!);
+            const giftRef = doc(db, 'users', user.uid!, 'receivedGifts', gift.id);
             tx.update(userRef, { infGoldBalance: increment(gift.price) });
             tx.delete(giftRef);
-            if (user.activeGiftEmoji === gift.emoji) {
-                tx.update(userRef, { activeGiftEmoji: null });
-            }
+            if (user.activeGiftEmoji === gift.emoji) tx.update(userRef, { activeGiftEmoji: null });
         });
         toast({ title: t('dm_success'), description: t('gift_exchanged', { amount: gift.price }) });
     } catch (e) { console.error(e); }
@@ -86,136 +97,84 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   };
 
   const handleSetActiveGift = async (gift: Gift) => {
-      if (!db || isProcessing) return;
+      if (!db || isProcessing || !user.uid) return;
       setIsProcessing(true);
       try {
-          const userRef = doc(db, 'users', user.uid);
-          await updateDoc(userRef, { activeGiftEmoji: gift.emoji });
+          await updateDoc(doc(db, 'users', user.uid), { activeGiftEmoji: gift.emoji });
           toast({ title: t('dm_success') });
       } catch (e) { console.error(e); }
       finally { setIsProcessing(false); }
   };
 
-  const handleRemoveActiveGift = async () => {
-      if (!db || isProcessing) return;
-      setIsProcessing(true);
-      try {
-          const userRef = doc(db, 'users', user.uid);
-          await updateDoc(userRef, { activeGiftEmoji: null });
-          toast({ title: t('dm_success') });
-      } catch (e) { console.error(e); }
-      finally { setIsProcessing(false); }
-  };
-  
   return (
     <div className={cn("flex flex-col overflow-hidden max-h-[85vh]", experimentalDesign ? "bg-transparent" : "bg-card")}>
-      <div className={cn(
-        "flex flex-col items-center pt-10 pb-6 px-6 shrink-0 relative",
-        experimentalDesign ? "bg-gradient-to-b from-primary/15 to-transparent" : ""
-      )}>
-        {experimentalDesign && (
-            <div className="absolute top-4 left-6 right-6 flex justify-between items-center w-[calc(100%-3rem)]">
-                <div className="w-10 h-10 rounded-full glass-button flex items-center justify-center border-none bg-black/10 opacity-0 pointer-events-none" />
-                <Button variant="ghost" size="icon" onClick={onEditProfile} className="rounded-full h-10 px-4 glass-button border-none bg-black/10 font-bold text-xs">Edit</Button>
-            </div>
-        )}
-        <div className="relative mb-4">
-            <UserAvatarWithStatus user={user as any} className={cn("text-4xl shadow-xl border-4 border-background rounded-full", experimentalDesign ? "w-32 h-32 experimental-glow mt-4" : "w-24 h-24")} />
-            {user.activeGiftEmoji && (
-                <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">
-                    {user.activeGiftEmoji}
+      <div className="relative shrink-0">
+          <div className="h-32 w-full bg-muted overflow-hidden">
+              {user.bannerUrl ? (
+                  <img src={user.bannerUrl} className="w-full h-full object-cover" alt="Banner" />
+              ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5" />
+              )}
+          </div>
+          <div className="absolute top-4 right-6 flex gap-2">
+              <Button variant="ghost" size="icon" onClick={onEditProfile} className="rounded-full h-10 px-4 glass-button border-none bg-black/30 text-white font-black text-[10px] uppercase tracking-widest backdrop-blur-md">Edit</Button>
+          </div>
+          <div className="absolute -bottom-12 left-6">
+                <div className="relative">
+                    <UserAvatarWithStatus user={user as any} className={cn("text-4xl shadow-2xl border-4 border-background rounded-full w-24 h-24")} />
+                    {user.activeGiftEmoji && (
+                        <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-9 h-9 flex items-center justify-center text-lg shadow-lg border-2 border-primary/20">
+                            {user.activeGiftEmoji}
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
-        <div className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2">
-            <h2 className={cn("font-bold font-headline truncate", experimentalDesign ? "text-3xl" : "text-xl")}>{user.isDeleted ? t('deleted_account') : user.name}</h2>
-            {user.isAdmin && <VerifiedBadge />}
+          </div>
+      </div>
+
+      <div className="pt-16 pb-6 px-6 shrink-0 text-left">
+          <div className="flex items-center gap-2">
+            <h2 className={cn("font-bold font-headline truncate text-2xl")}>{user.isDeleted ? t('deleted_account') : user.name}</h2>
+            {user.isAdmin && <VerifiedBadge className="w-5 h-5" />}
             {user.subscriptionTier === 'prem' && user.showPremBadge && <PremBadge />}
             {user.isBetaTester && <BetaBadge />}
           </div>
-          <p className={cn("uppercase tracking-widest font-black", user.isBot ? "text-primary" : "text-muted-foreground/80", experimentalDesign ? "text-xs" : "text-[10px]")}>{getStatusText(user)}</p>
-        </div>
+          <p className={cn("uppercase tracking-widest font-black text-[10px] text-muted-foreground/80 mt-1")}>{getStatusText(user)}</p>
       </div>
-
-      {experimentalDesign && (
-        <div className="flex justify-center items-center gap-3 w-full px-8 mb-8 shrink-0">
-            <button className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl"><Bell className="w-5 h-5" /></button>
-            <button className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl"><Search className="w-5 h-5" /></button>
-            <button className="w-12 h-12 rounded-full glass-button flex items-center justify-center border-none shadow-xl"><MoreHorizontal className="w-5 h-5" /></button>
-        </div>
-      )}
 
       <ScrollArea className="flex-1 px-6 pb-6">
         <div className="space-y-6 pb-2">
-            {experimentalDesign ? (
-                <div className="glass-panel p-6 rounded-[2.5rem] border-none shadow-inner space-y-6">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">username</p>
-                        <p className="font-bold text-lg">{user.username}</p>
-                    </div>
-                    <Separator className="bg-white/10" />
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">bio</p>
-                        <p className="font-medium text-sm leading-relaxed">{user.statusMessage || 'Hey there! I am using Infinite.'}</p>
-                    </div>
-                    {birthdayText && (
-                        <>
-                            <Separator className="bg-white/10" />
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">birthday</p>
-                                <p className="font-medium text-sm">{birthdayText}</p>
-                            </div>
-                        </>
-                    )}
-                </div>
-            ) : (
-                <>
-                    {!user.isDeleted && !user.isBot && (
-                        <div className="flex items-center justify-center gap-2 py-2">
-                        <InfGoldIcon className="h-6 w-6 experimental-glow" />
-                        <span className="font-bold text-2xl tracking-tighter">{user.infGoldBalance ?? 0}</span>
-                        </div>
-                    )}
+            {profileMusic && <ProfileVibeCard music={profileMusic} db={db!} />}
 
-                    {birthdayText && (
-                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-primary">
-                            <Cake className="h-3.5 w-3.5" />
+            <div className={cn("text-left p-5 rounded-2xl border", "bg-muted/30 border-border/50")}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">username</p>
+                <p className="font-bold text-sm mb-4">@{user.username}</p>
+                <Separator className="opacity-10 mb-4" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">bio</p>
+                <p className="text-sm font-medium leading-relaxed">{user.statusMessage || 'Hey there! I am using Infinite.'}</p>
+                {birthdayText && (
+                    <>
+                        <Separator className="opacity-10 my-4" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">birthday</p>
+                        <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                            <Cake className="h-4 w-4" />
                             <span>{birthdayText}</span>
                         </div>
-                    )}
+                    </>
+                )}
+            </div>
 
-                    {user.statusMessage && !user.isDeleted && (
-                        <div className={cn("text-center p-4 rounded-[1.5rem] border", "bg-muted/50 border-border/50")}>
-                        <p className="text-sm italic text-muted-foreground leading-relaxed">"{user.statusMessage}"</p>
-                        </div>
-                    )}
-                </>
-            )}
+            <div className="flex items-center justify-center gap-3 py-2 bg-primary/5 rounded-2xl border border-primary/10">
+                <InfGoldIcon className="h-6 w-6 experimental-glow" />
+                <span className="font-black text-2xl tracking-tighter text-primary">{user.infGoldBalance ?? 0}</span>
+            </div>
 
-            {experimentalDesign && (
-                <div className="flex justify-center pt-2">
-                    <div className="glass-panel p-1 rounded-full flex gap-1 bg-white/5 border-none">
-                        <button onClick={() => setActiveTab('info')} className={cn("px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all", activeTab === 'info' ? "bg-primary text-white shadow-lg" : "text-muted-foreground")}>Info</button>
-                        <button onClick={() => setActiveTab('gifts')} className={cn("px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all", activeTab === 'gifts' ? "bg-primary text-white shadow-lg" : "text-muted-foreground")}>Gifts</button>
-                    </div>
-                </div>
-            )}
-
-          {/* Gifts Management */}
-          {(!experimentalDesign || activeTab === 'gifts') && !user.isBot && (
-            <div className={cn("space-y-3 animate-in fade-in duration-300", experimentalDesign && "pt-2")}>
+            <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
-                    {!experimentalDesign && <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t('gifts')}</h3>}
-                    {user.activeGiftEmoji && (
-                        <Button variant="ghost" size="sm" onClick={handleRemoveActiveGift} className="h-6 text-[9px] font-bold uppercase rounded-full">
-                            {t('remove_from_profile')}
-                        </Button>
-                    )}
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t('gifts')} ({gifts?.length || 0})</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                     {gifts?.map(gift => (
-                        <div key={gift.id} className={cn("border p-3 rounded-2xl flex flex-col gap-2 group", experimentalDesign ? "glass-panel border-none bg-muted/20" : "bg-muted/30 border-border/50")}>
+                        <div key={gift.id} className={cn("border p-3 rounded-2xl flex flex-col gap-2 group bg-muted/30 border-border/50")}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <span className="text-2xl">{gift.emoji}</span>
@@ -233,33 +192,73 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                                     </Button>
                                 </div>
                             </div>
-                            {gift.message && (
-                                <div className="flex items-start gap-2 bg-background/40 p-2 rounded-xl border border-border/20">
-                                    <MessageSquareText className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                                    <p className="text-[11px] leading-tight text-foreground/80 italic">{gift.message}</p>
-                                </div>
-                            )}
                         </div>
                     ))}
                     {gifts?.length === 0 && !giftsLoading && (
-                        <div className="text-center py-6 border-2 border-dashed rounded-2xl opacity-40">
-                            <GiftIcon className="h-8 w-8 mx-auto mb-2" />
-                            <p className="text-[9px] font-bold uppercase tracking-widest">{t('no_gifts')}</p>
+                        <div className="text-center py-10 border-2 border-dashed rounded-[2rem] opacity-30">
+                            <p className="text-[10px] font-black uppercase tracking-widest">{t('no_gifts')}</p>
                         </div>
                     )}
                 </div>
             </div>
-          )}
-
-          {!experimentalDesign && (
-            <div className="flex flex-col gap-2 pt-2">
-                <Button onClick={onEditProfile} disabled={!!user.isDeleted} className={cn("w-full h-12 font-bold shadow-lg", "rounded-xl")}>
-                {t('edit_profile')}
-                </Button>
-            </div>
-          )}
         </div>
       </ScrollArea>
     </div>
   );
+}
+
+function ProfileVibeCard({ music, db }: { music: SharedMusic, db: any }) {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const audioRef = useRef<HTMLAudioElement>(null);
+
+    useEffect(() => {
+        const load = async () => {
+            const cached = await getCachedFile(music.id);
+            if (cached) { setAudioUrl(cached); return; }
+            if (music.musicChunkIds) {
+                const chunksData: any[] = [];
+                for (const cid of music.musicChunkIds) {
+                    const s = await getDoc(doc(db, 'musicChunks', cid));
+                    if (s.exists()) chunksData.push(s.data());
+                }
+                chunksData.sort((a,b) => a.part - b.part);
+                const assembled = chunksData.map(c => c.data).join('');
+                setAudioUrl(`data:${music.musicMimeType};base64,${assembled}`);
+            }
+        };
+        load();
+    }, [music, db]);
+
+    const toggle = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!audioRef.current) return;
+        if (isPlaying) audioRef.current.pause();
+        else {
+            window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: 'profile' } }));
+            audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    return (
+        <div className="relative p-5 rounded-[2rem] bg-indigo-600 text-white overflow-hidden shadow-xl animate-in zoom-in duration-500">
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+            <div className="flex items-center gap-5 relative z-10">
+                <div className={cn("w-14 h-14 rounded-full bg-white/20 flex items-center justify-center relative shadow-inner overflow-hidden", isPlaying && "animate-spin [animation-duration:8s]")}>
+                    {music.coverUrl ? <img src={music.coverUrl} className="w-full h-full object-cover" /> : <Music className="w-6 h-6" />}
+                    <div className="absolute inset-0 bg-black/20" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/50 mb-1">Current Vibe</p>
+                    <h4 className="font-bold text-base truncate leading-tight">{music.title}</h4>
+                    <p className="text-xs font-medium text-white/70 truncate">{music.author}</p>
+                </div>
+                <Button onClick={toggle} size="icon" className="w-12 h-12 rounded-full bg-white text-indigo-600 hover:bg-white/90 shadow-lg shrink-0">
+                    {isPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
+                </Button>
+            </div>
+            {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
+        </div>
+    );
 }

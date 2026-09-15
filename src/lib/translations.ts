@@ -638,6 +638,11 @@ export const translations = {
       'customize': 'Customize',
       'primary_color': 'Primary Color',
       'background_color': 'Background',
+      'profile_banner_label': 'Profile Banner',
+      'profile_music_label': 'Profile Vibe (Music)',
+      'wn_profile_custom_title': 'Deep Profile Personalization',
+      'wn_profile_custom_desc': 'Added profile banners, music vibes, and message spoilers.',
+      'spoiler_help': 'Tap to reveal secret content',
     },
     ru: {
       'settings': 'Настройки',
@@ -1274,6 +1279,11 @@ export const translations = {
       'customize': 'Кастомизация',
       'primary_color': 'Основной цвет',
       'background_color': 'Фон приложения',
+      'profile_banner_label': 'Баннер профиля',
+      'profile_music_label': 'Музыка в профиле',
+      'wn_profile_custom_title': 'Глубокая кастомизация',
+      'wn_profile_custom_desc': 'Добавлены баннеры профиля, музыкальные «вайбы» и спойлеры в сообщениях.',
+      'spoiler_help': 'Нажмите, чтобы увидеть секрет',
     }
 };
 

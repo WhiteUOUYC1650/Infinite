@@ -13,7 +13,7 @@ service cloud.firestore {
       allow read: if true;
       allow list: if isSignedIn();
       allow create: if request.auth.uid == userId || (isSignedIn() && request.resource.data.isBot == true);
-      allow update: if (isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge', 'birthday', 'name', 'statusMessage', 'avatar', 'activeGiftEmoji', 'archivedChats'])))
+      allow update: if (isAdmin() || request.auth.uid == userId || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['infGoldBalance', 'subscriptionTier', 'subscriptionStartedAt', 'status', 'lastSeen', 'activeSessionId', 'isBetaTester', 'watchLater', 'subscriptions', 'subscriberCount', 'storyExpirationDuration', 'showPremBadge', 'birthday', 'name', 'statusMessage', 'avatar', 'activeGiftEmoji', 'archivedChats', 'bannerUrl', 'profileMusicId'])))
                     && isValidText(request.resource.data.statusMessage, 120)
                     && isValidText(request.resource.data.name, 64);
       allow delete: if request.auth.uid == userId || isAdmin();
@@ -22,6 +22,10 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isSignedIn() && isValidText(request.resource.data.message, 1600);
         allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /sessions/{sessionId} {
+        allow read, write: if isSignedIn() && userId == request.auth.uid;
       }
     }
     
@@ -42,8 +46,19 @@ service cloud.firestore {
           );
         allow update, delete: if isSignedIn();
       }
+
+      match /typing/{userId} {
+        allow read, list: if isSignedIn();
+        allow write: if isSignedIn() && userId == request.auth.uid;
+      }
     }
     
+    match /stickerPacks/{packId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
     match /music/{musicId} {
       allow read, list: if isSignedIn();
       allow create: if isSignedIn() && isValidText(request.resource.data.description, 1600);

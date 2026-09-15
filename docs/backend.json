@@ -18,288 +18,41 @@
       "description": "Represents a user in the system.",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "User's display name or nickname. This is not unique."
-        },
-        "username": {
-          "type": "string",
-          "description": "User's unique handle, starting with '@'. This must be unique across all users."
-        },
-        "avatar": {
-          "type": "string",
-          "description": "URL to the user's avatar image."
-        },
-        "status": {
-          "type": "string",
-          "enum": ["online", "away", "offline"],
-          "description": "User's current status."
-        },
-        "statusMessage": {
-            "type": "string",
-            "description": "A short status message from the user."
-        },
-        "hasSetNickname": {
-            "type": "boolean",
-            "description": "True if the user has set their nickname at least once."
-        },
-        "isBot": {
-            "type": "boolean",
-            "description": "True if the user is a bot account."
-        },
-        "isDeleted": {
-            "type": "boolean",
-            "description": "True if the user account has been deleted/anonymized."
-        },
-        "lastSeen": {
-            "type": "object",
-            "description": "Server timestamp of when the user was last active."
-        },
-        "infGoldBalance": {
-            "type": "number",
-            "description": "The user's balance of InfGold."
-        },
-        "subscriptionTier": {
-            "type": "string",
-            "enum": ["none", "super", "mega", "prem", "giga", "ultra"],
-            "description": "The user's current subscription tier."
-        },
-        "lastDailyBonusClaimed": {
-            "type": "object",
-            "description": "Server timestamp of when the user last claimed their daily bonus."
-        }
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bannerUrl": { "type": "string", "description": "Profile header banner image." },
+        "profileMusicId": { "type": "string", "description": "ID of music track for profile." },
+        "status": { "type": "string", "enum": ["online", "away", "offline"] },
+        "statusMessage": { "type": "string" },
+        "hasSetNickname": { "type": "boolean" },
+        "isBot": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" },
+        "lastSeen": { "type": "object" },
+        "infGoldBalance": { "type": "number" },
+        "subscriptionTier": { "type": "string" },
+        "archivedChats": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["name", "username", "avatar", "status"]
     },
-    "Username": {
-        "title": "Username",
-        "description": "Maps a unique username to a user ID to enforce uniqueness.",
-        "type": "object",
-        "properties": {
-            "uid": {
-                "type": "string",
-                "description": "The user ID associated with this username."
-            }
-        },
-        "required": ["uid"]
-    },
-    "Message": {
-      "title": "Message",
-      "description": "A single message within a chat.",
-      "type": "object",
-      "properties": {
-        "senderId": {
-          "type": "string",
-          "description": "The ID of the user who sent the message."
-        },
-        "content": {
-          "type": "string",
-          "description": "The text content of the message."
-        },
-        "imageUrl": {
-            "type": "string",
-            "description": "URL to an image attachment, in Base64 data URI format."
-        },
-        "videoMimeType": {
-            "type": "string",
-            "description": "MIME type of the video attachment."
-        },
-        "videoStatus": {
-            "type": "string",
-            "enum": ["uploading", "complete", "failed"],
-            "description": "The upload status of the video attachment."
-        },
-        "videoChunkIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of document IDs for the video chunks in the global 'videoChunks' collection."
-        },
-        "musicMimeType": {
-            "type": "string",
-            "description": "MIME type of the music attachment."
-        },
-        "musicStatus": {
-            "type": "string",
-            "enum": ["uploading", "complete", "failed"],
-            "description": "The upload status of the music attachment."
-        },
-        "musicChunkIds": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "List of document IDs for the music chunks in the global 'musicChunks' collection."
-        },
-        "timestamp": {
-          "type": "object",
-          "description": "The server timestamp when the message was created."
-        },
-        "editedAt": {
-            "type": "object",
-            "description": "The server timestamp when the message was last edited."
-        },
-        "type": {
-          "type": "string",
-          "enum": ["user", "announcement"],
-          "description": "The type of message. 'user' is a standard message, 'announcement' is a system message styled as from a bot."
-        },
-        "senderName": {
-            "type": "string",
-            "description": "Display name of the sender, used for bot messages."
-        },
-        "senderAvatar": {
-            "type": "string",
-            "description": "Avatar URL of the sender, used for bot messages."
-        },
-        "readBy": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of user IDs who have read the message."
-        },
-        "replyTo": {
-            "type": "object",
-            "description": "Information about the message being replied to.",
-            "properties": {
-                "messageId": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "senderName": {
-                    "type": "string"
-                }
-            },
-            "required": ["messageId", "content", "senderName"]
-        }
-      },
-      "required": ["senderId", "timestamp"]
-    },
-    "VideoChunk": {
-      "title": "Video Chunk",
-      "description": "A single chunk of a video file, stored separately to avoid document size limits.",
-      "type": "object",
-      "properties": {
-        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
-        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
-        "data": { "type": "string", "description": "Base64 encoded data of the video chunk." },
-        "part": { "type": "number", "description": "The order of this chunk in the video sequence." },
-        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
-      },
-      "required": ["chatId", "messageId", "data", "part", "senderId"]
-    },
-    "MusicChunk": {
-      "title": "Music Chunk",
-      "description": "A single chunk of a music file, stored separately to avoid document size limits.",
-      "type": "object",
-      "properties": {
-        "chatId": { "type": "string", "description": "The ID of the chat this chunk belongs to." },
-        "messageId": { "type": "string", "description": "The ID of the message this chunk belongs to." },
-        "data": { "type": "string", "description": "Base64 encoded data of the music chunk." },
-        "part": { "type": "number", "description": "The order of this chunk in the music sequence." },
-        "senderId": { "type": "string", "description": "The ID of the user who sent this chunk." }
-      },
-      "required": ["chatId", "messageId", "data", "part", "senderId"]
-    },
-    "Chat": {
-      "title": "Chat",
-      "description": "Represents a chat conversation.",
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["dm", "group", "channel"]
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the group or channel."
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of user IDs who are members of this chat."
-        },
-        "ownerId": {
-          "type": "string",
-          "description": "The user ID of the owner of the group or channel."
-        },
-        "icon": {
-          "type": "string",
-          "description": "Name of the lucide-react icon for the chat."
-        },
-        "avatar": {
-            "type": "string",
-            "description": "URL to the chat's avatar image, in Base64 data URI format."
-        },
-        "description": {
-            "type": "string",
-            "description": "Description for a channel."
-        },
-        "lastMessage": {
-            "type": "object",
-            "description": "The last message sent in the chat for display in the sidebar."
-        },
-        "unreadCounts": {
-            "type": "object",
-            "description": "Map of user IDs to their unread message count for this chat.",
-            "additionalProperties": {
-                "type": "number"
-            }
-        },
-        "link": {
-          "type": "string",
-          "description": "Unique link for a group or channel."
-        },
-        "discussionChatId": {
-          "type": "string",
-          "description": "The ID of the group chat linked to this channel for discussions."
-        },
-        "isSupergroup": {
-            "type": "boolean"
-        },
-        "topics": {
-            "type": "array"
-        }
-      },
-      "required": ["type", "members"]
-    },
-    "ChatLink": {
-      "title": "Chat Link",
-      "description": "Maps a unique chat link to a chat ID to enforce uniqueness.",
-      "type": "object",
-      "properties": {
-          "chatId": {
-              "type": "string",
-              "description": "The chat ID associated with this link."
-          }
-      },
-      "required": ["chatId"]
-    },
-    "BotLink": {
-      "title": "Bot Link",
-      "description": "Maps a unique bot link to a user ID to enforce uniqueness.",
-      "type": "object",
-      "properties": {
-          "botId": {
-              "type": "string",
-              "description": "The user ID of the bot associated with this link."
-          }
-      },
-      "required": ["botId"]
-    },
-    "CustomGame": {
-        "title": "Custom Game",
-        "description": "A block-based interactive game.",
+    "StickerPack": {
+        "title": "Sticker Pack",
+        "description": "A collection of stickers created by a user.",
         "type": "object",
         "properties": {
             "name": { "type": "string" },
-            "description": { "type": "string" },
             "ownerId": { "type": "string" },
-            "scripts": { "type": "array" },
-            "isActive": { "type": "boolean" },
-            "installs": { "type": "number" },
-            "version": { "type": "string" },
-            "link": { "type": "string" }
+            "stickers": { 
+                "type": "array", 
+                "items": { 
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string" },
+                        "url": { "type": "string" },
+                        "emoji": { "type": "string" }
+                    }
+                }
+            }
         },
         "required": ["name", "ownerId"]
     }
@@ -308,65 +61,8 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/config/version": {
-      "schema": {
-        "$ref": "#/backend/entities/AppConfig"
-      },
-      "description": "Stores global application configuration like the latest version."
-    },
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/User"
-      },
-      "description": "Stores individual user profiles."
-    },
-    "/usernames/{username}": {
-        "schema": {
-            "$ref": "#/backend/entities/Username"
-        },
-        "description": "Used to enforce unique usernames."
-    },
-    "/chats/{chatId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Chat"
-      },
-      "description": "Stores metadata for chat rooms (DMs, groups, channels)."
-    },
-    "/chats/{chatId}/messages/{messageId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Message"
-      },
-      "description": "Stores messages for a specific chat."
-    },
-    "/videoChunks/{chunkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/VideoChunk"
-      },
-      "description": "Stores individual chunks of uploaded video files."
-    },
-    "/musicChunks/{chunkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/MusicChunk"
-      },
-      "description": "Stores individual chunks of uploaded music files."
-    },
-    "/chatLinks/{linkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/ChatLink"
-      },
-      "description": "Used to enforce unique links for groups and channels."
-    },
-    "/botLinks/{linkId}": {
-      "schema": {
-        "$ref": "#/backend/entities/BotLink"
-      },
-      "description": "Used to enforce unique links for bots."
-    },
-    "/customGames/{gameId}": {
-        "schema": {
-            "$ref": "#/backend/entities/CustomGame"
-        },
-        "description": "Stores custom block-based games."
-    }
+    "/config/version": { "schema": { "$ref": "#/backend/entities/AppConfig" }, "description": "Global config" },
+    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "User profiles" },
+    "/stickerPacks/{packId}": { "schema": { "$ref": "#/backend/entities/StickerPack" }, "description": "Custom user stickers" }
   }
 }

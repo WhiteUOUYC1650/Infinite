@@ -1,10 +1,11 @@
+
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment, ChatTopic, TypingStatus } from '@/types';
-import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square, Zap, ArrowLeft } from 'lucide-react';
+import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square, Zap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
@@ -90,28 +91,58 @@ const STANDARD_COLORS: Record<string, string> = {
   'f': '#FFFFFF',
 };
 
+const Spoiler = ({ text }: { text: string }) => {
+    const [revealed, setRevealed] = useState(false);
+    const { t } = useLanguage();
+    return (
+        <span 
+            onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
+            className={cn(
+                "cursor-pointer transition-all rounded-md px-1 select-none",
+                revealed ? "bg-black/5 dark:bg-white/5" : "bg-muted-foreground/30 blur-[4px] hover:blur-[2px]"
+            )}
+            title={revealed ? "" : t('spoiler_help')}
+        >
+            {text}
+        </span>
+    );
+};
+
 const ColoredText = ({ text }: { text: string }) => {
-  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
-  const parts = text.split(regex);
-  if (parts.length === 1) return <>{text}</>;
-  let currentColor: string | undefined = undefined;
+  const spoilerRegex = /\|\|(.*?)\|\|/g;
+  const parts = text.split(spoilerRegex);
+  if (parts.length === 1) {
+      const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+      const cParts = text.split(colorRegex);
+      if (cParts.length === 1) return <>{text}</>;
+      let currentColor: string | undefined = undefined;
+      return (
+        <>
+          {cParts.map((part, i) => {
+            if (!part) return null;
+            if (part.startsWith('§')) {
+              if (part.startsWith('§[')) {
+                const hex = part.slice(2, -1);
+                currentColor = `#${hex}`;
+              } else {
+                const code = part[1].toLowerCase();
+                currentColor = STANDARD_COLORS[code];
+              }
+              return null; 
+            }
+            return <span key={i} style={{ color: currentColor }}>{part}</span>;
+          })}
+        </>
+      );
+  }
+
   return (
-    <>
-      {parts.map((part, i) => {
-        if (!part) return null;
-        if (part.startsWith('§')) {
-          if (part.startsWith('§[')) {
-            const hex = part.slice(2, -1);
-            currentColor = `#${hex}`;
-          } else {
-            const code = part[1].toLowerCase();
-            currentColor = STANDARD_COLORS[code];
-          }
-          return null; 
-        }
-        return <span key={i} style={{ color: currentColor }}>{part}</span>;
-      })}
-    </>
+      <>
+        {parts.map((part, i) => {
+            if (i % 2 === 1) return <Spoiler key={i} text={part} />;
+            return <ColoredText key={i} text={part} />;
+        })}
+      </>
   );
 };
 
@@ -243,7 +274,6 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const [mediaUrl, setMediaUrl] = useState<string | null>(null); const circleVideoRef = useRef<HTMLVideoElement>(null); const [hasUnmutedCircle, setHasUnmutedCircle] = useState(false);
     const isCircleComplete = message.circleStatus === 'complete';
     
-    // Improved real-time read logic
     const isRead = useMemo(() => { 
         if (!isCurrentUser || !message.readBy) return false; 
         if (chatType === 'dm') { 
@@ -289,33 +319,13 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             try { 
                 const { Filesystem, Directory } = await import('@capacitor/filesystem'); 
                 const cleanBase64 = mediaUrl.includes(',') ? mediaUrl.split(',')[1] : mediaUrl; 
-                
                 const dirPath = 'Infinite';
-                try { 
-                    await Filesystem.mkdir({ 
-                        path: dirPath, 
-                        directory: Directory.ExternalStorage, 
-                        recursive: true 
-                    }); 
-                } catch (e) {} 
-
-                await Filesystem.writeFile({ 
-                    path: `Download/Infinite/${fileName}`, 
-                    data: cleanBase64, 
-                    directory: Directory.ExternalStorage, 
-                }); 
+                try { await Filesystem.mkdir({ path: dirPath, directory: Directory.ExternalStorage, recursive: true }); } catch (e) {} 
+                await Filesystem.writeFile({ path: `Download/Infinite/${fileName}`, data: cleanBase64, directory: Directory.ExternalStorage }); 
                 toast({ title: t('dm_success'), description: `Saved to Download/Infinite/${fileName}` }); 
-            } catch (e) { 
-                console.error(e); 
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to save to Download folder.' });
-            } 
+            } catch (e) { toast({ variant: 'destructive', title: 'Error', description: 'Failed to save.' }); } 
         } else { 
-            const link = document.createElement('a'); 
-            link.href = mediaUrl; 
-            link.download = fileName; 
-            document.body.appendChild(link); 
-            link.click(); 
-            document.body.removeChild(link); 
+            const link = document.createElement('a'); link.href = mediaUrl; link.download = fileName; document.body.appendChild(link); link.click(); document.body.removeChild(link); 
         } 
     };
     const handleCircleClick = (e: React.MouseEvent) => { e.stopPropagation(); if (circleVideoRef.current) { window.dispatchEvent(new CustomEvent('stop-media', { detail: { id: message.id } })); circleVideoRef.current.currentTime = 0; if (!hasUnmutedCircle) { circleVideoRef.current.muted = false; setHasUnmutedCircle(true); } circleVideoRef.current.play(); } };
@@ -326,13 +336,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const displayName = isChannelPost ? message.senderName : (message.type === 'announcement' ? (message.senderName || 'Infinite') : (sender?.isDeleted ? t('deleted_account') : sender?.name));
     const displayAvatar = isChannelPost ? message.senderAvatar : (message.type === 'announcement' ? message.senderAvatar : sender?.avatar);
     
-    const handleSenderClick = () => {
-        if (isChannelPost && message.fromChannelId) {
-            onChannelClick(message.fromChannelId);
-        } else if (!isChannelPost && sender && !sender.isDeleted && !isCurrentUser) {
-            onAvatarClick(sender);
-        }
-    };
+    const handleSenderClick = () => { if (isChannelPost && message.fromChannelId) { onChannelClick(message.fromChannelId); } else if (!isChannelPost && sender && !sender.isDeleted && !isCurrentUser) { onAvatarClick(sender); } };
 
     return (
         <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
@@ -407,7 +411,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const isRecordingCanceledRef = useRef(false);
 
-  // Typing Status Logic
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -427,7 +430,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
 
-  // Real-time listener for the interlocutor in DM
   const otherUserId = useMemo(() => { 
     if (item.type !== 'dm') return null;
     return item.members.find(m => m !== currentUser.uid); 
@@ -436,23 +438,13 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const { data: realTimeOtherUser } = useDoc<User>(otherUserRef);
   const otherUser = realTimeOtherUser || (otherUserId ? memberDetails[otherUserId] : null);
 
-  // Mark as read logic
   useEffect(() => {
     if (!db || !messages || messages.length === 0 || !isMember || !currentUser.uid) return;
-    
     const lastMsg = messages[messages.length - 1];
     const isUnreadByMe = !lastMsg.readBy?.includes(currentUser.uid) && lastMsg.senderId !== currentUser.uid;
-    
     if (isUnreadByMe) {
-        // Mark specific message as read
-        updateDoc(doc(db, 'chats', item.id, 'messages', lastMsg.id), {
-            readBy: arrayUnion(currentUser.uid)
-        }).catch(() => {});
-
-        // Reset unread count for this chat
-        updateDoc(doc(db, 'chats', item.id), {
-            [`unreadCounts.${currentUser.uid}`]: 0
-        }).catch(() => {});
+        updateDoc(doc(db, 'chats', item.id, 'messages', lastMsg.id), { readBy: arrayUnion(currentUser.uid) }).catch(() => {});
+        updateDoc(doc(db, 'chats', item.id), { [`unreadCounts.${currentUser.uid}`]: 0 }).catch(() => {});
     }
   }, [db, messages, item.id, isMember, currentUser.uid]);
   
@@ -502,12 +494,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
   
-  // Typing Status Implementation
   useEffect(() => {
     if (!db || !isMember || item.type === 'channel') return;
-
     const q = query(collection(db, 'chats', item.id, 'typing'));
-
     const unsub = onSnapshot(q, (snapshot) => {
         const now = Date.now();
         const statuses = snapshot.docs
@@ -520,7 +509,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             });
         setTypingUsers(statuses);
     });
-
     return () => unsub();
   }, [db, item.id, item.type, isMember, currentUser.uid, activeTopicId, item.isSupergroup]);
 
@@ -529,12 +517,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     const typingRef = doc(db, 'chats', item.id, 'typing', currentUser.uid);
     try {
         if (typing) {
-            setDoc(typingRef, {
-                userId: currentUser.uid,
-                userName: currentUser.name || currentUser.username,
-                timestamp: serverTimestamp(),
-                topicId: activeTopicId || null
-            }).catch(() => {});
+            setDoc(typingRef, { userId: currentUser.uid, userName: currentUser.name || currentUser.username, timestamp: serverTimestamp(), topicId: activeTopicId || null }).catch(() => {});
         } else {
             deleteDoc(typingRef).catch(() => {});
         }
@@ -554,14 +537,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const getStatusLine = () => { 
     if (item.id === currentUser.uid) return null; 
-    
     if (typingUsers.length > 0) {
         const first = typingUsers[0];
         if (item.type === 'dm') return <span className="text-primary font-bold animate-pulse">{t('typing')}</span>;
         if (typingUsers.length === 1) return <span className="text-primary font-bold animate-pulse">{t('user_typing', { name: first.userName })}</span>;
         return <span className="text-primary font-bold animate-pulse">{t('users_typing', { name: first.userName, count: typingUsers.length - 1 })}</span>;
     }
-
     if (item.id === 'GENERAL_CHAT') return t('public_chat_description'); 
     if (item.type === 'dm' && otherUser) { 
         if (otherUser.isBot) return t('bot_status'); 
@@ -598,75 +579,69 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     try {
         const mref = doc(collection(db, 'chats', item.id, 'messages')); const ts = serverTimestamp();
         const data: any = { 
-            senderId: currentUser.uid, 
-            content: finalC.trim(), 
-            timestamp: ts, 
-            readBy: [], 
-            senderName: currentUser.name || currentUser.username, 
-            attachments: [], 
+            senderId: currentUser.uid, content: finalC.trim(), timestamp: ts, readBy: [], senderName: currentUser.name || currentUser.username, attachments: [], 
             ...(customPoll && { poll: customPoll }), 
             ...(replyToMessage && { replyTo: { messageId: replyToMessage.id, content: replyToMessage.content || (replyToMessage.imageUrl ? t('photo') : t('file')), senderName: memberDetails[replyToMessage.senderId]?.name || 'User' } }),
             ...(activeTopicId && { topicId: activeTopicId })
         };
-        
-        const CHUNK_SIZE = 384 * 1024; // 384KB
-
+        const CHUNK_SIZE = 384 * 1024;
         for (const fItem of filesToSend) {
             const attachment: MessageAttachment = { id: Math.random().toString(36).substring(7), type: fItem.type, fileName: fItem.file.name, fileMimeType: fItem.file.type, status: 'complete' };
-            const chunkIds: string[] = [];
-            const totalChunks = Math.ceil(fItem.file.size / CHUNK_SIZE);
-            const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
-
+            const chunkIds: string[] = []; const totalChunks = Math.ceil(fItem.file.size / CHUNK_SIZE); const col = fItem.type === 'video' ? 'videoChunks' : fItem.type === 'music' ? 'musicChunks' : 'fileChunks';
             for (let i = 0; i < totalChunks; i++) {
-                const start = i * CHUNK_SIZE;
-                const end = Math.min(start + CHUNK_SIZE, fItem.file.size);
-                const fileChunk = fItem.file.slice(start, end);
-
-                const base64 = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(fileChunk);
-                    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-                });
-
-                const cref = doc(collection(db, col));
-                setDoc(cref, { data: base64, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() }).catch(() => {});
-                chunkIds.push(cref.id);
-                if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
+                const start = i * CHUNK_SIZE; const end = Math.min(start + CHUNK_SIZE, fItem.file.size); const fileChunk = fItem.file.slice(start, end);
+                const base64 = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.readAsDataURL(fileChunk); reader.onload = () => resolve((reader.result as string).split(',')[1]); });
+                const cref = doc(collection(db, col)); setDoc(cref, { data: base64, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() }).catch(() => {});
+                chunkIds.push(cref.id); if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
             }
-            attachment.chunkIds = chunkIds;
-            data.attachments.push(attachment);
+            attachment.chunkIds = chunkIds; data.attachments.push(attachment);
         }
-        
-        // Optimistic Send: No await
         setDoc(mref, data).catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: mref.path,
-                operation: 'create',
-                requestResourceData: data,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: mref.path, operation: 'create', requestResourceData: data }));
         });
-
         if (item.type === 'channel' && item.discussionChatId) {
             const discRef = doc(collection(db, 'chats', item.discussionChatId, 'messages'));
             setDoc(discRef, { ...data, fromChannelId: item.id, channelMessageId: mref.id, senderName: item.name, senderAvatar: item.avatar || null }).catch(() => {});
             updateDoc(doc(db, 'chats', item.discussionChatId), { lastMessage: { id: discRef.id, content: data.content || (data.attachments?.length > 0 ? t(data.attachments[0].type as any) : ''), senderId: item.id, senderName: item.name, timestamp: Timestamp.now() } }).catch(() => {});
         }
-
         let lastMsgContent = finalC.trim();
         if (customPoll) lastMsgContent = `Poll: ${customPoll.question}`;
         else if (!lastMsgContent && data.attachments.length > 0) { lastMsgContent = data.attachments.length === 1 ? t(data.attachments[0].type as any) : `${t('file')} (${data.attachments.length})`; }
-        
-        updateDoc(doc(db, 'chats', item.id), { 
-            lastMessage: { id: mref.id, content: lastMsgContent, senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } 
-        }).catch(() => {});
-        
-    } catch (e: any) { 
-        console.error("Failed to prepare message:", e);
-        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not send message.' });
-    } finally { 
-        setIsSending(false); 
-    }
+        updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: lastMsgContent, senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } }).catch(() => {});
+    } catch (e: any) { toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not send message.' }); } finally { setIsSending(false); }
+  };
+
+  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
+      if (!db || !currentUser.uid) return;
+      setIsSending(true);
+      try {
+          const mref = doc(collection(db, 'chats', item.id, 'messages'));
+          const col = type === 'voice' ? 'voiceChunks' : 'circleChunks';
+          const chunkIds: string[] = [];
+          const CHUNK_SIZE = 384 * 1024;
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onload = async () => {
+              const base64Data = (reader.result as string).split(',')[1];
+              const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
+              for (let i = 0; i < totalChunks; i++) {
+                  const start = i * CHUNK_SIZE;
+                  const end = Math.min(start + CHUNK_SIZE, base64Data.length);
+                  const chunk = base64Data.substring(start, end);
+                  const cref = doc(collection(db, col));
+                  await setDoc(cref, { data: chunk, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() });
+                  chunkIds.push(cref.id);
+                  if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
+              }
+              const data: any = { 
+                  senderId: currentUser.uid, content: '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username,
+                  ...(type === 'voice' ? { voiceStatus: 'complete', voiceChunkIds: chunkIds, voiceMimeType: blob.type } : { circleStatus: 'complete', circleChunkIds: chunkIds, circleMimeType: blob.type }),
+                  ...(activeTopicId && { topicId: activeTopicId })
+              };
+              await setDoc(mref, data);
+              await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message') : 'Video Circle', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+          };
+      } catch (e) { console.error(e); } finally { setIsSending(false); }
   };
   
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid!)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${e}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
@@ -692,9 +667,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const headerContent = (
     <div className={cn("flex items-center w-full transition-all duration-300 gap-2", experimentalDesign ? "h-14 px-1" : "p-2 h-14")}>
         <div className={cn(experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center", experimentalDesign && !glassEffect && "bg-card/40")}>
-            <Button variant="ghost" size="icon" onClick={item.isSupergroup && activeTopicId ? () => setActiveTopicId(null) : onClose} className="rounded-full h-10 w-10">
+            <button onClick={item.isSupergroup && activeTopicId ? () => setActiveTopicId(null) : onClose} className="rounded-full h-10 w-10 flex items-center justify-center hover:bg-muted/50 transition-colors">
                 {item.isSupergroup && activeTopicId ? <ArrowLeft className="h-5 w-5" /> : <X className="h-5 w-5" />}
-            </Button>
+            </button>
         </div>
         <div className={cn("flex-1 flex items-center min-w-0 h-full", experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg", experimentalDesign && !glassEffect && "bg-card/40")}>
             <button disabled={isGeneralChat} className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full disabled:hover:bg-transparent" onClick={() => isDM ? setProfileDialogUser(otherUser) : (isGeneralChat ? null : setShowChatProfile(true))}>
