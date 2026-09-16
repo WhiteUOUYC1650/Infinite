@@ -86,6 +86,19 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
     } 
   }, [open, user.id, user.isCustomBot, db]);
 
+  const getStatusText = (u: User) => {
+    if (u.isDeleted) return '';
+    if (u.isBot) return t('bot_status');
+    if (!u.status) return '';
+    const statusKey = statusTranslations[u.status] || 'offline';
+    let statusText = t(statusKey);
+    if (u.status === 'offline' && u.lastSeen) {
+      const lastSeenDate = new Date(u.lastSeen.seconds * 1000);
+      statusText = `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
+    }
+    return statusText;
+  }
+
   const handleStartMessage = async () => {
     if (!db || !authUser) return;
     const mem = [authUser.uid, user.id].sort(); const cid = mem.join('_');
