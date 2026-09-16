@@ -55,6 +55,15 @@ export default function Home() {
                 lastSeen: serverTimestamp(),
                 updatedAt: serverTimestamp()
             }, { merge: true });
+
+            // Force immediate status update for the user doc
+            if (active) {
+                await updateDoc(userRef, { 
+                    status: 'online', 
+                    lastSeen: serverTimestamp(),
+                    activeSessionId: sessionId 
+                });
+            }
         } catch (e) {
             // Silent catch for background errors
         }
@@ -71,7 +80,7 @@ export default function Home() {
                 updateDoc(userRef, { 
                     status: newStatus, 
                     lastSeen: serverTimestamp(),
-                    activeSessionId: anyActive ? sessionId : null 
+                    activeSessionId: anyActive ? sessionId : (snap.data().activeSessionId === sessionId ? null : snap.data().activeSessionId)
                 }).catch(() => {});
             }
         }).catch(() => {});
@@ -93,6 +102,9 @@ export default function Home() {
                 }
                 
                 setIsVerifying(false);
+
+                // Set status to online immediately on successful verification
+                updateDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }).catch(() => {});
 
                 const justLoggedIn = localStorage.getItem('justLoggedIn');
                 if (justLoggedIn) {

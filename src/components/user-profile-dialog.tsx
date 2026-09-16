@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -110,7 +109,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   const handleSendGold = async () => {
     if (!db || !authUser || !user.id || isSendingGold) return;
     const amount = parseInt(sendAmount);
-    if (isNaN(amount) || amount <= 0) { toast({ variant: 'destructive', title: 'Error', description: t('invalid_amount') }); return; }
+    if (isNaN(amount) || amount <= 0) { toast({ variant: 'destructive', title: 'Error', description: t('invalid_amount' as any) || "Invalid amount" }); return; }
     setIsSendingGold(true);
     try {
         await runTransaction(db, async (tx) => {
@@ -129,7 +128,9 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   };
 
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
-  const displayUsername = user.isDeleted ? '' : (user.username?.startsWith('@') ? user.username : `@${user.username}`);
+  // Ensure username starts with @ and only one @
+  const displayUsername = user.isDeleted ? '' : (user.username ? (user.username.startsWith('@') ? user.username : `@${user.username}`) : '');
+  
   const birthdayText = useMemo(() => {
     if (!user.birthday) return null; const months = (t('months') || '').split(',');
     return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;

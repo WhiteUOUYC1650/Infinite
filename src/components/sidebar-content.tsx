@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
@@ -353,6 +352,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const onTouchEnd = () => {
       touchStartRef.current = null;
   };
+
+  const cleanUsername = currentUser.username ? (currentUser.username.startsWith('@') ? currentUser.username : `@${currentUser.username}`) : '';
   
   return (
     <div className="flex flex-col h-full bg-sidebar relative">
@@ -444,7 +445,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <Button variant="ghost" onClick={() => { onSelect('feed'); setOpenMobile(false); }} className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}>
                     <div className="flex items-center gap-3 w-full">
                         <Newspaper className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-semibold text-sm">{t('feed_title')}</p>
+                        <p className="font-semibold text-sm">Feed</p>
                     </div>
                     </Button>
                 )}
@@ -466,7 +467,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <div className="flex items-center gap-3 w-full">
                     <InfVidIcon className="h-5 w-5" />
                     <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm">{t('infvid_title')}</p>
+                        <p className="font-semibold text-sm">InfVid</p>
                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">BETA</Badge>
                     </div>
                     </div>
@@ -475,7 +476,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <div className="flex items-center gap-3 w-full">
                     <Gamepad2 className="h-4 w-4 text-muted-foreground" />
                     <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm">{t('infgames_title')}</p>
+                        <p className="font-semibold text-sm">InfGames</p>
                     </div>
                     </div>
                 </Button>
@@ -483,7 +484,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <div className="flex items-center gap-3 w-full">
                     <MusicIcon className="h-4 w-4 text-muted-foreground" />
                     <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm">{t('infmusic_title')}</p>
+                        <p className="font-semibold text-sm">InfMusic</p>
                         <Badge variant="secondary" className="h-3.5 px-1 text-[9px] leading-none">NEW</Badge>
                     </div>
                     </div>
@@ -492,7 +493,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <div className="flex items-center gap-3 w-full">
                     <Cpu className="h-4 w-4 text-muted-foreground" />
                     <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm">{t('bot_studio_title')}</p>
+                        <p className="font-semibold text-sm">Bot Studio</p>
                     </div>
                     </div>
                 </Button>
@@ -664,7 +665,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                       </Avatar>
                       <div className="flex-1 min-w-0">
                           <p className="truncate">{acc.name}</p>
-                          <p className="text-[10px] opacity-60 font-medium truncate">{acc.username}</p>
+                          <p className="text-[10px] opacity-60 font-medium truncate">{acc.username ? (acc.username.startsWith('@') ? acc.username : `@${acc.username}`) : ''}</p>
                       </div>
                       {acc.uid === currentUser.uid && <Check className="h-4 w-4 shrink-0" />}
                   </DropdownMenuItem>
@@ -682,7 +683,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <div className={cn("flex gap-1 shrink-0", (experimentalDesign || glassEffect) ? "flex-row w-full justify-center gap-2" : "flex-col")}>
+          <div className={cn("flex gap-1 shrink-0", (experimentalDesign || glassEffect) ? "flex-row w-full justify-center gap-2" : "flex-row")}>
             <Button variant="ghost" size="icon" onClick={toggleTheme} className={cn("h-8 w-8", (experimentalDesign || glassEffect) && "glass-circle rounded-2xl h-12 w-12")}>
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               <span className="sr-only">Toggle theme</span>
@@ -743,8 +744,8 @@ const DMChatItemComponent = React.memo(({ item, otherUser, onSelect, selectedId,
   
   const { icon: AttachmentIcon, text: attachmentText } = useMemo(() => { 
     if (lastMessage?.imageUrl) return { icon: <ImageIcon className="h-3 w-3 shrink-0" />, text: t('photo') }; 
-    if (lastMessage?.videoMimeType) return { icon: <VideoIcon className="h-3 w-3 shrink-0" />, text: t('video') }; 
-    if (lastMessage?.musicMimeType) return { icon: <MusicIcon className="h-3 w-3 shrink-0" />, text: t('music') }; 
+    if (lastMessage?.videoMimeType) return { icon: <VideoIcon className="h-3 w-3 shrink-0" />, text: 'Video' }; 
+    if (lastMessage?.musicMimeType) return { icon: <MusicIcon className="h-3 w-3 shrink-0" />, text: 'Audio' }; 
     if (lastMessage?.voiceStatus) return { icon: <Mic className="h-3 w-3 shrink-0" />, text: t('voice_message_short') }; 
     if (lastMessage?.fileStatus) return { icon: <FileIcon className="h-3 w-3 shrink-0" />, text: t('file') }; 
     if (lastMessage?.poll) return { icon: <ListTodo className="h-3 w-3 shrink-0" />, text: t('poll') }; 
@@ -847,8 +848,8 @@ const ChatItemComponent = React.memo(({ item, onSelect, selectedId, currentUserI
   
   const { icon: AttachmentIcon, text: attachmentText } = useMemo(() => { 
     if (lastMessage?.imageUrl) return { icon: <ImageIcon className="h-3 w-3 shrink-0" />, text: t('photo') }; 
-    if (lastMessage?.videoMimeType) return { icon: <VideoIcon className="h-3 w-3 shrink-0" />, text: t('video') }; 
-    if (lastMessage?.musicMimeType) return { icon: <MusicIcon className="h-3 w-3 shrink-0" />, text: t('music') }; 
+    if (lastMessage?.videoMimeType) return { icon: <VideoIcon className="h-3 w-3 shrink-0" />, text: 'Video' }; 
+    if (lastMessage?.musicMimeType) return { icon: <MusicIcon className="h-3 w-3 shrink-0" />, text: 'Audio' }; 
     if (lastMessage?.voiceStatus) return { icon: <Mic className="h-3 w-3 shrink-0" />, text: t('voice_message_short') }; 
     if (lastMessage?.fileStatus) return { icon: <FileIcon className="h-3 w-3 shrink-0" />, text: t('file') }; 
     if (lastMessage?.poll) return { icon: <ListTodo className="h-3 w-3 shrink-0" />, text: t('poll') }; 
