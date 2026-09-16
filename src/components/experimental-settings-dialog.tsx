@@ -139,8 +139,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']); const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward'); const page = pageHistory[pageHistory.length - 1];
   const [showEditProfile, setShowEditProfile] = useState(false); const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); const scrollAreaRef = useRef<HTMLDivElement>(null); const router = useRouter();
   const { t, language, setLanguage } = useLanguage(); const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
-  const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); [currentCacheSize, setCurrentCacheSize] = useState('0 B'); [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false); const [isBuyingPrem, setIsBuyingPrem] = useState(false);
+  const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); 
+  
+  const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); 
+  const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); 
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); 
+  const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false); 
+  const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
   const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
 
