@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -326,7 +325,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             return (
                 <div className="p-4 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Standard Themes</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('standard_themes' as any) || 'Standard Themes'}</p>
                         <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
                             {themeOptions.map(opt => (
                                 <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
@@ -360,7 +359,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
                     {customizationMode && (
                         <div className="space-y-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Advanced</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('advanced')}</p>
                             <RadioGroup value={theme} onValueChange={v => setTheme(v as any)}>
                                 <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
                                     <div className="flex items-center space-x-3">
@@ -387,8 +386,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               return (
                 <div className='p-6 space-y-10 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
                     <div className="space-y-2 text-center">
-                        <h2 className="text-3xl font-black font-headline uppercase tracking-tighter">Theme Studio</h2>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Personalize your Infinite experience</p>
+                        <h2 className="text-3xl font-black font-headline uppercase tracking-tighter">{t('theme_studio')}</h2>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{t('theme_studio_desc')}</p>
                     </div>
 
                     <div className="space-y-6">
@@ -398,15 +397,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                         </div>
                         <div className="space-y-6 bg-muted/20 p-6 rounded-3xl border border-white/5">
                             <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Hue (Тон)</span><span>{customThemeConfig.primary.h}°</span></div>
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>{t('hue')}</span><span>{customThemeConfig.primary.h}°</span></div>
                                 <Slider value={[customThemeConfig.primary.h]} max={360} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, primary: { ...customThemeConfig.primary, h: v } })} />
                             </div>
                             <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Saturation</span><span>{customThemeConfig.primary.s}%</span></div>
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>{t('saturation')}</span><span>{customThemeConfig.primary.s}%</span></div>
                                 <Slider value={[customThemeConfig.primary.s]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, primary: { ...customThemeConfig.primary, s: v } })} />
                             </div>
                             <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Lightness</span><span>{customThemeConfig.primary.l}%</span></div>
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>{t('lightness')}</span><span>{customThemeConfig.primary.l}%</span></div>
                                 <Slider value={[customThemeConfig.primary.l]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, primary: { ...customThemeConfig.primary, l: v } })} />
                             </div>
                         </div>
@@ -419,15 +418,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                         </div>
                         <div className="space-y-6 bg-muted/20 p-6 rounded-3xl border border-white/5">
                             <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Hue</span><span>{customThemeConfig.background.h}°</span></div>
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>{t('hue')}</span><span>{customThemeConfig.background.h}°</span></div>
                                 <Slider value={[customThemeConfig.background.h]} max={360} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, background: { ...customThemeConfig.background, h: v } })} />
                             </div>
                             <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Saturation</span><span>{customThemeConfig.background.s}%</span></div>
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>{t('saturation')}</span><span>{customThemeConfig.background.s}%</span></div>
                                 <Slider value={[customThemeConfig.background.s]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, background: { ...customThemeConfig.background, s: v } })} />
                             </div>
                             <div className="space-y-3">
-                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Lightness</span><span>{customThemeConfig.background.l}%</span></div>
+                                <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>{t('lightness')}</span><span>{customThemeConfig.background.l}%</span></div>
                                 <Slider value={[customThemeConfig.background.l]} max={100} step={1} onValueChange={([v]) => setCustomThemeConfig({ ...customThemeConfig, background: { ...customThemeConfig.background, l: v } })} />
                             </div>
                         </div>
@@ -435,14 +434,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
                     <div className="p-10 text-center">
                         <div className="w-20 h-20 rounded-3xl mx-auto shadow-2xl transition-all duration-500" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
-                        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Preview Swatch</p>
+                        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">{t('swatch_preview')}</p>
                     </div>
                 </div>
               );
           case 'language': return (
             <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
                 <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Standard</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('standard')}</p>
                     <RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1">
                         <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold cursor-pointer">English</Label></div>
                         <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold cursor-pointer">Русский</Label></div>
@@ -470,9 +469,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </div>
           );
           case 'dataStorage': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn('border rounded-3xl p-6 space-y-4 shadow-sm', glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center"><HardDrive className="h-6 w-6 text-orange-500" /></div><div><p className='text-xs font-black uppercase tracking-widest text-muted-foreground'>{t('cache_usage')}</p><p className='text-2xl font-black text-foreground'>{currentCacheSize}</p></div></div><p className="text-xs text-muted-foreground leading-relaxed">{t('clear_cache_desc')}</p><Button variant="outline" className={cn('w-full h-12 rounded-2xl font-bold border-orange-500/20 hover:bg-orange-500/5', glassEffect && "glass-button border-none")} onClick={handleClearCache}><Trash2 className="mr-2 h-4 w-4 text-orange-500" /> {t('clear_cache')}</Button></div></div>);
-          case 'infGold': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("border border-amber-500/20 rounded-[2rem] p-8 text-center space-y-4", glassEffect ? "glass-panel" : "bg-amber-500/10")}><InfGoldIcon className='h-16 w-16 mx-auto experimental-glow text-amber-600' /><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700/60 mb-1">{t('inf_gold_balance')}</p><h2 className='text-5xl font-black text-amber-600'>{Math.round(currentUser.infGoldBalance || 0)}</h2></div></div><div className="p-2 gap-1 flex flex-col"><SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" glassEffect={glassEffect} /><SettingsItem icon={Gift} label="Отправить подарок себе" onClick={() => setShowSelfGiftPicker(true)} showExpColors={experimentalDesign || glassEffect} iconBg="bg-pink-500/15" iconColor="text-pink-600" glassEffect={glassEffect} /><SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-primary/15" iconColor="text-primary" glassEffect={glassEffect} /><SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} /></div></div>);
-          case 'infinitePrem': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none bg-primary/80 backdrop-blur-xl" : "bg-primary")}><div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" /><div className="relative z-10 space-y-4"><div className='flex items-center justify-between'><VerifiedBadge className="w-12 h-12" />{currentUser.subscriptionTier === 'prem' && <Badge variant="secondary" className="bg-white/20 text-white border-none font-black">ACTIVE</Badge>}</div><h2 className="text-3xl font-black font-headline leading-none">Infinite Prem</h2><p className="text-white/80 text-sm leading-relaxed">{t('prem_description')}</p><ul className="space-y-3 pt-2">{[1, 2, 3].map(i => (<li key={i} className="flex items-center gap-3 text-sm font-bold"><div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0"><Check className="w-3 h-3" /></div>{t(`prem_benefit_${i}` as any)}</li>))}</ul></div></div><div className="space-y-3"><Button onClick={() => handleBuyPrem(false)} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">{isBuyingPrem ? <Loader2 className='animate-spin' /> : (currentUser.subscriptionTier === 'prem' ? "Current Plan" : t('subscribe_monthly'))}</Button><Button onClick={() => handleBuyPrem(true)} variant="outline" disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">{t('subscribe_yearly')}</Button><p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('yearly_discount_note')}</p></div></div>);
-          case 'transferHistory': return (<div className='p-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Последние операции</h3><div className="space-y-2">{[...(sentTransfers || []), ...(receivedTransfers || [])].sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()).map(item => { const isSent = item.senderId === userId; return (<div key={item.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-3"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>{isSent ? <ArrowLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}</div><div><p className="font-bold text-sm leading-tight">{isSent ? item.receiverName : item.senderName}</p><p className="text-[10px] text-muted-foreground uppercase font-medium">{isSent ? 'Sent' : 'Received'}</p></div></div><div className="text-right"><p className={cn("font-black text-base", isSent ? "text-red-500" : "text-green-500")}>{isSent ? '-' : '+'}{item.amount} G</p><p className="text-[9px] text-muted-foreground">{format(item.timestamp.toMillis(), 'dd.MM, HH:mm')}</p></div></div>); })}{(!sentTransfers?.length && !receivedTransfers?.length) && (<div className="text-center py-20 opacity-30"><Coins className="h-12 w-12 mx-auto mb-2" /><p className="text-xs font-bold uppercase">{t('no_transfers')}</p></div>)}</div></div>);
+          case 'infGold': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("border border-amber-500/20 rounded-[2rem] p-8 text-center space-y-4", glassEffect ? "glass-panel" : "bg-amber-500/10")}><InfGoldIcon className='h-16 w-16 mx-auto experimental-glow text-amber-600' /><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700/60 mb-1">{t('inf_gold_balance')}</p><h2 className='text-5xl font-black text-amber-600'>{Math.round(currentUser.infGoldBalance || 0)}</h2></div></div><div className="p-2 gap-1 flex flex-col"><SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" glassEffect={glassEffect} /><SettingsItem icon={Gift} label={t('send_gift')} onClick={() => setShowSelfGiftPicker(true)} showExpColors={experimentalDesign || glassEffect} iconBg="bg-pink-500/15" iconColor="text-pink-600" glassEffect={glassEffect} /><SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-primary/15" iconColor="text-primary" glassEffect={glassEffect} /><SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} /></div></div>);
+          case 'infinitePrem': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none bg-primary/80 backdrop-blur-xl" : "bg-primary")}><div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" /><div className="relative z-10 space-y-4"><div className='flex items-center justify-between'><VerifiedBadge className="w-12 h-12" />{currentUser.subscriptionTier === 'prem' && <Badge variant="secondary" className="bg-white/20 text-white border-none font-black">ACTIVE</Badge>}</div><h2 className="text-3xl font-black font-headline leading-none">Infinite Prem</h2><p className="text-white/80 text-sm leading-relaxed">{t('prem_description')}</p><ul className="space-y-3 pt-2">{[1, 2, 3].map(i => (<li key={i} className="flex items-center gap-3 text-sm font-bold"><div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0"><Check className="w-3 h-3" /></div>{t(`prem_benefit_${i}` as any)}</li>))}</ul></div></div><div className="space-y-3"><Button onClick={() => handleBuyPrem(false)} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">{isBuyingPrem ? <Loader2 className='animate-spin' /> : (currentUser.subscriptionTier === 'prem' ? t('current_plan') : t('subscribe_monthly'))}</Button><Button onClick={() => handleBuyPrem(true)} variant="outline" disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">{t('subscribe_yearly')}</Button><p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('yearly_discount_note')}</p></div></div>);
+          case 'transferHistory': return (<div className='p-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">{t('transfer_history')}</h3><div className="space-y-2">{[...(sentTransfers || []), ...(receivedTransfers || [])].sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()).map(item => { const isSent = item.senderId === userId; return (<div key={item.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-3"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>{isSent ? <ArrowLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}</div><div><p className="font-bold text-sm leading-tight">{isSent ? item.receiverName : item.senderName}</p><p className="text-[10px] text-muted-foreground uppercase font-medium">{isSent ? 'Sent' : 'Received'}</p></div></div><div className="text-right"><p className={cn("font-black text-base", isSent ? "text-red-500" : "text-green-500")}>{isSent ? '-' : '+'}{item.amount} G</p><p className="text-[9px] text-muted-foreground">{format(item.timestamp.toMillis(), 'dd.MM, HH:mm')}</p></div></div>); })}{(!sentTransfers?.length && !receivedTransfers?.length) && (<div className="text-center py-20 opacity-30"><Coins className="h-12 w-12 mx-auto mb-2" /><p className="text-xs font-bold uppercase">{t('no_transfers')}</p></div>)}</div></div>);
           case 'dailyBonus': return <div className='p-6 animate-in fade-in slide-in-from-right-4 duration-300'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
           case 'help': return (<Accordion type="single" collapsible className="w-full animate-in fade-in slide-in-from-right-4 duration-300">{faqs.map((f, i) => (<AccordionItem value={`f-${i}`} key={i} className="px-4"><AccordionTrigger className="text-left font-bold">{f.question}</AccordionTrigger><AccordionContent><div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{f.answer}</ReactMarkdown></div></AccordionContent></AccordionItem>))}</Accordion>);
           case 'checkUpdates': return (<div className='p-12 flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000", isCheckingUpdates && "rotate-180")}>{isCheckingUpdates ? (<Loader2 className="h-10 w-10 text-primary animate-spin" />) : (<RefreshCcw className="h-10 w-10 text-primary" />)}</div><div className="space-y-4"><h2 className="text-2xl font-black font-headline">{isCheckingUpdates ? t('checking_updates_progress') : (hasCheckedUpdates ? (isUpdateAvailable ? t('update_available_title') : t('latest_version_installed')) : t('check_updates'))}</h2>{hasCheckedUpdates && (<p className="text-sm text-muted-foreground font-medium">{isUpdateAvailable ? t('update_available_status', { version: updateInfo?.latest }) : `${t('version')}: ${currentVersion}`}</p>)}</div>{!isCheckingUpdates && (<div className="w-full max-xs pt-4">{isUpdateAvailable && hasCheckedUpdates ? (<Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={downloadUpdate}><Download className="mr-2 h-5 w-5" /> {t('download')}</Button>) : (<Button variant="outline" className={cn("w-full h-14 rounded-2xl font-bold text-lg", glassEffect && "glass-button border-none")} onClick={handleManualCheckUpdates}>{t('check_updates')}</Button>)}</div>)}</div>);
@@ -502,35 +501,35 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 <div className='p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
                   <div className="text-center space-y-2">
                       <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Aurora 1.5</h2>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Official Release Notes</p>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('aurora_release_notes')}</p>
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Send className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Мгновенная отправка</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Сообщения теперь отправляются мгновенно благодаря оптимистичным обновлениям.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('instant_sending_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('instant_sending_desc')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-600 shrink-0"><Repeat className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Мульти-аккаунт</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Добавляйте несколько учетных записей и переключайтесь между ними в один клик.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('multi_account_manager')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('multi_account_manager')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0"><Smile className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Персонализация 2.0</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Баннеры профиля, музыкальные вайбы и скрытый текст (спойлеры).</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('personalization_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('personalization_desc')}</p>
                           </div>
                       </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0"><Gamepad2 className="h-6 w-6" /></div>
                           <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Game Studio</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Создавайте свои игры и делитесь ими с друзьями прямо в Infinite.</p>
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('game_studio_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('game_studio_desc')}</p>
                           </div>
                       </div>
                   </div>

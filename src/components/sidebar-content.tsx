@@ -445,7 +445,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     <Button variant="ghost" onClick={() => { onSelect('feed'); setOpenMobile(false); }} className={cn("w-full justify-start h-auto py-1.5 text-left", selectedId === 'feed' && 'bg-sidebar-accent text-sidebar-accent-foreground')}>
                     <div className="flex items-center gap-3 w-full">
                         <Newspaper className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-semibold text-sm">Feed</p>
+                        <p className="font-semibold text-sm">{t('feed_title')}</p>
                     </div>
                     </Button>
                 )}
