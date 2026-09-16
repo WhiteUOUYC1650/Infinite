@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -230,8 +229,8 @@ export function SearchDialog({ currentUser, open, onOpenChange, onChatSelected, 
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold truncate">{result.data.name}</p>
-                                    {result.type === 'user' && (result.data as User).isBot && <Badge variant="secondary" className="text-[9px] h-4 leading-none px-1 font-black">BOT</Badge>}
-                                    {result.type === 'game' && <Badge variant="outline" className="text-[8px] h-3.5 leading-none px-1 border-indigo-200 text-indigo-600 font-black">GAME</Badge>}
+                                    {result.type === 'user' && (result.data as User).isBot && <Badge variant="secondary" className="text-[9px] h-4 leading-none px-1 font-black">{t('badge_bot')}</Badge>}
+                                    {result.type === 'game' && <Badge variant="outline" className="text-[8px] h-3.5 leading-none px-1 border-indigo-200 text-indigo-600 font-black">{t('badge_game')}</Badge>}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                     {result.type === 'user' ? (result.data as User).username : (result.data as any).link}

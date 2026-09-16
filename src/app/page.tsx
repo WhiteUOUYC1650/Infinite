@@ -110,10 +110,14 @@ export default function Home() {
                     return;
                 }
                 
-                setIsVerifying(false);
+                // CRITICAL: Force online status immediately upon successful login/verification
+                await updateDoc(userRef, { 
+                    status: 'online', 
+                    lastSeen: serverTimestamp(),
+                    activeSessionId: sessionId 
+                }).catch(() => {});
 
-                // Set status to online immediately on successful verification
-                updateDoc(userRef, { status: 'online', lastSeen: serverTimestamp() }).catch(() => {});
+                setIsVerifying(false);
 
                 const justLoggedIn = localStorage.getItem('justLoggedIn');
                 if (justLoggedIn) {
@@ -173,6 +177,7 @@ export default function Home() {
             }
         } catch (e) {
             console.error("Security check failed:", e);
+            setIsVerifying(false);
         }
     };
 

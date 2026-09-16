@@ -23,7 +23,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, getDoc, runTransaction, query, where, increment, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, runTransaction, query, where, increment, serverTimestamp, setDoc, Timestamp, deleteField } from 'firebase/firestore';
 import type { AuthenticatedUser, Chat, ChatLink } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -424,7 +424,7 @@ function BuyLinkDialog({ open, onOpenChange, link, price, currentUser, onSuccess
 
                 const linkRef = doc(db, 'chatLinks', encodeURIComponent(link));
                 const linkSnap = await tx.get(linkRef);
-                if (!linkSnap.exists()) throw new Error("Link no longer available.");
+                if (!linkSnap.exists()) throw new Error(t('link_not_available'));
                 const sellerId = linkSnap.data().ownerId;
                 const oldChatId = linkSnap.data().chatId;
 
@@ -464,15 +464,15 @@ function BuyLinkDialog({ open, onOpenChange, link, price, currentUser, onSuccess
                     <div className="flex bg-muted/50 p-1 rounded-xl"><button onClick={() => setMode('existing')} className={cn("flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all", mode === 'existing' ? "bg-background shadow-sm text-primary" : "text-muted-foreground")}>{t('buy_for_existing_chat')}</button><button onClick={() => setMode('new')} className={cn("flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all", mode === 'new' ? "bg-background shadow-sm text-primary" : "text-muted-foreground")}>{t('buy_and_create_new')}</button></div>
                     {mode === 'existing' ? (
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Выберите свой чат</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('select_your_chat')}</Label>
                             {eligibleChats.length > 0 ? (
-                                <Select value={targetChatId} onValueChange={setTargetChatId}><SelectTrigger className="h-12 rounded-xl bg-muted/50 border-none font-bold"><SelectValue placeholder="Select chat..." /></SelectTrigger><SelectContent className="rounded-xl">{eligibleChats.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent></Select>
+                                <Select value={targetChatId} onValueChange={setTargetChatId}><SelectTrigger className="h-12 rounded-xl bg-muted/50 border-none font-bold"><SelectValue placeholder={t('chat_not_selected')} /></SelectTrigger><SelectContent className="rounded-xl">{eligibleChats.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent></Select>
                             ) : (<p className="text-xs text-center p-4 bg-muted/30 rounded-xl text-muted-foreground italic">{t('no_chats_to_apply')}</p>)}
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Название чата</Label>
-                            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Напр. Мой Мега Канал" className="h-12 rounded-xl bg-muted/50 border-none font-bold" />
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('chat_name_label')}</Label>
+                            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('placeholder_name_example')} className="h-12 rounded-xl bg-muted/50 border-none font-bold" />
                         </div>
                     )}
                 </div>
