@@ -68,6 +68,19 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   
   const { data: gifts, loading: giftsLoading } = useCollection<Gift>(giftsQuery);
 
+  const getStatusText = (u: User) => {
+    if (u.isDeleted) return '';
+    if (u.isBot) return t('bot_status');
+    if (!u.status) return '';
+    const statusKey = statusTranslations[u.status] || 'offline';
+    let statusText = t(statusKey);
+    if (u.status === 'offline' && u.lastSeen) {
+      const lastSeenDate = new Date(u.lastSeen.seconds * 1000);
+      statusText = `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
+    }
+    return statusText;
+  }
+
   useEffect(() => {
       if (user.profileMusicId && db) {
           getDoc(doc(db, 'music', user.profileMusicId)).then(snap => {
@@ -85,19 +98,6 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
         if (user.isCustomBot && db) { getDoc(doc(db, 'customBots', user.id)).then(snap => { if (snap.exists()) setBotData(snap.data() as CustomBot); }); }
     } 
   }, [open, user.id, user.isCustomBot, db]);
-
-  const getStatusText = (u: User) => {
-    if (u.isDeleted) return '';
-    if (u.isBot) return t('bot_status');
-    if (!u.status) return '';
-    const statusKey = statusTranslations[u.status] || 'offline';
-    let statusText = t(statusKey);
-    if (u.status === 'offline' && u.lastSeen) {
-      const lastSeenDate = new Date(u.lastSeen.seconds * 1000);
-      statusText = `${t('was_online')} ${format(lastSeenDate, 'dd.MM.yyyy, HH:mm')}`;
-    }
-    return statusText;
-  }
 
   const handleStartMessage = async () => {
     if (!db || !authUser) return;
@@ -129,7 +129,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
   };
 
   const displayName = user.isDeleted ? t('deleted_account') : user.name;
-  const displayUsername = user.isDeleted ? '' : user.username;
+  const displayUsername = user.isDeleted ? '' : (user.username?.startsWith('@') ? user.username : `@${user.username}`);
   const birthdayText = useMemo(() => {
     if (!user.birthday) return null; const months = (t('months') || '').split(',');
     return `${user.birthday.day} ${months[user.birthday.month - 1]}${user.birthday.year ? `, ${user.birthday.year}` : ''}`;
@@ -195,11 +195,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
                             <div className="grid grid-cols-1 gap-2">
                                 {gifts?.map(gift => (
                                     <div key={gift.id} className="border p-3 rounded-2xl flex flex-col gap-2 bg-muted/20 border-border/50">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-2xl">{gift.emoji}</span>
-                                            <div className="min-w-0"><p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p></div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{gift.emoji}</span>
+                                                <div className="min-w-0"><p className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">From {gift.senderName}</p></div>
+                                            </div>
+                                            {gift.message && <p className="text-[11px] leading-tight text-foreground/80 italic pl-11">{gift.message}</p>}
                                         </div>
-                                        {gift.message && <p className="text-[11px] leading-tight text-foreground/80 italic pl-11">{gift.message}</p>}
                                     </div>
                                 ))}
                             </div>

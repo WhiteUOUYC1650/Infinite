@@ -106,6 +106,8 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
       finally { setIsProcessing(false); }
   };
 
+  const sanitizedUsername = user.username?.startsWith('@') ? user.username : `@${user.username}`;
+
   return (
     <div className={cn("flex flex-col overflow-hidden max-h-[85vh]", experimentalDesign ? "bg-transparent" : "bg-card")}>
       <div className="relative shrink-0">
@@ -147,7 +149,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
 
             <div className={cn("text-left p-5 rounded-2xl border", "bg-muted/30 border-border/50")}>
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">username</p>
-                <p className="font-bold text-sm mb-4">{user.username}</p>
+                <p className="font-bold text-sm mb-4">{sanitizedUsername}</p>
                 <Separator className="opacity-10 mb-4" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">bio</p>
                 <p className="text-sm font-medium leading-relaxed">{user.statusMessage || 'Hey there! I am using Infinite.'}</p>

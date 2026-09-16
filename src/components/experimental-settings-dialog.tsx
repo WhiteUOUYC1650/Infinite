@@ -139,7 +139,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']); const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward'); const page = pageHistory[pageHistory.length - 1];
   const [showEditProfile, setShowEditProfile] = useState(false); const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); const scrollAreaRef = useRef<HTMLDivElement>(null); const router = useRouter();
   const { t, language, setLanguage } = useLanguage(); const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
-  const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); [currentCacheSize, setCurrentCacheSize] = useState('0 B'); [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false); const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
   const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
@@ -355,13 +355,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     {customizationMode && (
                         <div className="space-y-4">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Advanced</p>
-                            <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
-                                <div className="flex items-center space-x-3">
-                                    <RadioGroupItem value="custom" id="custom" onClick={() => setTheme('custom')} checked={theme === 'custom'} />
-                                    <Label htmlFor="custom" className='capitalize cursor-pointer font-bold'>{t('custom')}</Label>
+                            <RadioGroup value={theme} onValueChange={v => setTheme(v as any)}>
+                                <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                                    <div className="flex items-center space-x-3">
+                                        <RadioGroupItem value="custom" id="custom" />
+                                        <Label htmlFor="custom" className='capitalize cursor-pointer font-bold'>{t('custom')}</Label>
+                                    </div>
+                                    <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
                                 </div>
-                                <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
-                            </div>
+                            </RadioGroup>
                         </div>
                     )}
 
@@ -486,9 +488,48 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                 </div>
-                <p className='text-xs text-muted-foreground leading-relaxed max-w-xs font-medium opacity-60'>{t('version_info_detail')}</p>
+                <p className='text-xs text-muted-foreground leading-relaxed max-xs font-medium opacity-60'>{t('version_info_detail')}</p>
               </div>
           );
+          case 'whatsNew':
+              return (
+                <div className='p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
+                  <div className="text-center space-y-2">
+                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Aurora 1.5</h2>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Official Release Notes</p>
+                  </div>
+                  <div className="grid gap-3">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Send className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Мгновенная отправка</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Сообщения теперь отправляются мгновенно благодаря оптимистичным обновлениям.</p>
+                          </div>
+                      </div>
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-600 shrink-0"><Repeat className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Мульти-аккаунт</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Добавляйте несколько учетных записей и переключайтесь между ними в один клик.</p>
+                          </div>
+                      </div>
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0"><Smile className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Персонализация 2.0</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Баннеры профиля, музыкальные вайбы и скрытый текст (спойлеры).</p>
+                          </div>
+                      </div>
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0"><Gamepad2 className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Game Studio</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Создавайте свои игры и делитесь ими с друзьями прямо в Infinite.</p>
+                          </div>
+                      </div>
+                  </div>
+                </div>
+              );
           default: return null;
       }
   };
