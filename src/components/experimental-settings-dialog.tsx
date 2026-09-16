@@ -34,7 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette, UserPlus, Repeat, Smile } from 'lucide-react';
 import type { AuthenticatedUser, Transfer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -301,50 +301,70 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
             </div>
           );
-          case 'whatsNew': return (
-              <div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'>
-                  <div className="text-center space-y-2 mb-2">
-                      <h2 className='text-4xl font-black font-headline text-primary'>{t('whats_new')}</h2>
-                      <p className='text-sm text-muted-foreground font-bold uppercase tracking-widest'>{currentVersion} Aurora</p>
-                  </div>
-                  <div className="grid gap-3">
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Send className="h-6 w-6" /></div>
-                          <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Мгновенная отправка</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Сообщения теперь отправляются мгновенно благодаря оптимистичным обновлениям.</p>
-                          </div>
-                      </div>
-                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0"><Code2 className="h-6 w-6" /></div>
-                          <div className="flex-1">
-                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">Game Studio 1.5</p>
-                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">Расширенная логика и переменные для ваших игр.</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          );
           case 'theme': 
-            const themeOptions = ['orange', 'purple', 'blue', 'gray', 'green', 'red', 'yellow', 'pink', 'shining_gold'];
-            if (customizationMode) themeOptions.push('custom');
+            const themeOptions: { id: string, label: string }[] = [
+                { id: 'orange', label: 'orange' },
+                { id: 'purple', label: 'purple' },
+                { id: 'blue', label: 'blue' },
+                { id: 'gray', label: 'gray' },
+                { id: 'green', label: 'green' },
+                { id: 'red', label: 'red' },
+                { id: 'yellow', label: 'yellow' },
+                { id: 'pink', label: 'pink' }
+            ];
+            const specialOptions: { id: string, label: string }[] = [
+                { id: 'shining_gold', label: 'shining_gold' },
+                { id: 'first_version', label: 'first_version' }
+            ];
+            
             return (
                 <div className="p-4 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
-                        {themeOptions.map(tName => { 
-                            const isPremTheme = tName === 'shining_gold'; 
-                            return (
-                                <div key={tName} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                    <div className="space-y-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Standard Themes</p>
+                        <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
+                            {themeOptions.map(opt => (
+                                <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
                                     <div className="flex items-center space-x-3">
-                                        <RadioGroupItem value={tName} id={tName} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
-                                        <Label htmlFor={tName} className='capitalize cursor-pointer font-bold'>{t(tName as any)}</Label>
+                                        <RadioGroupItem value={opt.id} id={opt.id} />
+                                        <Label htmlFor={opt.id} className='capitalize cursor-pointer font-bold'>{t(opt.label as any)}</Label>
                                     </div>
-                                    {isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}
-                                    {tName === 'custom' && <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />}
                                 </div>
-                            ); 
-                        })}
-                    </RadioGroup>
+                            ))}
+                        </RadioGroup>
+                    </div>
+
+                    <div className="space-y-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('special_themes')}</p>
+                        <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
+                            {specialOptions.map(opt => {
+                                const isPremTheme = opt.id === 'shining_gold';
+                                return (
+                                    <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                                        <div className="flex items-center space-x-3">
+                                            <RadioGroupItem value={opt.id} id={opt.id} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
+                                            <Label htmlFor={opt.id} className='capitalize cursor-pointer font-bold'>{t(opt.label as any)}</Label>
+                                        </div>
+                                        {isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}
+                                        {opt.id === 'first_version' && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">LEGACY</Badge>}
+                                    </div>
+                                );
+                            })}
+                        </RadioGroup>
+                    </div>
+
+                    {customizationMode && (
+                        <div className="space-y-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Advanced</p>
+                            <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                                <div className="flex items-center space-x-3">
+                                    <RadioGroupItem value="custom" id="custom" onClick={() => setTheme('custom')} checked={theme === 'custom'} />
+                                    <Label htmlFor="custom" className='capitalize cursor-pointer font-bold'>{t('custom')}</Label>
+                                </div>
+                                <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
+                            </div>
+                        </div>
+                    )}
+
                     {theme === 'custom' && (
                         <div className="pt-4 animate-in zoom-in duration-300">
                             <Button onClick={() => navigateTo('customization')} className="w-full h-14 rounded-2xl font-black text-lg gap-3 shadow-xl bg-primary/20 text-primary hover:bg-primary/30 border-2 border-primary/20">
@@ -412,13 +432,24 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
               );
           case 'language': return (
-            <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                <RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1">
-                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold">English</Label></div>
-                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold">Русский</Label></div>
-                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="es" id="es" /><Label htmlFor="es" className="font-bold">Español</Label></div>
-                    <div className={cn("flex items-center space-x-2 p-2 rounded-xl", glassEffect && "glass-panel border-none")}><RadioGroupItem value="pt-BR" id="pt-br" /><Label htmlFor="pt-BR" className="font-bold">Português (Brasil)</Label></div>
-                </RadioGroup>
+            <div className="p-4 animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Standard</p>
+                    <RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1">
+                        <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="en" id="en" /><Label htmlFor="en" className="font-bold cursor-pointer">English</Label></div>
+                        <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="ru" id="ru" /><Label htmlFor="ru" className="font-bold cursor-pointer">Русский</Label></div>
+                        <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="be" id="be" /><Label htmlFor="be" className="font-bold cursor-pointer">Беларуская</Label></div>
+                        <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="es" id="es" /><Label htmlFor="es" className="font-bold cursor-pointer">Español</Label></div>
+                        <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="pt-BR" id="pt-br" /><Label htmlFor="pt-BR" className="font-bold cursor-pointer">Português (Brasil)</Label></div>
+                    </RadioGroup>
+                </div>
+                
+                <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('humor_languages')}</p>
+                    <RadioGroup value={language} onValueChange={v => setLanguage(v as any)} className="space-y-1">
+                        <div className={cn("flex items-center space-x-2 p-3 rounded-xl hover:bg-muted/30", glassEffect && "glass-panel border-none")}><RadioGroupItem value="old-ru" id="old-ru" /><Label htmlFor="old-ru" className="font-bold cursor-pointer flex items-center gap-2">Старинный русскій <Badge variant="secondary" className="text-[8px] h-3.5 px-1 font-black">1917</Badge></Label></div>
+                    </RadioGroup>
+                </div>
             </div>
           );
           case 'chat': return (<div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'><SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} /><SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} /><SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} /></div>);

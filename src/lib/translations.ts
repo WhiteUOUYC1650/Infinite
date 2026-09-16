@@ -1,5 +1,5 @@
 
-export type Language = 'en' | 'ru' | 'es' | 'pt-BR';
+export type Language = 'en' | 'ru' | 'es' | 'pt-BR' | 'be' | 'old-ru';
 
 export const translations = {
     en: {
@@ -197,6 +197,8 @@ export const translations = {
       'yellow': 'Yellow',
       'pink': 'Pink',
       'shining_gold': 'Shining Gold',
+      'first_version': 'First Version',
+      'special_themes': 'Special Themes',
       'custom': 'Custom Theme',
       'light_mode': 'Light Mode',
       'dark_mode': 'Dark Mode',
@@ -643,6 +645,7 @@ export const translations = {
       'wn_profile_custom_title': 'Deep Profile Personalization',
       'wn_profile_custom_desc': 'Added profile banners, music vibes, and message spoilers.',
       'spoiler_help': 'Tap to reveal secret content',
+      'humor_languages': 'Humor Languages',
     },
     ru: {
       'settings': 'Настройки',
@@ -837,6 +840,8 @@ export const translations = {
       'yellow': 'Желтый',
       'pink': 'Розовый',
       'shining_gold': 'Сияющее золото',
+      'first_version': 'Первая Версия',
+      'special_themes': 'Спец. цвета',
       'custom': 'Своя тема',
       'light_mode': 'Светлая тема',
       'dark_mode': 'Темная тема',
@@ -1284,6 +1289,51 @@ export const translations = {
       'wn_profile_custom_title': 'Глубокая кастомизация',
       'wn_profile_custom_desc': 'Добавлены баннеры профиля, музыкальные «вайбы» и спойлеры в сообщениях.',
       'spoiler_help': 'Нажмите, чтобы увидеть секрет',
+      'humor_languages': 'Шуточные языки',
+    },
+    be: {
+      'settings': 'Налады',
+      'profile': 'Профіль',
+      'appearance': 'Знешні выгляд',
+      'language': 'Мова',
+      'logout': 'Выйсці',
+      'direct_messages': 'Асабістыя паведамленні',
+      'groups': 'Групавыя абмеркаванні',
+      'channels': 'Каналы',
+      'bots': 'Боты',
+      'saved_messages': 'Выбранае',
+      'ok': 'OK',
+      'dm_success': 'Паспяхова!',
+      'online': 'у сетцы',
+      'offline': 'па-за сеткай',
+      'message': 'Напісаць',
+      'today_is': 'Сёння',
+      'yesterday': 'Учора',
+      'infvid_title': 'ІнфВід',
+      'infgames_title': 'ІнфГульні',
+      'infmusic_title': 'ІнфМузыка',
+    },
+    'old-ru': {
+      'settings': 'Настройки',
+      'profile': 'Профиль',
+      'appearance': 'Внѣшній видъ',
+      'language': 'Языкъ',
+      'logout': 'Выйти',
+      'direct_messages': 'Личныя сообщенія',
+      'groups': 'Групповыя обсужденія',
+      'channels': 'Каналы',
+      'bots': 'Боты',
+      'saved_messages': 'Избранное',
+      'ok': 'ОКЪ',
+      'dm_success': 'Успѣшно!',
+      'online': 'въ сѣти',
+      'offline': 'не въ сѣти',
+      'message': 'Написать',
+      'today_is': 'Севодня',
+      'yesterday': 'Вчера',
+      'infvid_title': 'ИнфВидъ',
+      'infgames_title': 'ИнфИгры',
+      'infmusic_title': 'ИнфМузыка',
     }
 };
 
@@ -1321,7 +1371,7 @@ export const interpolate = (str: string, values: Record<string, any>, lang: Lang
 
         const count = Number(value);
         let form = 'other';
-        if (lang === 'ru' || lang === 'pt-BR') {
+        if (lang === 'ru' || lang === 'pt-BR' || lang === 'be') {
           const mod10 = count % 10;
           const mod100 = count % 100;
           if (mod10 === 1 && mod100 !== 11) form = 'one';

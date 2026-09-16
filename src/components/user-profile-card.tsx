@@ -41,7 +41,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const { toast } = useToast();
   const { experimentalDesign, glassEffect } = useTheme();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'gifts'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'gifts' | 'info'>( 'info');
   const [profileMusic, setProfileMusic] = useState<SharedMusic | null>(null);
 
   const giftsQuery = useMemo(() => {
@@ -147,7 +147,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
 
             <div className={cn("text-left p-5 rounded-2xl border", "bg-muted/30 border-border/50")}>
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">username</p>
-                <p className="font-bold text-sm mb-4">@{user.username}</p>
+                <p className="font-bold text-sm mb-4">{user.username}</p>
                 <Separator className="opacity-10 mb-4" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">bio</p>
                 <p className="text-sm font-medium leading-relaxed">{user.statusMessage || 'Hey there! I am using Infinite.'}</p>

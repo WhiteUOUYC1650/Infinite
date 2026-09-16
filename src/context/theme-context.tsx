@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { CustomThemeConfig } from '@/types';
 
-export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'custom';
+export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'first_version' | 'custom';
 
 type ThemeColors = { [key: string]: string };
 
@@ -49,6 +49,36 @@ const THEMES: Record<Exclude<Theme, 'custom'>, ThemeConfig> = {
       sidebarForeground: '30 71% 92%',
       sidebarAccent: '30 50% 88%',
       sidebarAccentForeground: '20 14.3% 4.1%',
+    },
+  },
+  first_version: {
+    light: {
+      primary: '33 100% 50%',
+      foreground: '33 100% 98%',
+      background: '33 40% 95%',
+      card: '33 40% 97%',
+      'sidebar-background': '33 40% 97%',
+      popover: '33 40% 97%',
+      muted: '33 30% 90%',
+      border: '33 20% 85%',
+      input: '33 20% 88%',
+      sidebarForeground: '33 10% 15%',
+      sidebarAccent: '33 30% 90%',
+      sidebarAccentForeground: '33 10% 5%',
+    },
+    dark: {
+      primary: '33 100% 50%',
+      foreground: '33 100% 98%',
+      background: '33 15% 10%',
+      card: '33 15% 12%',
+      'sidebar-background': '33 15% 12%',
+      popover: '33 15% 10%',
+      muted: '33 10% 18%',
+      border: '33 10% 25%',
+      input: '33 10% 25%',
+      sidebarForeground: '33 20% 95%',
+      sidebarAccent: '33 10% 18%',
+      sidebarAccentForeground: '33 20% 100%',
     },
   },
   purple: {
@@ -411,7 +441,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
               sidebarAccentForeground: isDarkMode ? '0 0% 100%' : '0 0% 10%',
           };
       } else {
-          themeColors = THEMES[theme][isDarkMode ? 'dark' : 'light'];
+          themeColors = THEMES[theme as keyof typeof THEMES][isDarkMode ? 'dark' : 'light'];
       }
       
       const varsToSet = {

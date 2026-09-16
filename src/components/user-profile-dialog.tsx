@@ -177,7 +177,7 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
                     <div className="bg-muted/30 p-5 rounded-2xl border border-border/50">
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">username</p>
-                        <p className="font-bold text-sm mb-4">@{displayUsername}</p>
+                        <p className="font-bold text-sm mb-4">{displayUsername}</p>
                         <Separator className="opacity-10 mb-4" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">bio</p>
                         <p className="text-sm font-medium leading-relaxed">{user.statusMessage || 'Hey there! I am using Infinite.'}</p>
