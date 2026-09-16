@@ -69,24 +69,33 @@ export default function Home() {
         }
     };
 
-    // Global presence reconciliation
-    const reconciliationUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'sessions'), (snapshot) => {
-        const anyActive = snapshot.docs.some(d => d.data().active === true);
-        const newStatus = anyActive ? 'online' : 'offline';
+    // Ensure session is active before starting reconciliation listener
+    const initPresence = async () => {
+        await updateSessionPresence(true);
         
-        // Update global status only if changed
-        getDoc(userRef).then(snap => {
-            if (snap.exists() && snap.data().status !== newStatus) {
-                updateDoc(userRef, { 
-                    status: newStatus, 
-                    lastSeen: serverTimestamp(),
-                    activeSessionId: anyActive ? sessionId : (snap.data().activeSessionId === sessionId ? null : snap.data().activeSessionId)
-                }).catch(() => {});
-            }
-        }).catch(() => {});
-    });
+        // Global presence reconciliation
+        const reconciliationUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'sessions'), (snapshot) => {
+            if (snapshot.empty) return;
+            const anyActive = snapshot.docs.some(d => d.data().active === true);
+            const newStatus = anyActive ? 'online' : 'offline';
+            
+            // Update global status only if changed
+            getDoc(userRef).then(snap => {
+                if (snap.exists() && snap.data().status !== newStatus) {
+                    updateDoc(userRef, { 
+                        status: newStatus, 
+                        lastSeen: serverTimestamp(),
+                        activeSessionId: anyActive ? sessionId : (snap.data().activeSessionId === sessionId ? null : snap.data().activeSessionId)
+                    }).catch(() => {});
+                }
+            }).catch(() => {});
+        });
 
-    updateSessionPresence(true);
+        return reconciliationUnsubscribe;
+    };
+
+    let unsubRef: (() => void) | null = null;
+    initPresence().then(unsub => { unsubRef = unsub; });
 
     const checkSecurity = async () => {
         try {
@@ -192,7 +201,7 @@ export default function Home() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       if (appListener) appListener.remove();
-      reconciliationUnsubscribe();
+      if (unsubRef) unsubRef();
       deleteDoc(sessionRef).catch(() => {});
     };
   }, [user?.uid, authLoading, router, db, auth, sessionId]);

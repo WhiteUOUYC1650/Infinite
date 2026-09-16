@@ -41,7 +41,7 @@ const step2Schema = z.object({
   username: z.string()
     .min(4, { message: 'Username must be at least 4 characters.'})
     .refine(value => !/\s/.test(value), { message: 'Username must not contain spaces.'})
-    .refine(value => /^[a-zA-Z0-9_]+$/.test(value), { message: 'Username can only contain English letters, numbers, and underscores.' }),
+    .refine(value => /^[a-zA-Z0-9_@]+$/.test(value), { message: 'Username can only contain English letters, numbers, and underscores.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
@@ -80,7 +80,9 @@ export default function SignUpPage() {
     if (!auth || !db) return;
     setIsLoading(true);
 
-    const usernameWithAt = '@' + values.username;
+    // Clean username to prevent double @ (e.g. if user enters @name, it stays @name)
+    const cleanHandle = values.username.replace(/^@+/, '');
+    const usernameWithAt = '@' + cleanHandle;
     let createdUser: any = null;
 
     try {
@@ -133,9 +135,12 @@ export default function SignUpPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><Languages className="h-5 w-5" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as 'en' | 'ru')}>
+            <DropdownMenuRadioGroup value={language} onValueChange={(value) => setLanguage(value as any)}>
               <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="ru">Русский</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="be">Беларуская</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="es">Español</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="pt-BR">Português (Brasil)</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
