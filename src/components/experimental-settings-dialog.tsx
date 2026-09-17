@@ -266,7 +266,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const handleSetStoryExpiration = async (hours: number) => { if (!db || !userId) return; try { await updateDoc(doc(db, 'users', userId), { storyExpirationDuration: hours }); toast({ title: t('dm_success') }); } catch (e) { console.error(e); } };
 
   const handleDeleteAccount = async () => { if (!auth || !auth.currentUser || !db || !userId) return; setIsDeletingAccount(true); try { const uid = userId; const username = currentUser.username; sessionStorage.setItem('isDeletingAccount', 'true'); await runTransaction(db, async (transaction) => { transaction.update(doc(db, 'users', uid), { name: 'Deleted Account', username: `@deleted_${uid}`, avatar: '', status: 'offline', isDeleted: true, infGoldBalance: 0, subscriptionTier: 'none' }); if (username) { transaction.delete(doc(db, 'usernames', username)); } }); await auth.currentUser.delete(); toast({ title: t('delete_account_success') }); router.push('/goodbye'); } catch (e: any) { console.error(e); toast({ variant: 'destructive', title: 'Error', description: e.message || t('delete_account_error') }); sessionStorage.removeItem('isDeletingAccount'); } finally { setIsDeletingAccount(false); } };
-  const faqs = [ { question: t('faq_markdown_q'), answer: t('faq_markdown_a') }, { question: t('faq_create_chat_q'), answer: t('faq_create_chat_a') }, { question: t('faq_invite_q'), answer: t('faq_invite_a') }, { question: t('faq_edit_profile_q'), answer: t('faq_edit_profile_a') }, { question: t('faq_calls_q'), answer: t('faq_calls_a') }, { question: t('faq_media_q'), answer: t('faq_media_a') }, { question: t('faq_infgold_q'), answer: t('faq_infgold_q') }, { question: t('faq_prem_q'), answer: t('faq_prem_a') }, { question: t('faq_infvid_title'), answer: t('faq_infvid_a') }, { question: t('faq_poll_q'), answer: t('faq_poll_a') }, { question: t('faq_story_q'), answer: t('faq_story_a') }, { question: t('faq_security_q'), answer: t('faq_security_a') }, { question: t('faq_bot_prog_q'), answer: t('faq_bot_prog_a') }, ];
+  const faqs = [ { question: t('faq_markdown_q'), answer: t('faq_markdown_a') }, { question: t('faq_create_chat_q'), answer: t('faq_create_chat_a') }, { question: t('faq_invite_q'), answer: t('faq_invite_a') }, { question: t('faq_edit_profile_q'), answer: t('faq_edit_profile_a') }, { question: t('faq_calls_q'), answer: t('faq_calls_a') }, { question: t('faq_media_q'), answer: t('faq_media_a') }, { question: t('faq_infgold_q'), answer: t('faq_infgold_a') }, { question: t('faq_prem_q'), answer: t('faq_prem_a') }, { question: t('faq_infvid_title'), answer: t('faq_infvid_a') }, { question: t('faq_poll_q'), answer: t('faq_poll_a') }, { question: t('faq_story_q'), answer: t('faq_story_a') }, { question: t('faq_security_q'), answer: t('faq_security_a') }, { question: t('faq_bot_prog_q'), answer: t('faq_bot_prog_a') }, ];
   
   const [wheelRotation, setWheelRotation] = useState(0); const [isSpinning, setSpinning] = useState(false);
   const handleSpin = async (): Promise<void> => {
@@ -324,53 +324,55 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             
             return (
                 <div className="p-4 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('standard_themes' as any) || 'Standard Themes'}</p>
-                        <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
-                            {themeOptions.map(opt => (
-                                <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
-                                    <div className="flex items-center space-x-3">
-                                        <RadioGroupItem value={opt.id} id={opt.id} />
-                                        <Label htmlFor={opt.id} className='capitalize cursor-pointer font-bold'>{t(opt.label as any)}</Label>
-                                    </div>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    </div>
-
-                    <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('special_themes')}</p>
-                        <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
-                            {specialOptions.map(opt => {
-                                const isPremTheme = opt.id === 'shining_gold';
-                                return (
+                    <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-6">
+                        <div className="space-y-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('standard_themes' as any) || 'Standard Themes'}</p>
+                            <div className="space-y-1">
+                                {themeOptions.map(opt => (
                                     <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
                                         <div className="flex items-center space-x-3">
-                                            <RadioGroupItem value={opt.id} id={opt.id} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
+                                            <RadioGroupItem value={opt.id} id={opt.id} />
                                             <Label htmlFor={opt.id} className='capitalize cursor-pointer font-bold'>{t(opt.label as any)}</Label>
                                         </div>
-                                        {isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}
-                                        {opt.id === 'first_version' && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">LEGACY</Badge>}
                                     </div>
-                                );
-                            })}
-                        </RadioGroup>
-                    </div>
-
-                    {customizationMode && (
-                        <div className="space-y-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('advanced')}</p>
-                            <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
-                                <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
-                                    <div className="flex items-center space-x-3">
-                                        <RadioGroupItem value="custom" id="custom" />
-                                        <Label htmlFor="custom" className='capitalize cursor-pointer font-bold'>{t('custom')}</Label>
-                                    </div>
-                                    <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
-                                </div>
-                            </RadioGroup>
+                                ))}
+                            </div>
                         </div>
-                    )}
+
+                        <div className="space-y-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('special_themes')}</p>
+                            <div className="space-y-1">
+                                {specialOptions.map(opt => {
+                                    const isPremTheme = opt.id === 'shining_gold';
+                                    return (
+                                        <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                                            <div className="flex items-center space-x-3">
+                                                <RadioGroupItem value={opt.id} id={opt.id} disabled={isPremTheme && currentUser.subscriptionTier !== 'prem'} />
+                                                <Label htmlFor={opt.id} className='capitalize cursor-pointer font-bold'>{t(opt.label as any)}</Label>
+                                            </div>
+                                            {isPremTheme && <Badge className="bg-primary text-primary-foreground text-[9px]">PREM</Badge>}
+                                            {opt.id === 'first_version' && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">LEGACY</Badge>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {customizationMode && (
+                            <div className="space-y-4">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('advanced')}</p>
+                                <div className="space-y-1">
+                                    <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
+                                        <div className="flex items-center space-x-3">
+                                            <RadioGroupItem value="custom" id="custom" />
+                                            <Label htmlFor="custom" className='capitalize cursor-pointer font-bold'>{t('custom')}</Label>
+                                        </div>
+                                        <div className="w-6 h-6 rounded-full border-2 border-primary" style={{ backgroundColor: `hsl(${customThemeConfig.primary.h} ${customThemeConfig.primary.s}% ${customThemeConfig.primary.l}%)` }} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </RadioGroup>
 
                     {theme === 'custom' && (
                         <div className="pt-4 animate-in zoom-in duration-300">
