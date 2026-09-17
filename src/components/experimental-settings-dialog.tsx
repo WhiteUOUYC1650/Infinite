@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -35,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 
 import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette, UserPlus, Repeat, Smile } from 'lucide-react';
-import type { AuthenticatedUser, Transfer } from '@/types';
+import type { AuthenticatedUser, Transfer, SettingsPage } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc, runTransaction } from 'firebase/firestore';
@@ -103,8 +102,8 @@ const ColoredText = ({ text }: { text: string }) => {
       <>
         {parts.map((part, i) => {
             if (part.startsWith('||') && part.endsWith('||')) {
-                const content = part.slice(2, -2);
-                return <Spoiler key={i} text={content} />;
+                const innerContent = part.slice(2, -2);
+                return <Spoiler key={i} text={innerContent} />;
             }
             
             const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
@@ -175,7 +174,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const { t, language, setLanguage } = useLanguage(); 
   const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
-  const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
+  const { isUpdateAvailable, promptUpdate, updateInfo, downloadUpdate, currentVersion } = useUpdatePrompt();
   
   const auth = useAuth(); 
   const db = useFirestore(); 
@@ -366,7 +365,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 <div className="p-4 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                     <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-6">
                         <div className="space-y-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('standard_themes' as any) || 'Standard Themes'}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('standard_themes')}</p>
                             <div className="space-y-1">
                                 {themeOptions.map(opt => (
                                     <div key={opt.id} className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
@@ -644,3 +643,4 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     </>
   );
 }
+

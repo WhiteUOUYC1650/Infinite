@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -430,7 +429,7 @@ function InfShortsPlayer({ videos, senders, currentUser, onToggleWatchLater, ini
                     video={video} 
                     sender={senders[video.senderId]} 
                     currentUser={currentUser} 
-                    onToggleWatchLater={toggleWatchLater} 
+                    onToggleWatchLater={onToggleWatchLater} 
                     isActive={idx === activeIndex}
                 />
             ))}
@@ -439,7 +438,7 @@ function InfShortsPlayer({ videos, senders, currentUser, onToggleWatchLater, ini
 }
 
 function ShortItem({ video, sender, currentUser, onToggleWatchLater, isActive }: { video: SharedVideo, sender?: User, currentUser: AuthenticatedUser, onToggleWatchLater: (id: string) => void, isActive: boolean }) {
-    const { t } = useLanguage(); const db = useFirestore(); const [isLiked, setIsLiked] = useState(video.likedBy?.includes(currentUser.uid) || false); const containerRef = useRef<HTMLDivElement>(null); const [showComments, setShowComments] = useState(false);
+    const { t } = useLanguage(); const db = useFirestore(); [isLiked, setIsLiked] = useState(video.likedBy?.includes(currentUser.uid) || false); const containerRef = useRef<HTMLDivElement>(null); const [showComments, setShowComments] = useState(false);
     const { toast } = useToast();
     
     const handleToggleLike = async () => { if (!db) return; const ref = doc(db, 'videos', video.id); try { if (isLiked) { await updateDoc(ref, { likedBy: arrayRemove(currentUser.uid) }); setIsLiked(false); } else { await updateDoc(ref, { likedBy: arrayUnion(currentUser.uid) }); setIsLiked(true); } } catch(e) {} };
