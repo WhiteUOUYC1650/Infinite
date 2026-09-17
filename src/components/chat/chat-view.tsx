@@ -108,7 +108,7 @@ const Spoiler = ({ text }: { text: string }) => {
 };
 
 const ColoredText = ({ text }: { text: string }) => {
-  const parts = text.split(/(\|\|[\s\S]*?\|\|)/g);
+  const parts = text.split(/(\|\|(?:(?!(?:\|\|)).)+\|\|)/g);
   
   return (
       <>
