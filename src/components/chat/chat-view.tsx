@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -109,38 +108,41 @@ const Spoiler = ({ text }: { text: string }) => {
 };
 
 const ColoredText = ({ text }: { text: string }) => {
-  const spoilerRegex = /\|\|(.*?)\|\|/g;
-  const parts = text.split(spoilerRegex);
-  if (parts.length === 1) {
-      const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
-      const cParts = text.split(colorRegex);
-      if (cParts.length === 1) return <>{text}</>;
-      let currentColor: string | undefined = undefined;
-      return (
-        <>
-          {cParts.map((part, i) => {
-            if (!part) return null;
-            if (part.startsWith('§')) {
-              if (part.startsWith('§[')) {
-                const hex = part.slice(2, -1);
-                currentColor = `#${hex}`;
-              } else {
-                const code = part[1].toLowerCase();
-                currentColor = STANDARD_COLORS[code];
-              }
-              return null; 
-            }
-            return <span key={i} style={{ color: currentColor }}>{part}</span>;
-          })}
-        </>
-      );
-  }
-
+  // Regex that captures standard markdown-like sections or our custom codes
+  // Correctly matches ||content|| without leaving a trailing |
+  const parts = text.split(/(\|\|(?:(?!(?:\|\|)).)+\|\|)/g);
+  
   return (
       <>
         {parts.map((part, i) => {
-            if (i % 2 === 1) return <Spoiler key={i} text={part} />;
-            return <ColoredText key={i} text={part} />;
+            if (part.startsWith('||') && part.endsWith('||')) {
+                const inner = part.slice(2, -2);
+                return <Spoiler key={i} text={inner} />;
+            }
+            
+            const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+            const cParts = part.split(colorRegex);
+            if (cParts.length === 1) return <React.Fragment key={i}>{part}</React.Fragment>;
+            
+            let currentColor: string | undefined = undefined;
+            return (
+              <React.Fragment key={i}>
+                {cParts.map((cPart, ci) => {
+                  if (!cPart) return null;
+                  if (cPart.startsWith('§')) {
+                    if (cPart.startsWith('§[')) {
+                      const hex = cPart.slice(2, -1);
+                      currentColor = `#${hex}`;
+                    } else {
+                      const code = cPart[1].toLowerCase();
+                      currentColor = STANDARD_COLORS[code];
+                    }
+                    return null; 
+                  }
+                  return <span key={ci} style={{ color: currentColor }}>{cPart}</span>;
+                })}
+              </React.Fragment>
+            );
         })}
       </>
   );
@@ -148,9 +150,13 @@ const ColoredText = ({ text }: { text: string }) => {
 
 const processMarkdownChildren = (children: any): any => {
     return React.Children.map(children, child => {
-        if (typeof child === 'string') return <ColoredText text={child} />;
+        if (typeof child === 'string') {
+            return <ColoredText text={child} />;
+        }
         if (React.isValidElement(child) && child.props.children) {
-            return React.cloneElement(child, { children: processMarkdownChildren(child.props.children) } as any);
+            return React.cloneElement(child, {
+                children: processMarkdownChildren(child.props.children)
+            } as any);
         }
         return child;
     });
@@ -569,7 +575,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       if (newFiles.length > 0) setFilesToSend(prev => [...prev, ...newFiles]);
     }
   };
-  const removeFileToSend = (index: number) => { setFilesToSend(prev => prev.filter((_, i) => i !== index)); };
+  const removeFileToSend = (index: number) => { removeFileToSend(index); };
   
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;

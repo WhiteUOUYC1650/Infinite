@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -38,37 +39,58 @@ const STANDARD_COLORS: Record<string, string> = {
   'f': '#FFFFFF',
 };
 
+const Spoiler = ({ text }: { text: string }) => {
+    const [revealed, setRevealed] = useState(false);
+    const { t } = useLanguage();
+    return (
+        <span 
+            onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
+            className={cn(
+                "cursor-pointer transition-all rounded-md px-1 select-none",
+                revealed ? "bg-black/5 dark:bg-white/5" : "bg-muted-foreground/30 blur-[4px] hover:blur-[2px]"
+            )}
+            title={revealed ? "" : t('spoiler_help')}
+        >
+            {text}
+        </span>
+    );
+};
+
 const ColoredText = ({ text }: { text: string }) => {
-  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
-  const parts = text.split(regex);
+  const parts = text.split(/(\|\|(?:(?!(?:\|\|)).)+\|\|)/g);
   
-  if (parts.length === 1) return <>{text}</>;
-
-  let currentColor: string | undefined = undefined;
-
   return (
-    <>
-      {parts.map((part, i) => {
-        if (!part) return null;
-        
-        if (part.startsWith('§')) {
-          if (part.startsWith('§[')) {
-            const hex = part.slice(2, -1);
-            currentColor = `#${hex}`;
-          } else {
-            const code = part[1].toLowerCase();
-            currentColor = STANDARD_COLORS[code];
-          }
-          return null; 
-        }
-        
-        return (
-          <span key={i} style={{ color: currentColor }}>
-            {part}
-          </span>
-        );
-      })}
-    </>
+      <>
+        {parts.map((part, i) => {
+            if (part.startsWith('||') && part.endsWith('||')) {
+                return <Spoiler key={i} text={part.slice(2, -2)} />;
+            }
+            
+            const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+            const cParts = part.split(colorRegex);
+            if (cParts.length === 1) return <React.Fragment key={i}>{part}</React.Fragment>;
+            
+            let currentColor: string | undefined = undefined;
+            return (
+              <React.Fragment key={i}>
+                {cParts.map((cPart, ci) => {
+                  if (!cPart) return null;
+                  if (cPart.startsWith('§')) {
+                    if (cPart.startsWith('§[')) {
+                      const hex = cPart.slice(2, -1);
+                      currentColor = `#${hex}`;
+                    } else {
+                      const code = cPart[1].toLowerCase();
+                      currentColor = STANDARD_COLORS[code];
+                    }
+                    return null; 
+                  }
+                  return <span key={ci} style={{ color: currentColor }}>{cPart}</span>;
+                })}
+              </React.Fragment>
+            );
+        })}
+      </>
   );
 };
 

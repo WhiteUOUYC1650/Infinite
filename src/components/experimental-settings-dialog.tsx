@@ -80,28 +80,58 @@ const STANDARD_COLORS: Record<string, string> = {
   'f': '#FFFFFF',
 };
 
+const Spoiler = ({ text }: { text: string }) => {
+    const [revealed, setRevealed] = useState(false);
+    const { t } = useLanguage();
+    return (
+        <span 
+            onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
+            className={cn(
+                "cursor-pointer transition-all rounded-md px-1 select-none",
+                revealed ? "bg-black/5 dark:bg-white/5" : "bg-muted-foreground/30 blur-[4px] hover:blur-[2px]"
+            )}
+            title={revealed ? "" : t('spoiler_help')}
+        >
+            {text}
+        </span>
+    );
+};
+
 const ColoredText = ({ text }: { text: string }) => {
-  const regex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
-  const parts = text.split(regex);
-  if (parts.length === 1) return <>{text}</>;
-  let currentColor: string | undefined = undefined;
+  const parts = text.split(/(\|\|(?:(?!(?:\|\|)).)+\|\|)/g);
+  
   return (
-    <>
-      {parts.map((part, i) => {
-        if (!part) return null;
-        if (part.startsWith('§')) {
-          if (part.startsWith('§[')) {
-            const hex = part.slice(2, -1);
-            currentColor = `#${hex}`;
-          } else {
-            const code = part[1].toLowerCase();
-            currentColor = STANDARD_COLORS[code];
-          }
-          return null; 
-        }
-        return <span key={i} style={{ color: currentColor }}>{part}</span>;
-      })}
-    </>
+      <>
+        {parts.map((part, i) => {
+            if (part.startsWith('||') && part.endsWith('||')) {
+                return <Spoiler key={i} text={part.slice(2, -2)} />;
+            }
+            
+            const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
+            const cParts = part.split(colorRegex);
+            if (cParts.length === 1) return <React.Fragment key={i}>{part}</React.Fragment>;
+            
+            let currentColor: string | undefined = undefined;
+            return (
+              <React.Fragment key={i}>
+                {cParts.map((cPart, ci) => {
+                  if (!cPart) return null;
+                  if (cPart.startsWith('§')) {
+                    if (cPart.startsWith('§[')) {
+                      const hex = cPart.slice(2, -1);
+                      currentColor = `#${hex}`;
+                    } else {
+                      const code = cPart[1].toLowerCase();
+                      currentColor = STANDARD_COLORS[code];
+                    }
+                    return null; 
+                  }
+                  return <span key={ci} style={{ color: currentColor }}>{cPart}</span>;
+                })}
+              </React.Fragment>
+            );
+        })}
+      </>
   );
 };
 
@@ -135,10 +165,21 @@ const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, 
 );
 
 export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
-  const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']); const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward'); const page = pageHistory[pageHistory.length - 1];
-  const [showEditProfile, setShowEditProfile] = useState(false); const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); const scrollAreaRef = useRef<HTMLDivElement>(null); const router = useRouter();
-  const { t, language, setLanguage } = useLanguage(); const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
-  const auth = useAuth(); const db = useFirestore(); const { toast } = useToast(); 
+  const [pageHistory, setPageHistory] = useState<SettingsPage[]>(['main']); 
+  const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward'); 
+  const page = pageHistory[pageHistory.length - 1];
+  const [showEditProfile, setShowEditProfile] = useState(false); 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); 
+  const scrollAreaRef = useRef<HTMLDivElement>(null); 
+  const router = useRouter();
+  
+  const { t, language, setLanguage } = useLanguage(); 
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const { isUpdateAvailable, promptUpdate, updateInfo, currentVersion } = useUpdatePrompt();
+  
+  const auth = useAuth(); 
+  const db = useFirestore(); 
+  const { toast } = useToast(); 
   
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); 
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); 
@@ -475,7 +516,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
           case 'infinitePrem': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none bg-primary/80 backdrop-blur-xl" : "bg-primary")}><div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" /><div className="relative z-10 space-y-4"><div className='flex items-center justify-between'><VerifiedBadge className="w-12 h-12" />{currentUser.subscriptionTier === 'prem' && <Badge variant="secondary" className="bg-white/20 text-white border-none font-black">ACTIVE</Badge>}</div><h2 className="text-3xl font-black font-headline leading-none">Infinite Prem</h2><p className="text-white/80 text-sm leading-relaxed">{t('prem_description')}</p><ul className="space-y-3 pt-2">{[1, 2, 3].map(i => (<li key={i} className="flex items-center gap-3 text-sm font-bold"><div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0"><Check className="w-3 h-3" /></div>{t(`prem_benefit_${i}` as any)}</li>))}</ul></div></div><div className="space-y-3"><Button onClick={() => handleBuyPrem(false)} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">{isBuyingPrem ? <Loader2 className='animate-spin' /> : (currentUser.subscriptionTier === 'prem' ? t('current_plan') : t('subscribe_monthly'))}</Button><Button onClick={() => handleBuyPrem(true)} variant="outline" disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">{t('subscribe_yearly')}</Button><p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('yearly_discount_note')}</p></div></div>);
           case 'transferHistory': return (<div className='p-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">{t('transfer_history')}</h3><div className="space-y-2">{[...(sentTransfers || []), ...(receivedTransfers || [])].sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()).map(item => { const isSent = item.senderId === userId; return (<div key={item.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-3"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>{isSent ? <ArrowLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}</div><div><p className="font-bold text-sm leading-tight">{isSent ? item.receiverName : item.senderName}</p><p className="text-[10px] text-muted-foreground uppercase font-medium">{isSent ? 'Sent' : 'Received'}</p></div></div><div className="text-right"><p className={cn("font-black text-base", isSent ? "text-red-500" : "text-green-500")}>{isSent ? '-' : '+'}{item.amount} G</p><p className="text-[9px] text-muted-foreground">{format(item.timestamp.toMillis(), 'dd.MM, HH:mm')}</p></div></div>); })}{(!sentTransfers?.length && !receivedTransfers?.length) && (<div className="text-center py-20 opacity-30"><Coins className="h-12 w-12 mx-auto mb-2" /><p className="text-xs font-bold uppercase">{t('no_transfers')}</p></div>)}</div></div>);
           case 'dailyBonus': return <div className='p-6 animate-in fade-in slide-in-from-right-4 duration-300'><DailyBonusWheel onSpin={handleSpin} isSpinning={isSpinning} setSpinning={setSpinning} canSpin={isBonusAvailable} rotation={wheelRotation} /></div>;
-          case 'help': return (<Accordion type="single" collapsible className="w-full animate-in fade-in slide-in-from-right-4 duration-300">{faqs.map((f, i) => (<AccordionItem value={`f-${i}`} key={i} className="px-4"><AccordionTrigger className="text-left font-bold">{f.question}</AccordionTrigger><AccordionContent><div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>{f.answer}</ReactMarkdown></div></AccordionContent></AccordionItem>))}</Accordion>);
+          case 'help': return (
+            <Accordion type="single" collapsible className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+                {faqs.map((f, i) => (
+                    <AccordionItem value={`f-${i}`} key={i} className="px-4">
+                        <AccordionTrigger className="text-left font-bold">{f.question}</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({children}) => <p>{processMarkdownChildren(children)}</p> }}>
+                                    {f.answer}
+                                </ReactMarkdown>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                ))}
+            </Accordion>
+          );
           case 'checkUpdates': return (<div className='p-12 flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000", isCheckingUpdates && "rotate-180")}>{isCheckingUpdates ? (<Loader2 className="h-10 w-10 text-primary animate-spin" />) : (<RefreshCcw className="h-10 w-10 text-primary" />)}</div><div className="space-y-4"><h2 className="text-2xl font-black font-headline">{isCheckingUpdates ? t('checking_updates_progress') : (hasCheckedUpdates ? (isUpdateAvailable ? t('update_available_title') : t('latest_version_installed')) : t('check_updates'))}</h2>{hasCheckedUpdates && (<p className="text-sm text-muted-foreground font-medium">{isUpdateAvailable ? t('update_available_status', { version: updateInfo?.latest }) : `${t('version')}: ${currentVersion}`}</p>)}</div>{!isCheckingUpdates && (<div className="w-full max-xs pt-4">{isUpdateAvailable && hasCheckedUpdates ? (<Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={downloadUpdate}><Download className="mr-2 h-5 w-5" /> {t('download')}</Button>) : (<Button variant="outline" className={cn("w-full h-14 rounded-2xl font-bold text-lg", glassEffect && "glass-button border-none")} onClick={handleManualCheckUpdates}>{t('check_updates')}</Button>)}</div>)}</div>);
           case 'account': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button><Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button><div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div></div>);
           case 'about': return (
