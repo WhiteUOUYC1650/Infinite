@@ -360,7 +360,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     {customizationMode && (
                         <div className="space-y-4">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('advanced')}</p>
-                            <RadioGroup value={theme} onValueChange={v => setTheme(v as any)}>
+                            <RadioGroup value={theme} onValueChange={v => setTheme(v as any)} className="space-y-1">
                                 <div className={cn("flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors", glassEffect && "glass-panel border-none shadow-none")}>
                                     <div className="flex items-center space-x-3">
                                         <RadioGroupItem value="custom" id="custom" />
