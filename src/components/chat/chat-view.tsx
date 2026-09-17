@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -108,16 +109,14 @@ const Spoiler = ({ text }: { text: string }) => {
 };
 
 const ColoredText = ({ text }: { text: string }) => {
-  // Regex that captures standard markdown-like sections or our custom codes
-  // Correctly matches ||content|| without leaving a trailing |
-  const parts = text.split(/(\|\|(?:(?!(?:\|\|)).)+\|\|)/g);
+  const parts = text.split(/(\|\|[\s\S]*?\|\|)/g);
   
   return (
       <>
         {parts.map((part, i) => {
             if (part.startsWith('||') && part.endsWith('||')) {
-                const inner = part.slice(2, -2);
-                return <Spoiler key={i} text={inner} />;
+                const innerContent = part.slice(2, -2);
+                return <Spoiler key={i} text={innerContent} />;
             }
             
             const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
@@ -392,7 +391,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                                 {canCopy && <DropdownMenuItem onSelect={() => { navigator.clipboard.writeText(message.content); toast({ title: t('copy_success_toast') }); }}><Copy className="mr-2 h-4 w-4" />{t('copy_text')}</DropdownMenuItem>}
                                 {canSave && <DropdownMenuItem onSelect={handleSaveToDevice}><Download className="mr-2 h-4 w-4" />{t('save_to_device')}</DropdownMenuItem>}
                                 <DropdownMenuItem onSelect={() => onForward(message)}><Forward className="mr-2 h-4 w-4" />{t('forward')}</DropdownMenuItem>
-                                {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />{t('delete_message')}</DropdownMenuItem>}
+                                {canDelete && <DropdownMenuItem onSelect={() => onDelete(message.id)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> {t('delete_message')}</DropdownMenuItem>}
                             </>
                         )}
                     </DropdownMenuContent>
@@ -575,7 +574,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       if (newFiles.length > 0) setFilesToSend(prev => [...prev, ...newFiles]);
     }
   };
-  const removeFileToSend = (index: number) => { removeFileToSend(index); };
+  const removeFileToSend = (index: number) => { setFilesToSend(prev => prev.filter((_, i) => i !== index)); };
   
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
@@ -677,10 +676,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 {item.isSupergroup && activeTopicId ? <ArrowLeft className="h-5 w-5" /> : <X className="h-5 w-5" />}
             </button>
         </div>
-        <div className={cn("flex-1 flex items-center min-w-0 h-full", experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-1 border-white/20 shadow-lg", experimentalDesign && !glassEffect && "bg-card/40")}>
+        <div className={cn("flex-1 flex items-center min-w-0 h-full", experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-3 border-white/20 shadow-lg", experimentalDesign && !glassEffect && "bg-card/40")}>
             <button disabled={isGeneralChat} className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full disabled:hover:bg-transparent" onClick={() => isDM ? setProfileDialogUser(otherUser) : (isGeneralChat ? null : setShowChatProfile(true))}>
                 <div className='shrink-0 h-9 w-9'>{isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} className="h-9 w-9" />) : (<Avatar className="h-9 w-9"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-5 w-5 text-primary" /> : (item.type === 'group' ? <Users className='h-4 w-4 text-muted-foreground' /> : <Megaphone className='h-4 w-4 text-muted-foreground' />)}</AvatarFallback></Avatar>)}</div>
-                <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full">
+                <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full text-left">
                     <div className="flex items-center gap-1.5">
                         <h2 className={cn("text-[15px] font-bold font-headline truncate leading-none")}>{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
                         {(item.link === '/G/Infinite' || item.link === '/C/Infinite') && <VerifiedBadge className="w-3.5 h-3.5 shrink-0" />}

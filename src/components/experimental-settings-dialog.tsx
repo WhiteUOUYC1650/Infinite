@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -59,8 +60,6 @@ import { LegalDialog } from './legal-dialog';
 import { Input } from './ui/input';
 import React from 'react';
 
-type SettingsPage = 'main' | 'appearance' | 'theme' | 'language' | 'account' | 'help' | 'about' | 'chat' | 'infGold' | 'dailyBonus' | 'whatsNew' | 'dataStorage' | 'privacy' | 'transferHistory' | 'botGuide' | 'infinitePrem' | 'checkUpdates' | 'customization';
-
 const STANDARD_COLORS: Record<string, string> = {
   '0': '#000000',
   '1': '#0000AA',
@@ -98,13 +97,14 @@ const Spoiler = ({ text }: { text: string }) => {
 };
 
 const ColoredText = ({ text }: { text: string }) => {
-  const parts = text.split(/(\|\|(?:(?!(?:\|\|)).)+\|\|)/g);
+  const parts = text.split(/(\|\|[\s\S]*?\|\|)/g);
   
   return (
       <>
         {parts.map((part, i) => {
             if (part.startsWith('||') && part.endsWith('||')) {
-                return <Spoiler key={i} text={part.slice(2, -2)} />;
+                const content = part.slice(2, -2);
+                return <Spoiler key={i} text={content} />;
             }
             
             const colorRegex = /(§[0-9a-fA-F]|§\[[0-9a-fA-F]{3,6}\])/g;
@@ -180,7 +180,6 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const auth = useAuth(); 
   const db = useFirestore(); 
   const { toast } = useToast(); 
-  
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); 
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); 
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
