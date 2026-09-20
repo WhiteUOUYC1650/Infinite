@@ -33,7 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 
-import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette, UserPlus, Repeat, Smile } from 'lucide-react';
+import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette, UserPlus, Repeat, Smile, Eye, EyeOff, Phone } from 'lucide-react';
 import type { AuthenticatedUser, Transfer, SettingsPage } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
@@ -45,6 +45,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { UserProfileCard } from './user-profile-card';
 import { EditProfileDialog } from './edit-profile-dialog';
+import { PhoneNumberDialog } from './phone-number-dialog';
+import { formatPhoneNumber, maskPhoneNumber } from '@/lib/phone-utils';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus, InfiniteLogo } from './chat/user-avatar-with-status';
@@ -187,6 +189,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
   const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
 
   // Easter Egg State
   const [logoTaps, setLogoTaps] = useState(0);
@@ -260,6 +263,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const transfersQuery = useMemo(() => { if (!db || !userId) return null; return query(collection(db, 'transfers'), where('senderId', '==', userId), orderBy('timestamp', 'desc'), limit(50)); }, [db, userId]); const { data: sentTransfers } = useCollection<Transfer>(transfersQuery);
   const receivedQuery = useMemo(() => { if (!db || !userId) return null; return query(collection(db, 'transfers'), where('receiverId', '==', userId), orderBy('timestamp', 'desc'), limit(50)); }, [db, userId]); const { data: receivedTransfers } = useCollection<Transfer>(receivedQuery);
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
+
+  const handleTogglePhoneHidden = async (hidden: boolean) => {
+    if (!db || !userId) return;
+    try { await updateDoc(doc(db, 'users', userId), { phoneHidden: hidden }); }
+    catch (e: any) { toast({ variant: 'destructive', title: 'Error', description: e.message }); }
+  };
+  const handleRemovePhone = async () => {
+    if (!db || !userId) return;
+    try {
+      await updateDoc(doc(db, 'users', userId), { phone: null, phoneHidden: false });
+      toast({ title: t('dm_success'), description: t('phone_removed') });
+    } catch (e: any) { toast({ variant: 'destructive', title: 'Error', description: e.message }); }
+  };
   
   const formatSize = (bytes: number) => { if (bytes === 0) return '0 B'; const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]; };
   const calculateCacheSize = async () => { const dbSize = await getRealCacheSize(); setCurrentCacheSize(formatSize(dbSize)); };
@@ -531,7 +547,42 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </Accordion>
           );
           case 'checkUpdates': return (<div className='p-12 flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000", isCheckingUpdates && "rotate-180")}>{isCheckingUpdates ? (<Loader2 className="h-10 w-10 text-primary animate-spin" />) : (<RefreshCcw className="h-10 w-10 text-primary" />)}</div><div className="space-y-4"><h2 className="text-2xl font-black font-headline">{isCheckingUpdates ? t('checking_updates_progress') : (hasCheckedUpdates ? (isUpdateAvailable ? t('update_available_title') : t('latest_version_installed')) : t('check_updates'))}</h2>{hasCheckedUpdates && (<p className="text-sm text-muted-foreground font-medium">{isUpdateAvailable ? t('update_available_status', { version: updateInfo?.latest }) : `${t('version')}: ${currentVersion}`}</p>)}</div>{!isCheckingUpdates && (<div className="w-full max-xs pt-4">{isUpdateAvailable && hasCheckedUpdates ? (<Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={downloadUpdate}><Download className="mr-2 h-5 w-5" /> {t('download')}</Button>) : (<Button variant="outline" className={cn("w-full h-14 rounded-2xl font-bold text-lg", glassEffect && "glass-button border-none")} onClick={handleManualCheckUpdates}>{t('check_updates')}</Button>)}</div>)}</div>);
-          case 'account': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button><Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button><div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div></div>);
+          case 'account': return (
+            <div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'>
+              <Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button>
+
+              <div className={cn("rounded-2xl p-4 space-y-3", glassEffect ? "glass-panel border-none" : "bg-muted/40 border border-border/50")}>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0"><Phone className="h-4 w-4" /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('phone_number_label')}</span>
+                </div>
+
+                {currentUser.phone ? (
+                  <>
+                    <p className="font-black text-lg tracking-tight">
+                      {currentUser.phoneHidden ? maskPhoneNumber(currentUser.phone) : formatPhoneNumber(currentUser.phone)}
+                    </p>
+                    <div className="flex items-center justify-between gap-2 rounded-xl bg-background/60 p-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {currentUser.phoneHidden ? <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" /> : <Eye className="h-4 w-4 text-primary shrink-0" />}
+                        <span className="text-xs font-bold truncate">{t('hide_phone_number')}</span>
+                      </div>
+                      <Switch checked={!!currentUser.phoneHidden} onCheckedChange={handleTogglePhoneHidden} className="shrink-0" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold text-sm" onClick={() => setShowPhoneDialog(true)}>{t('change_number')}</Button>
+                      <Button variant="ghost" className="h-11 rounded-xl font-bold text-sm text-destructive hover:bg-destructive/10" onClick={handleRemovePhone}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </>
+                ) : (
+                  <Button className="w-full h-12 rounded-xl font-bold gap-2" onClick={() => setShowPhoneDialog(true)}><Phone className="h-4 w-4" /> {t('add_phone_number')}</Button>
+                )}
+              </div>
+
+              <Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button>
+              <div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div>
+            </div>
+          );
           case 'about': return (
               <div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                 <div 
@@ -541,22 +592,21 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <InfiniteLogo className='w-20 h-20 text-white' />
                 </div>
                 <div className="space-y-2">
-                    <h2 className='text-4xl font-black font-headline'>Infinite Aurora</h2>
+                    <h2 className='text-4xl font-black font-headline'>Infinite Move</h2>
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">v{currentVersion}</Badge>
                 </div>
-                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Aurora Release</div>
+                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Move Release</div>
                 <div className="flex flex-col gap-2 w-full pt-4">
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                 </div>
-                <p className='text-xs text-muted-foreground leading-relaxed max-xs font-medium opacity-60'>{t('version_info_detail')}</p>
               </div>
           );
           case 'whatsNew':
               return (
                 <div className='p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
                   <div className="text-center space-y-2">
-                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Aurora 1.5</h2>
+                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Move 2.0</h2>
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('aurora_release_notes')}</p>
                   </div>
                   <div className="grid gap-3">
@@ -604,6 +654,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       </DialogContent>
     </Dialog>
     <EditProfileDialog user={currentUser} open={showEditProfile} onOpenChange={setShowEditProfile} />
+    <PhoneNumberDialog currentUser={currentUser} open={showPhoneDialog} onOpenChange={setShowPhoneDialog} />
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl"><AlertDialogHeader className="items-center text-center space-y-4"><div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center"><Trash2 className="h-8 w-8 text-destructive" /></div><div className="space-y-2"><AlertDialogTitle className="text-2xl font-bold font-headline">{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground leading-relaxed">{t('delete_account_confirm_desc')}</AlertDialogDescription></div></AlertDialogHeader><AlertDialogFooter className="flex flex-col gap-2 pt-4 sm:flex-col sm:justify-center"><AlertDialogAction onClick={handleDeleteAccount} disabled={isDeletingAccount} className={cn(buttonVariants({ variant: 'destructive' }), "w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-destructive/20")}>{isDeletingAccount ? <Loader2 className="animate-spin" /> : t('delete_account')}</AlertDialogAction><AlertDialogCancel className="w-full h-12 rounded-2xl font-medium border-none hover:bg-muted">{t('cancel')}</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
     <GiftPickerDialog open={showSelfGiftPicker} onOpenChange={setShowSelfGiftPicker} recipient={currentUser as any} currentUser={currentUser} />
     <LegalDialog open={!!showLegalType} onOpenChange={(open) => !open && setShowLegalType(null)} type={showLegalType || 'tos'} />

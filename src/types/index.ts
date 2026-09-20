@@ -35,11 +35,22 @@ export type User = {
   watchLater?: string[];
   activeGiftEmoji?: string | null;
   archivedChats?: string[];
+  phone?: string | null; // E.164 phone number linked to the account
+  phoneHidden?: boolean; // If true, the number is not shown to others even after being added
+  contacts?: Contact[]; // Phone-based contact book
   birthday?: {
     day: number;
     month: number;
     year?: number;
   };
+};
+
+export type Contact = {
+  id: string;
+  name: string;
+  phone: string; // E.164 phone number of the contact
+  userId?: string | null; // Linked Infinite user id if the number is registered
+  addedAt?: number; // epoch millis (avoids serverTimestamp inside arrays)
 };
 
 export type Sticker = {
