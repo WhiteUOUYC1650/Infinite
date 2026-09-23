@@ -34,10 +34,11 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 
 import { ArrowLeft, ChevronRight, LogOut, Trash2, Paintbrush, Languages, HelpCircle, Info, User, Star, MessageSquare, Loader2, Bell, Pencil, HardDrive, ShieldCheck, X, Zap, Database, Globe, Moon, Sun, Cpu, Gamepad2, Newspaper, Clock, Sparkles, Shield, Lock, Coins, ListTodo, Split, Image as ImageIcon, Video, Music, FileText, RefreshCcw, RefreshCw, CheckCircle2, Download, Settings, Check, LayoutGrid, Gift, Scale, Archive, FileSearch, Smartphone, KeyRound, ShoppingBag, Code2, Send, Palette, UserPlus, Repeat, Smile } from 'lucide-react';
-import type { AuthenticatedUser, Transfer, SettingsPage } from '@/types';
+import type { AuthenticatedUser, Transfer, SettingsPage, UserPhone } from '@/types';
+import { formatPhoneNumber } from '@/lib/phone';
 import { cn } from '@/lib/utils';
-import { useAuth, useFirestore, useCollection } from '@/firebase';
-import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc, runTransaction } from 'firebase/firestore';
+import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
+import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc, runTransaction, type DocumentReference } from 'firebase/firestore';
 import { useLanguage } from '@/context/language-context';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/hooks/use-toast';
@@ -56,6 +57,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { GiftPickerDialog } from './gifts/gift-picker-dialog';
 import { LegalDialog } from './legal-dialog';
+import { PhoneNumberDialog } from './phone-number-dialog';
+import { ContactsDialog } from './contacts-dialog';
+import { ChangePasswordDialog } from './change-password-dialog';
 import { Input } from './ui/input';
 import React from 'react';
 
@@ -187,6 +191,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const [isBuyingPrem, setIsBuyingPrem] = useState(false);
   const [showSelfGiftPicker, setShowSelfGiftPicker] = useState(false);
   const [showLegalType, setShowLegalType] = useState<'tos' | 'privacy' | null>(null);
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Easter Egg State
   const [logoTaps, setLogoTaps] = useState(0);
@@ -259,6 +266,11 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
 
   const transfersQuery = useMemo(() => { if (!db || !userId) return null; return query(collection(db, 'transfers'), where('senderId', '==', userId), orderBy('timestamp', 'desc'), limit(50)); }, [db, userId]); const { data: sentTransfers } = useCollection<Transfer>(transfersQuery);
   const receivedQuery = useMemo(() => { if (!db || !userId) return null; return query(collection(db, 'transfers'), where('receiverId', '==', userId), orderBy('timestamp', 'desc'), limit(50)); }, [db, userId]); const { data: receivedTransfers } = useCollection<Transfer>(receivedQuery);
+  const userPhoneRef = useMemo(() => { if (!db || !userId) return null; return doc(db, 'userPhones', userId) as DocumentReference<UserPhone>; }, [db, userId]);
+  const { data: userPhone } = useDoc<UserPhone>(userPhoneRef);
+  const phoneNumber = userPhone?.phoneNumber || '';
+  const phoneHidden = !!userPhone?.hidden;
+
   const isBonusAvailable = !currentUser.lastDailyBonusClaimed || (Date.now() - currentUser.lastDailyBonusClaimed.toMillis()) > 24 * 60 * 60 * 1000;
   
   const formatSize = (bytes: number) => { if (bytes === 0) return '0 B'; const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]; };
@@ -505,6 +517,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
               <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />
               {currentUser.loginProtectionEnabled && (<SettingsItem icon={Lock} label={t('cloud_password_label')} onClick={() => {}} description={t('cloud_password_desc')} glassEffect={glassEffect} />)}
+              <SettingsItem icon={KeyRound} label={t('change_password')} description={t('change_password_desc')} onClick={() => { onOpenChange(false); setTimeout(() => setShowChangePassword(true), 150); }} glassEffect={glassEffect} />
               <SettingsSwitchItem id="local-pin" label={t('local_pin_lock')} checked={pinLockEnabled} onCheckedChange={handleTogglePin} description={t('local_pin_lock_desc')} glassEffect={glassEffect} />
               <div className={cn("p-4 space-y-3 rounded-xl", glassEffect && "glass-panel border-none")}><Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{t('story_expiration_label')}</Label><Select value={(currentUser.storyExpirationDuration ?? 24).toString()} onValueChange={(v) => handleSetStoryExpiration(parseInt(v))}><SelectTrigger className={cn("h-12 rounded-xl border-none font-bold", glassEffect ? "glass-input" : "bg-muted/50")}><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="12">12 {t('hours')}</SelectItem><SelectItem value="24">24 {t('hours')}</SelectItem><SelectItem value="48">48 {t('hours')}</SelectItem><SelectItem value="72">72 {t('hours')}</SelectItem><SelectItem value="0">{t('story_expiration_never')}</SelectItem></SelectContent></Select></div>
             </div>
@@ -531,7 +544,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
             </Accordion>
           );
           case 'checkUpdates': return (<div className='p-12 flex flex-col items-center text-center gap-8 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner transition-transform duration-1000", isCheckingUpdates && "rotate-180")}>{isCheckingUpdates ? (<Loader2 className="h-10 w-10 text-primary animate-spin" />) : (<RefreshCcw className="h-10 w-10 text-primary" />)}</div><div className="space-y-4"><h2 className="text-2xl font-black font-headline">{isCheckingUpdates ? t('checking_updates_progress') : (hasCheckedUpdates ? (isUpdateAvailable ? t('update_available_title') : t('latest_version_installed')) : t('check_updates'))}</h2>{hasCheckedUpdates && (<p className="text-sm text-muted-foreground font-medium">{isUpdateAvailable ? t('update_available_status', { version: updateInfo?.latest }) : `${t('version')}: ${currentVersion}`}</p>)}</div>{!isCheckingUpdates && (<div className="w-full max-xs pt-4">{isUpdateAvailable && hasCheckedUpdates ? (<Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={downloadUpdate}><Download className="mr-2 h-5 w-5" /> {t('download')}</Button>) : (<Button variant="outline" className={cn("w-full h-14 rounded-2xl font-bold text-lg", glassEffect && "glass-button border-none")} onClick={handleManualCheckUpdates}>{t('check_updates')}</Button>)}</div>)}</div>);
-          case 'account': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button><Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button><div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div></div>);
+          case 'account': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }}><Pencil className="mr-3 h-5 w-5 text-primary" /> {t('edit_profile')}</Button><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowPhoneDialog(true), 150); }}><Smartphone className="mr-3 h-5 w-5 text-primary" /> {phoneNumber ? t('change_phone_number') : t('add_phone_number')}{phoneNumber && <span className="ml-auto text-xs font-bold text-muted-foreground">{phoneHidden ? t('phone_hidden_short') : formatPhoneNumber(phoneNumber)}</span>}</Button><Button variant="outline" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "glass-button border-none")} onClick={() => { onOpenChange(false); setTimeout(() => setShowContacts(true), 150); }}><UserPlus className="mr-3 h-5 w-5 text-primary" /> {t('contacts')}</Button><Button variant="destructive" className={cn('w-full h-14 rounded-2xl font-bold text-lg', glassEffect && "opacity-80")} onClick={handleLogout}><LogOut className="mr-3 h-5 w-5" /> {t('logout')}</Button><div className="pt-8 border-t"><Button variant="ghost" className="w-full h-12 rounded-xl text-destructive hover:bg-destructive/10 font-bold" onClick={() => setShowDeleteConfirm(true)}><Trash2 className="mr-3 h-4 w-4" /> {t('delete_account')}</Button></div></div>);
           case 'about': return (
               <div className='p-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-right-4 duration-300'>
                 <div 
@@ -541,23 +554,22 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <InfiniteLogo className='w-20 h-20 text-white' />
                 </div>
                 <div className="space-y-2">
-                    <h2 className='text-4xl font-black font-headline'>Infinite Aurora</h2>
+                    <h2 className='text-4xl font-black font-headline'>Infinite Move</h2>
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">v{currentVersion}</Badge>
                 </div>
-                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Aurora Release</div>
+                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Move Release</div>
                 <div className="flex flex-col gap-2 w-full pt-4">
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                 </div>
-                <p className='text-xs text-muted-foreground leading-relaxed max-xs font-medium opacity-60'>{t('version_info_detail')}</p>
               </div>
           );
           case 'whatsNew':
               return (
                 <div className='p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
                   <div className="text-center space-y-2">
-                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Aurora 1.5</h2>
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('aurora_release_notes')}</p>
+                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Move 2.0</h2>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('release_notes_title')}</p>
                   </div>
                   <div className="grid gap-3">
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
@@ -607,6 +619,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}><AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl"><AlertDialogHeader className="items-center text-center space-y-4"><div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center"><Trash2 className="h-8 w-8 text-destructive" /></div><div className="space-y-2"><AlertDialogTitle className="text-2xl font-bold font-headline">{t('are_you_sure')}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground leading-relaxed">{t('delete_account_confirm_desc')}</AlertDialogDescription></div></AlertDialogHeader><AlertDialogFooter className="flex flex-col gap-2 pt-4 sm:flex-col sm:justify-center"><AlertDialogAction onClick={handleDeleteAccount} disabled={isDeletingAccount} className={cn(buttonVariants({ variant: 'destructive' }), "w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-destructive/20")}>{isDeletingAccount ? <Loader2 className="animate-spin" /> : t('delete_account')}</AlertDialogAction><AlertDialogCancel className="w-full h-12 rounded-2xl font-medium border-none hover:bg-muted">{t('cancel')}</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
     <GiftPickerDialog open={showSelfGiftPicker} onOpenChange={setShowSelfGiftPicker} recipient={currentUser as any} currentUser={currentUser} />
     <LegalDialog open={!!showLegalType} onOpenChange={(open) => !open && setShowLegalType(null)} type={showLegalType || 'tos'} />
+    <PhoneNumberDialog currentUser={currentUser} open={showPhoneDialog} onOpenChange={setShowPhoneDialog} />
+    <ContactsDialog currentUser={currentUser} open={showContacts} onOpenChange={setShowContacts} />
+    <ChangePasswordDialog open={showChangePassword} onOpenChange={setShowChangePassword} />
     
     <Dialog open={showPinSetup} onOpenChange={setShowPinSetup}>
         <DialogContent className="max-w-xs rounded-3xl p-8 border-none shadow-2xl space-y-6">

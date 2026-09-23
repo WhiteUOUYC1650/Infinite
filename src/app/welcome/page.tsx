@@ -58,8 +58,8 @@ export default function WelcomePage() {
                 </div>
             </div>
             <div className="space-y-2">
-                <h1 className="text-4xl font-bold font-headline">Infinite 1.5</h1>
-                <p className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Codename: Aurora</p>
+                <h1 className="text-4xl font-bold font-headline">Infinite 2.0</h1>
+                <p className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Codename: Move</p>
             </div>
             <p className="max-w-md text-lg opacity-90 font-medium">{t('thank_you_beta')}</p>
             <Button
@@ -91,7 +91,7 @@ export default function WelcomePage() {
         'absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] transition-colors duration-700',
         step === 2 ? 'text-gray-900' : 'text-white'
       )}>
-        <Badge variant="outline" className="border-current text-current font-bold">1.5 OFFICIAL</Badge>
+        <Badge variant="outline" className="border-current text-current font-bold">2.0 OFFICIAL</Badge>
       </div>
     </div>
   );
