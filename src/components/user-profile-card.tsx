@@ -15,13 +15,14 @@ import { UserAvatarWithStatus } from './chat/user-avatar-with-status';
 import { Badge } from './ui/badge';
 import { InfGoldIcon } from './ui/inf-gold-icon';
 import { useTheme } from '@/context/theme-context';
-import { Cake, Gift as GiftIcon, Loader2, Coins, Trash2, CheckCircle2, MessageSquareText, Bell, Search, MoreHorizontal, ArrowLeft, X, Music, Play, Pause } from 'lucide-react';
+import { Cake, Phone, Gift as GiftIcon, Loader2, Coins, Trash2, CheckCircle2, MessageSquareText, Bell, Search, MoreHorizontal, ArrowLeft, X, Music, Play, Pause } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { useFirestore, useCollection } from '@/firebase';
 import { doc, updateDoc, deleteDoc, increment, collection, runTransaction, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { getCachedFile } from '@/lib/cache-utils';
+import { formatPhoneNumber } from '@/lib/phone';
 
 interface UserProfileCardProps {
   user: AuthenticatedUser;
@@ -42,6 +43,7 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'gifts' | 'info'>( 'info');
   const [profileMusic, setProfileMusic] = useState<SharedMusic | null>(null);
+  const [visiblePhone, setVisiblePhone] = useState<string | null>(null);
 
   const giftsQuery = useMemo(() => {
     if (!db || !user.uid) return null;
@@ -49,6 +51,18 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
   }, [db, user.uid]);
   
   const { data: gifts, loading: giftsLoading } = useCollection<Gift>(giftsQuery);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!db || !user.uid) return;
+    getDoc(doc(db, 'userPhones', user.uid))
+      .then(snap => {
+        const data = snap.data();
+        if (!cancelled) setVisiblePhone(snap.exists() && data && !data.hidden ? (data.phoneNumber as string) : null);
+      })
+      .catch(() => { if (!cancelled) setVisiblePhone(null); });
+    return () => { cancelled = true; };
+  }, [db, user.uid]);
 
   useEffect(() => {
       if (user.profileMusicId && db) {
@@ -153,6 +167,16 @@ export function UserProfileCard({ user, onEditProfile }: UserProfileCardProps) {
                 <Separator className="opacity-10 mb-4" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">bio</p>
                 <p className="text-sm font-medium leading-relaxed">{user.statusMessage || 'Hey there! I am using Infinite.'}</p>
+                {visiblePhone && (
+                    <>
+                        <Separator className="opacity-10 my-4" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2">{t('phone_number')}</p>
+                        <div className="flex items-center gap-2 text-sm font-bold">
+                            <Phone className="h-4 w-4" />
+                            <span>{formatPhoneNumber(visiblePhone)}</span>
+                        </div>
+                    </>
+                )}
                 {birthdayText && (
                     <>
                         <Separator className="opacity-10 my-4" />
