@@ -27,6 +27,21 @@ service cloud.firestore {
       match /sessions/{sessionId} {
         allow read, write: if isSignedIn() && userId == request.auth.uid;
       }
+
+      match /contacts/{contactId} {
+        allow read, list, write: if isSignedIn() && userId == request.auth.uid;
+      }
+    }
+
+    match /userPhones/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || resource.data.hidden == false);
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /phoneIndex/{phoneNumber} {
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
     
     match /chats/{chatId} {

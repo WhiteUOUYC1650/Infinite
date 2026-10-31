@@ -42,6 +42,41 @@ export type User = {
   };
 };
 
+export type UserPhone = {
+  uid: string;
+  phoneNumber: string;
+  hidden: boolean;
+  updatedAt?: Timestamp;
+};
+
+export type Contact = {
+  id: string;
+  uid: string;
+  name: string;
+  username?: string;
+  phoneNumber: string;
+  createdAt?: Timestamp;
+};
+
+export type SettingsPage =
+  | 'main'
+  | 'appearance'
+  | 'theme'
+  | 'customization'
+  | 'language'
+  | 'chat'
+  | 'privacy'
+  | 'dataStorage'
+  | 'infGold'
+  | 'infinitePrem'
+  | 'transferHistory'
+  | 'dailyBonus'
+  | 'help'
+  | 'checkUpdates'
+  | 'account'
+  | 'about'
+  | 'whatsNew';
+
 export type Sticker = {
     id: string;
     url: string;

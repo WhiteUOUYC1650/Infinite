@@ -36,7 +36,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const t = useMemo(
     () =>
       (key: TranslationKey, values?: Record<string, any>): string => {
-        const translationString = translations[language]?.[key] || translations['en'][key];
+        const dictionary = translations[language] as Partial<Record<string, string>> | undefined;
+        const fallback = translations['en'] as Partial<Record<string, string>>;
+        const translationString = dictionary?.[key] || fallback[key] || key;
         if (values) {
           // Pass the current language to interpolate for correct plural rules
           return interpolate(translationString, values, language);

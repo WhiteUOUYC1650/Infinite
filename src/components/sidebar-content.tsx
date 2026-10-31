@@ -28,6 +28,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { EditProfileDialog } from './edit-profile-dialog';
 import { NewChatDialog } from './new-chat-dialog';
+import { ContactsDialog } from './contacts-dialog';
 import { useLanguage } from '@/context/language-context';
 import { SearchDialog } from './search-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -108,7 +109,8 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { toast } = useToast();
   
   const [showEditProfile, setShowEditProfile] = useState(false); 
-  const [showNewChat, setShowNewChat] = useState(false); 
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [showContacts, setShowContacts] = useState(false); 
   const [showSearchDialog, setShowSearchDialog] = useState(false); 
   const [editProfileInitiallyShown, setEditProfileInitiallyShown] = useState(false); 
   const [showSettingsDialog, setShowSettingsDialog] = useState(false); 
@@ -373,6 +375,9 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
           <div className='flex items-center'>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSearchDialog(true)}>
               <Search className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowContacts(true)}>
+              <Users className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowNewChat(true)}>
               <PlusCircle className="h-5 w-5" />
@@ -702,6 +707,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <EditProfileDialog user={currentUser} open={showEditProfile} onOpenChange={setShowEditProfile} />
       <NewChatDialog currentUser={currentUser} open={showNewChat} onOpenChange={setShowNewChat} onChatCreated={handleChatCreated} />
+      <ContactsDialog currentUser={currentUser} open={showContacts} onOpenChange={setShowContacts} onChatCreated={handleChatCreated} />
       <SearchDialog currentUser={currentUser} open={showSearchDialog} onOpenChange={setShowSearchDialog} onChatSelected={handleSelect} />
       <ExperimentalSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} currentUser={currentUser} />
     </div>
