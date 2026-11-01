@@ -1,0 +1,125 @@
+name: Build Infinite APKs (Material 3 + Classic 1.5)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Initialize AI Flows
+      run: |
+        echo "Building AI Genkit flows for 3.0 Redesign..."
+        # Ensure correct packages are present for build
+        npm install genkit @genkit-ai/google-genai
+      env:
+        GOOGLE_GENAI_API_KEY: "dummy"
+
+    - name: Fix Kotlin dependency conflict
+      run: |
+        echo "" >> android/app/build.gradle
+        echo "configurations.all {" >> android/app/build.gradle
+        echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'" >> android/app/build.gradle
+        echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'" >> android/app/build.gradle
+        echo "}" >> android/app/build.gradle
+
+    # ---------------------------------------------------------------------
+    # Edition 1 of 2 — MATERIAL 3 (Infinite 3.0 "Redesign")
+    # ---------------------------------------------------------------------
+    - name: Build Material 3 edition
+      run: |
+        npm run sync:android
+
+        # Edition identity: same code, Material 3 design layer baked in
+        sed -i 's/applicationId .*/applicationId "com.infinite.chat"/' android/app/build.gradle
+        sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
+        sed -i 's/versionName .*/versionName "3.0"/' android/app/build.gradle
+        sed -i 's#<string name="app_name">.*</string>#<string name="app_name">Infinite</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name="title_activity_main">.*</string>#<string name="title_activity_main">Infinite</string>#' android/app/src/main/res/values/strings.xml
+
+        cd android
+        chmod +x ./gradlew
+        ./gradlew clean assembleDebug -x test --no-daemon
+        cp app/build/outputs/apk/debug/app-debug.apk ../infinite-material3.apk
+      env:
+        # This is the only switch between the two editions:
+        NEXT_PUBLIC_INFINITE_EDITION: "material3"
+        NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy"
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy"
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "dummy"
+        NEXT_PUBLIC_FIREBASE_APP_ID: "dummy"
+
+    - name: Upload Material 3 APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: infinite-material3-apk
+        path: infinite-material3.apk
+
+    # ---------------------------------------------------------------------
+    # Edition 2 of 2 — CLASSIC (classic Infinite 1.5 interface)
+    # ---------------------------------------------------------------------
+    - name: Build Classic edition
+      run: |
+        npm run sync:android
+
+        # Edition identity: same code & latest libraries, classic 1.5 interface
+        sed -i 's/applicationId .*/applicationId "com.infinite.chat.classic"/' android/app/build.gradle
+        sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
+        sed -i 's/versionName .*/versionName "3.0-classic"/' android/app/build.gradle
+        sed -i 's#<string name="app_name">.*</string>#<string name="app_name">Infinite Classic</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name="title_activity_main">.*</string>#<string name="title_activity_main">Infinite Classic</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name="package_name">.*</string>#<string name="package_name">com.infinite.chat.classic</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name="custom_url_scheme">.*</string>#<string name="custom_url_scheme">com.infinite.chat.classic</string>#' android/app/src/main/res/values/strings.xml
+
+        cd android
+        chmod +x ./gradlew
+        ./gradlew clean assembleDebug -x test --no-daemon
+        cp app/build/outputs/apk/debug/app-debug.apk ../infinite-classic.apk
+      env:
+        # Unset/different value = classic 1.5 interface (unchanged styles)
+        NEXT_PUBLIC_INFINITE_EDITION: "classic"
+        NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy"
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy"
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "dummy"
+        NEXT_PUBLIC_FIREBASE_APP_ID: "dummy"
+
+    - name: Upload Classic APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: infinite-classic-apk
+        path: infinite-classic.apk
+
+    - name: Build summary
+      run: |
+        echo "### Infinite 3.0 \"Redesign\" — editions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Artifact | Edition | Package | Design |" >> $GITHUB_STEP_SUMMARY
+        echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
+        echo "| infinite-material3-apk | Material 3 | com.infinite.chat | Material You (M3) |" >> $GITHUB_STEP_SUMMARY
+        echo "| infinite-classic-apk | Classic 1.5 | com.infinite.chat.classic | Classic Infinite 1.5 |" >> $GITHUB_STEP_SUMMARY
+

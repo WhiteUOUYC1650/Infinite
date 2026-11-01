@@ -46,3 +46,16 @@ The application is ready to run. To explore the code, a good starting point is `
 ## Building the App
 
 This project is configured with Capacitor to be deployed as a native Android application. The APK is built automatically via a GitHub Action workflow defined in `.github/workflows/main.yml`. A new build is triggered on every push to the `main` branch.
+
+### CI workflow: `.github/workflows/main.yml`
+
+The two-edition build is defined in `.github/workflows/main.yml`. A copy of that
+workflow is kept in [`docs/ci/main.yml`](docs/ci/main.yml) so it can be restored
+with a single copy if the GitHub App token used for automation has no `workflows`
+permission:
+
+```bash
+cp docs/ci/main.yml .github/workflows/main.yml
+git commit -am "ci: build Material 3 + Classic editions"
+git push
+```
