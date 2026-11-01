@@ -359,6 +359,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [smoothScroll, setSmoothScroll] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
+  const [material3Design, setMaterial3Design] = useState(false);
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
   const [useSystemFont, setUseSystemFont] = useState(true);
@@ -373,6 +374,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedSmoothScroll = localStorage.getItem('app-smooth-scroll');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
     const storedExperimental = localStorage.getItem('app-experimental-design');
+    const storedMaterial3 = localStorage.getItem('app-material3-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
@@ -393,6 +395,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedSmoothScroll) setSmoothScroll(storedSmoothScroll === 'true');
     if (storedMinimizeCall) setMinimizeCallOnClose(storedMinimizeCall === 'true');
     if (storedExperimental) setExperimentalDesign(storedExperimental === 'true');
+    if (storedMaterial3) setMaterial3Design(storedMaterial3 === 'true');
     if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
     if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
     if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
@@ -411,6 +414,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       root.setAttribute('data-glass-effect', glassEffect ? 'true' : 'false');
       root.setAttribute('data-experimental-design', experimentalDesign ? 'true' : 'false');
+      root.setAttribute('data-material3', material3Design ? 'true' : 'false');
+      root.classList.toggle('md3', material3Design);
 
       if (theme === 'shining_gold') {
         root.classList.add('theme-shining-gold');
@@ -471,7 +476,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           if (value) root.style.setProperty(property, value);
       }
     }
-  }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted, customThemeConfig]);
+  }, [theme, isDarkMode, glassEffect, experimentalDesign, material3Design, isMounted, customThemeConfig]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -515,6 +520,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
+  const handleSetMaterial3Design = (enabled: boolean) => {
+    setMaterial3Design(enabled);
+    localStorage.setItem('app-material3-design', String(enabled));
+  };
+  const handleToggleMaterial3Design = () => {
+    setMaterial3Design(prev => {
+      const next = !prev;
+      localStorage.setItem('app-material3-design', String(next));
+      return next;
+    });
+  };
   const toggleGlassEffect = () => {
     setGlassEffect(prev => {
       localStorage.setItem('app-glass-effect', String(!prev));
@@ -549,6 +565,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
     experimentalDesign,
     toggleExperimentalDesign: handleToggleExperimentalDesign,
+    material3Design,
+    setMaterial3Design: handleSetMaterial3Design,
+    toggleMaterial3Design: handleToggleMaterial3Design,
     glassEffect,
     toggleGlassEffect,
     glassIntensity: glassEffect ? 70 : 0,

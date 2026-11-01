@@ -186,3 +186,212 @@ body.use-system-font h4 {
   50% { opacity: 1; }
   100% { transform: translateY(110vh); opacity: 0; }
 }
+
+/* =========================================================================
+   Infinite 3.0 "Redesign" — Material 3 design layer
+   Enabled by <html data-material3="true">
+   (Settings → Appearance → Design system → Material 3)
+   ========================================================================= */
+
+[data-material3="true"] {
+  --radius: 1.75rem;
+  --md3-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md3-elevation-1: 0 1px 2px 0 hsl(0 0% 0% / 0.30), 0 1px 3px 1px hsl(0 0% 0% / 0.12);
+  --md3-elevation-2: 0 1px 2px 0 hsl(0 0% 0% / 0.30), 0 2px 6px 2px hsl(0 0% 0% / 0.14);
+  --md3-elevation-3: 0 1px 3px 0 hsl(0 0% 0% / 0.30), 0 4px 8px 3px hsl(0 0% 0% / 0.14);
+  --md3-elevation-4: 0 2px 3px 0 hsl(0 0% 0% / 0.30), 0 6px 10px 4px hsl(0 0% 0% / 0.14);
+}
+
+.dark[data-material3="true"] {
+  --md3-elevation-1: 0 1px 2px 0 hsl(0 0% 0% / 0.55);
+  --md3-elevation-2: 0 2px 6px 0 hsl(0 0% 0% / 0.55);
+  --md3-elevation-3: 0 4px 10px 0 hsl(0 0% 0% / 0.55);
+  --md3-elevation-4: 0 6px 14px 0 hsl(0 0% 0% / 0.6);
+}
+
+/* --- Typography: Roboto / M3 type scale ---------------------------------- */
+[data-material3="true"] body,
+[data-material3="true"] .font-headline,
+[data-material3="true"] .font-body,
+[data-material3="true"] input,
+[data-material3="true"] textarea,
+[data-material3="true"] button {
+  font-family: "Roboto", "Roboto Flex", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+[data-material3="true"] .font-headline {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+[data-material3="true"] h1,
+[data-material3="true"] h2,
+[data-material3="true"] h3 {
+  letter-spacing: -0.015em;
+}
+
+/* --- Tonal app surface --------------------------------------------------- */
+[data-material3="true"] body {
+  background-image:
+    radial-gradient(120% 40% at 100% -10%, hsl(var(--primary) / 0.14), transparent 70%),
+    radial-gradient(100% 35% at 0% 110%, hsl(var(--primary) / 0.08), transparent 70%);
+  background-attachment: fixed;
+}
+
+/* --- Shape: M3 corner scale ---------------------------------------------- */
+[data-material3="true"] [role="dialog"] {
+  border-radius: 1.75rem;
+  border: none;
+  box-shadow: var(--md3-elevation-3);
+}
+
+[data-material3="true"] [role="menu"],
+[data-material3="true"] [role="listbox"],
+[data-material3="true"] [role="tooltip"] {
+  border-radius: 1rem;
+  border: none;
+  box-shadow: var(--md3-elevation-2);
+}
+
+[data-material3="true"] [role="menuitem"],
+[data-material3="true"] [role="option"] {
+  border-radius: 0.75rem;
+}
+
+/* --- Buttons: full / 24dp shape + M3 state layers ------------------------ */
+[data-material3="true"] button {
+  transition:
+    background-color 0.2s var(--md3-ease-standard),
+    color 0.2s var(--md3-ease-standard),
+    box-shadow 0.2s var(--md3-ease-standard),
+    transform 0.15s var(--md3-ease-standard),
+    border-radius 0.2s var(--md3-ease-standard);
+}
+
+/* Text / outlined / tonal action buttons become pills (M3 full shape) */
+[data-material3="true"] button.rounded-md,
+[data-material3="true"] a.rounded-md {
+  border-radius: 9999px;
+}
+
+/* List rows and large action tiles use the M3 large corner radius */
+[data-material3="true"] button.rounded-xl,
+[data-material3="true"] button.rounded-2xl,
+[data-material3="true"] button.rounded-3xl {
+  border-radius: 1.5rem;
+}
+
+[data-material3="true"] button.bg-primary {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: var(--md3-elevation-1);
+}
+
+[data-material3="true"] button.bg-primary:hover {
+  box-shadow: var(--md3-elevation-2);
+}
+
+[data-material3="true"] button.bg-destructive {
+  box-shadow: var(--md3-elevation-1);
+}
+
+/* M3 state layer on interactive surfaces */
+[data-material3="true"] button:not(.bg-primary):not(.bg-destructive):not(.bg-secondary):not([role="switch"]):hover {
+  background-color: hsl(var(--primary) / 0.07);
+}
+
+[data-material3="true"] button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* --- Switches: M3 track + thumb ------------------------------------------ */
+[data-material3="true"] button[role="switch"] {
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0 2px;
+  border-width: 2px;
+  border-style: solid;
+  border-color: hsl(var(--muted-foreground) / 0.5);
+  background-color: hsl(var(--muted));
+  box-shadow: none;
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"] {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary));
+}
+
+[data-material3="true"] button[role="switch"] > span {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: hsl(var(--muted-foreground));
+  box-shadow: none;
+  transform: translateX(0);
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"] > span {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: hsl(var(--primary-foreground));
+  transform: translateX(1.25rem);
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"]:active > span {
+  width: 1.75rem;
+}
+
+/* --- Text fields: filled with extra-large corner -------------------------- */
+[data-material3="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+[data-material3="true"] textarea {
+  border-radius: 1.75rem;
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  transition: background-color 0.2s var(--md3-ease-standard), box-shadow 0.2s var(--md3-ease-standard);
+}
+
+[data-material3="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+[data-material3="true"] textarea:focus {
+  outline: none;
+  background-color: hsl(var(--primary) / 0.08);
+  box-shadow: inset 0 0 0 2px hsl(var(--primary));
+}
+
+[data-material3="true"] textarea {
+  border-radius: 1.5rem;
+}
+
+/* --- Top app bars -------------------------------------------------------- */
+[data-material3="true"] header {
+  background-color: hsl(var(--background) / 0.92);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom-color: hsl(var(--border) / 0.6);
+}
+
+/* --- Elevated cards ------------------------------------------------------ */
+[data-material3="true"] .bg-card.border,
+[data-material3="true"] .bg-card.border.border-none {
+  box-shadow: var(--md3-elevation-1);
+  border-color: hsl(var(--border) / 0.7);
+}
+
+/* --- Scrollbars ---------------------------------------------------------- */
+[data-material3="true"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-material3="true"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-material3="true"] ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.28);
+  border-radius: 9999px;
+}
+
+/* --- Navigation drawer --------------------------------------------------- */
+[data-material3="true"] .bg-sidebar {
+  box-shadow: var(--md3-elevation-1);
+}
+
