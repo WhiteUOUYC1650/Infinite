@@ -338,6 +338,9 @@ interface ThemeContextType {
   toggleMinimizeCallOnClose: () => void;
   experimentalDesign: boolean;
   toggleExperimentalDesign: () => void;
+  material3Design: boolean;
+  setMaterial3Design: (enabled: boolean) => void;
+  toggleMaterial3Design: () => void;
   glassEffect: boolean;
   toggleGlassEffect: () => void;
   glassIntensity: number;
