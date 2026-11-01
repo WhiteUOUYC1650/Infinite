@@ -7,6 +7,19 @@ import { CustomThemeConfig } from '@/types';
 
 export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'first_version' | 'custom';
 
+/**
+ * Design edition is baked in at build time, see .github/workflows/main.yml:
+ *   NEXT_PUBLIC_INFINITE_EDITION=material3  → "Material 3" edition of Infinite 3.0
+ *   unset / any other value                 → classic Infinite 1.5 interface (default)
+ *
+ * The editions are separate APKs and never switch at runtime, so the classic
+ * 1.5 interface stays byte-for-byte identical for its build.
+ */
+export type AppEdition = 'material3' | 'classic';
+
+export const APP_EDITION: AppEdition =
+  process.env.NEXT_PUBLIC_INFINITE_EDITION === 'material3' ? 'material3' : 'classic';
+
 type ThemeColors = { [key: string]: string };
 
 type ThemeConfig = {
@@ -338,9 +351,9 @@ interface ThemeContextType {
   toggleMinimizeCallOnClose: () => void;
   experimentalDesign: boolean;
   toggleExperimentalDesign: () => void;
+  /** Design edition, fixed at build time (Material 3 build only). */
   material3Design: boolean;
-  setMaterial3Design: (enabled: boolean) => void;
-  toggleMaterial3Design: () => void;
+  appEdition: AppEdition;
   glassEffect: boolean;
   toggleGlassEffect: () => void;
   glassIntensity: number;
@@ -362,7 +375,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [smoothScroll, setSmoothScroll] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
-  const [material3Design, setMaterial3Design] = useState(false);
+  const material3Design = APP_EDITION === 'material3';
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
   const [useSystemFont, setUseSystemFont] = useState(true);
@@ -377,7 +390,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedSmoothScroll = localStorage.getItem('app-smooth-scroll');
     const storedMinimizeCall = localStorage.getItem('app-minimize-call');
     const storedExperimental = localStorage.getItem('app-experimental-design');
-    const storedMaterial3 = localStorage.getItem('app-material3-design');
     const storedGlassEffect = localStorage.getItem('app-glass-effect');
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
@@ -398,7 +410,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedSmoothScroll) setSmoothScroll(storedSmoothScroll === 'true');
     if (storedMinimizeCall) setMinimizeCallOnClose(storedMinimizeCall === 'true');
     if (storedExperimental) setExperimentalDesign(storedExperimental === 'true');
-    if (storedMaterial3) setMaterial3Design(storedMaterial3 === 'true');
     if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
     if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
     if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
@@ -523,17 +534,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
-  const handleSetMaterial3Design = (enabled: boolean) => {
-    setMaterial3Design(enabled);
-    localStorage.setItem('app-material3-design', String(enabled));
-  };
-  const handleToggleMaterial3Design = () => {
-    setMaterial3Design(prev => {
-      const next = !prev;
-      localStorage.setItem('app-material3-design', String(next));
-      return next;
-    });
-  };
   const toggleGlassEffect = () => {
     setGlassEffect(prev => {
       localStorage.setItem('app-glass-effect', String(!prev));
@@ -569,8 +569,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     experimentalDesign,
     toggleExperimentalDesign: handleToggleExperimentalDesign,
     material3Design,
-    setMaterial3Design: handleSetMaterial3Design,
-    toggleMaterial3Design: handleToggleMaterial3Design,
+    appEdition: APP_EDITION,
     glassEffect,
     toggleGlassEffect,
     glassIntensity: glassEffect ? 70 : 0,

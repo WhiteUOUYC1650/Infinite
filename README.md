@@ -16,6 +16,29 @@ Infinite is a modern, real-time chat application built with Next.js, Firebase, a
 - **Multi-language Support:** Available in English and Russian.
 - **Admin Panel:** A dedicated panel for administrators to manage users and chats.
 
+## Editions (Infinite 3.0 "Redesign")
+
+The Android build produces **two editions of the same app** (same code, same libraries —
+only the design layer differs). The edition is baked in at build time, never at runtime:
+
+| Edition | Artifact | Package | Design |
+| --- | --- | --- | --- |
+| Material 3 | `infinite-material3-apk` | `com.infinite.chat` | Material You: tonal surfaces, pill controls, bottom sheets |
+| Classic 1.5 | `infinite-classic-apk` | `com.infinite.chat.classic` | The classic Infinite 1.5 interface |
+
+Both are built by `.github/workflows/main.yml`. Locally:
+
+```bash
+# Material 3 edition
+NEXT_PUBLIC_INFINITE_EDITION=material3 npm run build
+
+# Classic Infinite 1.5 edition (default — also used for the web build)
+npm run build
+```
+
+All Material 3 styles live in `src/app/globals.css` behind `[data-material3="true"]`,
+which is only set by the Material 3 edition, so the classic interface is untouched.
+
 ## Getting Started
 
 The application is ready to run. To explore the code, a good starting point is `src/app/page.tsx`.

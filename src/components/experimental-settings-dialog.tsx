@@ -148,54 +148,32 @@ const processMarkdownChildren = (children: any): any => {
     });
 };
 
-const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => (
-    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
-        <div className={cn("flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-4 transition-colors", showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20", isGlow && "experimental-glow")}><Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} /></div>
-        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2"><span className="font-bold whitespace-normal leading-tight">{label}</span>{description && <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}</div>
-        <div className="flex items-center gap-2 text-muted-foreground shrink-0">{value && <span className='capitalize text-xs max-w-[80px] truncate font-bold'>{value}</span>}<ChevronRight className="h-4 w-4 shrink-0" /></div>
-  </button>
-);
-
-const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => (
-    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
-        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("font-bold cursor-pointer whitespace-normal leading-tight mb-1", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}</div>
-        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className={cn("shrink-0 mt-1", glassEffect && "glass-switch")} disabled={disabled} />
-    </div>
-);
-
-const DesignPreview = ({ variant }: { variant: 'classic' | 'material3' }) => {
-  const isM3 = variant === 'material3';
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => {
+  const { material3Design } = useTheme();
   return (
-    <div className={cn("w-full h-24 overflow-hidden p-2.5 space-y-1.5", isM3 ? "rounded-[1.25rem] bg-primary/10" : "rounded-lg bg-muted/60")}>
-      <div className="flex items-center gap-1.5">
-        <div className={cn("h-4 w-4 shrink-0", isM3 ? "rounded-full bg-primary" : "rounded-sm bg-primary/70")} />
-        <div className={cn("h-1.5 flex-1", isM3 ? "rounded-full bg-primary/25" : "rounded-sm bg-foreground/20")} />
-      </div>
-      <div className={cn("h-4 w-3/4 ml-auto bg-primary/70", isM3 ? "rounded-full" : "rounded-sm")} />
-      <div className={cn("h-4 w-2/3 bg-card", isM3 ? "rounded-full shadow-sm" : "rounded-sm border border-border")} />
-      <div className={cn("h-3.5 w-1/2", isM3 ? "rounded-full bg-primary shadow-sm" : "rounded-sm bg-primary/80")} />
+    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", material3Design ? "bg-card hover:bg-card/70 mb-2 px-4 py-3.5" : glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
+        <div className={cn("flex-shrink-0 rounded-full flex items-center justify-center mr-4 transition-colors", material3Design ? "w-12 h-12" : "w-10 h-10", (showExpColors || material3Design) ? iconBg : "bg-primary/10 group-hover:bg-primary/20", isGlow && "experimental-glow")}><Icon className={cn("h-5 w-5", (showExpColors || material3Design) ? iconColor : "text-primary")} /></div>
+        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2"><span className={cn("whitespace-normal leading-tight", material3Design ? "font-medium" : "font-bold")}>{label}</span>{description && <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}</div>
+        <div className="flex items-center gap-2 text-muted-foreground shrink-0">{value && <span className='capitalize text-xs max-w-[80px] truncate font-bold'>{value}</span>}{material3Design ? <span className="w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center"><ChevronRight className="h-4 w-4" /></span> : <ChevronRight className="h-4 w-4 shrink-0" />}</div>
+  </button>
+  );
+};
+
+const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => {
+  const { material3Design } = useTheme();
+  return (
+    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", material3Design ? "bg-card mb-2 px-4 py-3.5" : glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
+        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("cursor-pointer whitespace-normal leading-tight mb-1", material3Design ? "font-medium" : "font-bold", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}</div>
+        <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className={cn("shrink-0 mt-1", glassEffect && "glass-switch")} disabled={disabled} />
     </div>
   );
 };
 
-const DesignSystemCard = ({ variant, active, onSelect, title, description }: { variant: 'classic' | 'material3', active: boolean, onSelect: () => void, title: string, description: string }) => (
-    <button
-        type="button"
-        onClick={onSelect}
-        aria-pressed={active}
-        className={cn(
-            "relative flex flex-col gap-2 p-2.5 text-left transition-all",
-            variant === 'material3' ? "rounded-[1.25rem]" : "rounded-xl",
-            active ? "bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background" : "bg-muted/40 hover:bg-muted/60"
-        )}
-    >
-        <DesignPreview variant={variant} />
-        <div className="px-0.5">
-            <p className="text-[11px] font-black leading-tight">{title}</p>
-            <p className="text-[9px] text-muted-foreground font-medium leading-tight mt-0.5">{description}</p>
-        </div>
-        {active && <Check className="absolute top-1.5 right-1.5 h-4 w-4 text-primary bg-background rounded-full p-[2px] shadow-sm" />}
-    </button>
+const EditionChip = ({ label, icon: Icon }: { label: string, icon?: React.ElementType }) => (
+  <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-card text-[11px] font-medium text-foreground/80 shadow-sm">
+    {Icon && <Icon className="h-3.5 w-3.5 text-primary" />}
+    {label}
+  </span>
 );
 
 export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
@@ -208,7 +186,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const router = useRouter();
   
   const { t, language, setLanguage } = useLanguage(); 
-  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, setMaterial3Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
   const { isUpdateAvailable, promptUpdate, updateInfo, downloadUpdate, currentVersion } = useUpdatePrompt();
   
   const auth = useAuth(); 
@@ -352,7 +330,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       switch(page) {
           case 'main': return (
               <div className="animate-in fade-in duration-300">
-                {(experimentalDesign || glassEffect) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div></div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
+                {(experimentalDesign || glassEffect || material3Design) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div>{material3Design && (<div className="flex flex-wrap items-center justify-center gap-2 pt-5"><EditionChip label={t('edition_material3')} icon={Palette} /><EditionChip label={`v${currentVersion}`} /><EditionChip label="Redesign" icon={Sparkles} /></div>)}</div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
                 <div className={cn("border-t p-2 space-y-1", (experimentalDesign || glassEffect) && "mt-2")}>
                   <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
                   <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" glassEffect={glassEffect} />
@@ -370,38 +348,14 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               </div>
           );
           case 'appearance': return (
-            <div className='p-2 animate-in fade-in slide-in-from-right-4 duration-300'>
-              <div className="p-2 pb-4 space-y-2.5">
-                <div className="px-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t('design_system_label')}</p>
-                  <p className="text-[10px] text-muted-foreground/70 font-medium mt-0.5">{t('design_system_hint')}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <DesignSystemCard
-                    variant="classic"
-                    active={!material3Design}
-                    onSelect={() => setMaterial3Design(false)}
-                    title={t('design_classic_label')}
-                    description={t('design_classic_desc')}
-                  />
-                  <DesignSystemCard
-                    variant="material3"
-                    active={material3Design}
-                    onSelect={() => setMaterial3Design(true)}
-                    title={t('material3_label')}
-                    description={t('design_material3_desc')}
-                  />
-                </div>
-              </div>
-              <div className='space-y-1 divide-y'>
-                <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} description={t('light_mode')} glassEffect={glassEffect} />
-                <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} glassEffect={glassEffect} />
-                <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} glassEffect={glassEffect} />
-                <SettingsSwitchItem id="snowflakes" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} description={t('snowflakes')} glassEffect={glassEffect} />
-                <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={t('experimental_design_desc')} glassEffect={glassEffect} />
-                <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} glassEffect={glassEffect} />
-                <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
-              </div>
+            <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
+              <SettingsSwitchItem id="dark-mode" label={t('dark_mode')} checked={isDarkMode} onCheckedChange={toggleTheme} description={t('light_mode')} glassEffect={glassEffect} />
+              <SettingsItem icon={Paintbrush} label={t('color_theme')} value={t(theme as any)} onClick={() => navigateTo('theme')} description={t('color_theme')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="sys-font" label={t('use_system_font_label')} checked={useSystemFont} onCheckedChange={toggleSystemFont} description={t('use_system_font_desc')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="snowflakes" label={t('snowflakes')} checked={showSnowflakes} onCheckedChange={toggleSnowflakes} description={t('snowflakes')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={t('experimental_design_desc')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
             </div>
           );
           case 'theme': 
@@ -604,6 +558,9 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">v{currentVersion}</Badge>
                 </div>
                 <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Redesign Release</div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                    <EditionChip label={`${t('edition_label')}: ${material3Design ? t('edition_material3') : t('edition_classic')}`} icon={Palette} />
+                </div>
                 <div className="flex flex-col gap-2 w-full pt-4">
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
