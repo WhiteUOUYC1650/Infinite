@@ -74,6 +74,17 @@ jobs:
 
         sed -i 's/minSdkVersion = .*/minSdkVersion = 23/' android/variables.gradle
         sed -i 's/applicationId .*/applicationId "com.infinite.chat"/' android/app/build.gradle
+        # google-services.json must contain the edition package, otherwise
+        # :app:processDebugGoogleServices fails with "No matching client found"
+        python3 - <<'PY'
+        import json, pathlib
+        p = pathlib.Path('android/app/google-services.json')
+        if p.exists():
+            d = json.loads(p.read_text())
+            for c in d.get('client', []):
+                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat'
+            p.write_text(json.dumps(d, indent=2) + '\n')
+        PY
         sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
         sed -i 's/versionName .*/versionName "3.0"/' android/app/build.gradle
         sed -i 's#<string name="app_name">.*</string>#<string name="app_name">Infinite</string>#' android/app/src/main/res/values/strings.xml
@@ -104,6 +115,17 @@ jobs:
         # Material Design 2 edition targets older devices: Android 5.0 (API 21)+
         sed -i 's/minSdkVersion = .*/minSdkVersion = 21/' android/variables.gradle
         sed -i 's/applicationId .*/applicationId "com.infinite.chat.m2"/' android/app/build.gradle
+        # google-services.json must contain the edition package, otherwise
+        # :app:processDebugGoogleServices fails with "No matching client found"
+        python3 - <<'PY'
+        import json, pathlib
+        p = pathlib.Path('android/app/google-services.json')
+        if p.exists():
+            d = json.loads(p.read_text())
+            for c in d.get('client', []):
+                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat.m2'
+            p.write_text(json.dumps(d, indent=2) + '\n')
+        PY
         sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
         sed -i 's/versionName .*/versionName "3.0-m2"/' android/app/build.gradle
         sed -i 's#<string name="app_name">.*</string>#<string name="app_name">Infinite M2</string>#' android/app/src/main/res/values/strings.xml
@@ -135,6 +157,17 @@ jobs:
 
         sed -i 's/minSdkVersion = .*/minSdkVersion = 23/' android/variables.gradle
         sed -i 's/applicationId .*/applicationId "com.infinite.chat.classic"/' android/app/build.gradle
+        # google-services.json must contain the edition package, otherwise
+        # :app:processDebugGoogleServices fails with "No matching client found"
+        python3 - <<'PY'
+        import json, pathlib
+        p = pathlib.Path('android/app/google-services.json')
+        if p.exists():
+            d = json.loads(p.read_text())
+            for c in d.get('client', []):
+                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat.classic'
+            p.write_text(json.dumps(d, indent=2) + '\n')
+        PY
         sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
         sed -i 's/versionName .*/versionName "3.0-classic"/' android/app/build.gradle
         sed -i 's#<string name="app_name">.*</string>#<string name="app_name">Infinite Classic</string>#' android/app/src/main/res/values/strings.xml
