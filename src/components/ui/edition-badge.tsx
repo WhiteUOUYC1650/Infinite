@@ -12,7 +12,11 @@ export function EditionBadge({ className }: { className?: string }) {
   const { t } = useLanguage();
   return (
     <Badge variant="outline" className={className}>
-      {APP_EDITION === 'material3' ? t('beta_badge') : t('beta_badge_classic')}
+      {APP_EDITION === 'material3'
+        ? t('beta_badge')
+        : APP_EDITION === 'material2'
+          ? t('beta_badge_m2')
+          : t('beta_badge_classic')}
     </Badge>
   );
 }

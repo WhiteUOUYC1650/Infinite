@@ -18,38 +18,34 @@ Infinite is a modern, real-time chat application built with Next.js, Firebase, a
 
 ## Editions (Infinite 3.0 "Redesign")
 
-The Android build produces **two editions of the same app** (same code, same libraries —
+The Android build produces **three editions of the same app** (same code, same libraries —
 only the design layer differs). The edition is baked in at build time, never at runtime:
 
-| Edition | Artifact | Package | Design |
-| --- | --- | --- | --- |
-| Material 3 | `infinite-material3-apk` | `com.infinite.chat` | Material You: tonal surfaces, pill controls, bottom sheets |
-| Classic 1.5 | `infinite-classic-apk` | `com.infinite.chat.classic` | The classic Infinite 1.5 interface |
+| Edition | Artifact | Package | Design | minSdk |
+| --- | --- | --- | --- | --- |
+| Material 3 | `infinite-material3-apk` | `com.infinite.chat` | Material You: tonal surfaces, pill controls, bottom sheets | 23 |
+| Material 2 | `infinite-material2-apk` | `com.infinite.chat.m2` | Material Design 2: colored app bar, 4dp cards, uppercase buttons | 21 (Android 5.0+) |
+| Classic 1.5 | `infinite-classic-apk` | `com.infinite.chat.classic` | The classic Infinite 1.5 interface | 23 |
 
-Both are built by `.github/workflows/main.yml`. Locally:
+All three are built by `.github/workflows/main.yml`. The workflow runs on pushes and
+pull requests to `main`, and can also be started **manually**: Actions →
+"Build Infinite APKs …" → *Run workflow* (optionally choose a single edition).
+
+Locally:
 
 ```bash
-# Material 3 edition
-NEXT_PUBLIC_INFINITE_EDITION=material3 npm run build
-
-# Classic Infinite 1.5 edition (default — also used for the web build)
-npm run build
+NEXT_PUBLIC_INFINITE_EDITION=material3 npm run build   # Material 3 edition
+NEXT_PUBLIC_INFINITE_EDITION=material2 npm run build   # Material 2 edition
+npm run build                                          # Classic 1.5 (default, also the web build)
 ```
 
 All Material 3 styles live in `src/app/globals.css` behind `[data-material3="true"]`,
-which is only set by the Material 3 edition, so the classic interface is untouched.
-
-## Getting Started
-
-The application is ready to run. To explore the code, a good starting point is `src/app/page.tsx`.
-
-## Building the App
-
-This project is configured with Capacitor to be deployed as a native Android application. The APK is built automatically via a GitHub Action workflow defined in `.github/workflows/main.yml`. A new build is triggered on every push to the `main` branch.
+Material 2 styles behind `[data-material2="true"]`; those attributes are set only by the
+corresponding editions, so the classic interface is untouched in the other two builds.
 
 ### CI workflow: `.github/workflows/main.yml`
 
-The two-edition build is defined in `.github/workflows/main.yml`. A copy of that
+The three-edition build is defined in `.github/workflows/main.yml`. A copy of that
 workflow is kept in [`docs/ci/main.yml`](docs/ci/main.yml) so it can be restored
 with a single copy if the GitHub App token used for automation has no `workflows`
 permission:

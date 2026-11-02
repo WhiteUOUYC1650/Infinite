@@ -149,21 +149,23 @@ const processMarkdownChildren = (children: any): any => {
 };
 
 const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => {
-  const { material3Design } = useTheme();
+  const { material3Design, material2Design } = useTheme();
+  const modernDesign = material3Design || material2Design;
   return (
-    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", material3Design ? "bg-card hover:bg-card/70 mb-2 px-4 py-3.5" : glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
-        <div className={cn("flex-shrink-0 rounded-full flex items-center justify-center mr-4 transition-colors", material3Design ? "w-12 h-12" : "w-10 h-10", (showExpColors || material3Design) ? iconBg : "bg-primary/10 group-hover:bg-primary/20", isGlow && "experimental-glow")}><Icon className={cn("h-5 w-5", (showExpColors || material3Design) ? iconColor : "text-primary")} /></div>
-        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2"><span className={cn("whitespace-normal leading-tight", material3Design ? "font-medium" : "font-bold")}>{label}</span>{description && <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}</div>
-        <div className="flex items-center gap-2 text-muted-foreground shrink-0">{value && <span className='capitalize text-xs max-w-[80px] truncate font-bold'>{value}</span>}{material3Design ? <span className="w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center"><ChevronRight className="h-4 w-4" /></span> : <ChevronRight className="h-4 w-4 shrink-0" />}</div>
+    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", modernDesign ? "bg-card hover:bg-card/70 mb-2 px-4 py-3.5" : glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
+        <div className={cn("flex-shrink-0 rounded-full flex items-center justify-center mr-4 transition-colors", material3Design ? "w-12 h-12" : "w-10 h-10", (showExpColors || modernDesign) ? iconBg : "bg-primary/10 group-hover:bg-primary/20", isGlow && "experimental-glow")}><Icon className={cn("h-5 w-5", (showExpColors || modernDesign) ? iconColor : "text-primary")} /></div>
+        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2"><span className={cn("whitespace-normal leading-tight", modernDesign ? "font-medium" : "font-bold")}>{label}</span>{description && <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}</div>
+        <div className="flex items-center gap-2 text-muted-foreground shrink-0">{value && <span className='capitalize text-xs max-w-[80px] truncate font-bold'>{value}</span>}{modernDesign ? <span className="w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center"><ChevronRight className="h-4 w-4" /></span> : <ChevronRight className="h-4 w-4 shrink-0" />}</div>
   </button>
   );
 };
 
 const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => {
-  const { material3Design } = useTheme();
+  const { material3Design, material2Design } = useTheme();
+  const modernDesign = material3Design || material2Design;
   return (
-    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", material3Design ? "bg-card mb-2 px-4 py-3.5" : glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
-        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("cursor-pointer whitespace-normal leading-tight mb-1", material3Design ? "font-medium" : "font-bold", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}</div>
+    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", modernDesign ? "bg-card mb-2 px-4 py-3.5" : glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
+        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("cursor-pointer whitespace-normal leading-tight mb-1", modernDesign ? "font-medium" : "font-bold", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}</div>
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className={cn("shrink-0 mt-1", glassEffect && "glass-switch")} disabled={disabled} />
     </div>
   );
@@ -186,7 +188,8 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const router = useRouter();
   
   const { t, language, setLanguage } = useLanguage(); 
-  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, material2Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const modernDesign = material3Design || material2Design;
   const { isUpdateAvailable, promptUpdate, updateInfo, downloadUpdate, currentVersion } = useUpdatePrompt();
   
   const auth = useAuth(); 
@@ -330,7 +333,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       switch(page) {
           case 'main': return (
               <div className="animate-in fade-in duration-300">
-                {(experimentalDesign || glassEffect || material3Design) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div>{material3Design && (<div className="flex flex-wrap items-center justify-center gap-2 pt-5"><EditionChip label={t('edition_material3')} icon={Palette} /><EditionChip label={`v${currentVersion}`} /><EditionChip label="Redesign" icon={Sparkles} /></div>)}</div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
+                {(experimentalDesign || glassEffect || modernDesign) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div>{modernDesign && (<div className="flex flex-wrap items-center justify-center gap-2 pt-5"><EditionChip label={material3Design ? t('edition_material3') : t('edition_material2')} icon={Palette} /><EditionChip label={`v${currentVersion}`} /><EditionChip label="Redesign" icon={Sparkles} /></div>)}</div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
                 <div className={cn("border-t p-2 space-y-1", (experimentalDesign || glassEffect) && "mt-2")}>
                   <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
                   <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" glassEffect={glassEffect} />
@@ -559,13 +562,12 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
                 <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Redesign Release</div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                    <EditionChip label={`${t('edition_label')}: ${material3Design ? t('edition_material3') : t('edition_classic')}`} icon={Palette} />
+                    <EditionChip label={`${t('edition_label')}: ${material3Design ? t('edition_material3') : material2Design ? t('edition_material2') : t('edition_classic')}`} icon={Palette} />
                 </div>
                 <div className="flex flex-col gap-2 w-full pt-4">
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                 </div>
-                <p className='text-xs text-muted-foreground leading-relaxed max-xs font-medium opacity-60'>{t('version_info_detail')}</p>
               </div>
           );
           case 'whatsNew':

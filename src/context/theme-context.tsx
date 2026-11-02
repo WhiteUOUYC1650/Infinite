@@ -10,15 +10,18 @@ export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'y
 /**
  * Design edition is baked in at build time, see .github/workflows/main.yml:
  *   NEXT_PUBLIC_INFINITE_EDITION=material3  → "Material 3" edition of Infinite 3.0
+ *   NEXT_PUBLIC_INFINITE_EDITION=material2  → "Material 2" edition (Android 5.0+)
  *   unset / any other value                 → classic Infinite 1.5 interface (default)
  *
  * The editions are separate APKs and never switch at runtime, so the classic
  * 1.5 interface stays byte-for-byte identical for its build.
  */
-export type AppEdition = 'material3' | 'classic';
+export type AppEdition = 'material3' | 'material2' | 'classic';
+
+const EDITION_ENV = process.env.NEXT_PUBLIC_INFINITE_EDITION;
 
 export const APP_EDITION: AppEdition =
-  process.env.NEXT_PUBLIC_INFINITE_EDITION === 'material3' ? 'material3' : 'classic';
+  EDITION_ENV === 'material3' ? 'material3' : EDITION_ENV === 'material2' ? 'material2' : 'classic';
 
 type ThemeColors = { [key: string]: string };
 
@@ -353,6 +356,8 @@ interface ThemeContextType {
   toggleExperimentalDesign: () => void;
   /** Design edition, fixed at build time (Material 3 build only). */
   material3Design: boolean;
+  /** Design edition, fixed at build time (Material 2 build only). */
+  material2Design: boolean;
   appEdition: AppEdition;
   glassEffect: boolean;
   toggleGlassEffect: () => void;
@@ -376,6 +381,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
   const material3Design = APP_EDITION === 'material3';
+  const material2Design = APP_EDITION === 'material2';
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
   const [useSystemFont, setUseSystemFont] = useState(true);
@@ -429,7 +435,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.setAttribute('data-glass-effect', glassEffect ? 'true' : 'false');
       root.setAttribute('data-experimental-design', experimentalDesign ? 'true' : 'false');
       root.setAttribute('data-material3', material3Design ? 'true' : 'false');
+      root.setAttribute('data-material2', material2Design ? 'true' : 'false');
       root.classList.toggle('md3', material3Design);
+      root.classList.toggle('md2', material2Design);
 
       if (theme === 'shining_gold') {
         root.classList.add('theme-shining-gold');
@@ -490,7 +498,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           if (value) root.style.setProperty(property, value);
       }
     }
-  }, [theme, isDarkMode, glassEffect, experimentalDesign, material3Design, isMounted, customThemeConfig]);
+  }, [theme, isDarkMode, glassEffect, experimentalDesign, material3Design, material2Design, isMounted, customThemeConfig]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -569,6 +577,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     experimentalDesign,
     toggleExperimentalDesign: handleToggleExperimentalDesign,
     material3Design,
+    material2Design,
     appEdition: APP_EDITION,
     glassEffect,
     toggleGlassEffect,
