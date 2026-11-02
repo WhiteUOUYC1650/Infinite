@@ -1,0 +1,328 @@
+/* =========================================================================
+   Material 3 edition — design tokens & global M3 layer
+   Imported only by the Material 3 UI (src/components/m3/*).
+   Everything here is scoped to [data-material3="true"], which is set only by
+   the Material 3 build, so the classic 1.5 and Material 2 editions are
+   completely unaffected.
+   ========================================================================= */
+
+/* =========================================================================
+   Infinite 3.0 "Redesign" — MATERIAL 3 EDITION
+   -------------------------------------------------------------------------
+   Baked in at build time: <html data-material3="true"> is only set by the
+   Material 3 APK (NEXT_PUBLIC_INFINITE_EDITION=material3).
+   Every rule below is scoped to [data-material3="true"], so the classic
+   Infinite 1.5 edition is rendered exactly as before.
+   ========================================================================= */
+
+[data-material3="true"] {
+  --radius: 1.75rem;
+  --md3-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md3-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md3-e1: 0 1px 2px hsl(0 0% 0% / 0.07), 0 1px 3px 1px hsl(0 0% 0% / 0.05);
+  --md3-e2: 0 2px 4px hsl(0 0% 0% / 0.09), 0 3px 8px 2px hsl(0 0% 0% / 0.06);
+  --md3-e3: 0 6px 10px 4px hsl(0 0% 0% / 0.08), 0 2px 4px hsl(0 0% 0% / 0.10);
+  --md3-outline: hsl(var(--foreground) / 0.10);
+}
+
+.dark[data-material3="true"] {
+  --md3-e1: 0 1px 3px hsl(0 0% 0% / 0.6);
+  --md3-e2: 0 3px 8px hsl(0 0% 0% / 0.55);
+  --md3-e3: 0 6px 14px hsl(0 0% 0% / 0.6);
+  --md3-outline: hsl(var(--foreground) / 0.14);
+}
+
+/* ---------------------------------------------------------------- typography */
+[data-material3="true"] body,
+[data-material3="true"] .font-headline,
+[data-material3="true"] .font-body,
+[data-material3="true"] input,
+[data-material3="true"] textarea,
+[data-material3="true"] button {
+  font-family: "Roboto", "Roboto Flex", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+[data-material3="true"] .font-black {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+[data-material3="true"] .font-headline {
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+[data-material3="true"] h1,
+[data-material3="true"] h2,
+[data-material3="true"] h3 {
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+/* ------------------------------------------------------------------ surfaces */
+[data-material3="true"] body {
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(120% 42% at 100% -8%, hsl(var(--primary) / 0.12), transparent 70%),
+    radial-gradient(110% 36% at -10% 108%, hsl(var(--primary) / 0.08), transparent 70%);
+}
+
+[data-material3="true"] .bg-card {
+  box-shadow: var(--md3-e1);
+}
+
+/* --------------------------------------------------------------- shape scale */
+[data-material3="true"] .rounded-3xl { border-radius: 1.75rem; }
+[data-material3="true"] .rounded-2xl { border-radius: 1.5rem; }
+[data-material3="true"] .rounded-xl  { border-radius: 1.25rem; }
+[data-material3="true"] .rounded-lg  { border-radius: 1rem; }
+
+/* ------------------------------------------------------------------ app bars */
+[data-material3="true"] header {
+  margin: 8px 10px 0;
+  border: none;
+  border-radius: 1.75rem;
+  background-color: hsl(var(--card));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--md3-e1);
+}
+
+[data-material3="true"] header .bg-background {
+  background-color: transparent;
+}
+
+/* ------------------------------------------------------------------- dialogs */
+[data-material3="true"] [role="dialog"] {
+  border: none;
+  border-radius: 1.75rem;
+  background-color: hsl(var(--card));
+  box-shadow: var(--md3-e3);
+}
+
+[data-material3="true"] [role="menu"],
+[data-material3="true"] [role="listbox"],
+[data-material3="true"] [role="tooltip"] {
+  border: none;
+  border-radius: 1.25rem;
+  box-shadow: var(--md3-e2);
+}
+
+[data-material3="true"] [role="menuitem"],
+[data-material3="true"] [role="option"] {
+  border-radius: 0.875rem;
+}
+
+/* Mobile: M3 modal bottom sheet with a drag handle */
+@media (max-width: 767px) {
+  [data-material3="true"] [role="dialog"] {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92svh;
+    margin: 0;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    border-radius: 1.75rem 1.75rem 0 0;
+    transform: none !important;
+    animation: md3-sheet-up 0.3s var(--md3-ease-emphasized);
+  }
+
+  [data-material3="true"] [role="dialog"]::before {
+    content: "";
+    display: block;
+    width: 32px;
+    height: 4px;
+    margin: -4px auto 2px;
+    border-radius: 9999px;
+    background-color: hsl(var(--foreground) / 0.18);
+  }
+}
+
+@keyframes md3-sheet-up {
+  from { transform: translateY(28px); opacity: 0.5; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ------------------------------------------------------------------- buttons */
+[data-material3="true"] button {
+  letter-spacing: 0;
+  transition:
+    background-color 0.2s var(--md3-ease-standard),
+    color 0.2s var(--md3-ease-standard),
+    box-shadow 0.2s var(--md3-ease-standard),
+    transform 0.15s var(--md3-ease-standard),
+    border-radius 0.2s var(--md3-ease-standard);
+}
+
+/* filled / outlined / text buttons → M3 pills */
+[data-material3="true"] button.rounded-md,
+[data-material3="true"] a.rounded-md {
+  border-radius: 9999px;
+}
+
+/* list rows & large action tiles → M3 large corner */
+[data-material3="true"] button.rounded-xl,
+[data-material3="true"] button.rounded-2xl,
+[data-material3="true"] button.rounded-3xl {
+  border-radius: 1.5rem;
+}
+
+[data-material3="true"] button.bg-primary {
+  font-weight: 500;
+  box-shadow: var(--md3-e1);
+}
+
+[data-material3="true"] button.bg-primary:hover {
+  box-shadow: var(--md3-e2);
+}
+
+[data-material3="true"] button.bg-destructive {
+  box-shadow: var(--md3-e1);
+}
+
+/* M3 state layer */
+[data-material3="true"] button:not(.bg-primary):not(.bg-destructive):not(.bg-secondary):not([role="switch"]):hover {
+  background-color: hsl(var(--primary) / 0.08);
+}
+
+[data-material3="true"] button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* -------------------------------------------------------------------- switch */
+[data-material3="true"] button[role="switch"] {
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0 2px;
+  border: 2px solid hsl(var(--muted-foreground) / 0.45);
+  background-color: hsl(var(--muted));
+  box-shadow: none;
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"] {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary));
+}
+
+[data-material3="true"] button[role="switch"] > span {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: hsl(var(--muted-foreground));
+  box-shadow: none;
+  transform: translateX(0);
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"] > span {
+  background-color: hsl(var(--primary-foreground));
+  transform: translateX(1.25rem);
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"]:active > span {
+  width: 1.75rem;
+}
+
+/* --------------------------------------------------------------- text fields */
+[data-material3="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+[data-material3="true"] textarea {
+  border: none;
+  background-color: hsl(var(--card));
+  box-shadow: inset 0 0 0 1px var(--md3-outline);
+  transition: background-color 0.2s var(--md3-ease-standard), box-shadow 0.2s var(--md3-ease-standard);
+}
+
+[data-material3="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+[data-material3="true"] textarea:focus {
+  outline: none;
+  background-color: hsl(var(--primary) / 0.06);
+  box-shadow: inset 0 0 0 2px hsl(var(--primary));
+}
+
+[data-material3="true"] textarea {
+  border-radius: 1.5rem;
+}
+
+/* chat composer: pill field + round send button */
+[data-material3="true"] #message-textarea {
+  background-color: hsl(var(--card));
+  border: none;
+  border-radius: 1.5rem;
+  padding-inline: 1rem;
+}
+
+[data-material3="true"] button[type="submit"][class*="rounded-full"] {
+  border-radius: 9999px;
+  box-shadow: var(--md3-e1);
+}
+
+/* ------------------------------------------------------------- chat bubbles */
+/* Outgoing = primary container (light tonal bubble with dark text, as in M3) */
+[data-material3="true"] .outgoing-msg .rounded-br-none {
+  background-color: hsl(var(--primary) / 0.18);
+  color: hsl(var(--foreground));
+  border-radius: 1.5rem 1.5rem 0.5rem 1.5rem;
+  box-shadow: none;
+}
+
+[data-material3="true"] .outgoing-msg .text-primary-foreground,
+[data-material3="true"] .outgoing-msg .text-primary-foreground * {
+  color: hsl(var(--foreground));
+}
+
+[data-material3="true"] .incoming-msg .rounded-bl-none {
+  background-color: hsl(var(--card));
+  border-radius: 1.5rem 1.5rem 1.5rem 0.5rem;
+  box-shadow: var(--md3-e1);
+}
+
+/* -------------------------------------------------------- navigation drawer */
+[data-material3="true"] .bg-sidebar {
+  box-shadow: var(--md3-e1);
+}
+
+[data-material3="true"] .bg-sidebar-accent {
+  background-color: hsl(var(--primary) / 0.14);
+  border-radius: 9999px;
+}
+
+[data-material3="true"] .bg-sidebar-accent .text-muted-foreground {
+  color: hsl(var(--primary));
+}
+
+/* ------------------------------------------------------------- lists & dividers */
+[data-material3="true"] .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: 0;
+}
+
+/* legacy arbitrary radii -> M3 scale */
+[data-material3="true"] [class*="rounded-[2.5rem]"],
+[data-material3="true"] [class*="rounded-[2rem]"] {
+  border-radius: 1.75rem;
+}
+
+/* app bar inside a sheet/dialog should not float */
+[data-material3="true"] [role="dialog"] header {
+  margin: 0;
+  border-radius: 0;
+  border-bottom: none;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ scrollbars */
+[data-material3="true"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-material3="true"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-material3="true"] ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.28);
+  border-radius: 9999px;
+}
+

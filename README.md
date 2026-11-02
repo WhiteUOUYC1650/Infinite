@@ -39,9 +39,29 @@ NEXT_PUBLIC_INFINITE_EDITION=material2 npm run build   # Material 2 edition
 npm run build                                          # Classic 1.5 (default, also the web build)
 ```
 
-All Material 3 styles live in `src/app/globals.css` behind `[data-material3="true"]`,
-Material 2 styles behind `[data-material2="true"]`; those attributes are set only by the
-corresponding editions, so the classic interface is untouched in the other two builds.
+### Material 3 UI is a separate interface
+
+The Material 3 edition does not reuse the classic 1.5 screens — it has its own UI layer:
+
+```
+src/components/m3/
+  m3-theme.css      # all Material 3 styles (moved out of globals.css)
+  m3-primitives.tsx # M3 app bar, icon buttons, filled buttons, FAB, chips
+  m3-surfaces.tsx   # M3 cards, rows, search bar, avatars, empty state
+  m3-chat-row.tsx   # M3 conversation row
+  m3-chat-list.tsx  # M3 conversations screen (search, filters, services, FAB)
+  m3-shell.tsx      # M3 app shell (list + content pane, mobile/desktop)
+```
+
+`src/components/app-shell.tsx` only chooses between the two shells: for the Material 3
+edition it renders `M3Shell` (app bar, chips, conversation list, navigation), while the
+classic 1.5 markup stays exactly as before for the other two editions. Feature screens
+(chat, premium, bot studio, …) are shared, but in the M3 build they are styled by the M3
+layer, and in the 1.5 build by the classic styles.
+
+Material 3 styles live in `src/components/m3/m3-theme.css` behind `[data-material3="true"]`,
+Material 2 styles in `src/app/globals.css` behind `[data-material2="true"]`; those
+attributes are set only by the corresponding editions, so the classic interface is untouched.
 > **Note on the Material 2 edition (minSdk 21):** it is built with `minSdkVersion 21`
 > (Android 5.0) and `tools:overrideLibrary` for the Capacitor/AndroidX packages.
 > On Android 5.x the system WebView is old, so some modern UI/JS features may be

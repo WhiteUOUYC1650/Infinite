@@ -30,6 +30,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/lib/utils';
 import { aiChat } from '@/ai/flows/ai-chat-flow';
+import { useTheme } from '@/context/theme-context';
+import { ExperimentalSettingsDialog } from '@/components/experimental-settings-dialog';
+import { M3Shell } from '@/components/m3/m3-shell';
+import type { M3Service } from '@/components/m3/m3-chat-list';
 
 const iconMap = {
     Users,
@@ -52,6 +56,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const [activeCall, setActiveCall] = useState<{ chat: PopulatedChat, otherUser: User | null, isVideo: boolean, isCaller: boolean } | null>(null);
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showSubPrompt, setShowSubPrompt] = useState(false);
+  const { material3Design } = useTheme();
+  const [m3SettingsOpen, setM3SettingsOpen] = useState(false);
+  const [isOnlineState, setIsOnlineState] = useState(true);
   const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
 
   const processedMsgIds = useRef<Set<string>>(new Set());
@@ -99,6 +106,18 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     const selectedId = typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
     setActiveChatId(selectedId || null);
   }, [selectedItem, setActiveChatId]);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    const sync = () => setIsOnlineState(navigator.onLine);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
 
   const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infmusic' | 'infgames' | 'feed' | 'bot_studio' | null) => {
     setSelectedItem(item);
@@ -347,6 +366,111 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     return null;
   };
+
+  /* ---------------------------------------------------------------------
+   * Material 3 edition — completely separate UI layer (src/components/m3).
+   * The classic 1.5 markup below is never rendered for this edition.
+   * ------------------------------------------------------------------- */
+  const handleM3SelectChat = useCallback((chat: Chat) => {
+    const iconName = (chat.icon === 'Drum' || chat.name === 'Infinite') ? 'Bot' : chat.icon as any;
+    handleSelect({ ...chat, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
+  }, [handleSelect]);
+
+  const handleM3SelectService = useCallback((service: M3Service) => handleSelect(service), [handleSelect]);
+
+  const handleM3SavedMessages = async () => {
+    if (!db || !currentUser.uid) return;
+    const chatId = currentUser.uid;
+    const chatRef = doc(db, 'chats', chatId);
+    const chatSnap = await getDoc(chatRef);
+    let chatData: Chat;
+    if (!chatSnap.exists()) {
+      chatData = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' };
+      await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } });
+    } else {
+      chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+    }
+    handleM3SelectChat(chatData);
+  };
+
+  const handleM3GeneralChat = async () => {
+    if (!db || !currentUser.uid) return;
+    const chatId = 'GENERAL_CHAT';
+    const chatRef = doc(db, 'chats', chatId);
+    const chatSnap = await getDoc(chatRef);
+    let chatData: Chat;
+    if (!chatSnap.exists()) {
+      chatData = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' };
+      await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid] });
+    } else {
+      chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+      if (!chatData.members.includes(currentUser.uid)) {
+        await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) });
+        chatData = { ...chatData, members: [...chatData.members, currentUser.uid] };
+      }
+    }
+    handleM3SelectChat(chatData);
+  };
+
+  if (material3Design) {
+    return (
+      <>
+        {populatedUser && (
+          <M3Shell
+            currentUser={populatedUser}
+            selectedId={currentSelectedId}
+            hasContent={!!selectedItem}
+            isOnline={isOnlineState}
+            onSelectChat={handleM3SelectChat}
+            onSelectService={handleM3SelectService}
+            onSelectSaved={handleM3SavedMessages}
+            onSelectGeneral={handleM3GeneralChat}
+            onOpenSettings={() => setM3SettingsOpen(true)}
+          >
+            {selectedItem ? renderSelectedContent() : null}
+          </M3Shell>
+        )}
+
+        {populatedUser && (
+          <ExperimentalSettingsDialog
+            open={m3SettingsOpen}
+            onOpenChange={setM3SettingsOpen}
+            currentUser={populatedUser}
+          />
+        )}
+
+        {incomingCall && (
+          <div className="fixed left-0 right-0 top-[env(safe-area-inset-top)] z-[100] flex cursor-pointer justify-center p-4" onClick={handleAcceptIncoming}>
+            <div className="flex w-full max-w-sm items-center gap-3 rounded-[1.5rem] bg-card p-3 shadow-xl">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Phone className="h-6 w-6" /></div>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t('incoming_call')}</p><p className="text-xs text-muted-foreground">{incomingCall.isVideo ? t('video_call') : t('audio_call')}</p></div>
+              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <Button variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={handleDeclineCall}><PhoneOff className="h-5 w-5" /></Button>
+                <Button className="h-10 w-10 rounded-full bg-emerald-500 text-white hover:bg-emerald-600" size="icon" onClick={handleAcceptIncoming}>{incomingCall.isVideo ? <Video className="h-5 w-5" /> : <Phone className="h-5 w-5" />}</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeCall && (
+          <CallDialog open={showCallDialog} onOpenChange={(open) => { setShowCallDialog(open); if (!open) setActiveCall(null); }} chat={activeCall.chat} otherUser={activeCall.otherUser} currentUser={populatedUser!} isCaller={activeCall.isCaller} isVideo={activeCall.isVideo} />
+        )}
+
+        <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
+          <DialogContent className="max-w-sm p-8">
+            <DialogHeader className="items-center space-y-4 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-primary/10"><Bell className="h-10 w-10 animate-bounce text-primary" /></div>
+              <div className="space-y-2"><DialogTitle className="text-xl font-medium">{t('subscribe_prompt_title')}</DialogTitle><DialogDescription className="leading-relaxed text-muted-foreground">{t('subscribe_prompt_desc')}</DialogDescription></div>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 pt-4">
+              <Button onClick={handleSubscribeToChannel} className="h-12 w-full">{t('subscribe')}</Button>
+              <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="h-12 w-full text-muted-foreground">{t('cancel')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <>
