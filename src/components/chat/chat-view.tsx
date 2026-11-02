@@ -402,7 +402,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
 ChatMessage.displayName = 'ChatMessage';
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect } = useTheme(); 
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect, material3Design } = useTheme(); 
   const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
@@ -672,7 +672,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     <div className={cn("flex items-center w-full transition-all duration-300 gap-2", experimentalDesign ? "h-14 px-1" : "p-2 h-14")}>
         <div className={cn(experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center", experimentalDesign && !glassEffect && "bg-card/40")}>
             <button onClick={item.isSupergroup && activeTopicId ? () => setActiveTopicId(null) : onClose} className="rounded-full h-10 w-10 flex items-center justify-center hover:bg-muted/50 transition-colors">
-                {item.isSupergroup && activeTopicId ? <ArrowLeft className="h-5 w-5" /> : <X className="h-5 w-5" />}
+                {item.isSupergroup && activeTopicId ? <ArrowLeft className="h-5 w-5" /> : material3Design ? <ArrowLeft className="h-5 w-5" /> : <X className="h-5 w-5" />}
             </button>
         </div>
         <div className={cn("flex-1 flex items-center min-w-0 h-full", experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-3 border-white/20 shadow-lg", experimentalDesign && !glassEffect && "bg-card/40")}>

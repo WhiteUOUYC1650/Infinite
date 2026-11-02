@@ -46,15 +46,24 @@ The Material 3 edition does not reuse the classic 1.5 screens — it has its own
 ```
 src/components/m3/
   m3-theme.css      # all Material 3 styles (moved out of globals.css)
-  m3-primitives.tsx # M3 app bar, icon buttons, filled buttons, FAB, chips
-  m3-surfaces.tsx   # M3 cards, rows, search bar, avatars, empty state
+  m3-primitives.tsx # M3 app bar, icon buttons, buttons, FAB, chips, navigation bar
+  m3-surfaces.tsx   # M3 cards, list rows, search bar, avatars, empty state
   m3-chat-row.tsx   # M3 conversation row
-  m3-chat-list.tsx  # M3 conversations screen (search, filters, services, FAB)
+  m3-chat-list.tsx  # M3 conversations screen (search, filters, services sheet, FAB, nav bar)
   m3-shell.tsx      # M3 app shell (list + content pane, mobile/desktop)
+src/lib/m3-palette.ts # seed colour -> Material You color roles
 ```
 
+The accent colour picked in *Settings → Appearance* is used as a Material 3
+**seed**: `src/lib/m3-palette.ts` expands it into the tonal roles
+(`surface-container-*`, `primary-container`, `on-surface-variant`, `outline`, …)
+and remaps the legacy semantic variables, so chat, settings and every dialog
+follow Material 3 in both light and dark mode. See
+[docs/m3-design.md](docs/m3-design.md) for the full token/component overview and
+screenshots.
+
 `src/components/app-shell.tsx` only chooses between the two shells: for the Material 3
-edition it renders `M3Shell` (app bar, chips, conversation list, navigation), while the
+edition it renders `M3Shell` (app bar, chips, conversation list, navigation bar), while the
 classic 1.5 markup stays exactly as before for the other two editions. Feature screens
 (chat, premium, bot studio, …) are shared, but in the M3 build they are styled by the M3
 layer, and in the 1.5 build by the classic styles.

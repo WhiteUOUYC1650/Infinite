@@ -508,3 +508,17 @@
   background: hsl(var(--md-sys-color-outline) / 0.35);
   border-radius: 9999px;
 }
+
+/* state layers on the shared utility buttons (hover = 8% on-surface) */
+[data-material3="true"] .hover\:bg-accent:hover,
+[data-material3="true"] .hover\:bg-accent\/40:hover,
+[data-material3="true"] .hover\:bg-muted\/50:hover,
+[data-material3="true"] .hover\:bg-muted\/40:hover {
+  background-color: hsl(var(--md-sys-color-on-surface) / var(--md3-hover));
+}
+
+/* legacy arbitrary radii from shared screens -> M3 extra-large shape */
+[data-material3="true"] [class*="rounded-[2.5rem]"],
+[data-material3="true"] [class*="rounded-[2rem]"] {
+  border-radius: var(--md3-shape-xl);
+}
