@@ -42,6 +42,11 @@ npm run build                                          # Classic 1.5 (default, a
 All Material 3 styles live in `src/app/globals.css` behind `[data-material3="true"]`,
 Material 2 styles behind `[data-material2="true"]`; those attributes are set only by the
 corresponding editions, so the classic interface is untouched in the other two builds.
+> **Note on the Material 2 edition (minSdk 21):** it is built with `minSdkVersion 21`
+> (Android 5.0) and `tools:overrideLibrary` for the Capacitor/AndroidX packages.
+> On Android 5.x the system WebView is old, so some modern UI/JS features may be
+> limited; Android 6+ is recommended for the M2 edition.
+
 
 ### CI workflow: `.github/workflows/main.yml`
 
