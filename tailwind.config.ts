@@ -15,6 +15,32 @@ export default {
         code: ['monospace'],
       },
       colors: {
+        // Material 3 color roles — only defined in the Material 3 edition
+        // (see src/lib/m3-palette.ts); harmless for the other editions.
+        m3: {
+          surface: 'hsl(var(--md-sys-color-surface))',
+          'surface-dim': 'hsl(var(--md-sys-color-surface-dim))',
+          'surface-container-lowest': 'hsl(var(--md-sys-color-surface-container-lowest))',
+          'surface-container-low': 'hsl(var(--md-sys-color-surface-container-low))',
+          'surface-container': 'hsl(var(--md-sys-color-surface-container))',
+          'surface-container-high': 'hsl(var(--md-sys-color-surface-container-high))',
+          'surface-container-highest': 'hsl(var(--md-sys-color-surface-container-highest))',
+          'on-surface': 'hsl(var(--md-sys-color-on-surface))',
+          'on-surface-variant': 'hsl(var(--md-sys-color-on-surface-variant))',
+          primary: 'hsl(var(--md-sys-color-primary))',
+          'on-primary': 'hsl(var(--md-sys-color-on-primary))',
+          'primary-container': 'hsl(var(--md-sys-color-primary-container))',
+          'on-primary-container': 'hsl(var(--md-sys-color-on-primary-container))',
+          secondary: 'hsl(var(--md-sys-color-secondary))',
+          'secondary-container': 'hsl(var(--md-sys-color-secondary-container))',
+          'on-secondary-container': 'hsl(var(--md-sys-color-on-secondary-container))',
+          'tertiary-container': 'hsl(var(--md-sys-color-tertiary-container))',
+          'on-tertiary-container': 'hsl(var(--md-sys-color-on-tertiary-container))',
+          outline: 'hsl(var(--md-sys-color-outline))',
+          'outline-variant': 'hsl(var(--md-sys-color-outline-variant))',
+          error: 'hsl(var(--md-sys-color-error))',
+          'error-container': 'hsl(var(--md-sys-color-error-container))',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

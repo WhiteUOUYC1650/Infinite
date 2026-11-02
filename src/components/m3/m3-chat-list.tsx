@@ -2,20 +2,30 @@
 
 /**
  * Material 3 conversations screen — independent from the classic 1.5 sidebar.
+ *
+ * Layout follows the Infinite 3.0 Material 3 mock-up:
+ *   top app bar (avatar · title · search/settings)
+ *   search field
+ *   filter chips (All / DMs / Groups / Channels)
+ *   assist chips (Saved messages / General chat)
+ *   flat conversation list
+ *   FAB (new chat) + navigation bar (Chats / Services / Feed / Settings)
  */
 
 import React, { useMemo, useState } from 'react';
-import { collection, doc, getDoc, query, where } from 'firebase/firestore';
+import { doc, getDoc, query, collection, where } from 'firebase/firestore';
 import {
   Bookmark,
   Cpu,
   Gamepad2,
   Globe,
+  MessageSquare,
   Music4,
   Newspaper,
   Plus,
   Search,
   Settings2,
+  Sparkles,
   Video,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
@@ -24,9 +34,17 @@ import { useLanguage } from '@/context/language-context';
 import type { AuthenticatedUser, Chat } from '@/types';
 import { NewChatDialog } from '@/components/new-chat-dialog';
 import { SearchDialog } from '@/components/search-dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { M3ChatRow } from './m3-chat-row';
-import { M3Avatar, M3SearchBar, M3SectionLabel } from './m3-surfaces';
-import { M3Chip, M3Fab, M3IconButton, M3TopAppBar } from './m3-primitives';
+import { M3Avatar, M3RowItem, M3SearchBar } from './m3-surfaces';
+import {
+  M3Chip,
+  M3Fab,
+  M3IconButton,
+  M3NavItem,
+  M3NavigationBar,
+  M3TopAppBar,
+} from './m3-primitives';
 
 export type M3Service = 'infvid' | 'infmusic' | 'infgames' | 'bot_studio' | 'feed';
 
@@ -35,7 +53,6 @@ type Filter = 'all' | 'dm' | 'group' | 'channel';
 export function M3ChatList({
   currentUser,
   selectedId,
-  isOnline = true,
   onSelectChat,
   onSelectService,
   onSelectSaved,
@@ -57,6 +74,7 @@ export function M3ChatList({
   const [queryText, setQueryText] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
 
   const chatsQuery = useMemo(() => {
     if (!db || !currentUser.uid) return null;
@@ -98,6 +116,12 @@ export function M3ChatList({
       );
   }, [chats, archived, filter, queryText, dmUsers, currentUser.uid]);
 
+  const unreadTotal = useMemo(
+    () =>
+      visibleChats.reduce((sum, chat) => sum + (chat.unreadCounts?.[currentUser.uid] || 0), 0),
+    [visibleChats, currentUser.uid]
+  );
+
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: t('all_chats') },
     { id: 'dm', label: t('direct_messages') },
@@ -114,26 +138,19 @@ export function M3ChatList({
   ];
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col bg-m3-surface">
       <M3TopAppBar
-        title={
-          <span className="flex items-center gap-2">
-            Infinite
-            <span
-              className={
-                isOnline
-                  ? 'h-2 w-2 rounded-full bg-emerald-500'
-                  : 'h-2 w-2 rounded-full bg-muted-foreground/50'
-              }
-            />
-          </span>
-        }
-        subtitle={isOnline ? t('online') : t('connecting')}
-        avatar={
-          <button type="button" onClick={onOpenSettings} aria-label={t('settings')} className="rounded-full">
-            <M3Avatar name={currentUser.name} src={currentUser.avatar} size={40} />
+        leading={
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label={t('settings')}
+            className="ml-1 mr-1 shrink-0 rounded-full"
+          >
+            <M3Avatar name={currentUser.name} src={currentUser.avatar} size={36} />
           </button>
         }
+        title="Infinite"
         trailing={
           <>
             <M3IconButton icon={Search} label={t('search_placeholder')} onClick={() => setSearchOpen(true)} />
@@ -141,10 +158,15 @@ export function M3ChatList({
           </>
         }
       >
-        <M3SearchBar value={queryText} onChange={setQueryText} placeholder={t('search_placeholder')} />
+        <M3SearchBar
+          className="mt-1"
+          value={queryText}
+          onChange={setQueryText}
+          placeholder={t('search_placeholder')}
+        />
       </M3TopAppBar>
 
-      <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto px-3 pb-2">
+      <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto px-4 pb-2 pt-1">
         {filters.map((item) => (
           <M3Chip
             key={item.id}
@@ -155,63 +177,104 @@ export function M3ChatList({
         ))}
       </div>
 
-      <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto px-3 pb-3">
+      <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto px-4 pb-2">
         <M3Chip label={t('saved_messages')} icon={Bookmark} onClick={onSelectSaved} />
         <M3Chip label={t('general_chat')} icon={Globe} onClick={onSelectGeneral} />
-        {services.map((service) => (
-          <M3Chip
-            key={service.id}
-            label={service.label}
-            icon={service.icon}
-            onClick={() => onSelectService(service.id)}
-          />
-        ))}
       </div>
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-24">
-        <M3SectionLabel className="px-2 pb-1 pt-1">{t('chats_label')}</M3SectionLabel>
-        <div className="space-y-0.5">
-          {loading ? (
-            <div className="space-y-2 px-1 pt-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className="h-[52px] w-[52px] animate-pulse rounded-full bg-muted" />
-                  <span className="flex-1 space-y-2">
-                    <span className="block h-3 w-2/3 animate-pulse rounded-full bg-muted" />
-                    <span className="block h-2.5 w-1/2 animate-pulse rounded-full bg-muted" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : visibleChats.length ? (
-            visibleChats.map((chat) => (
-              <M3ChatRow
-                key={chat.id}
-                chat={chat}
-                otherUser={
-                  chat.type === 'dm'
-                    ? dmUsers[chat.members.find((id) => id !== currentUser.uid) || ''] || null
-                    : null
-                }
-                currentUserId={currentUser.uid}
-                isSelected={selectedId === chat.id}
-                savedMessagesLabel={t('saved_messages')}
-                yesterdayLabel={t('yesterday')}
-                onClick={() => onSelectChat(chat)}
-              />
-            ))
-          ) : (
-            <p className="px-4 py-10 text-center text-sm text-muted-foreground">{t('no_chats_yet')}</p>
-          )}
-        </div>
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-28">
+        {loading ? (
+          <div className="space-y-1 pt-1">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-2.5">
+                <span className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-m3-surface-container-high" />
+                <span className="flex-1 space-y-2">
+                  <span className="block h-3 w-2/3 animate-pulse rounded-full bg-m3-surface-container-high" />
+                  <span className="block h-2.5 w-1/2 animate-pulse rounded-full bg-m3-surface-container-high" />
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : visibleChats.length ? (
+          visibleChats.map((chat) => (
+            <M3ChatRow
+              key={chat.id}
+              chat={chat}
+              otherUser={
+                chat.type === 'dm'
+                  ? dmUsers[chat.members.find((id) => id !== currentUser.uid) || ''] || null
+                  : null
+              }
+              currentUserId={currentUser.uid}
+              isSelected={selectedId === chat.id}
+              savedMessagesLabel={t('saved_messages')}
+              yesterdayLabel={t('yesterday')}
+              onClick={() => onSelectChat(chat)}
+            />
+          ))
+        ) : (
+          <p className="px-6 py-12 text-center text-sm text-m3-on-surface-variant">
+            {t('no_chats_yet')}
+          </p>
+        )}
       </div>
 
       <M3Fab
         icon={Plus}
         label={t('new_conversation')}
         onClick={() => setNewChatOpen(true)}
-        className="absolute bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4"
+        className="absolute bottom-[calc(96px+env(safe-area-inset-bottom))] right-4"
       />
+
+      <M3NavigationBar>
+        <M3NavItem icon={MessageSquare} label={t('chats_label')} active badge={unreadTotal} />
+        <M3NavItem icon={Sparkles} label={t('services')} onClick={() => setServicesOpen(true)} />
+        <M3NavItem icon={Newspaper} label={t('feed_title')} onClick={() => onSelectService('feed')} />
+        <M3NavItem icon={Settings2} label={t('settings')} onClick={onOpenSettings} />
+      </M3NavigationBar>
+
+      <Sheet open={servicesOpen} onOpenChange={setServicesOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-[28px] border-0 bg-m3-surface-container-high px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
+        >
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-m3-on-surface-variant/40" />
+          <SheetHeader className="px-4 pb-1 text-left">
+            <SheetTitle className="text-base font-medium text-m3-on-surface">
+              {t('services')}
+            </SheetTitle>
+          </SheetHeader>
+          {services.map((service) => (
+            <M3RowItem
+              key={service.id}
+              icon={service.icon}
+              label={service.label}
+              onClick={() => {
+                setServicesOpen(false);
+                onSelectService(service.id);
+              }}
+            />
+          ))}
+          <div className="mx-4 mt-1 border-t border-m3-outline-variant pt-1">
+            <M3RowItem
+              icon={Bookmark}
+              label={t('saved_messages')}
+              onClick={() => {
+                setServicesOpen(false);
+                onSelectSaved();
+              }}
+            />
+            <M3RowItem
+              icon={Globe}
+              label={t('general_chat')}
+              onClick={() => {
+                setServicesOpen(false);
+                onSelectGeneral();
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <SearchDialog
         currentUser={currentUser}

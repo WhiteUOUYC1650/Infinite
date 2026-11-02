@@ -1,13 +1,16 @@
 'use client';
 
 /**
- * Material 3 chat list row (used by the Material 3 edition only).
+ * Material 3 conversation row (used by the Material 3 edition only).
+ *
+ * Flat list item — 72dp tall, tonal avatar, no card, no divider — as in the
+ * Material 3 list spec and in the Infinite 3.0 Figma file.
  */
 
 import React from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
-import { BadgeCheck, BellOff, Image as ImageIcon, ListTodo, Mic, Paperclip } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { BadgeCheck, BellOff, ImageIcon, ListTodo, Mic, Paperclip } from 'lucide-react';
+import { useLanguage } from '@/context/language-context';
 import type { Chat, User } from '@/types';
 import { M3Avatar } from './m3-surfaces';
 
@@ -28,6 +31,7 @@ export function M3ChatRow({
   yesterdayLabel: string;
   onClick: () => void;
 }) {
+  const { t } = useLanguage();
   const isSavedMessages = chat.type === 'dm' && !otherUser;
   const unread = chat.unreadCounts?.[currentUserId] || 0;
 
@@ -53,21 +57,21 @@ export function M3ChatRow({
   const preview = (() => {
     if (!last) return '';
     if (last.content) return last.content;
-    if (last.imageUrl) return 'Фото';
-    if (last.videoMimeType) return 'Видео';
-    if (last.musicMimeType) return 'Аудио';
-    if (last.fileStatus) return 'Файл';
-    if (last.voiceStatus) return 'Голосовое';
-    if (last.poll) return 'Опрос';
+    if (last.imageUrl) return t('photo');
+    if (last.videoMimeType) return t('video');
+    if (last.musicMimeType) return t('music');
+    if (last.fileStatus) return t('file');
+    if (last.voiceStatus) return t('voice_message');
+    if (last.poll) return t('poll');
     return '';
   })();
 
   const previewIcon = (() => {
     if (!last) return null;
-    if (!last.content && last.imageUrl) return <ImageIcon className="h-3 w-3 shrink-0" />;
-    if (!last.content && last.fileStatus) return <Paperclip className="h-3 w-3 shrink-0" />;
-    if (!last.content && last.voiceStatus) return <Mic className="h-3 w-3 shrink-0" />;
-    if (!last.content && last.poll) return <ListTodo className="h-3 w-3 shrink-0" />;
+    if (!last.content && last.imageUrl) return <ImageIcon className="h-4 w-4 shrink-0" />;
+    if (!last.content && last.fileStatus) return <Paperclip className="h-4 w-4 shrink-0" />;
+    if (!last.content && last.voiceStatus) return <Mic className="h-4 w-4 shrink-0" />;
+    if (!last.content && last.poll) return <ListTodo className="h-4 w-4 shrink-0" />;
     return null;
   })();
 
@@ -75,43 +79,41 @@ export function M3ChatRow({
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-3 rounded-[1.5rem] px-3 py-2.5 text-left transition-colors',
-        isSelected ? 'bg-primary/12' : 'hover:bg-foreground/[0.04]'
-      )}
+      data-selected={isSelected ? 'true' : undefined}
+      className="m3-list-item"
     >
       <M3Avatar
         name={title}
         src={avatarSrc}
-        size={52}
+        size={48}
         online={online}
-        className={chat.type !== 'dm' ? 'rounded-[1.1rem]' : undefined}
+        className={chat.type !== 'dm' ? 'rounded-2xl' : undefined}
       />
 
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1">
-          <span className="truncate text-[15px] font-medium leading-tight">{title}</span>
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[16px] font-medium leading-6 text-m3-on-surface">
+            {title}
+          </span>
           {(otherUser?.username === '@Infinite' || (otherUser as any)?.isAdmin) && (
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <BadgeCheck className="h-4 w-4 shrink-0 text-m3-primary" />
           )}
           {chat.type === 'channel' && (
-            <span className="ml-1 shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium uppercase text-primary">
-              канал
+            <span className="shrink-0 rounded bg-m3-surface-container-highest px-1.5 py-0.5 text-[10px] font-medium text-m3-on-surface-variant">
+              {t('channels')}
             </span>
           )}
         </span>
-        <span className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-tight text-muted-foreground">
+        <span className="mt-0.5 flex items-center gap-1.5 text-[14px] leading-5 text-m3-on-surface-variant">
           {previewIcon}
           <span className="truncate">{preview || '—'}</span>
         </span>
       </span>
 
       <span className="flex shrink-0 flex-col items-end gap-1.5">
-        <span className="text-[10.5px] font-medium text-muted-foreground">{time}</span>
+        <span className="text-[11px] font-normal text-m3-on-surface-variant">{time}</span>
         {unread > 0 ? (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
-            {unread > 99 ? '99+' : unread}
-          </span>
+          <span className="m3-badge">{unread > 99 ? '99+' : unread}</span>
         ) : (
           <span className="h-5" />
         )}

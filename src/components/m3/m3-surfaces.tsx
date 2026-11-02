@@ -1,8 +1,11 @@
 'use client';
 
 /**
- * Material 3 surfaces (cards, rows, search, avatars) for the Material 3 edition.
- * Not used by the classic Infinite 1.5 interface.
+ * Material 3 surfaces (cards, list rows, search field, avatars) for the
+ * Material 3 edition. Not used by the classic Infinite 1.5 interface.
+ *
+ * Material 3 communicates hierarchy with tonal surfaces (surface-container-*)
+ * and 1dp outlines rather than with drop shadows, so the cards below are flat.
  */
 
 import React from 'react';
@@ -18,18 +21,15 @@ export function M3Card({
   className?: string;
   onClick?: () => void;
 }) {
+  const classes = 'w-full rounded-2xl bg-m3-surface-container-low p-4 text-left';
   if (onClick) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn('w-full rounded-[1.5rem] bg-card p-4 text-left', className)}
-      >
+      <button type="button" onClick={onClick} className={cn(classes, className)}>
         {children}
       </button>
     );
   }
-  return <div className={cn('rounded-[1.5rem] bg-card p-4', className)}>{children}</div>;
+  return <div className={cn(classes, className)}>{children}</div>;
 }
 
 export function M3SectionLabel({
@@ -39,18 +39,10 @@ export function M3SectionLabel({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <p
-      className={cn(
-        'px-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground',
-        className
-      )}
-    >
-      {children}
-    </p>
-  );
+  return <p className={cn('m3-section-label', className)}>{children}</p>;
 }
 
+/** M3 list item: 72dp, 12dp corners, optional tonal leading icon. */
 export function M3RowItem({
   icon: Icon,
   label,
@@ -69,37 +61,31 @@ export function M3RowItem({
   right?: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-3 rounded-[1.5rem] bg-card p-3.5 text-left transition-colors hover:bg-card/70',
-        className
-      )}
-    >
+    <button type="button" onClick={onClick} className={cn('m3-list-item', className)}>
       {Icon && (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-m3-secondary-container text-m3-on-secondary-container">
           <Icon className="h-5 w-5" />
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium leading-tight">{label}</span>
+        <span className="block truncate text-base font-normal leading-6 text-m3-on-surface">
+          {label}
+        </span>
         {description && (
-          <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground">
+          <span className="mt-0.5 block truncate text-[13px] leading-tight text-m3-on-surface-variant">
             {description}
           </span>
         )}
       </span>
       {value}
       {right ?? (
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-muted-foreground">
-          <ChevronRight className="h-4 w-4" />
-        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-m3-on-surface-variant" />
       )}
     </button>
   );
 }
 
+/** M3 search bar: 56dp, fully rounded, surface-container-high. */
 export function M3SearchBar({
   value,
   onChange,
@@ -107,6 +93,7 @@ export function M3SearchBar({
   onFocus,
   className,
   readOnly,
+  onClick,
 }: {
   value?: string;
   onChange?: (v: string) => void;
@@ -114,38 +101,38 @@ export function M3SearchBar({
   onFocus?: () => void;
   className?: string;
   readOnly?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className={cn('relative', className)}>
-      <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className={cn('m3-search-field', className)} onClick={onClick}>
+      <Search className="m3-search-icon" />
       <input
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         onFocus={onFocus}
         readOnly={readOnly}
         placeholder={placeholder}
-        className="h-11 w-full rounded-full bg-card pl-10 pr-10 text-sm outline-none placeholder:text-muted-foreground"
       />
       {!!value && !readOnly && (
         <button
           type="button"
           aria-label="clear"
           onClick={() => onChange?.('')}
-          className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/5"
+          className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-m3-on-surface-variant"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       )}
     </div>
   );
 }
 
-const AVATAR_COLORS = [
-  'from-orange-400 to-rose-400',
-  'from-sky-400 to-indigo-400',
-  'from-emerald-400 to-teal-400',
-  'from-fuchsia-400 to-purple-500',
-  'from-amber-400 to-orange-500',
+/** Tonal avatar colours: Material 3 containers, picked deterministically per name. */
+const AVATAR_ROLES = [
+  'bg-m3-primary-container text-m3-on-primary-container',
+  'bg-m3-secondary-container text-m3-on-secondary-container',
+  'bg-m3-tertiary-container text-m3-on-tertiary-container',
+  'bg-m3-surface-container-highest text-m3-on-surface',
 ];
 
 export function M3Avatar({
@@ -170,31 +157,35 @@ export function M3Avatar({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
-  const colorIndex = (name || '').length % AVATAR_COLORS.length;
+  const colorIndex = (name || '').length % AVATAR_ROLES.length;
 
   return (
-    <span className={cn('relative inline-flex shrink-0', className)} style={{ width: size, height: size }}>
+    <span
+      className={cn('relative inline-flex shrink-0', className)}
+      style={{ width: size, height: size }}
+    >
       {src ? (
         <img
           src={src}
           alt={name || ''}
           className={cn(
             'h-full w-full rounded-full object-cover',
-            ring ? 'ring-2 ring-primary/25 ring-offset-2 ring-offset-background' : ''
+            ring ? 'ring-2 ring-m3-primary/40 ring-offset-2 ring-offset-m3-surface' : ''
           )}
         />
       ) : (
         <span
           className={cn(
-            'flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br text-sm font-medium text-white',
-            AVATAR_COLORS[colorIndex]
+            'flex h-full w-full items-center justify-center rounded-full font-medium',
+            AVATAR_ROLES[colorIndex]
           )}
+          style={{ fontSize: Math.max(12, Math.round(size * 0.34)) }}
         >
           {initials || '?'}
         </span>
       )}
       {online && (
-        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-emerald-500" />
+        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-m3-surface bg-emerald-500" />
       )}
     </span>
   );
@@ -214,13 +205,20 @@ export function M3EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn('flex h-full flex-col items-center justify-center gap-4 px-8 text-center', className)}>
-      <span className="flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-primary/10 text-primary">
+    <div
+      className={cn(
+        'flex h-full flex-col items-center justify-center gap-4 bg-m3-surface px-8 text-center',
+        className
+      )}
+    >
+      <span className="flex h-20 w-20 items-center justify-center rounded-full bg-m3-surface-container-high text-m3-on-surface-variant">
         <Icon className="h-9 w-9" />
       </span>
       <div className="space-y-1">
-        <p className="text-lg font-medium">{title}</p>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        <p className="text-xl font-normal text-m3-on-surface">{title}</p>
+        {description && (
+          <p className="text-sm text-m3-on-surface-variant">{description}</p>
+        )}
       </div>
       {action}
     </div>

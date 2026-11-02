@@ -3,9 +3,10 @@
 /**
  * Material 3 application shell (Material 3 edition only).
  *
- * Renders the independent M3 navigation (conversation list) + content pane.
- * The classic Infinite 1.5 shell (src/components/app-shell.tsx) is not used
- * for this edition and is left untouched.
+ * Renders the independent M3 navigation (conversation list + navigation bar)
+ * next to the content pane. The classic Infinite 1.5 shell
+ * (src/components/app-shell.tsx) is not used for this edition and is left
+ * untouched.
  */
 
 import React from 'react';
@@ -47,12 +48,14 @@ export function M3Shell({
   const showList = !isMobile || !hasContent;
 
   return (
-    <div className="flex h-svh w-full overflow-hidden bg-background">
+    <div className="flex h-svh w-full overflow-hidden bg-m3-surface">
       {showList && (
         <aside
           className={cn(
             'flex h-full min-h-0 flex-col',
-            isMobile ? 'w-full' : 'w-[352px] shrink-0 border-r border-foreground/[0.06]'
+            isMobile
+              ? 'w-full'
+              : 'w-[360px] shrink-0 border-r border-m3-outline-variant'
           )}
         >
           <M3ChatList
@@ -69,7 +72,7 @@ export function M3Shell({
       )}
 
       {(!isMobile || hasContent) && (
-        <main className="relative min-h-0 min-w-0 flex-1">
+        <main className="relative min-h-0 min-w-0 flex-1 bg-m3-surface">
           {hasContent ? (
             children
           ) : (

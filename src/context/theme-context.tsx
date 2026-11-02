@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { CustomThemeConfig } from '@/types';
+import { applyM3Palette } from '@/lib/m3-palette';
 
 export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'first_version' | 'custom';
 
@@ -496,6 +497,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       for (const [property, value] of Object.entries(varsToSet)) {
           if (value) root.style.setProperty(property, value);
+      }
+
+      // Material 3 edition: the seed colour is expanded into the full set of
+      // Material You color roles (surface-container-*, primary-container, …)
+      // and the legacy semantic variables are remapped onto them. The classic
+      // 1.5 and Material 2 editions keep the palette set above.
+      if (material3Design) {
+          applyM3Palette(root, themeColors.primary, isDarkMode);
       }
     }
   }, [theme, isDarkMode, glassEffect, experimentalDesign, material3Design, material2Design, isMounted, customThemeConfig]);
