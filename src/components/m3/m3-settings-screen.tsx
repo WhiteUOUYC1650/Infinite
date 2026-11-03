@@ -62,7 +62,7 @@ export function M3SettingsScreen({
   onOpenSettings: () => void;
 }) {
   const { t, language } = useLanguage();
-  const { isDarkMode, toggleTheme, useSystemFont, toggleSystemFont, appEdition } = useTheme();
+  const { isDarkMode, toggleTheme, useSystemFont, toggleSystemFont } = useTheme();
   const auth = useAuth();
 
   return (
@@ -135,7 +135,7 @@ export function M3SettingsScreen({
         </div>
 
         <p className="mt-4 text-center text-[11px] text-m3-on-surface-variant">
-          Infinite 3.0 · Redesign · {appEdition}
+          Infinite 3.0 · Redesign · {t('edition_material3')}
         </p>
       </div>
     </div>
