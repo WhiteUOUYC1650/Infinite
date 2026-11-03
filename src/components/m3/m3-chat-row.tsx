@@ -92,7 +92,7 @@ export function M3ChatRow({
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[16px] font-medium leading-6 text-m3-on-surface">
+          <span className="truncate text-[15.5px] font-semibold leading-6 text-m3-on-surface">
             {title}
           </span>
           {(otherUser?.username === '@Infinite' || (otherUser as any)?.isAdmin) && (
@@ -104,7 +104,7 @@ export function M3ChatRow({
             </span>
           )}
         </span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-[14px] leading-5 text-m3-on-surface-variant">
+        <span className="mt-0.5 flex items-center gap-1.5 text-[13.5px] leading-5 text-m3-on-surface-variant">
           {previewIcon}
           <span className="truncate">{preview || '—'}</span>
         </span>
@@ -118,6 +118,45 @@ export function M3ChatRow({
           <span className="h-5" />
         )}
       </span>
+    </button>
+  );
+}
+
+/**
+ * The two "shortcut" rows at the top of the list (Saved messages / General
+ * chat): tinted 48dp tile with an icon instead of an avatar.
+ */
+export function M3IconRow({
+  icon: Icon,
+  label,
+  description,
+  badge,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  description?: React.ReactNode;
+  badge?: number;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="m3-list-item">
+      <span className="m3-icon-tile">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15.5px] font-semibold leading-6 text-m3-on-surface">
+          {label}
+        </span>
+        {description && (
+          <span className="mt-0.5 block truncate text-[13.5px] leading-5 text-m3-on-surface-variant">
+            {description}
+          </span>
+        )}
+      </span>
+      {!!badge && badge > 0 ? (
+        <span className="m3-badge">{badge > 99 ? '99+' : badge}</span>
+      ) : null}
     </button>
   );
 }

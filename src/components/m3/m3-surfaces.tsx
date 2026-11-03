@@ -127,13 +127,19 @@ export function M3SearchBar({
   );
 }
 
-/** Tonal avatar colours: Material 3 containers, picked deterministically per name. */
-const AVATAR_ROLES = [
-  'bg-m3-primary-container text-m3-on-primary-container',
-  'bg-m3-secondary-container text-m3-on-secondary-container',
-  'bg-m3-tertiary-container text-m3-on-tertiary-container',
-  'bg-m3-surface-container-highest text-m3-on-surface',
-];
+/**
+ * Pastel avatar colours, picked deterministically from the name — the same
+ * soft lavender / mint / sky / peach palette the Material 3 mock-up uses.
+ */
+const PASTEL_HUES = [22, 46, 145, 172, 200, 226, 264, 291, 322];
+
+function pastelFor(name: string): React.CSSProperties {
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) % 100000;
+  const hue = PASTEL_HUES[hash % PASTEL_HUES.length];
+  // The hue is passed to CSS so the light/dark variants can differ.
+  return { ['--m3-avatar-h' as string]: String(hue) } as React.CSSProperties;
+}
 
 export function M3Avatar({
   name,
@@ -157,7 +163,7 @@ export function M3Avatar({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
-  const colorIndex = (name || '').length % AVATAR_ROLES.length;
+  const pastel = pastelFor(name || '?');
 
   return (
     <span
@@ -175,11 +181,8 @@ export function M3Avatar({
         />
       ) : (
         <span
-          className={cn(
-            'flex h-full w-full items-center justify-center rounded-full font-medium',
-            AVATAR_ROLES[colorIndex]
-          )}
-          style={{ fontSize: Math.max(12, Math.round(size * 0.34)) }}
+          className="m3-avatar-pastel flex h-full w-full items-center justify-center rounded-full font-medium"
+          style={{ ...pastel, fontSize: Math.max(12, Math.round(size * 0.34)) }}
         >
           {initials || '?'}
         </span>

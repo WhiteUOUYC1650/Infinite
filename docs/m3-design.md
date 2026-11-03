@@ -68,6 +68,9 @@ dialogs get elevation.
 | `.m3-search-field` | 56dp search bar (`surface-container-high`) |
 | `.m3-list-item` | 72dp list row (conversations, sheets) |
 | `.m3-badge`, `.m3-section-label` | unread badge, section label |
+| `.m3-icon-tile` | 48dp tinted tile for the Saved messages / General chat rows |
+| `.m3-avatar-pastel` | pastel initials avatar (light + dark variants) |
+| `.m3-app-bar-title-large`, `.m3-app-bar-tagline` | "Infinite / 3.0 · Recreation" header |
 
 React wrappers live in `m3-primitives.tsx` (app bar, icon button, buttons, FAB,
 chip, navigation bar), `m3-surfaces.tsx` (card, row, search bar, avatar, empty
@@ -76,10 +79,11 @@ state), `m3-chat-row.tsx` and `m3-chat-list.tsx` (conversations screen) and
 
 ## 4. Shared screens in the M3 build
 
-* **Chat** — the header is flattened (surface, no card/shadow), incoming
-  bubbles are white tonal cards with a 4dp tail, outgoing bubbles are filled
-  `primary` with `on-primary` text, the date separators become label pills and
-  the composer is a pill field plus a round filled send button.
+* **Chat** — the header is flattened (surface, no card/shadow, 12dp square
+  avatar for groups and channels), incoming bubbles are white cards with a 4dp
+  tail, outgoing bubbles use `primary-container`, the date separators are plain
+  centred labels and the composer is a warm pill field plus a round filled send
+  button.
 * **Dialogs / sheets / menus** — 28dp corners, `surface-container-*` fills,
   no borders, M3 elevation.
 * **Text fields, switches** — filled inputs with a 1dp outline (2dp `primary`
