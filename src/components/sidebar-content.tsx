@@ -244,45 +244,47 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [db, handleSelect]);
 
   const handleSelectSavedMessages = async () => { 
-    if (!db || !currentUser.uid) return; 
+    if (!currentUser.uid) return; 
     const chatId = currentUser.uid; 
-    const chatRef = doc(db, 'chats', chatId); 
+    let chatData: Chat = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' }; 
     try { 
+      if (!db) throw new Error('no db'); 
+      const chatRef = doc(db, 'chats', chatId); 
       const chatSnap = await getDoc(chatRef); 
-      let chatData: Chat; 
-      if (!chatSnap.exists()) { 
-        chatData = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' }; 
-        await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } }); 
-      } else { 
+      if (chatSnap.exists()) { 
         chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat; 
+      } else { 
+        await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } }); 
       } 
-      handleSelect(chatData); 
     } catch (error) { 
-      console.error(error); 
+      console.error('Saved messages: opening locally', error); 
     } 
+    if (typeof document !== 'undefined') document.body.style.pointerEvents = ''; 
+    handleSelect(chatData); 
   };
   
   const handleSelectGeneralChat = async () => { 
-    if (!db || !currentUser.uid) return; 
+    if (!currentUser.uid) return; 
     const chatId = 'GENERAL_CHAT'; 
-    const chatRef = doc(db, 'chats', chatId); 
+    let chatData: Chat = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' }; 
     try { 
+      if (!db) throw new Error('no db'); 
+      const chatRef = doc(db, 'chats', chatId); 
       const chatSnap = await getDoc(chatRef); 
-      let chatData: Chat; 
-      if (!chatSnap.exists()) { 
-        chatData = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' }; 
-        await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid], }); 
-      } else { 
+      if (chatSnap.exists()) { 
         chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat; 
         if (!chatData.members.includes(currentUser.uid)) { 
           await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) }); 
           chatData.members.push(currentUser.uid); 
         } 
+      } else { 
+        await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid], }); 
       } 
-      handleSelect(chatData); 
     } catch (error) { 
-      console.error(error); 
+      console.error('General chat: opening locally', error); 
     } 
+    if (typeof document !== 'undefined') document.body.style.pointerEvents = ''; 
+    handleSelect(chatData); 
   };
   
   const handleSelectBot = async (bot: User) => { 

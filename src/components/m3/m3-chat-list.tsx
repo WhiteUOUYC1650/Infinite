@@ -71,6 +71,22 @@ export function M3ChatList({
   const [queryText, setQueryText] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
+
+  /**
+   * Radix sheets (and every modal) lock `pointer-events` on <body> while open.
+   * If we navigate away in the same tick the sheet is closed, the lock can be
+   * left behind and the next screen stops reacting to taps. So close the sheet
+   * first and run the action after the exit animation.
+   */
+  const closeMenuThen = (action: () => void) => {
+    setMenuOpen(false);
+    window.setTimeout(action, 250);
+  };
+
+  const closeServicesThen = (action: () => void) => {
+    setServicesOpen(false);
+    window.setTimeout(action, 250);
+  };
   const [servicesOpen, setServicesOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -167,11 +183,7 @@ export function M3ChatList({
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-m3-surface">
       <header className="sticky top-0 z-30 flex flex-col gap-1 bg-m3-surface pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
-        <div className="flex items-start gap-1 pr-2">
-          <div className="min-w-0 flex-1 pt-1">
-            <span className="m3-app-bar-title-large truncate">Infinite</span>
-            <span className="m3-app-bar-tagline truncate">3.0 / Redesign</span>
-          </div>
+        <div className="flex items-start gap-1 pl-1 pr-2">
           <button
             type="button"
             aria-label={t('more')}
@@ -180,6 +192,10 @@ export function M3ChatList({
           >
             <Menu className="h-6 w-6" />
           </button>
+          <div className="min-w-0 flex-1 pt-1">
+            <span className="m3-app-bar-title-large truncate">Infinite</span>
+            <span className="m3-app-bar-tagline truncate">3.0 / Redesign</span>
+          </div>
         </div>
 
         <div className="px-2">
@@ -291,56 +307,38 @@ export function M3ChatList({
               plain
               icon={Plus}
               label={t('new_conversation')}
-              onClick={() => {
-                setMenuOpen(false);
-                setNewChatOpen(true);
-              }}
+              onClick={() => closeMenuThen(() => setNewChatOpen(true))}
             />
             <M3RowItem
               plain
               icon={Search}
               label={t('search_button')}
-              onClick={() => {
-                setMenuOpen(false);
-                setSearchOpen(true);
-              }}
+              onClick={() => closeMenuThen(() => setSearchOpen(true))}
             />
             <M3RowItem
               plain
               icon={Bookmark}
               label={t('saved_messages')}
-              onClick={() => {
-                setMenuOpen(false);
-                onSelectSaved();
-              }}
+              onClick={() => closeMenuThen(onSelectSaved)}
             />
             <M3RowItem
               plain
               icon={Globe}
               label={t('general_chat')}
-              onClick={() => {
-                setMenuOpen(false);
-                onSelectGeneral();
-              }}
+              onClick={() => closeMenuThen(onSelectGeneral)}
             />
             <div className="my-1 ml-4 border-t border-m3-outline-variant" />
             <M3RowItem
               plain
               icon={Sparkles}
               label={t('services')}
-              onClick={() => {
-                setMenuOpen(false);
-                setServicesOpen(true);
-              }}
+              onClick={() => closeMenuThen(() => setServicesOpen(true))}
             />
             <M3RowItem
               plain
               icon={Settings2}
               label={t('settings')}
-              onClick={() => {
-                setMenuOpen(false);
-                onOpenSettings();
-              }}
+              onClick={() => closeMenuThen(onOpenSettings)}
             />
           </div>
         </SheetContent>
@@ -363,10 +361,7 @@ export function M3ChatList({
               key={service.id}
               icon={service.icon}
               label={service.label}
-              onClick={() => {
-                setServicesOpen(false);
-                onSelectService(service.id);
-              }}
+              onClick={() => closeServicesThen(() => onSelectService(service.id))}
             />
           ))}
         </SheetContent>

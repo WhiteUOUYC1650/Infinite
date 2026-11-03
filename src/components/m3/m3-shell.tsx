@@ -10,7 +10,7 @@
  * Opening a chat replaces the whole pane on mobile, as before.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MessagesSquare, Search, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -54,6 +54,20 @@ export function M3Shell({
   const [unreadTotal, setUnreadTotal] = useState(0);
 
   const showList = !isMobile || !hasContent;
+
+  /*
+   * Safety net for Radix modals: while any dialog/sheet is open it sets
+   * `pointer-events: none` on <body>. If the screen changes during the exit
+   * animation the lock can survive, and the UI stops reacting to taps.
+   */
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const id = window.setTimeout(() => {
+      const openModal = document.querySelector('[role="dialog"][data-state="open"]');
+      if (!openModal) document.body.style.pointerEvents = '';
+    }, 320);
+    return () => window.clearTimeout(id);
+  }, [tab, hasContent]);
 
   return (
     <div className="flex h-svh w-full overflow-hidden bg-m3-surface">

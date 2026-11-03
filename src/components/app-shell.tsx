@@ -59,6 +59,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const { material3Design } = useTheme();
   const [m3SettingsOpen, setM3SettingsOpen] = useState(false);
   const [isOnlineState, setIsOnlineState] = useState(true);
+  const [selectionNonce, setSelectionNonce] = useState(0);
   const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
 
   const processedMsgIds = useRef<Set<string>>(new Set());
@@ -363,7 +364,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null)} initialVideoId={infVidInitialVideoId || undefined} />;
     if (selectedItem === 'infmusic') return <InfMusicView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
-    if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
+    if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={`${selectedItem.id}-${selectionNonce}`} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     return null;
   };
 
@@ -372,6 +373,16 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
    * The classic 1.5 markup below is never rendered for this edition.
    * ------------------------------------------------------------------- */
   const handleM3SelectChat = useCallback((chat: Chat) => {
+    /*
+     * Any modal (M3 sheets, dialogs) locks pointer events on <body> while open.
+     * Navigating straight from such a sheet can leave that lock behind, which
+     * makes the UI ignore taps until the app is restarted - seen with the Saved
+     * messages / General chat shortcuts. Clearing it here keeps the app alive.
+     */
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = '';
+    }
+    setSelectionNonce((n) => n + 1);
     const iconName = (chat.icon === 'Drum' || chat.name === 'Infinite') ? 'Bot' : chat.icon as any;
     handleSelect({ ...chat, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
   }, [handleSelect]);
@@ -379,35 +390,43 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const handleM3SelectService = useCallback((service: M3Service) => handleSelect(service), [handleSelect]);
 
   const handleM3SavedMessages = async () => {
-    if (!db || !currentUser.uid) return;
+    if (!currentUser.uid) return;
     const chatId = currentUser.uid;
-    const chatRef = doc(db, 'chats', chatId);
-    const chatSnap = await getDoc(chatRef);
-    let chatData: Chat;
-    if (!chatSnap.exists()) {
-      chatData = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' };
-      await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } });
-    } else {
-      chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+    let chatData: Chat = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' };
+    try {
+      if (!db) throw new Error('no db');
+      const chatRef = doc(db, 'chats', chatId);
+      const chatSnap = await getDoc(chatRef);
+      if (chatSnap.exists()) {
+        chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+      } else {
+        await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } });
+      }
+    } catch (e) {
+      console.error('Saved messages: could not sync chat doc, opening locally', e);
     }
     handleM3SelectChat(chatData);
   };
 
   const handleM3GeneralChat = async () => {
-    if (!db || !currentUser.uid) return;
+    if (!currentUser.uid) return;
     const chatId = 'GENERAL_CHAT';
-    const chatRef = doc(db, 'chats', chatId);
-    const chatSnap = await getDoc(chatRef);
-    let chatData: Chat;
-    if (!chatSnap.exists()) {
-      chatData = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' };
-      await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid] });
-    } else {
-      chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-      if (!chatData.members.includes(currentUser.uid)) {
-        await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) });
-        chatData = { ...chatData, members: [...chatData.members, currentUser.uid] };
+    let chatData: Chat = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' };
+    try {
+      if (!db) throw new Error('no db');
+      const chatRef = doc(db, 'chats', chatId);
+      const chatSnap = await getDoc(chatRef);
+      if (chatSnap.exists()) {
+        chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
+        if (!chatData.members.includes(currentUser.uid)) {
+          await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) });
+          chatData = { ...chatData, members: [...chatData.members, currentUser.uid] };
+        }
+      } else {
+        await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid] });
       }
+    } catch (e) {
+      console.error('General chat: could not sync chat doc, opening locally', e);
     }
     handleM3SelectChat(chatData);
   };
