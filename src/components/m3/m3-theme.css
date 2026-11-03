@@ -233,7 +233,7 @@
   width: 56px;
   height: 56px;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--md3-shape-lg);
   background-color: hsl(var(--md-sys-color-primary-container));
   color: hsl(var(--md-sys-color-on-primary-container));
   box-shadow: var(--md3-elev-3);
@@ -417,19 +417,29 @@
 }
 
 [data-material3="true"] button[role="switch"] > span {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1rem;
+  height: 1rem;
   margin: 0;
   background-color: hsl(var(--md-sys-color-outline));
   box-shadow: none;
   transform: translateX(0);
+  transition: transform 250ms var(--md3-ease-standard),
+    width 250ms var(--md3-ease-standard), height 250ms var(--md3-ease-standard);
 }
 
 /* 24dp thumb in a 44dp inner area: travel = 20dp, so it stops exactly
    at the 4dp padding edge (no overshoot to the right) */
 [data-material3="true"] button[role="switch"][data-state="checked"] > span {
+  width: 1.5rem;
+  height: 1.5rem;
   background-color: hsl(var(--md-sys-color-on-primary));
   transform: translateX(1.25rem);
+}
+
+/* pressed: the thumb grows to 28dp and stops exactly at the right padding edge */
+[data-material3="true"] button[role="switch"]:active > span {
+  width: 1.75rem;
+  height: 1.5rem;
 }
 
 [data-material3="true"] button[role="switch"][data-state="checked"]:active > span {

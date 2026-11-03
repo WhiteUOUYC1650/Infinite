@@ -88,3 +88,31 @@ state), `m3-chat-row.tsx` and `m3-chat-list.tsx` (conversations screen) and
   no borders, M3 elevation.
 * **Text fields, switches** — filled inputs with a 1dp outline (2dp `primary`
   when focused) and the 52×32dp M3 switch.
+
+## 5. Conversations screen (home)
+
+* Large app bar: **Infinite** + `3.0 / Recreation` tagline, with a
+  **hamburger** on the left that opens the Material 3 navigation drawer
+  (profile, new chat, search, saved messages, general chat, services,
+  settings). A `DropdownMenu` was used here before — on Android WebView it can
+  leave `pointer-events: none` on `<body>` after an action, which made the whole
+  screen unclickable, so the drawer replaced it. The chat screen keeps its own
+  three-dot menu.
+* Filter chips: **All / Direct / Groups / Channels / Bots**. Bots are DM chats
+  with `isBot` / `isCustomBot` and are excluded from "Direct messages", so the
+  folder shows people only.
+* `Saved messages` and `General chat` are list rows with tinted 48dp tiles.
+* 56dp FAB with the M3 large shape (**16dp corners**, not a circle) and
+  `primary-container` fill.
+* Navigation bar: Chats / Contacts / Settings, unread badge on Chats.
+
+## 6. Values taken from `material-components/material-web`
+
+| Component | Values used here |
+| --- | --- |
+| FAB | 56×56dp, `corner-large` = 16dp |
+| Switch | track 52×32dp, outline 2dp, handle 16dp → 24dp (checked) → 28dp (pressed), travel = `track-width − track-height` = 20dp, so the handle always stops 4dp before the edge |
+| Navigation bar | 80dp, 32×64dp indicator pill |
+| Chips | 32dp height, `corner-small` = 8dp |
+| Dialogs / sheets | `corner-extra-large` = 28dp |
+| State layers | hover 8%, focus 10%, pressed 10% |

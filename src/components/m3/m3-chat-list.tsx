@@ -6,9 +6,10 @@
  * Layout follows the Infinite 3.0 Material 3 mock-up:
  *   large app bar ("Infinite" + tagline + overflow menu)
  *   search field
- *   filter chips (All / DMs / Groups / Channels), text chips
+ *   filter chips (All / DMs / Groups / Channels / Bots), text chips
  *   list: Saved messages, General chat, then the conversations
- *   round FAB (compose) + 3-destination navigation bar
+ *   16dp FAB (compose) + 3-destination navigation bar
+ *   hamburger in the app bar opens the navigation drawer
  */
 
 import React, { useMemo, useState } from 'react';
@@ -18,8 +19,8 @@ import {
   Cpu,
   Gamepad2,
   Globe,
+  Menu,
   MessageSquare,
-  MoreVertical,
   Music4,
   Newspaper,
   Pencil,
@@ -36,21 +37,14 @@ import { useLanguage } from '@/context/language-context';
 import type { AuthenticatedUser, Chat } from '@/types';
 import { NewChatDialog } from '@/components/new-chat-dialog';
 import { SearchDialog } from '@/components/search-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { M3ChatRow, M3IconRow } from './m3-chat-row';
-import { M3RowItem, M3SearchBar } from './m3-surfaces';
+import { M3Avatar, M3RowItem, M3SearchBar } from './m3-surfaces';
 import { M3Chip, M3Fab, M3NavItem, M3NavigationBar } from './m3-primitives';
 
 export type M3Service = 'infvid' | 'infmusic' | 'infgames' | 'bot_studio' | 'feed';
 
-type Filter = 'all' | 'dm' | 'group' | 'channel';
+type Filter = 'all' | 'dm' | 'group' | 'channel' | 'bots';
 
 export function M3ChatList({
   currentUser,
@@ -77,6 +71,7 @@ export function M3ChatList({
   const [searchOpen, setSearchOpen] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const chatsQuery = useMemo(() => {
     if (!db || !currentUser.uid) return null;
@@ -100,11 +95,29 @@ export function M3ChatList({
     [currentUser.archivedChats]
   );
 
+  /** The other participant of a DM (bots included — they are DM chats too). */
+  const otherOf = (chat: Chat) =>
+    chat.type === 'dm'
+      ? dmUsers[chat.members.find((member) => member !== currentUser.uid) || ''] || null
+      : null;
+
+  const isBotChat = (chat: Chat) => {
+    if (chat.type !== 'dm') return false;
+    const other = otherOf(chat);
+    return !!(other?.isBot || other?.isCustomBot);
+  };
+
   const visibleChats = useMemo(() => {
     const needle = queryText.trim().toLowerCase();
     return (chats || [])
       .filter((chat) => !archived.has(chat.id))
-      .filter((chat) => (filter === 'all' ? true : chat.type === filter))
+      // bots live in their own folder, never in "Direct messages"
+      .filter((chat) => {
+        if (filter === 'all') return true;
+        if (filter === 'bots') return isBotChat(chat);
+        if (filter === 'dm') return chat.type === 'dm' && !isBotChat(chat);
+        return chat.type === filter;
+      })
       .filter((chat) => {
         if (!needle) return true;
         const other =
@@ -135,6 +148,7 @@ export function M3ChatList({
     { id: 'dm', label: t('direct_messages') },
     { id: 'group', label: t('groups') },
     { id: 'channel', label: t('channels') },
+    { id: 'bots', label: t('bots') },
   ];
 
   const services: { id: M3Service; label: string; icon: React.ElementType }[] = [
@@ -153,36 +167,14 @@ export function M3ChatList({
             <span className="m3-app-bar-title-large truncate">Infinite</span>
             <span className="m3-app-bar-tagline truncate">3.0 / Recreation</span>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('more')}
-                className="m3-icon-button mt-1 text-m3-on-surface-variant"
-              >
-                <MoreVertical className="h-5 w-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuItem onSelect={() => setNewChatOpen(true)}>
-                <Plus className="mr-3 h-4 w-4 text-m3-primary" />
-                {t('new_conversation')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setSearchOpen(true)}>
-                <Search className="mr-3 h-4 w-4 text-m3-primary" />
-                {t('search_placeholder')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setServicesOpen(true)}>
-                <Sparkles className="mr-3 h-4 w-4 text-m3-primary" />
-                {t('services')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onOpenSettings}>
-                <Settings2 className="mr-3 h-4 w-4 text-m3-primary" />
-                {t('settings')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            type="button"
+            aria-label={t('more')}
+            onClick={() => setMenuOpen(true)}
+            className="m3-icon-button mt-1 text-m3-on-surface"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
         </div>
 
         <div className="px-2">
@@ -272,6 +264,87 @@ export function M3ChatList({
         <M3NavItem icon={Users} label={t('contacts')} onClick={() => setSearchOpen(true)} />
         <M3NavItem icon={Settings2} label={t('settings')} onClick={onOpenSettings} />
       </M3NavigationBar>
+
+      {/* navigation drawer opened by the hamburger in the app bar */}
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="left"
+          className="w-[300px] max-w-[85vw] rounded-r-[28px] border-0 bg-m3-surface-container-low p-0"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t('more')}</SheetTitle>
+          </SheetHeader>
+          <div className="flex items-center gap-3 px-5 pb-4 pt-[calc(1.25rem+env(safe-area-inset-top))]">
+            <M3Avatar name={currentUser.name} src={currentUser.avatar} size={48} />
+            <div className="min-w-0">
+              <p className="truncate text-[15.5px] font-semibold text-m3-on-surface">
+                {currentUser.name}
+              </p>
+              <p className="truncate text-[13px] text-m3-on-surface-variant">
+                {currentUser.username}
+              </p>
+            </div>
+          </div>
+
+          <div className="px-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+            <M3RowItem
+              plain
+              icon={Plus}
+              label={t('new_conversation')}
+              onClick={() => {
+                setMenuOpen(false);
+                setNewChatOpen(true);
+              }}
+            />
+            <M3RowItem
+              plain
+              icon={Search}
+              label={t('search_button')}
+              onClick={() => {
+                setMenuOpen(false);
+                setSearchOpen(true);
+              }}
+            />
+            <M3RowItem
+              plain
+              icon={Bookmark}
+              label={t('saved_messages')}
+              onClick={() => {
+                setMenuOpen(false);
+                onSelectSaved();
+              }}
+            />
+            <M3RowItem
+              plain
+              icon={Globe}
+              label={t('general_chat')}
+              onClick={() => {
+                setMenuOpen(false);
+                onSelectGeneral();
+              }}
+            />
+            <div className="my-1 ml-4 border-t border-m3-outline-variant" />
+            <M3RowItem
+              plain
+              icon={Sparkles}
+              label={t('services')}
+              onClick={() => {
+                setMenuOpen(false);
+                setServicesOpen(true);
+              }}
+            />
+            <M3RowItem
+              plain
+              icon={Settings2}
+              label={t('settings')}
+              onClick={() => {
+                setMenuOpen(false);
+                onOpenSettings();
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={servicesOpen} onOpenChange={setServicesOpen}>
         <SheetContent

@@ -42,7 +42,11 @@ export function M3SectionLabel({
   return <p className={cn('m3-section-label', className)}>{children}</p>;
 }
 
-/** M3 list item: 72dp, 12dp corners, optional tonal leading icon. */
+/**
+ * M3 list item: 72dp, 12dp corners, optional tonal leading icon.
+ * `plain` drops the tonal tile and the trailing chevron, which is how items
+ * look inside the navigation drawer.
+ */
 export function M3RowItem({
   icon: Icon,
   label,
@@ -51,6 +55,7 @@ export function M3RowItem({
   onClick,
   className,
   right,
+  plain,
 }: {
   icon?: React.ElementType;
   label: React.ReactNode;
@@ -59,14 +64,18 @@ export function M3RowItem({
   onClick?: () => void;
   className?: string;
   right?: React.ReactNode;
+  plain?: boolean;
 }) {
   return (
     <button type="button" onClick={onClick} className={cn('m3-list-item', className)}>
-      {Icon && (
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-m3-secondary-container text-m3-on-secondary-container">
-          <Icon className="h-5 w-5" />
-        </span>
-      )}
+      {Icon &&
+        (plain ? (
+          <Icon className="h-5 w-5 shrink-0 text-m3-on-surface-variant" />
+        ) : (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-m3-secondary-container text-m3-on-secondary-container">
+            <Icon className="h-5 w-5" />
+          </span>
+        ))}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-normal leading-6 text-m3-on-surface">
           {label}
@@ -78,9 +87,7 @@ export function M3RowItem({
         )}
       </span>
       {value}
-      {right ?? (
-        <ChevronRight className="h-5 w-5 shrink-0 text-m3-on-surface-variant" />
-      )}
+      {right ?? (plain ? null : <ChevronRight className="h-5 w-5 shrink-0 text-m3-on-surface-variant" />)}
     </button>
   );
 }
