@@ -209,14 +209,7 @@ body.use-system-font h4 {
 }
 
 /* --- typography ----------------------------------------------------------- */
-[data-material2="true"] body,
-[data-material2="true"] .font-headline,
-[data-material2="true"] .font-body,
-[data-material2="true"] input,
-[data-material2="true"] textarea,
-[data-material2="true"] button {
-  font-family: "Roboto", "Roboto Flex", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
-}
+/* Font family follows Settings → System font (PT Sans when disabled). */
 
 [data-material2="true"] .font-black {
   font-weight: 500;

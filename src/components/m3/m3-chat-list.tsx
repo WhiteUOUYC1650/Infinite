@@ -52,6 +52,7 @@ export function M3ChatList({
   onSelectSaved,
   onSelectGeneral,
   onOpenSettings,
+  onOpenSettingsTab,
   onUnreadChange,
 }: {
   currentUser: AuthenticatedUser;
@@ -62,6 +63,7 @@ export function M3ChatList({
   onSelectSaved: () => void;
   onSelectGeneral: () => void;
   onOpenSettings: () => void;
+  onOpenSettingsTab?: () => void;
   /** Lets the shell show the unread badge on the "Chats" navigation item. */
   onUnreadChange?: (total: number) => void;
 }) {
@@ -338,7 +340,7 @@ export function M3ChatList({
               plain
               icon={Settings2}
               label={t('settings')}
-              onClick={() => closeMenuThen(onOpenSettings)}
+              onClick={() => closeMenuThen(onOpenSettingsTab ?? onOpenSettings)}
             />
           </div>
         </SheetContent>

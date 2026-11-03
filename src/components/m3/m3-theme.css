@@ -51,7 +51,9 @@
 
 /* -------------------------------------------------- base & type ---------- */
 [data-material3="true"] body {
-  font-family: "Roboto", "Roboto Flex", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  /* Font family is intentionally inherited from the app base font (PT Sans) or
+     from the system stack when Settings → System font is enabled: the toggle
+     must keep working in every edition. */
   background-color: hsl(var(--md-sys-color-surface));
   background-image: none;
   color: hsl(var(--md-sys-color-on-surface));

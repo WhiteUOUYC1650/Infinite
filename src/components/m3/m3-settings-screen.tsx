@@ -1,58 +1,36 @@
 'use client';
 
 /**
- * Material 3 settings *screen* — the screen version of
- * ExperimentalSettingsDialog. It shows in place of the conversation list while
- * the bottom navigation is on the "Settings" tab (so the navigation bar stays
- * visible); the full settings dialog is still one tap away.
+ * Material 3 settings *screen*.
+ *
+ * Every category opens a real in-screen page (Appearance, Chats, Language,
+ * Data & storage, About) instead of jumping into the old settings dialog.
+ * The dialog stays available behind "All settings" for the advanced sections
+ * (InfGold, premium, PIN protection, stories, …).
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  ArrowLeft,
+  HardDrive,
+  Info,
   Languages,
   LogOut,
-  Moon,
+  MessageSquare,
   Palette,
   Settings2,
-  Smartphone,
-  Sun,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { useLanguage } from '@/context/language-context';
-import { useTheme } from '@/context/theme-context';
 import type { AuthenticatedUser } from '@/types';
-import { Switch } from '@/components/ui/switch';
+import { EditProfileDialog } from '@/components/edit-profile-dialog';
 import { M3Avatar, M3RowItem } from './m3-surfaces';
-import { M3FilledButton } from './m3-primitives';
+import { M3FilledButton, M3IconButton } from './m3-primitives';
+import { M3AppearancePage, M3ChatsPage, M3LanguagePage } from './m3-settings-pages';
+import { M3AboutPage, M3StoragePage } from './m3-settings-info';
 
-function ToggleRow({
-  icon: Icon,
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  icon: React.ElementType;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl px-4 py-3">
-      <Icon className="h-5 w-5 shrink-0 text-m3-on-surface-variant" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-base leading-6 text-m3-on-surface">{label}</span>
-        {description && (
-          <span className="mt-0.5 block truncate text-[13px] leading-tight text-m3-on-surface-variant">
-            {description}
-          </span>
-        )}
-      </span>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
-}
+type PageId = 'root' | 'appearance' | 'chats' | 'language' | 'storage' | 'about';
 
 export function M3SettingsScreen({
   currentUser,
@@ -62,82 +40,129 @@ export function M3SettingsScreen({
   onOpenSettings: () => void;
 }) {
   const { t, language } = useLanguage();
-  const { isDarkMode, toggleTheme, useSystemFont, toggleSystemFont } = useTheme();
   const auth = useAuth();
+  const [page, setPage] = useState<PageId>('root');
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+
+  const titles: Record<PageId, string> = {
+    root: t('settings'),
+    appearance: t('appearance'),
+    chats: t('chat_settings'),
+    language: t('language'),
+    storage: t('data_storage'),
+    about: t('about'),
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-m3-surface">
-      <header className="px-2 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <h1 className="m3-app-bar-title-large truncate">{t('settings')}</h1>
+      <header className="flex items-center gap-1 px-2 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        {page !== 'root' && (
+          <M3IconButton icon={ArrowLeft} label={t('back')} onClick={() => setPage('root')} />
+        )}
+        <h1 className="m3-app-bar-title-large min-w-0 flex-1 truncate px-1">{titles[page]}</h1>
+        {page === 'root' && (
+          <M3IconButton icon={Settings2} label={t('all_settings')} onClick={onOpenSettings} />
+        )}
       </header>
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-6">
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="mb-3 flex w-full items-center gap-3 rounded-2xl bg-m3-surface-container-low px-4 py-3 text-left"
-        >
-          <M3Avatar name={currentUser.name} src={currentUser.avatar} size={48} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15.5px] font-semibold leading-6 text-m3-on-surface">
-              {currentUser.name}
-            </span>
-            <span className="block truncate text-[13px] text-m3-on-surface-variant">
-              {currentUser.username}
-            </span>
-          </span>
-        </button>
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pb-8">
+        {page === 'root' && (
+          <div className="px-2">
+            <button
+              type="button"
+              onClick={() => setEditProfileOpen(true)}
+              className="mb-3 flex w-full items-center gap-3 rounded-[1.5rem] bg-m3-surface-container-low px-4 py-3.5 text-left"
+            >
+              <M3Avatar name={currentUser.name} src={currentUser.avatar} size={56} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[16px] font-medium leading-6 text-m3-on-surface">
+                  {currentUser.name}
+                </span>
+                <span className="block truncate text-[13px] text-m3-on-surface-variant">
+                  {currentUser.username}
+                </span>
+              </span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-m3-surface-container-high text-m3-on-surface-variant">
+                <UserCog className="h-4 w-4" />
+              </span>
+            </button>
 
-        <div className="rounded-2xl bg-m3-surface-container-low py-1">
-          <ToggleRow
-            icon={isDarkMode ? Moon : Sun}
-            label={t('dark_mode')}
-            checked={isDarkMode}
-            onCheckedChange={toggleTheme}
-          />
-          <ToggleRow
-            icon={Smartphone}
-            label={t('use_system_font_label')}
-            description={t('use_system_font_desc')}
-            checked={useSystemFont}
-            onCheckedChange={toggleSystemFont}
-          />
-        </div>
+            <div className="space-y-3">
+              <div className="rounded-[1.5rem] bg-m3-surface-container-low py-1">
+                <M3RowItem
+                  plain
+                  icon={Palette}
+                  label={t('appearance')}
+                  description={t('appearance_desc')}
+                  onClick={() => setPage('appearance')}
+                />
+                <M3RowItem
+                  plain
+                  icon={MessageSquare}
+                  label={t('chat_settings')}
+                  description={t('chat_settings_desc')}
+                  onClick={() => setPage('chats')}
+                />
+                <M3RowItem
+                  plain
+                  icon={Languages}
+                  label={t('language')}
+                  description={t('language_desc')}
+                  value={<span className="text-sm text-m3-on-surface-variant">{language}</span>}
+                  onClick={() => setPage('language')}
+                />
+              </div>
 
-        <div className="mt-3 rounded-2xl bg-m3-surface-container-low py-1">
-          <M3RowItem
-            icon={Languages}
-            label={t('language')}
-            description={t('language_desc')}
-            value={<span className="text-sm text-m3-on-surface-variant">{language}</span>}
-            onClick={onOpenSettings}
-          />
-          <M3RowItem
-            icon={Palette}
-            label={t('appearance')}
-            description={t('appearance_desc')}
-            onClick={onOpenSettings}
-          />
-        </div>
+              <div className="rounded-[1.5rem] bg-m3-surface-container-low py-1">
+                <M3RowItem
+                  plain
+                  icon={HardDrive}
+                  label={t('data_storage')}
+                  description={t('data_storage_desc')}
+                  onClick={() => setPage('storage')}
+                />
+                <M3RowItem
+                  plain
+                  icon={Info}
+                  label={t('about')}
+                  description={t('about_desc')}
+                  onClick={() => setPage('about')}
+                />
+              </div>
+            </div>
 
-        <div className="mt-4 space-y-2">
-          <M3FilledButton variant="tonal" icon={Settings2} onClick={onOpenSettings} className="w-full">
-            {t('all_settings')}
-          </M3FilledButton>
-          <button
-            type="button"
-            onClick={() => void auth?.signOut()}
-            className="flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-m3-error"
-          >
-            <LogOut className="h-[18px] w-[18px]" />
-            {t('logout')}
-          </button>
-        </div>
+            <div className="mt-4 space-y-2">
+              <M3FilledButton variant="tonal" icon={Settings2} onClick={onOpenSettings} className="w-full">
+                {t('all_settings')}
+              </M3FilledButton>
+              <button
+                type="button"
+                onClick={() => void auth?.signOut()}
+                className="flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-m3-error"
+              >
+                <LogOut className="h-[18px] w-[18px]" />
+                {t('logout')}
+              </button>
+            </div>
 
-        <p className="mt-4 text-center text-[11px] text-m3-on-surface-variant">
-          Infinite 3.0 · Redesign · {t('edition_material3')}
-        </p>
+            <p className="mt-4 text-center text-[11px] text-m3-on-surface-variant">
+              Infinite 3.0 · Redesign · {t('edition_material3')}
+            </p>
+          </div>
+        )}
+
+        {page === 'appearance' && <M3AppearancePage />}
+        {page === 'chats' && <M3ChatsPage />}
+        {page === 'language' && <M3LanguagePage />}
+        {page === 'storage' && <M3StoragePage />}
+        {page === 'about' && <M3AboutPage onOpenAllSettings={onOpenSettings} />}
       </div>
+
+      <EditProfileDialog
+        user={currentUser}
+        open={editProfileOpen}
+        onOpenChange={setEditProfileOpen}
+      />
     </div>
   );
 }

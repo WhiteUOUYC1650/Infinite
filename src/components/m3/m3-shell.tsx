@@ -91,6 +91,7 @@ export function M3Shell({
                 onSelectSaved={onSelectSaved}
                 onSelectGeneral={onSelectGeneral}
                 onOpenSettings={onOpenSettings}
+                onOpenSettingsTab={() => setTab('settings')}
                 onUnreadChange={setUnreadTotal}
               />
             )}
