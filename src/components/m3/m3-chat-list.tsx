@@ -12,7 +12,7 @@
  *   hamburger in the app bar opens the navigation drawer
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc, query, collection, where } from 'firebase/firestore';
 import {
   Bookmark,
@@ -20,7 +20,6 @@ import {
   Gamepad2,
   Globe,
   Menu,
-  MessageSquare,
   Music4,
   Newspaper,
   Pencil,
@@ -28,7 +27,6 @@ import {
   Search,
   Settings2,
   Sparkles,
-  Users,
   Video,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
@@ -40,7 +38,7 @@ import { SearchDialog } from '@/components/search-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { M3ChatRow, M3IconRow } from './m3-chat-row';
 import { M3Avatar, M3RowItem, M3SearchBar } from './m3-surfaces';
-import { M3Chip, M3Fab, M3NavItem, M3NavigationBar } from './m3-primitives';
+import { M3Chip, M3Fab } from './m3-primitives';
 
 export type M3Service = 'infvid' | 'infmusic' | 'infgames' | 'bot_studio' | 'feed';
 
@@ -54,6 +52,7 @@ export function M3ChatList({
   onSelectSaved,
   onSelectGeneral,
   onOpenSettings,
+  onUnreadChange,
 }: {
   currentUser: AuthenticatedUser;
   selectedId?: string;
@@ -63,6 +62,8 @@ export function M3ChatList({
   onSelectSaved: () => void;
   onSelectGeneral: () => void;
   onOpenSettings: () => void;
+  /** Lets the shell show the unread badge on the "Chats" navigation item. */
+  onUnreadChange?: (total: number) => void;
 }) {
   const db = useFirestore();
   const { t } = useLanguage();
@@ -143,6 +144,10 @@ export function M3ChatList({
     [visibleChats, currentUser.uid]
   );
 
+  useEffect(() => {
+    onUnreadChange?.(unreadTotal);
+  }, [unreadTotal, onUnreadChange]);
+
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: t('all_chats') },
     { id: 'dm', label: t('direct_messages') },
@@ -165,7 +170,7 @@ export function M3ChatList({
         <div className="flex items-start gap-1 pr-2">
           <div className="min-w-0 flex-1 pt-1">
             <span className="m3-app-bar-title-large truncate">Infinite</span>
-            <span className="m3-app-bar-tagline truncate">3.0 / Recreation</span>
+            <span className="m3-app-bar-tagline truncate">3.0 / Redesign</span>
           </div>
           <button
             type="button"
@@ -256,20 +261,15 @@ export function M3ChatList({
         icon={Pencil}
         label={t('new_conversation')}
         onClick={() => setNewChatOpen(true)}
-        className="absolute bottom-[calc(92px+env(safe-area-inset-bottom))] right-4"
+        className="absolute bottom-5 right-4"
       />
-
-      <M3NavigationBar>
-        <M3NavItem icon={MessageSquare} label={t('chats_label')} active badge={unreadTotal} />
-        <M3NavItem icon={Users} label={t('contacts')} onClick={() => setSearchOpen(true)} />
-        <M3NavItem icon={Settings2} label={t('settings')} onClick={onOpenSettings} />
-      </M3NavigationBar>
 
       {/* navigation drawer opened by the hamburger in the app bar */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent
           side="left"
-          className="w-[300px] max-w-[85vw] rounded-r-[28px] border-0 bg-m3-surface-container-low p-0"
+          hideCloseButton
+          className="w-[300px] max-w-[85vw] border-0 bg-m3-surface-container-low p-0"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{t('more')}</SheetTitle>
@@ -349,7 +349,8 @@ export function M3ChatList({
       <Sheet open={servicesOpen} onOpenChange={setServicesOpen}>
         <SheetContent
           side="bottom"
-          className="rounded-t-[28px] border-0 bg-m3-surface-container-high px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
+          hideCloseButton
+          className="border-0 bg-m3-surface-container-high px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
         >
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-m3-on-surface-variant/40" />
           <SheetHeader className="px-4 pb-1 text-left">

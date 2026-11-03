@@ -347,6 +347,20 @@
   box-shadow: var(--md3-elev-3);
 }
 
+/* sheets attached to a screen edge: only the inner corners are rounded */
+[data-material3="true"] [role="dialog"][data-side="bottom"] {
+  border-radius: var(--md3-shape-xl) var(--md3-shape-xl) 0 0;
+}
+[data-material3="true"] [role="dialog"][data-side="left"] {
+  border-radius: 0 var(--md3-shape-xl) var(--md3-shape-xl) 0;
+}
+[data-material3="true"] [role="dialog"][data-side="right"] {
+  border-radius: var(--md3-shape-xl) 0 0 var(--md3-shape-xl);
+}
+[data-material3="true"] [role="dialog"][data-side="top"] {
+  border-radius: 0 0 var(--md3-shape-xl) var(--md3-shape-xl);
+}
+
 /* an app bar inside a dialog should not behave like a page app bar */
 [data-material3="true"] [role="dialog"] header {
   padding-top: 0;

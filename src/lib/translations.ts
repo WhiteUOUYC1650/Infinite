@@ -3,6 +3,7 @@ export type Language = 'en' | 'ru' | 'es' | 'pt-BR' | 'be' | 'old-ru';
 export const translations = {
     en: {
       'settings': 'Settings',
+      'all_settings': 'All settings',
       'profile': 'Profile',
       'notifications': 'Notifications',
       'appearance': 'Appearance',
@@ -635,6 +636,7 @@ export const translations = {
     },
     ru: {
       'settings': 'Настройки',
+      'all_settings': 'Все настройки',
       'profile': 'Профиль',
       'notifications': 'Уведомления',
       'appearance': 'Внешний вид',
@@ -1263,6 +1265,7 @@ export const translations = {
     },
     'es': {
         'settings': 'Ajustes',
+        'all_settings': 'Todos los ajustes',
         'profile': 'Perfil',
         'notifications': 'Notificaciones',
         'appearance': 'Apariencia',
@@ -1396,6 +1399,7 @@ export const translations = {
     },
     'pt-BR': {
         'settings': 'Configurações',
+        'all_settings': 'Todas as configurações',
         'profile': 'Perfil',
         'notifications': 'Notificações',
         'appearance': 'Aparência',
@@ -1528,6 +1532,7 @@ export const translations = {
     },
     'be': {
       'settings': 'Налады',
+      'all_settings': 'Усе налады',
       'profile': 'Профіль',
       'notifications': 'Апавяшчэнні',
       'appearance': 'Знешні выгляд',
@@ -2152,6 +2157,7 @@ export const translations = {
     },
     'old-ru': {
       'settings': 'Настройки',
+      'all_settings': 'Всѣ настройки',
       'profile': 'Профиль',
       'notifications': 'Увѣдомленія',
       'appearance': 'Внѣшній видъ',

@@ -116,3 +116,34 @@ state), `m3-chat-row.tsx` and `m3-chat-list.tsx` (conversations screen) and
 | Chips | 32dp height, `corner-small` = 8dp |
 | Dialogs / sheets | `corner-extra-large` = 28dp |
 | State layers | hover 8%, focus 10%, pressed 10% |
+
+## 7. Bottom navigation = three real screens
+
+The Material 3 shell (`m3-shell.tsx`) owns the tab state, so the navigation bar
+never disappears when switching:
+
+| Tab | Screen | Dialog version (still available) |
+| --- | --- | --- |
+| Chats | `m3-chat-list.tsx` (conversations) | – |
+| Search | `m3-search-screen.tsx` (global search screen) | `SearchDialog` — opened from the navigation drawer |
+| Settings | `m3-settings-screen.tsx` (appearance / theme / language / log out) | `ExperimentalSettingsDialog` — "All settings" button |
+
+Both search versions share `runGlobalSearch`, `ensureDmChat` and
+`joinChatIfNeeded` from `src/lib/global-search.ts`, so the dialog and the screen
+behave identically (users, groups, channels, bots, `/C/ /G/ /B/ /IG/` links).
+The unread badge on the "Chats" tab is reported by the conversation list via
+`onUnreadChange`.
+
+## 8. Corners of edge-attached surfaces
+
+Sheets that are flush with a screen edge are rounded **only on the inner
+side**, like in Material 3: bottom sheets get 28dp on top, the left drawer 28dp
+on the right, etc. `SheetContent` exposes `data-side`, and the M3 stylesheet
+uses it:
+
+```css
+[data-material3="true"] [role="dialog"][data-side="bottom"] { border-radius: 28px 28px 0 0; }
+[data-material3="true"] [role="dialog"][data-side="left"]   { border-radius: 0 28px 28px 0; }
+```
+
+Centred dialogs keep all four 28dp corners.
