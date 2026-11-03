@@ -40,18 +40,30 @@ export function M3ToggleRow({
   );
 }
 
+/**
+ * Material 3 palette only: the special/legacy themes (First version, Shining
+ * gold, Theme Studio) are intentionally not offered in the M3 edition.
+ */
 export const THEME_SWATCHES: { id: Theme; color: string }[] = [
-  { id: 'orange', color: '#f97316' },
-  { id: 'first_version', color: '#ffb300' },
-  { id: 'purple', color: '#8b5cf6' },
-  { id: 'blue', color: '#3b82f6' },
-  { id: 'green', color: '#22c55e' },
-  { id: 'red', color: '#ef4444' },
-  { id: 'yellow', color: '#eab308' },
-  { id: 'pink', color: '#ec4899' },
-  { id: 'gray', color: '#6b7280' },
-  { id: 'shining_gold', color: '#d4af37' },
-  { id: 'custom', color: '#a855f7' },
+  { id: 'red', color: '#f44336' },
+  { id: 'pink', color: '#e91e63' },
+  { id: 'purple', color: '#9c27b0' },
+  { id: 'deep_purple', color: '#673ab7' },
+  { id: 'indigo', color: '#3f51b5' },
+  { id: 'blue', color: '#2196f3' },
+  { id: 'light_blue', color: '#03a9f4' },
+  { id: 'cyan', color: '#00bcd4' },
+  { id: 'teal', color: '#009688' },
+  { id: 'green', color: '#4caf50' },
+  { id: 'light_green', color: '#8bc34a' },
+  { id: 'lime', color: '#cddc39' },
+  { id: 'yellow', color: '#ffeb3b' },
+  { id: 'amber', color: '#ffc107' },
+  { id: 'orange', color: '#ff9800' },
+  { id: 'deep_orange', color: '#ff5722' },
+  { id: 'brown', color: '#795548' },
+  { id: 'gray', color: '#9e9e9e' },
+  { id: 'blue_grey', color: '#607d8b' },
 ];
 
 export function M3ThemeSwatches({

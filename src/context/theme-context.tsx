@@ -6,7 +6,12 @@ import placeholderImages from '@/lib/placeholder-images.json';
 import { CustomThemeConfig } from '@/types';
 import { applyM3Palette } from '@/lib/m3-palette';
 
-export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'first_version' | 'custom';
+export type Theme =
+  | 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink'
+  | 'shining_gold' | 'first_version' | 'custom'
+  /* Material 3 palette additions (used by the Material 3 edition) */
+  | 'deep_purple' | 'indigo' | 'light_blue' | 'cyan' | 'teal' | 'light_green'
+  | 'lime' | 'amber' | 'deep_orange' | 'brown' | 'blue_grey';
 
 /**
  * Design edition is baked in at build time, see .github/workflows/main.yml:
@@ -37,7 +42,66 @@ const DEFAULT_CUSTOM_COLORS: CustomThemeConfig = {
     background: { h: 30, s: 71, l: 92 }
 };
 
+/**
+ * Material 3 palette entry: a primary colour plus matching tonal surfaces.
+ * Kept separate from the classic theme rows above so the 1.5 interface is
+ * completely unaffected by these additions.
+ */
+const makePaletteTheme = (
+  h: number,
+  s: number,
+  l: number,
+  bgH: number,
+  bgS: number,
+  bgL: number
+): ThemeConfig => {
+  const lightMuted = `${bgH} ${Math.max(bgS - 20, 8)}% ${Math.max(bgL - 4, 60)}%`;
+  const card = `${bgH} ${bgS}% ${Math.min(bgL + 3, 98)}%`;
+  return {
+    light: {
+      primary: `${h} ${s}% ${l}%`,
+      foreground: `${h} ${Math.max(60, s - 10)}% 95%`,
+      background: `${bgH} ${bgS}% ${bgL}%`,
+      card,
+      'sidebar-background': card,
+      popover: card,
+      muted: lightMuted,
+      border: `${bgH} 30% ${Math.max(bgL - 10, 45)}%`,
+      input: `${bgH} 30% ${Math.max(bgL - 7, 50)}%`,
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: lightMuted,
+      sidebarAccentForeground: '20 14.3% 4.1%',
+    },
+    dark: {
+      primary: `${h} ${s}% ${l}%`,
+      foreground: `${h} ${Math.max(60, s - 10)}% 95%`,
+      background: `${bgH} 10% 10%`,
+      card: `${bgH} 10% 12%`,
+      'sidebar-background': `${bgH} 10% 12%`,
+      popover: `${bgH} 10% 10%`,
+      muted: `${bgH} 10% 20%`,
+      border: `${bgH} 10% 25%`,
+      input: `${bgH} 10% 25%`,
+      sidebarForeground: `${bgH} ${Math.min(s, 30)}% 92%`,
+      sidebarAccent: `${bgH} 10% 20%`,
+      sidebarAccentForeground: `${bgH} 20% 100%`,
+    },
+  };
+};
+
 const THEMES: Record<Exclude<Theme, 'custom'>, ThemeConfig> = {
+  /* ---- Material 3 palette (Material 500 primaries, tonal surfaces) ---- */
+  deep_purple: makePaletteTheme(262, 52, 47, 262, 45, 94),
+  indigo: makePaletteTheme(231, 48, 48, 231, 50, 94),
+  light_blue: makePaletteTheme(199, 98, 48, 199, 60, 93),
+  cyan: makePaletteTheme(187, 100, 42, 187, 55, 93),
+  teal: makePaletteTheme(174, 100, 29, 174, 40, 92),
+  light_green: makePaletteTheme(88, 50, 53, 88, 45, 93),
+  lime: makePaletteTheme(66, 70, 54, 66, 55, 92),
+  amber: makePaletteTheme(45, 100, 51, 45, 75, 93),
+  deep_orange: makePaletteTheme(14, 100, 57, 14, 75, 93),
+  brown: makePaletteTheme(16, 25, 38, 16, 25, 92),
+  blue_grey: makePaletteTheme(200, 18, 46, 200, 20, 93),
   orange: {
     light: {
       primary: '25 95% 53%',

@@ -421,7 +421,9 @@
 [data-material3="true"] button[role="switch"] {
   width: 3.25rem;
   height: 2rem;
-  padding: 4px;
+  /* 6dp inset keeps the thumb visually 4dp away from the 2dp outline in both
+     states (before, the "off" thumb sat 2dp from the outline and looked off). */
+  padding: 6px;
   border: none;
   background-color: hsl(var(--md-sys-color-surface-container-highest));
   box-shadow: inset 0 0 0 2px hsl(var(--md-sys-color-outline));
@@ -449,7 +451,7 @@
   width: 1.5rem;
   height: 1.5rem;
   background-color: hsl(var(--md-sys-color-on-primary));
-  transform: translateX(1.25rem);
+  transform: translateX(1rem);
 }
 
 /* pressed: the thumb grows to 28dp and stops exactly at the right padding edge */
@@ -460,7 +462,7 @@
 
 [data-material3="true"] button[role="switch"][data-state="checked"]:active > span {
   width: 1.75rem;
-  transform: translateX(1rem);
+  transform: translateX(0.75rem);
 }
 
 /* -------------------------------------------------- chat screen (shared) */
