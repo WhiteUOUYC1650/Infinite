@@ -355,7 +355,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
                 {message.replyTo && !isCircleComplete && (<div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}><p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p><p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p></div>)}
                 {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} alt="Message" /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={message.videoMimeType && message.videoMimeType.includes('mp4') ? `${mediaUrl}#t=0.1` : mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
-                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} duration={message.voiceDuration} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.fileStatus === 'complete' && mediaUrl && !isCircleComplete && (<AttachmentRenderer attachment={{ id: message.id, type: 'file', fileName: message.fileName, fileMimeType: message.fileMimeType, chunkIds: message.fileChunkIds }} onPreviewImage={onPreviewImage} onMediaLoad={onMediaLoad} />)}
                 {message.attachments && message.attachments.length > 0 && (<div className="flex flex-col gap-1 w-full mb-1">{message.attachments.map(att => (<AttachmentRenderer key={att.id} attachment={att} onPreviewImage={onPreviewImage} onMediaLoad={onMediaLoad} />))}</div>)}
                 {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
@@ -414,6 +414,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showScrollDown, setShowScrollDown] = useState(false); const [showNewPoll, setShowNewPoll] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const isRecordingCanceledRef = useRef(false);
+  const recordingDurationRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  /** Stops every track of the active stream — always called, so the microphone
+   *  indicator disappears as soon as the recording ends or is cancelled. */
+  const releaseActiveStream = useCallback(() => {
+    const stream = activeStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch { /* already stopped */ }
+      });
+    }
+    activeStreamRef.current = null;
+  }, []);
 
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -475,26 +489,92 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   useEffect(() => { const handleSystemBack = () => { if (previewImage) setPreviewImage(null); else if (showChatProfile) setShowChatProfile(false); else if (profileDialogUser) setProfileDialogUser(null); else if (showNewPoll) setShowNewPoll(false); else if (replyToMessage) setReplyToMessage(null); else if (item.isSupergroup && activeTopicId) setActiveTopicId(null); else if (filesToSend.length > 0) setFilesToSend([]); else if (isRecordingVoice || isRecordingCircle) stopRecording(true); else onClose(); }; let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); } return () => { if (backListener) { backListener.then((l: any) => l.remove()); } }; }, [onClose, previewImage, showChatProfile, profileDialogUser, showNewPoll, replyToMessage, filesToSend.length, isRecordingVoice, isRecordingCircle, item.isSupergroup, activeTopicId]);
   
-  const startRecording = async (type: 'voice' | 'circle') => {
-    try {
-      const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user' as const, width: 480, height: 480 } : false };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints); activeStreamRef.current = stream;
-      const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
-      chunksRef.current = []; isRecordingCanceledRef.current = false;
-      mr.ondataavailable = (e) => { if (e.data.size > 0 && !isRecordingCanceledRef.current) { chunksRef.current.push(e.data); } };
-      mr.onstop = async () => { 
-          if (!isRecordingCanceledRef.current && chunksRef.current.length > 0) {
-            const blob = new Blob(chunksRef.current, { type: mr.mimeType }); 
-            if (blob.size > 500) handleSendMediaMessage(blob, type); 
-          }
-          stream.getTracks().forEach(t => t.stop()); activeStreamRef.current = null;
-      };
-      mr.start(500); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); 
-      setRecordingDuration(0); setIsRecordingLocked(false); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
-    } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
+  /** Picks a MIME type the current WebView can actually record (iOS needs mp4). */
+  const pickRecorderMime = (type: 'voice' | 'circle') => {
+    if (typeof MediaRecorder === 'undefined') return '';
+    const candidates = type === 'circle'
+      ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+      : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    const canCheck = typeof (MediaRecorder as any).isTypeSupported === 'function';
+    return candidates.find((candidate) => !canCheck || (MediaRecorder as any).isTypeSupported(candidate)) || '';
   };
-  const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); isRecordingCanceledRef.current = canceled; if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
-  
+
+  const startRecording = async (type: 'voice' | 'circle') => {
+    // never start a second recorder on top of a running one (that leaked the mic)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') return;
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: true,
+        video: type === 'circle' ? { facingMode: 'user' } : false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (!mountedRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
+      releaseActiveStream();
+      activeStreamRef.current = stream;
+
+      const mimeType = pickRecorderMime(type);
+      // an unsupported mimeType used to throw here and leave the mic open
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+      isRecordingCanceledRef.current = false;
+      recordingDurationRef.current = 0;
+
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0 && !isRecordingCanceledRef.current) chunksRef.current.push(e.data);
+      };
+      mr.onerror = () => { releaseActiveStream(); };
+      mr.onstop = () => {
+        const duration = recordingDurationRef.current;
+        const canceled = isRecordingCanceledRef.current;
+        const chunks = chunksRef.current.slice();
+        chunksRef.current = [];
+        releaseActiveStream();
+        mediaRecorderRef.current = null;
+        if (canceled || chunks.length === 0) return;
+        const blobType = mr.mimeType || mimeType || (type === 'voice' ? 'audio/webm' : 'video/webm');
+        const blob = new Blob(chunks, { type: blobType });
+        if (blob.size > 350) void handleSendMediaMessage(blob, type, duration);
+      };
+
+      mr.start(500);
+      if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true);
+      setRecordingDuration(0);
+      setIsRecordingLocked(false);
+      timerRef.current = setInterval(() => {
+        recordingDurationRef.current += 1;
+        setRecordingDuration(recordingDurationRef.current);
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      releaseActiveStream();
+      mediaRecorderRef.current = null;
+      setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false);
+      toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') });
+    }
+  };
+
+  const stopRecording = (canceled: boolean) => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    isRecordingCanceledRef.current = canceled;
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') {
+      try { mr.stop(); } catch { releaseActiveStream(); }
+    } else {
+      releaseActiveStream();
+    }
+    setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false);
+  };
+
+  // leaving the chat must never keep the microphone busy
+  useEffect(() => () => {
+    mountedRef.current = false;
+    if (timerRef.current) clearInterval(timerRef.current);
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') { try { mr.stop(); } catch { /* noop */ } }
+    releaseActiveStream();
+  }, [releaseActiveStream]);
+
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
   
@@ -615,7 +695,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (e: any) { toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not send message.' }); } finally { setIsSending(false); }
   };
 
-  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
+  const readBlobAsBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+    reader.onerror = () => reject(reader.error || new Error('Could not read the recording'));
+    reader.readAsDataURL(blob);
+  });
+
+  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle', duration = 0) => {
       if (!db || !currentUser.uid) return;
       setIsSending(true);
       try {
@@ -623,31 +710,44 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           const col = type === 'voice' ? 'voiceChunks' : 'circleChunks';
           const chunkIds: string[] = [];
           const CHUNK_SIZE = 384 * 1024;
-          const reader = new FileReader();
-          reader.readAsDataURL(blob);
-          reader.onload = async () => {
-              const base64Data = (reader.result as string).split(',')[1];
-              const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
-              for (let i = 0; i < totalChunks; i++) {
-                  const start = i * CHUNK_SIZE;
-                  const end = Math.min(start + CHUNK_SIZE, base64Data.length);
-                  const chunk = base64Data.substring(start, end);
-                  const cref = doc(collection(db, col));
-                  await setDoc(cref, { data: chunk, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() });
-                  chunkIds.push(cref.id);
-                  if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
-              }
-              const data: any = { 
-                  senderId: currentUser.uid, content: '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username,
-                  ...(type === 'voice' ? { voiceStatus: 'complete', voiceChunkIds: chunkIds, voiceMimeType: blob.type } : { circleStatus: 'complete', circleChunkIds: chunkIds, circleMimeType: blob.type }),
-                  ...(activeTopicId && { topicId: activeTopicId })
-              };
-              await setDoc(mref, data);
-              await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message') : 'Video Circle', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+          const base64Data = await readBlobAsBase64(blob);
+          if (!base64Data) throw new Error('Empty recording');
+
+          const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
+          for (let i = 0; i < totalChunks; i++) {
+              const start = i * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, base64Data.length);
+              const chunk = base64Data.substring(start, end);
+              const cref = doc(collection(db, col));
+              await setDoc(cref, { data: chunk, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() });
+              chunkIds.push(cref.id);
+              if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
+          }
+
+          const mime = blob.type || (type === 'voice' ? 'audio/webm' : 'video/webm');
+          const data: any = {
+              senderId: currentUser.uid, content: '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username,
+              ...(type === 'voice'
+                  ? { voiceStatus: 'complete', voiceChunkIds: chunkIds, voiceMimeType: mime, voiceDuration: duration }
+                  : { circleStatus: 'complete', circleChunkIds: chunkIds, circleMimeType: mime, circleDuration: duration }),
+              ...(activeTopicId && { topicId: activeTopicId })
           };
-      } catch (e) { console.error(e); } finally { setIsSending(false); }
+          await setDoc(mref, data);
+          updateDoc(doc(db, 'chats', item.id), {
+              lastMessage: {
+                  id: mref.id,
+                  content: type === 'voice' ? t('voice_message') : 'Video Circle',
+                  senderId: currentUser.uid,
+                  senderName: currentUser.name || currentUser.username,
+                  timestamp: Timestamp.now(),
+              },
+          }).catch(() => {});
+      } catch (e: any) {
+          console.error(e);
+          toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Could not send the recording.' });
+      } finally { setIsSending(false); }
   };
-  
+
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid!)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${e}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid!); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid!), 1); else votes.push(currentUser.uid!); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid!); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
@@ -706,7 +806,23 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       <header className={cn("flex-shrink-0 z-30 transition-all duration-300", (experimentalDesign && isMobile) ? "fixed top-[env(safe-area-inset-top)] left-4 right-4 mt-2" : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0")}>
         {(experimentalDesign && isMobile) ? (<div className="bg-transparent overflow-hidden">{headerContent}</div>) : (<>{headerContent}<div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}><div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel backdrop-blur-xl" : "bg-muted/95")}><span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span></div></div></>)}
       </header>
-      
+
+      {/* bot mini apps: a full-width bar under the app bar (used to float over the messages) */}
+      {isDM && otherUser?.isCustomBot && botApps.length > 0 && (
+        <div className="relative z-20 shrink-0 px-2 pb-1">
+          <Button
+            onClick={() => setProfileDialogUser(otherUser)}
+            className={cn(
+              "flex h-10 w-full items-center justify-center gap-2 rounded-full font-bold text-primary-foreground shadow-none transition-all active:scale-[0.99]",
+              glassEffect ? "glass-button bg-primary/60" : "bg-primary"
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            {botApps.length === 1 ? t('open_mini_app_button') : t('open_mini_apps_menu')}
+          </Button>
+        </div>
+      )}
+
       <div className="relative flex-1 bg-background overflow-hidden min-h-0 z-10">
         {item.isSupergroup && !activeTopicId ? (
             <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
@@ -746,7 +862,6 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}
       </div>
 
-      {isDM && otherUser?.isCustomBot && botApps.length > 0 && (<div className={cn("absolute bottom-[calc(60px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[45] animate-in slide-in-from-bottom-4 duration-500", (experimentalDesign || glassEffect) ? "mb-6" : "mb-2")}><Button onClick={() => setProfileDialogUser(otherUser)} className={cn("rounded-full shadow-2xl text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all", glassEffect ? "glass-button bg-primary/60" : "bg-primary")}><LayoutGrid className="h-5 w-5" />{botApps.length === 1 ? t('open_mini_app_button') : t('open_mini_apps_menu')}</Button></div>)}
       
       {isMember && canWrite && (!item.isSupergroup || activeTopicId) && (
         <footer className={cn("flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}>

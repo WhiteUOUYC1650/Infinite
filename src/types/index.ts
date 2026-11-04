@@ -229,6 +229,20 @@ export type BotMarketItem = {
   type: 'script' | 'plugin';
 };
 
+/** A bot source published to InfMarket (linkless — the importer picks the link). */
+export type BotSourceItem = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  scripts: BotScript[];
+  miniApps?: BotMiniApp[];
+  downloads: number;
+  createdAt?: Timestamp;
+};
+
 export type Transfer = {
   id: string;
   senderId: string;

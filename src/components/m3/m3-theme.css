@@ -440,7 +440,8 @@
   margin: 0;
   background-color: hsl(var(--md-sys-color-outline));
   box-shadow: none;
-  transform: translateX(0);
+  /* "off" thumb: 11dp from the left edge */
+  transform: translateX(5px);
   transition: transform 250ms var(--md3-ease-standard),
     width 250ms var(--md3-ease-standard), height 250ms var(--md3-ease-standard);
 }
@@ -451,7 +452,8 @@
   width: 1.5rem;
   height: 1.5rem;
   background-color: hsl(var(--md-sys-color-on-primary));
-  transform: translateX(1rem);
+  /* "on" thumb: 2dp from the right edge */
+  transform: translateX(1.25rem);
 }
 
 /* pressed: the thumb grows to 28dp and stops exactly at the right padding edge */
@@ -462,7 +464,7 @@
 
 [data-material3="true"] button[role="switch"][data-state="checked"]:active > span {
   width: 1.75rem;
-  transform: translateX(0.75rem);
+  transform: translateX(1rem);
 }
 
 /* -------------------------------------------------- chat screen (shared) */

@@ -111,7 +111,7 @@ state), `m3-chat-row.tsx` and `m3-chat-list.tsx` (conversations screen) and
 | Component | Values used here |
 | --- | --- |
 | FAB | 56×56dp, `corner-large` = 16dp |
-| Switch | track 52×32dp, outline 2dp, handle 16dp → 24dp (checked) → 28dp (pressed), travel = `track-width − track-height` = 20dp, so the handle always stops 4dp before the edge |
+| Switch | track 52×32dp, outline 2dp, handle 16dp → 24dp (checked) → 28dp (pressed); the "off" handle sits 11dp from the left edge, the "on" handle 2dp from the right edge |
 | Navigation bar | 80dp, 32×64dp indicator pill |
 | Chips | 32dp height, `corner-small` = 8dp |
 | Dialogs / sheets | `corner-extra-large` = 28dp |
