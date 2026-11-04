@@ -40,6 +40,7 @@ import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc, runTransaction } from 'firebase/firestore';
 import { useLanguage } from '@/context/language-context';
 import { useTheme } from '@/context/theme-context';
+import { FoldersSettingsCard } from '@/components/chat-folders/folders-settings-card';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -191,7 +192,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const router = useRouter();
   
   const { t, language, setLanguage } = useLanguage(); 
-  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, material2Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, material2Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, hideHolidayBanners, toggleHideHolidayBanners, hideUserFolders, toggleHideUserFolders, hideChatFolders, toggleHideChatFolders, hideStories, toggleHideStories, customThemeConfig, setCustomThemeConfig } = useTheme(); 
   const modernDesign = material3Design || material2Design;
   const { isUpdateAvailable, promptUpdate, updateInfo, downloadUpdate, currentVersion } = useUpdatePrompt();
   
@@ -370,6 +371,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={t('experimental_design_desc')} glassEffect={glassEffect} />
               <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} glassEffect={glassEffect} />
               <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-holiday" label={t('hide_holiday_banners')} checked={hideHolidayBanners} onCheckedChange={toggleHideHolidayBanners} description={t('hide_holiday_banners')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-stories" label={t('hide_stories')} checked={hideStories} onCheckedChange={toggleHideStories} description={t('hide_stories')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-user-folders" label={t('hide_user_folders')} checked={hideUserFolders} onCheckedChange={toggleHideUserFolders} description={t('hide_user_folders')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-chat-folders" label={t('hide_chat_folders')} checked={hideChatFolders} onCheckedChange={toggleHideChatFolders} description={t('hide_chat_folders')} glassEffect={glassEffect} />
             </div>
           );
           case 'theme': 
@@ -527,7 +532,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
             </div>
           );
-          case 'chat': return (<div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'><SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} /><SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} /><SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} /></div>);
+          case 'chat': return (<div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'><SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} /><SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} /><SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} /><FoldersSettingsCard currentUser={currentUser} /></div>);
           case 'privacy': return (
             <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
               <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />

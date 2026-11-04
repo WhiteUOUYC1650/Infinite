@@ -433,6 +433,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingSentAtRef = useRef(0);
 
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid!) ?? false, [initialItem?.members, currentUser.uid]);
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem.id, liveChatData]);
@@ -615,7 +616,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const statuses = snapshot.docs
             .map(d => d.data() as TypingStatus)
             .filter(s => {
-                const isRecent = s.timestamp?.toMillis() > (now - 5000);
+                const isRecent = (s.timestamp?.toMillis?.() ?? now) > (now - 5000);
                 const isOtherUser = s.userId !== currentUser.uid;
                 const isMatchingTopic = !item.isSupergroup || s.topicId === activeTopicId;
                 return isRecent && isOtherUser && isMatchingTopic;
@@ -638,15 +639,33 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   useEffect(() => {
-    if (messageContent.length > 0) {
-        updateTypingState(true);
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => updateTypingState(false), 3000);
-    } else {
+    if (item.type === 'channel') return;
+    if (messageContent.length === 0) {
+        typingSentAtRef.current = 0;
         updateTypingState(false);
+        return;
     }
+    // refresh the "typing" flag at most every 2s while the user keeps typing,
+    // so the other side sees it as soon as the first character is entered
+    const now = Date.now();
+    if (now - typingSentAtRef.current > 2000) {
+        typingSentAtRef.current = now;
+        updateTypingState(true);
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+        typingSentAtRef.current = 0;
+        updateTypingState(false);
+    }, 2500);
     return () => { if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); };
-  }, [messageContent, item.id]);
+  }, [messageContent, item.id, item.type]);
+
+  // leaving the chat must clear the "typing…" status for the other side
+  useEffect(() => () => {
+      if (item.type === 'channel') return;
+      if (!db || !currentUser.uid) return;
+      deleteDoc(doc(db, 'chats', item.id, 'typing', currentUser.uid)).catch(() => {});
+  }, [db, item.id, item.type, currentUser.uid]);
 
   const getStatusLine = () => { 
     if (item.id === currentUser.uid) return null; 

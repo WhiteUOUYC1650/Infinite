@@ -12,10 +12,12 @@
  *   hamburger in the app bar opens the navigation drawer
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc, query, collection, where } from 'firebase/firestore';
 import {
+  Archive,
   Bookmark,
+  ChevronLeft,
   Cpu,
   Gamepad2,
   Globe,
@@ -29,17 +31,19 @@ import {
   Settings2,
   Sparkles,
   Video,
+  X,
 } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
+import { cn } from '@/lib/utils';
 import { useBatchUsers } from '@/hooks/use-batch-users';
 import { useLanguage } from '@/context/language-context';
+import { useTheme } from '@/context/theme-context';
 import type { AuthenticatedUser, Chat } from '@/types';
 import { NewChatDialog } from '@/components/new-chat-dialog';
 import { SearchDialog } from '@/components/search-dialog';
 import { StoriesBar } from '@/components/stories/stories-bar';
 import { HolidayBanner } from '@/components/holiday-banner';
 import { FolderChips } from '@/components/chat-folders/folder-chips';
-import { FolderManagerDialog } from '@/components/chat-folders/folder-manager-dialog';
 import { useChatFolders } from '@/hooks/use-chat-folders';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { M3ChatRow, M3IconRow } from './m3-chat-row';
@@ -80,8 +84,9 @@ export function M3ChatList({
   const [searchOpen, setSearchOpen] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
-  const [foldersOpen, setFoldersOpen] = useState(false);
-  const { folders, addFolder, updateFolder, deleteFolder, toggleChatInFolder } = useChatFolders(currentUser);
+  const [archivedOnly, setArchivedOnly] = useState(false);
+  const { folders } = useChatFolders(currentUser);
+  const { hideHolidayBanners, hideUserFolders, hideChatFolders, hideStories } = useTheme();
 
   /**
    * Radix sheets (and every modal) lock `pointer-events` on <body> while open.
@@ -99,6 +104,23 @@ export function M3ChatList({
     window.setTimeout(action, 250);
   };
   const [servicesOpen, setServicesOpen] = useState(false);
+  /** The services sheet can be pulled up to full screen; it resets on close. */
+  const [servicesExpanded, setServicesExpanded] = useState(false);
+  const servicesDragRef = useRef<{ startY: number; delta: number } | null>(null);
+
+  const onServicesTouchStart = (event: React.TouchEvent) => {
+    servicesDragRef.current = { startY: event.touches[0].clientY, delta: 0 };
+  };
+  const onServicesTouchMove = (event: React.TouchEvent) => {
+    if (!servicesDragRef.current) return;
+    servicesDragRef.current.delta = event.touches[0].clientY - servicesDragRef.current.startY;
+  };
+  const onServicesTouchEnd = () => {
+    const delta = servicesDragRef.current?.delta ?? 0;
+    servicesDragRef.current = null;
+    if (delta > 80) { setServicesOpen(false); setServicesExpanded(false); return; }
+    if (delta < -60 && !servicesExpanded) setServicesExpanded(true);
+  };
   const [menuOpen, setMenuOpen] = useState(false);
 
   const chatsQuery = useMemo(() => {
@@ -107,6 +129,14 @@ export function M3ChatList({
   }, [db, currentUser.uid]);
 
   const { data: chats, loading } = useCollection<Chat>(chatsQuery as any);
+
+  // "hide chat folders" forces the plain "all chats" list
+  useEffect(() => {
+    if (hideChatFolders) {
+      setActiveFolderId(null);
+      setFilter('all');
+    }
+  }, [hideChatFolders]);
 
   const dmOtherIds = useMemo(
     () =>
@@ -141,7 +171,7 @@ export function M3ChatList({
       ? new Set(folders.find((folder) => folder.id === activeFolderId)?.chatIds || [])
       : null;
     return (chats || [])
-      .filter((chat) => !archived.has(chat.id))
+      .filter((chat) => (archivedOnly ? archived.has(chat.id) : !archived.has(chat.id)))
       .filter((chat) => (folderChatIds ? folderChatIds.has(chat.id) : true))
       // bots live in their own folder, never in "Direct messages"
       .filter((chat) => {
@@ -161,7 +191,7 @@ export function M3ChatList({
         (a, b) =>
           (b.lastMessage?.timestamp?.toMillis?.() || 0) - (a.lastMessage?.timestamp?.toMillis?.() || 0)
       );
-  }, [chats, archived, filter, queryText, dmUsers, currentUser.uid, activeFolderId, folders]);
+  }, [chats, archived, filter, queryText, dmUsers, currentUser.uid, activeFolderId, folders, archivedOnly]);
 
   const generalChat = useMemo(
     () => (chats || []).find((chat) => chat.id === 'GENERAL_CHAT' || chat.link === '/G/Infinite'),
@@ -222,30 +252,47 @@ export function M3ChatList({
         </div>
       </header>
 
-      <StoriesBar currentUser={currentUser} filterArchived={false} />
+      {!hideStories && <StoriesBar currentUser={currentUser} filterArchived={false} />}
 
-      <HolidayBanner />
+      {!hideHolidayBanners && <HolidayBanner />}
 
-      <FolderChips
-        folders={folders}
-        activeId={activeFolderId}
-        onSelect={setActiveFolderId}
-        onManage={() => setFoldersOpen(true)}
-        allLabel={t('all_chats')}
-        manageLabel={t('folders_title')}
-        className="pt-1"
-      />
+      {!hideUserFolders && (
+        <FolderChips
+          folders={folders}
+          activeId={activeFolderId}
+          onSelect={setActiveFolderId}
+          allLabel={t('all_chats')}
+          manageLabel={t('folders_title')}
+          className="pt-1"
+        />
+      )}
 
-      <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-2 pb-1 pt-2">
-        {filters.map((item) => (
-          <M3Chip
-            key={item.id}
-            label={item.label}
-            active={filter === item.id}
-            onClick={() => setFilter(item.id)}
-          />
-        ))}
-      </div>
+      {archivedOnly ? (
+        <div className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setArchivedOnly(false)}
+            className="m3-icon-button h-9 w-9"
+            aria-label={t('back_to_chats')}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="text-sm font-semibold">{t('chat_archive')}</span>
+        </div>
+      ) : (
+        !hideChatFolders && (
+          <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-2 pb-1 pt-2">
+            {filters.map((item) => (
+              <M3Chip
+                key={item.id}
+                label={item.label}
+                active={filter === item.id}
+                onClick={() => setFilter(item.id)}
+              />
+            ))}
+          </div>
+        )
+      )}
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-1.5 pb-28">
         {loading ? (
@@ -365,9 +412,9 @@ export function M3ChatList({
             />
             <M3RowItem
               plain
-              icon={FolderPlus}
-              label={t('folders')}
-              onClick={() => closeMenuThen(() => setFoldersOpen(true))}
+              icon={Archive}
+              label={t('chat_archive')}
+              onClick={() => closeMenuThen(() => setArchivedOnly(true))}
             />
             <M3RowItem
               plain
@@ -379,18 +426,43 @@ export function M3ChatList({
         </SheetContent>
       </Sheet>
 
-      <Sheet open={servicesOpen} onOpenChange={setServicesOpen}>
+      <Sheet
+        open={servicesOpen}
+        onOpenChange={(open) => { setServicesOpen(open); if (!open) setServicesExpanded(false); }}
+      >
         <SheetContent
           side="bottom"
           hideCloseButton
-          className="border-0 bg-m3-surface-container-high px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
+          className={cn(
+            'flex flex-col border-0 bg-m3-surface-container-high px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-0',
+            servicesExpanded ? 'h-[100dvh] rounded-none' : 'max-h-[75dvh]'
+          )}
         >
-          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-m3-on-surface-variant/40" />
-          <SheetHeader className="px-4 pb-1 text-left">
+          {/* drag handle: pull down to close, pull up for full screen */}
+          <div
+            className="flex shrink-0 touch-none flex-col items-center pb-1 pt-3"
+            onTouchStart={onServicesTouchStart}
+            onTouchMove={onServicesTouchMove}
+            onTouchEnd={onServicesTouchEnd}
+          >
+            <div className="h-1 w-10 rounded-full bg-m3-on-surface-variant/40" />
+          </div>
+          <SheetHeader className="flex shrink-0 flex-row items-center justify-between px-3 pb-1 text-left">
             <SheetTitle className="text-base font-medium text-m3-on-surface">
               {t('services')}
             </SheetTitle>
+            {servicesExpanded && (
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => { setServicesOpen(false); setServicesExpanded(false); }}
+                className="m3-icon-button h-9 w-9"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </SheetHeader>
+          <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
           {services.map((service) => (
             <M3RowItem
               key={service.id}
@@ -399,6 +471,7 @@ export function M3ChatList({
               onClick={() => closeServicesThen(() => onSelectService(service.id))}
             />
           ))}
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -423,28 +496,6 @@ export function M3ChatList({
         }}
       />
 
-      <FolderManagerDialog
-        open={foldersOpen}
-        onOpenChange={setFoldersOpen}
-        folders={folders}
-        chats={(chats || [])
-          .filter((chat) => !archived.has(chat.id))
-          .slice()
-          .sort(
-            (a, b) =>
-              (b.lastMessage?.timestamp?.toMillis?.() || 0) -
-              (a.lastMessage?.timestamp?.toMillis?.() || 0)
-          )}
-        chatTitle={(chat) =>
-          chat.type === 'dm'
-            ? otherOf(chat)?.name || otherOf(chat)?.username || t('saved_messages')
-            : chat.name || t('chats_label')
-        }
-        onCreate={addFolder}
-        onRename={(id, name) => updateFolder(id, { name })}
-        onDelete={deleteFolder}
-        onToggleChat={toggleChatInFolder}
-      />
     </div>
   );
 }

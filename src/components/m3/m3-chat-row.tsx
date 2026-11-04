@@ -32,7 +32,7 @@ export function M3ChatRow({
   onClick: () => void;
 }) {
   const { t } = useLanguage();
-  const isSavedMessages = chat.type === 'dm' && !otherUser;
+  const isSavedMessages = chat.type === 'dm' && chat.id === currentUserId;
   const unread = chat.unreadCounts?.[currentUserId] || 0;
 
   const title = isSavedMessages
@@ -98,11 +98,6 @@ export function M3ChatRow({
           </span>
           {(otherUser?.username === '@Infinite' || (otherUser as any)?.isAdmin) && (
             <BadgeCheck className="h-4 w-4 shrink-0 text-m3-primary" />
-          )}
-          {chat.type === 'channel' && (
-            <span className="shrink-0 rounded bg-m3-surface-container-highest px-1.5 py-0.5 text-[10px] font-medium text-m3-on-surface-variant">
-              {t('channels')}
-            </span>
           )}
         </span>
         <span className="mt-0.5 flex items-center gap-1.5 text-[13.5px] leading-5 text-m3-on-surface-variant">

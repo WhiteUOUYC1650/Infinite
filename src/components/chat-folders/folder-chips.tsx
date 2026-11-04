@@ -22,7 +22,8 @@ export function FolderChips({
   folders: ChatFolder[];
   activeId: string | null;
   onSelect: (id: string | null) => void;
-  onManage: () => void;
+  /** Optional: when omitted no "create folder" button is rendered. */
+  onManage?: () => void;
   allLabel: string;
   manageLabel: string;
   className?: string;
@@ -59,15 +60,17 @@ export function FolderChips({
         </button>
       ))}
 
-      <button
-        type="button"
-        onClick={onManage}
-        aria-label={manageLabel}
-        title={manageLabel}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card text-foreground/70 shadow-sm"
-      >
-        {folders.length ? <FolderPlus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-      </button>
+      {onManage && (
+        <button
+          type="button"
+          onClick={onManage}
+          aria-label={manageLabel}
+          title={manageLabel}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card text-foreground/70 shadow-sm"
+        >
+          {folders.length ? <FolderPlus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        </button>
+      )}
     </div>
   );
 }

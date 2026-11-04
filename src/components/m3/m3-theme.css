@@ -109,10 +109,13 @@
 
 /* subtitle / status line under the title */
 [data-material3="true"] header .tracking-widest {
+  margin-top: -1px;
   font-size: 11px;
   font-weight: 400;
+  line-height: 15px;
   letter-spacing: 0;
   text-transform: none;
+  padding-bottom: 1px;
 }
 
 .m3-app-bar {
@@ -440,8 +443,8 @@
   margin: 0;
   background-color: hsl(var(--md-sys-color-outline));
   box-shadow: none;
-  /* "off" thumb: 9dp from the left edge */
-  transform: translateX(3px);
+  /* "off" thumb: 10dp from the left edge */
+  transform: translateX(4px);
   transition: transform 250ms var(--md3-ease-standard),
     width 250ms var(--md3-ease-standard), height 250ms var(--md3-ease-standard);
 }

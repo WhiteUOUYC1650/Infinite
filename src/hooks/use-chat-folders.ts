@@ -35,12 +35,12 @@ export function useChatFolders(currentUser: AuthenticatedUser) {
   );
 
   const addFolder = useCallback(
-    (name: string, emoji?: string) => {
+    (name: string, emoji?: string, chatIds: string[] = []) => {
       const folder: ChatFolder = {
         id: Math.random().toString(36).slice(2, 9),
         name: name.trim(),
         emoji: emoji || '📁',
-        chatIds: [],
+        chatIds,
       };
       void save([...folders, folder]);
       return folder;

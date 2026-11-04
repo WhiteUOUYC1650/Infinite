@@ -431,6 +431,18 @@ interface ThemeContextType {
   toggleShowFeed: () => void;
   useSystemFont: boolean;
   toggleSystemFont: () => void;
+  /** Hide the seasonal / holiday banner above the chat list. */
+  hideHolidayBanners: boolean;
+  toggleHideHolidayBanners: () => void;
+  /** Hide the user-created chat folders (chips). */
+  hideUserFolders: boolean;
+  toggleHideUserFolders: () => void;
+  /** Hide the built-in chat folders (All / DMs / Groups / Channels / Bots). */
+  hideChatFolders: boolean;
+  toggleHideChatFolders: () => void;
+  /** Hide the stories row. */
+  hideStories: boolean;
+  toggleHideStories: () => void;
   customThemeConfig: CustomThemeConfig;
   setCustomThemeConfig: (config: CustomThemeConfig) => void;
 }
@@ -449,6 +461,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const material2Design = APP_EDITION === 'material2';
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
+  const [hideHolidayBanners, setHideHolidayBanners] = useState(false);
+  const [hideUserFolders, setHideUserFolders] = useState(false);
+  const [hideChatFolders, setHideChatFolders] = useState(false);
+  const [hideStories, setHideStories] = useState(false);
   const [useSystemFont, setUseSystemFont] = useState(true);
   const [customThemeConfig, setCustomThemeConfig] = useState<CustomThemeConfig>(DEFAULT_CUSTOM_COLORS);
   const [isMounted, setIsMounted] = useState(false);
@@ -465,6 +481,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
     const storedCustomColors = localStorage.getItem('app-custom-theme-config');
+    const storedHideHoliday = localStorage.getItem('app-hide-holiday-banners');
+    const storedHideUserFolders = localStorage.getItem('app-hide-user-folders');
+    const storedHideChatFolders = localStorage.getItem('app-hide-chat-folders');
+    const storedHideStories = localStorage.getItem('app-hide-stories');
 
     if (storedTheme && (THEMES[storedTheme as keyof typeof THEMES] || storedTheme === 'custom')) {
       setTheme(storedTheme);
@@ -484,6 +504,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
     if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
     if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
+    if (storedHideHoliday) setHideHolidayBanners(storedHideHoliday === 'true');
+    if (storedHideUserFolders) setHideUserFolders(storedHideUserFolders === 'true');
+    if (storedHideChatFolders) setHideChatFolders(storedHideChatFolders === 'true');
+    if (storedHideStories) setHideStories(storedHideStories === 'true');
     if (storedCustomColors) {
         try { setCustomThemeConfig(JSON.parse(storedCustomColors)); } catch(e) {}
     }
@@ -590,6 +614,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return !prev;
     });
   };
+  const togglePersisted = (key: string, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    setter(prev => {
+      localStorage.setItem(key, String(!prev));
+      return !prev;
+    });
+  };
+
+  const handleToggleHideHolidayBanners = () => togglePersisted('app-hide-holiday-banners', setHideHolidayBanners);
+  const handleToggleHideUserFolders = () => togglePersisted('app-hide-user-folders', setHideUserFolders);
+  const handleToggleHideChatFolders = () => togglePersisted('app-hide-chat-folders', setHideChatFolders);
+  const handleToggleHideStories = () => togglePersisted('app-hide-stories', setHideStories);
+
   const handleToggleSendOnEnter = () => {
     setSendOnEnter(prev => {
       localStorage.setItem('app-send-on-enter', String(!prev));
@@ -659,6 +695,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleShowFeed,
     useSystemFont,
     toggleSystemFont,
+    hideHolidayBanners,
+    toggleHideHolidayBanners: handleToggleHideHolidayBanners,
+    hideUserFolders,
+    toggleHideUserFolders: handleToggleHideUserFolders,
+    hideChatFolders,
+    toggleHideChatFolders: handleToggleHideChatFolders,
+    hideStories,
+    toggleHideStories: handleToggleHideStories,
     customThemeConfig,
     setCustomThemeConfig: handleSetCustomConfig
   };

@@ -20,7 +20,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreVertical, ChevronDown, ChevronUp, ArrowLeft, MessageSquare, MoreHorizontal, UserPlus, Repeat } from 'lucide-react';
+import { Cog, Info, LogOut, Menu, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreVertical, ChevronDown, ChevronUp, ArrowLeft, MessageSquare, MoreHorizontal, UserPlus, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, arrayRemove } from 'firebase/firestore';
@@ -44,7 +44,6 @@ import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { StoriesBar } from './stories/stories-bar';
 import { FolderChips } from './chat-folders/folder-chips';
-import { FolderManagerDialog } from './chat-folders/folder-manager-dialog';
 import { useChatFolders } from '@/hooks/use-chat-folders';
 import { InfVidIcon } from './infvid/infvid-view';
 import ReactMarkdown from 'react-markdown';
@@ -106,7 +105,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const auth = useAuth();
   const { language, t } = useLanguage(); 
   const { toggleTheme, isDarkMode, experimentalDesign, glassEffect, showFeed } = useTheme(); 
-  const { setOpenMobile } = useSidebar(); 
+  const { setOpenMobile, toggleSidebar, isMobile } = useSidebar(); 
   const { isUpdateAvailable } = useUpdatePrompt();
   const { toast } = useToast();
   
@@ -156,8 +155,10 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   
   const archivedChatIds = useMemo(() => new Set(currentUser.archivedChats || []), [currentUser.archivedChats]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
-  const [foldersOpen, setFoldersOpen] = useState(false);
-  const { folders, addFolder, updateFolder, deleteFolder, toggleChatInFolder } = useChatFolders(currentUser);
+  const { folders } = useChatFolders(currentUser);
+  const { hideHolidayBanners, hideUserFolders, hideChatFolders, hideStories, material2Design } = useTheme();
+
+  useEffect(() => { if (hideChatFolders) setActiveFolderId(null); }, [hideChatFolders]);
 
   const sortedChats = useMemo(() => { 
     if (!chats) return []; 
@@ -379,6 +380,17 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <SidebarHeader className="p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {material2Design && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('more')}
+                className="h-9 w-9 shrink-0"
+                onClick={() => (isMobile ? setOpenMobile(false) : toggleSidebar())}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <h1 className={cn("text-xl font-bold font-headline transition-all", isOnline ? "text-primary" : "text-muted-foreground animate-pulse")}>
               Infinite
             </h1>
@@ -450,17 +462,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     </Button>
                 </div>
 
-                <StoriesBar currentUser={currentUser} filterArchived={false} />
-                <HolidayBanner />
-                <FolderChips
-                  folders={folders}
-                  activeId={activeFolderId}
-                  onSelect={setActiveFolderId}
-                  onManage={() => setFoldersOpen(true)}
-                  allLabel={t('all_chats')}
-                  manageLabel={t('folders_title')}
-                  className="pt-1"
-                />
+                {!hideStories && <StoriesBar currentUser={currentUser} filterArchived={false} />}
+                {!hideHolidayBanners && <HolidayBanner />}
+                {!hideUserFolders && (
+                  <FolderChips
+                    folders={folders}
+                    activeId={activeFolderId}
+                    onSelect={setActiveFolderId}
+                    allLabel={t('all_chats')}
+                    manageLabel={t('folders_title')}
+                    className="pt-1"
+                  />
+                )}
                 
                 <div className="py-1 space-y-0.5">
                 {showFeed && (
@@ -724,22 +737,6 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <EditProfileDialog user={currentUser} open={showEditProfile} onOpenChange={setShowEditProfile} />
       <NewChatDialog currentUser={currentUser} open={showNewChat} onOpenChange={setShowNewChat} onChatCreated={handleChatCreated} />
-      <FolderManagerDialog
-        open={foldersOpen}
-        onOpenChange={setFoldersOpen}
-        folders={folders}
-        chats={sortedChats}
-        chatTitle={(chat) => {
-          if (chat.type !== 'dm') return chat.name || t('chats_label');
-          const otherId = chat.members.find((member) => member !== currentUser.uid);
-          const other = otherId ? dmUsers[otherId] : null;
-          return other?.name || other?.username || t('saved_messages');
-        }}
-        onCreate={addFolder}
-        onRename={(id, name) => updateFolder(id, { name })}
-        onDelete={deleteFolder}
-        onToggleChat={toggleChatInFolder}
-      />
       <SearchDialog currentUser={currentUser} open={showSearchDialog} onOpenChange={setShowSearchDialog} onChatSelected={handleSelect} />
       <ExperimentalSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} currentUser={currentUser} />
     </div>

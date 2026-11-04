@@ -67,6 +67,40 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const engineStartedAt = useRef<number>(Date.now());
   const botDetectionCache = useRef<Record<string, boolean>>({});
 
+  /*
+   * Presence: keep `status` / `lastSeen` fresh while the app is open, so DM
+   * headers can show "online", "was online …" instead of stale values.
+   */
+  useEffect(() => {
+    if (!db || !currentUser?.uid) return;
+    const userRef = doc(db, 'users', currentUser.uid);
+    let stopped = false;
+    const mark = (status: 'online' | 'away' | 'offline') => {
+      if (stopped) return;
+      updateDoc(userRef, { status, lastSeen: serverTimestamp() }).catch(() => {});
+    };
+    mark('online');
+    const heartbeat = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      mark('online');
+    }, 45000);
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      mark(document.visibilityState === 'visible' ? 'online' : 'away');
+    };
+    const onPageHide = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') mark('offline');
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      stopped = true;
+      clearInterval(heartbeat);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [db, currentUser?.uid]);
+
   const userDocRef = useMemoFirebase(() => db ? doc(db, 'users', currentUser.uid) : null, [db, currentUser.uid]);
   const { data: userData } = useDoc<User>(userDocRef);
 
@@ -391,46 +425,44 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
 
   const handleM3SelectService = useCallback((service: M3Service) => handleSelect(service), [handleSelect]);
 
-  const handleM3SavedMessages = async () => {
+  /*
+   * Saved messages / General chat open immediately and sync in the background.
+   * Awaiting Firestore before navigating made these rows feel dead on a slow
+   * connection ("the General chat button sometimes does nothing").
+   */
+  const handleM3SavedMessages = () => {
     if (!currentUser.uid) return;
     const chatId = currentUser.uid;
-    let chatData: Chat = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' };
-    try {
-      if (!db) throw new Error('no db');
-      const chatRef = doc(db, 'chats', chatId);
-      const chatSnap = await getDoc(chatRef);
-      if (chatSnap.exists()) {
-        chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-      } else {
-        await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } });
-      }
-    } catch (e) {
-      console.error('Saved messages: could not sync chat doc, opening locally', e);
-    }
-    handleM3SelectChat(chatData);
+    handleM3SelectChat({ id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' } as Chat);
+    if (!db) return;
+    setDoc(
+      doc(db, 'chats', chatId),
+      { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } },
+      { merge: true }
+    ).catch((e) => console.error('Saved messages: could not sync chat doc', e));
   };
 
-  const handleM3GeneralChat = async () => {
+  const handleM3GeneralChat = () => {
     if (!currentUser.uid) return;
     const chatId = 'GENERAL_CHAT';
-    let chatData: Chat = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' };
-    try {
-      if (!db) throw new Error('no db');
-      const chatRef = doc(db, 'chats', chatId);
-      const chatSnap = await getDoc(chatRef);
-      if (chatSnap.exists()) {
-        chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat;
-        if (!chatData.members.includes(currentUser.uid)) {
-          await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) });
-          chatData = { ...chatData, members: [...chatData.members, currentUser.uid] };
+    handleM3SelectChat({ id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' } as Chat);
+    if (!db) return;
+    (async () => {
+      try {
+        const chatRef = doc(db, 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) {
+          await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid] }, { merge: true });
+          return;
         }
-      } else {
-        await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid] });
+        const members = (chatSnap.data().members as string[] | undefined) || [];
+        if (!members.includes(currentUser.uid)) {
+          await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) });
+        }
+      } catch (e) {
+        console.error('General chat: could not sync chat doc', e);
       }
-    } catch (e) {
-      console.error('General chat: could not sync chat doc, opening locally', e);
-    }
-    handleM3SelectChat(chatData);
+    })();
   };
 
   if (material3Design) {

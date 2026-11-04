@@ -237,6 +237,32 @@ body.use-system-font h4 {
   color: hsl(var(--primary-foreground) / 0.85);
 }
 
+/* --- sidebar app bar: solid primary, white text (M2 signature) ----------- */
+[data-material2="true"] [data-sidebar="header"] {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 0;
+  box-shadow: var(--md2-e2);
+}
+
+[data-material2="true"] [data-sidebar="header"] h1 {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+[data-material2="true"] [data-sidebar="header"] button,
+[data-material2="true"] [data-sidebar="header"] svg {
+  color: hsl(var(--primary-foreground));
+}
+
+[data-material2="true"] [data-sidebar="header"] button:hover {
+  background-color: hsl(var(--primary-foreground) / 0.12);
+}
+
+/* M2 menus / sheets / dialogs keep 4dp corners */
+[data-material2="true"] [role="dialog"] {
+  border-radius: 0.25rem;
+}
+
 /* --- shape: 4dp corners everywhere --------------------------------------- */
 [data-material2="true"] .rounded-lg,
 [data-material2="true"] .rounded-xl,
