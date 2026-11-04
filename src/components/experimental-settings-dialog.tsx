@@ -541,6 +541,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                                     {f.answer}
                                 </ReactMarkdown>
                             </div>
+                            {f.question === t('faq_bot_prog_q') && (
+                                <Button
+                                    variant="outline"
+                                    className="mt-3 h-11 w-full rounded-xl font-bold gap-2"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        setTimeout(() => window.dispatchEvent(new CustomEvent('open-bot-guide')), 250);
+                                    }}
+                                >
+                                    <Cpu className="h-4 w-4" />
+                                    {t('open_bot_guide')}
+                                </Button>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                 ))}

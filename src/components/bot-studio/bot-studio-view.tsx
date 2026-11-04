@@ -21,6 +21,56 @@ import { cn } from '@/lib/utils';
 import { Capacitor } from '@capacitor/core';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
 
+/** Full bot programming guide (opened from the FAQ and from the studio header). */
+const BOT_GUIDE: { title: string; items: { name: string; description: string }[] }[] = [
+  {
+    title: 'События — с чего начинается сценарий',
+    items: [
+      { name: 'При старте (event_start)', description: 'Срабатывает, когда пользователь открывает бота или отправляет /start.' },
+      { name: 'При сообщении (event_message)', description: 'Срабатывает на любое входящее сообщение.' },
+      { name: 'При нажатии кнопки (event_button_click)', description: 'Срабатывает, когда нажата кнопка с указанным button_id.' },
+    ],
+  },
+  {
+    title: 'Действия — что делает бот',
+    items: [
+      { name: 'Отправить сообщение (action_send)', description: 'Отправляет текст. Можно подставлять переменные: {name}.' },
+      { name: 'Ответить (action_reply)', description: 'Отвечает реплаем на сообщение пользователя.' },
+      { name: 'Подождать (action_wait)', description: 'Пауза перед следующим блоком (миллисекунды).' },
+      { name: 'Реакция (action_reaction)', description: 'Ставит реакцию на сообщение.' },
+      { name: 'Медиа (action_send_image / video / music / file)', description: 'Отправляет вложение по ссылке.' },
+      { name: 'Остановить (action_stop)', description: 'Прерывает выполнение сценария.' },
+    ],
+  },
+  {
+    title: 'Логика — ветвления',
+    items: [
+      { name: 'Если (logic_if)', description: 'Условие, например {gold} >= 100 или {text} == "привет".' },
+      { name: 'Иначе (logic_else)', description: 'Альтернативная ветка условия.' },
+      { name: 'Конец условия (logic_end_if)', description: 'Закрывает блок условия.' },
+      { name: 'Если текст (condition_if_text)', description: 'Сравнивает текст сообщения с заданным.' },
+    ],
+  },
+  {
+    title: 'Переменные — память бота',
+    items: [
+      { name: 'Задать (variable_set)', description: 'Присваивает переменной текст или значение.' },
+      { name: 'Математика (variable_math)', description: 'Сложение, вычитание, умножение, деление.' },
+      { name: 'Случайное (variable_random)', description: 'Случайное число в заданном диапазоне.' },
+      { name: 'Очистить (variable_clear)', description: 'Удаляет переменную.' },
+    ],
+  },
+  {
+    title: 'Интерфейс мини-приложений',
+    items: [
+      { name: 'Заголовок (ui_header)', description: 'Крупный заголовок экрана мини-приложения.' },
+      { name: 'Текст (ui_text)', description: 'Абзац текста.' },
+      { name: 'Кнопка (ui_button)', description: 'Кнопка с button_id: на неё реагирует «При нажатии кнопки».' },
+      { name: 'Разделитель (ui_separator)', description: 'Горизонтальная линия.' },
+    ],
+  },
+];
+
 /** Bot links: English letters (any case), digits and underscores only. */
 const HANDLE_REGEX = /^[A-Za-z0-9_]+$/;
 
@@ -65,7 +115,7 @@ function HandleHint({ state, t }: { state: HandleState; t: any }) {
   return <p className={cn('ml-1 text-[11px] font-bold', item.className)}>{item.text}</p>;
 }
 
-export function BotStudioView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
+export function BotStudioView({ currentUser, onClose, initialGuideOpen = false }: { currentUser: AuthenticatedUser, onClose: () => void, initialGuideOpen?: boolean }) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -76,6 +126,7 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
   const [newBotName, setNewBotName] = useState('');
   const [newBotHandle, setNewBotHandle] = useState('');
   const [selectedBot, setSelectedBot] = useState<CustomBot | null>(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(initialGuideOpen);
   const handleState = useHandleAvailability(db, newBotHandle, isCreateOpen);
 
   const botsQuery = useMemo(() => {
@@ -211,6 +262,9 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 <span>Market</span>
             </Button>
+            <Button variant="outline" size="icon" title={t('open_bot_guide')} onClick={() => setIsGuideOpen(true)} className="h-10 w-10 rounded-full shrink-0">
+                <Info className="h-4 w-4" />
+            </Button>
             <Button onClick={() => setIsCreateOpen(true)} className="rounded-full gap-2 font-bold shadow-lg shadow-primary/20 h-10 px-4 shrink-0">
                 <Plus className="h-4 w-4" />
                 <span>{t('create_bot')}</span>
@@ -284,6 +338,41 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
             )}
         </div>
       </main>
+
+      <Dialog open={isGuideOpen} onOpenChange={setIsGuideOpen}>
+          <DialogContent hideCloseButton className="max-w-2xl h-[85vh] max-h-[85vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-[2rem]">
+              <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                  <Button variant="ghost" size="icon" onClick={() => setIsGuideOpen(false)} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
+                  <DialogTitle>{t('open_bot_guide')}</DialogTitle>
+                  <Button variant="ghost" size="icon" onClick={() => setIsGuideOpen(false)} className="absolute right-2 top-1/2 -translate-y-1/2"><X /></Button>
+              </DialogHeader>
+              <ScrollArea className="flex-1">
+                  <div className="p-6 space-y-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                          Бот — это сценарий из блоков. Сценарий всегда начинается с события, дальше идут действия,
+                          условия и переменные. Блоки добавляются в редакторе бота; мини-приложения собираются
+                          из блоков интерфейса и открываются кнопкой «Открыть приложение» в чате с ботом.
+                      </p>
+                      {BOT_GUIDE.map((section) => (
+                          <section key={section.title} className="space-y-3">
+                              <h3 className="text-xs font-black uppercase tracking-[0.18em] text-primary">{section.title}</h3>
+                              <div className="space-y-2">
+                                  {section.items.map((item) => (
+                                      <div key={item.name} className="rounded-2xl bg-muted/40 p-4">
+                                          <p className="text-sm font-bold">{item.name}</p>
+                                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+                                      </div>
+                                  ))}
+                              </div>
+                          </section>
+                      ))}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 border-t shrink-0">
+                  <Button onClick={() => setIsGuideOpen(false)} className="w-full h-12 rounded-xl font-bold">{t('ok')}</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent hideCloseButton className="max-w-sm rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden">

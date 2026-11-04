@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment, ChatTopic, TypingStatus } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, BotMiniApp, MessageAttachment, ChatTopic, TypingStatus } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square, Zap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -54,6 +54,8 @@ import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
 import { Input } from '../ui/input';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { MiniAppPlayer } from '@/components/bot-studio/mini-app-player';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 
@@ -466,10 +468,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [db, messages, item.id, isMember, currentUser.uid]);
   
-  const scrollToBottom = useCallback((b: ScrollBehavior = 'auto') => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight; }, []);
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    try { el.scrollTo({ top: el.scrollHeight, behavior }); } catch { el.scrollTop = el.scrollHeight; }
+  }, []);
+
+  /** Media loading must not yank the view when the user is reading history. */
+  const handleMediaLoaded = useCallback(() => {
+    if (isAtBottomRef.current) scrollToBottom();
+  }, [scrollToBottom]);
   const handleScroll = useCallback(() => { if (!scrollContainerRef.current) return; const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; if (scrollTop < 100 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(p => p + 50); } setShowStickyDate(true); if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current); stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000); const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker'); let currentTopDate = null; markers.forEach((marker: any) => { if (marker.offsetTop <= scrollTop + 100) { currentTopDate = marker.getAttribute('data-date'); } }); setStickyDate(currentTopDate); setShowScrollDown(!atBottom); }, [hasMore, messagesLoading, messages, messageLimit]);
   
-  useEffect(() => { const ro = new ResizeObserver(() => { if (isAtBottomRef.current || (Date.now() - autoScrollGuardRef.current < 10000)) requestAnimationFrame(() => { scrollToBottom(); setTimeout(scrollToBottom, 50); }); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
+  useEffect(() => { const ro = new ResizeObserver(() => { if (!isAtBottomRef.current) return; requestAnimationFrame(() => scrollToBottom()); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
   
   useLayoutEffect(() => {
     if (prevScrollHeightRef.current > 0 && scrollContainerRef.current && messages) {
@@ -479,13 +490,20 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollTop + heightDiff;
           prevScrollHeightRef.current = 0;
       }
-    } else if (isAtBottomRef.current) {
-      autoScrollGuardRef.current = Date.now();
+    } else if (isAtBottomRef.current || Date.now() - autoScrollGuardRef.current < 1500) {
       scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
 
-  useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, activeTopicId, scrollToBottom]);
+  useEffect(() => {
+    // switching chats (or topics) starts a fresh page of history
+    setMessageLimit(50);
+    setHasMore(true);
+    prevScrollHeightRef.current = 0;
+    isAtBottomRef.current = true;
+    autoScrollGuardRef.current = Date.now();
+    scrollToBottom();
+  }, [item.id, activeTopicId, scrollToBottom]);
   
   useEffect(() => { const handleSystemBack = () => { if (previewImage) setPreviewImage(null); else if (showChatProfile) setShowChatProfile(false); else if (profileDialogUser) setProfileDialogUser(null); else if (showNewPoll) setShowNewPoll(false); else if (replyToMessage) setReplyToMessage(null); else if (item.isSupergroup && activeTopicId) setActiveTopicId(null); else if (filesToSend.length > 0) setFilesToSend([]); else if (isRecordingVoice || isRecordingCircle) stopRecording(true); else onClose(); }; let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); } return () => { if (backListener) { backListener.then((l: any) => l.remove()); } }; }, [onClose, previewImage, showChatProfile, profileDialogUser, showNewPoll, replyToMessage, filesToSend.length, isRecordingVoice, isRecordingCircle, item.isSupergroup, activeTopicId]);
   
@@ -577,6 +595,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
 
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
+  const [activeMiniApp, setActiveMiniApp] = useState<BotMiniApp | null>(null); const [miniAppChooserOpen, setMiniAppChooserOpen] = useState(false);
   
   useEffect(() => {
     if (!db || !isMember || item.type === 'channel') return;
@@ -811,7 +830,10 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       {isDM && otherUser?.isCustomBot && botApps.length > 0 && (
         <div className="relative z-20 shrink-0 px-2 pb-1">
           <Button
-            onClick={() => setProfileDialogUser(otherUser)}
+            onClick={() => {
+              if (botApps.length === 1) setActiveMiniApp(botApps[0]);
+              else setMiniAppChooserOpen(true);
+            }}
             className={cn(
               "flex h-10 w-full items-center justify-center gap-2 rounded-full font-bold text-primary-foreground shadow-none transition-all active:scale-[0.99]",
               glassEffect ? "glass-button bg-primary/60" : "bg-primary"
@@ -850,7 +872,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         {messages?.map((m, i) => {
                             const msgDate = getSafeDate(m.timestamp); const prevMsg = messages[i - 1]; const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
                             let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
-                            return (<React.Fragment key={m.id}>{showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} onChannelClick={handleOpenChannelProfile} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} /></React.Fragment>);
+                            return (<React.Fragment key={m.id}>{showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} onChannelClick={handleOpenChannelProfile} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoaded} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} /></React.Fragment>);
                         })}
                         <div className={cn("shrink-0 pointer-events-none", (experimentalDesign || glassEffect) ? "h-20" : "h-2")} aria-hidden="true" />
                     </div>
@@ -948,6 +970,41 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </footer>
       )}
+      <MiniAppPlayer
+        app={activeMiniApp}
+        open={!!activeMiniApp}
+        onOpenChange={(open) => { if (!open) setActiveMiniApp(null); }}
+        botName={otherUser?.name || otherUser?.username || ''}
+        botAvatar={otherUser?.avatar}
+        scripts={botConfig?.scripts}
+      />
+
+      <Sheet open={miniAppChooserOpen} onOpenChange={setMiniAppChooserOpen}>
+        <SheetContent side="bottom" hideCloseButton className="border-0 bg-background p-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <SheetHeader className="px-3 pb-2 text-left">
+            <SheetTitle className="text-base font-medium">{t('open_mini_apps_menu')}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-1">
+            {botApps.map((miniApp) => (
+              <button
+                key={miniApp.id}
+                type="button"
+                onClick={() => {
+                  setMiniAppChooserOpen(false);
+                  setActiveMiniApp(miniApp);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <LayoutGrid className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{miniApp.name}</span>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onCreate={(p) => handleSendMessage(p)} />

@@ -61,6 +61,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const [isOnlineState, setIsOnlineState] = useState(true);
   const [selectionNonce, setSelectionNonce] = useState(0);
   const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
+  const [botGuideRequested, setBotGuideRequested] = useState(false);
 
   const processedMsgIds = useRef<Set<string>>(new Set());
   const engineStartedAt = useRef<number>(Date.now());
@@ -338,8 +339,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     };
     const handleInitiateCallEvent = (event: any) => { const { chat, otherUser, isVideo } = event.detail; setActiveCall({ chat, otherUser, isVideo, isCaller: true }); setShowCallDialog(true); };
     const handleOpenInfVid = (event: any) => { setInfVidInitialVideoId(event.detail.videoId); handleSelect('infvid'); };
-    window.addEventListener('open-chat', handleOpenChat); window.addEventListener('answer-call', handleAnswerCall); window.addEventListener('initiate-call', handleInitiateCallEvent); window.addEventListener('open-infvid', handleOpenInfVid);
-    return () => { window.removeEventListener('open-chat', handleOpenChat); window.removeEventListener('answer-call', handleAnswerCall); window.removeEventListener('initiate-call', handleInitiateCallEvent); window.removeEventListener('open-infvid', handleOpenInfVid); };
+    const handleOpenBotGuide = () => { setBotGuideRequested(true); handleSelect('bot_studio'); };
+    window.addEventListener('open-chat', handleOpenChat); window.addEventListener('answer-call', handleAnswerCall); window.addEventListener('initiate-call', handleInitiateCallEvent); window.addEventListener('open-infvid', handleOpenInfVid); window.addEventListener('open-bot-guide', handleOpenBotGuide);
+    return () => { window.removeEventListener('open-chat', handleOpenChat); window.removeEventListener('answer-call', handleAnswerCall); window.removeEventListener('initiate-call', handleInitiateCallEvent); window.removeEventListener('open-infvid', handleOpenInfVid); window.removeEventListener('open-bot-guide', handleOpenBotGuide); };
   }, [db, handleSelect, currentUser.uid]);
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
@@ -360,7 +362,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const renderSelectedContent = () => {
     if (!populatedUser) return null;
     if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null)} onSelectChat={handleSelect} />;
-    if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
+    if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => { setBotGuideRequested(false); handleSelect(null); }} initialGuideOpen={botGuideRequested} />;
     if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null)} initialVideoId={infVidInitialVideoId || undefined} />;
     if (selectedItem === 'infmusic') return <InfMusicView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null)} />;

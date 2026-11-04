@@ -42,7 +42,8 @@ export function M3ChatRow({
       : chat.name || '…';
 
   const avatarSrc = chat.type === 'dm' ? otherUser?.avatar : chat.avatar;
-  const online = chat.type === 'dm' ? otherUser?.status === 'online' : false;
+  // bots are always "available", the green online dot is for people only
+  const online = chat.type === 'dm' ? otherUser?.status === 'online' && !otherUser?.isBot && !otherUser?.isCustomBot : false;
 
   const last = chat.lastMessage;
   const date = last?.timestamp?.toDate?.();
