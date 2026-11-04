@@ -443,8 +443,8 @@
   margin: 0;
   background-color: hsl(var(--md-sys-color-outline));
   box-shadow: none;
-  /* "off" thumb: 10dp from the left edge */
-  transform: translateX(4px);
+  /* "off" thumb: 8dp from the left edge */
+  transform: translateX(2px);
   transition: transform 250ms var(--md3-ease-standard),
     width 250ms var(--md3-ease-standard), height 250ms var(--md3-ease-standard);
 }
