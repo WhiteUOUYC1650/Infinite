@@ -5,13 +5,14 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { FileText, HardDrive, Info, ShieldCheck, Trash2, Palette } from 'lucide-react';
+import { Check, FileText, Gauge, HardDrive, Info, ShieldCheck, Trash2, Palette } from 'lucide-react';
 import { useLanguage } from '@/context/language-context';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/hooks/use-toast';
-import { calculateCacheSize, clearCacheDB } from '@/lib/cache-utils';
+import { calculateCacheSize, clearCacheDB, enforceCacheLimit, getCacheLimitBytes, setCacheLimitBytes } from '@/lib/cache-utils';
 import { LegalDialog } from '@/components/legal-dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { M3FilledButton } from './m3-primitives';
 import { M3RowItem } from './m3-surfaces';
 
@@ -22,11 +23,16 @@ function formatBytes(bytes: number) {
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+/** Cache limit presets: 1 MB … 100 GB, plus "unlimited" (0). */
+const CACHE_LIMIT_PRESETS_MB = [1, 5, 10, 25, 50, 100, 250, 500, 1024, 2048, 5120, 10240, 25600, 51200, 102400];
+
 export function M3StoragePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [size, setSize] = useState<number | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [limit, setLimit] = useState<number>(() => getCacheLimitBytes());
+  const [limitOpen, setLimitOpen] = useState(false);
 
   const refresh = async () => {
     try {
@@ -40,6 +46,14 @@ export function M3StoragePage() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  const applyLimit = async (bytes: number) => {
+    setCacheLimitBytes(bytes);
+    setLimit(bytes);
+    setLimitOpen(false);
+    await enforceCacheLimit();
+    await refresh();
+  };
 
   const handleClear = async () => {
     setClearing(true);
@@ -70,6 +84,19 @@ export function M3StoragePage() {
         </div>
       </div>
 
+      <M3RowItem
+        plain
+        icon={Gauge}
+        label={t('cache_limit_label')}
+        description={t('cache_limit_desc')}
+        value={
+          <span className="text-sm text-m3-on-surface-variant">
+            {limit ? formatBytes(limit) : t('cache_limit_unlimited')}
+          </span>
+        }
+        onClick={() => setLimitOpen(true)}
+      />
+
       <p className="px-4 text-[12.5px] leading-relaxed text-m3-on-surface-variant">
         {t('clear_cache_desc')}
       </p>
@@ -83,6 +110,43 @@ export function M3StoragePage() {
       >
         {t('clear_cache')}
       </M3FilledButton>
+
+      <Sheet open={limitOpen} onOpenChange={setLimitOpen}>
+        <SheetContent
+          side="bottom"
+          hideCloseButton
+          className="border-0 bg-m3-surface-container-high px-2 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2"
+        >
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-m3-on-surface-variant/40" />
+          <SheetHeader className="px-4 pb-1 text-left">
+            <SheetTitle className="text-base font-medium text-m3-on-surface">
+              {t('cache_limit_label')}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="no-scrollbar max-h-[60vh] overflow-y-auto">
+            <M3RowItem
+              plain
+              label={t('cache_limit_unlimited')}
+              description={t('cache_limit_unlimited_desc')}
+              right={limit === 0 ? <Check className="h-4 w-4 text-m3-primary" /> : undefined}
+              onClick={() => void applyLimit(0)}
+            />
+            {CACHE_LIMIT_PRESETS_MB.map((mb) => (
+              <M3RowItem
+                key={mb}
+                plain
+                label={formatBytes(mb * 1024 * 1024)}
+                right={
+                  limit === mb * 1024 * 1024 ? (
+                    <Check className="h-4 w-4 text-m3-primary" />
+                  ) : undefined
+                }
+                onClick={() => void applyLimit(mb * 1024 * 1024)}
+              />
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

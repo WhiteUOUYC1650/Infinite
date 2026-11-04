@@ -35,11 +35,20 @@ export type User = {
   watchLater?: string[];
   activeGiftEmoji?: string | null;
   archivedChats?: string[];
+  chatFolders?: ChatFolder[];
   birthday?: {
     day: number;
     month: number;
     year?: number;
   };
+};
+
+/** User-defined chat folders ("tabs" above the chat list). */
+export type ChatFolder = {
+  id: string;
+  name: string;
+  emoji?: string;
+  chatIds: string[];
 };
 
 export type Sticker = {

@@ -439,15 +439,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   const messagesQuery = useMemoFirebase(() => { 
     if (!db || !isMember) return null; 
-    let q = query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
-    if (item.isSupergroup && activeTopicId) {
-        q = query(collection(db, 'chats', item.id, 'messages'), where('topicId', '==', activeTopicId), orderBy('timestamp', 'desc'), limit(messageLimit));
-    }
-    return q;
-  }, [db, item.id, isMember, messageLimit, item.isSupergroup, activeTopicId]); 
+    // Topics are filtered on the client on purpose: a `where('topicId') + orderBy`
+    // query needs a composite Firestore index, and without it the snapshot errors
+    // out - which made every topic show the same (cached) message list.
+    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
+  }, [db, item.id, isMember, messageLimit]); 
   
   const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
-  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
+  const messages = useMemo(() => {
+    if (!rawMessages) return null;
+    const list = [...rawMessages].reverse();
+    if (!item.isSupergroup || !activeTopicId) return list;
+    // In a supergroup each topic is its own thread: show only that topic's
+    // messages (messages without a topicId belong to the topic list itself).
+    return list.filter((m) =>
+      activeTopicId === 'general'
+        ? !m.topicId || m.topicId === 'general'
+        : m.topicId === activeTopicId
+    );
+  }, [rawMessages, item.isSupergroup, activeTopicId]);
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
 
   const otherUserId = useMemo(() => { 

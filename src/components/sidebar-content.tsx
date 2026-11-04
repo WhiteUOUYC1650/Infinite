@@ -43,6 +43,9 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { StoriesBar } from './stories/stories-bar';
+import { FolderChips } from './chat-folders/folder-chips';
+import { FolderManagerDialog } from './chat-folders/folder-manager-dialog';
+import { useChatFolders } from '@/hooks/use-chat-folders';
 import { InfVidIcon } from './infvid/infvid-view';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -152,11 +155,19 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
   const archivedChatIds = useMemo(() => new Set(currentUser.archivedChats || []), [currentUser.archivedChats]);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [foldersOpen, setFoldersOpen] = useState(false);
+  const { folders, addFolder, updateFolder, deleteFolder, toggleChatInFolder } = useChatFolders(currentUser);
 
   const sortedChats = useMemo(() => { 
     if (!chats) return []; 
-    return [...chats].sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0)); 
-  }, [chats]);
+    const folderChatIds = activeFolderId
+      ? new Set(folders.find((folder) => folder.id === activeFolderId)?.chatIds || [])
+      : null;
+    return [...chats]
+      .filter((chat) => (folderChatIds ? folderChatIds.has(chat.id) : true))
+      .sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0)); 
+  }, [chats, activeFolderId, folders]);
   
   const activeChats = useMemo(() => sortedChats.filter(c => !archivedChatIds.has(c.id)), [sortedChats, archivedChatIds]);
   const archivedChatsList = useMemo(() => sortedChats.filter(c => archivedChatIds.has(c.id)), [sortedChats, archivedChatIds]);
@@ -441,6 +452,15 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
 
                 <StoriesBar currentUser={currentUser} filterArchived={false} />
                 <HolidayBanner />
+                <FolderChips
+                  folders={folders}
+                  activeId={activeFolderId}
+                  onSelect={setActiveFolderId}
+                  onManage={() => setFoldersOpen(true)}
+                  allLabel={t('all_chats')}
+                  manageLabel={t('folders_title')}
+                  className="pt-1"
+                />
                 
                 <div className="py-1 space-y-0.5">
                 {showFeed && (
@@ -704,6 +724,22 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       
       <EditProfileDialog user={currentUser} open={showEditProfile} onOpenChange={setShowEditProfile} />
       <NewChatDialog currentUser={currentUser} open={showNewChat} onOpenChange={setShowNewChat} onChatCreated={handleChatCreated} />
+      <FolderManagerDialog
+        open={foldersOpen}
+        onOpenChange={setFoldersOpen}
+        folders={folders}
+        chats={sortedChats}
+        chatTitle={(chat) => {
+          if (chat.type !== 'dm') return chat.name || t('chats_label');
+          const otherId = chat.members.find((member) => member !== currentUser.uid);
+          const other = otherId ? dmUsers[otherId] : null;
+          return other?.name || other?.username || t('saved_messages');
+        }}
+        onCreate={addFolder}
+        onRename={(id, name) => updateFolder(id, { name })}
+        onDelete={deleteFolder}
+        onToggleChat={toggleChatInFolder}
+      />
       <SearchDialog currentUser={currentUser} open={showSearchDialog} onOpenChange={setShowSearchDialog} onChatSelected={handleSelect} />
       <ExperimentalSettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} currentUser={currentUser} />
     </div>

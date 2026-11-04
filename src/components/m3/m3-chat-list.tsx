@@ -20,6 +20,7 @@ import {
   Gamepad2,
   Globe,
   Menu,
+  FolderPlus,
   Music4,
   Newspaper,
   Pencil,
@@ -35,6 +36,11 @@ import { useLanguage } from '@/context/language-context';
 import type { AuthenticatedUser, Chat } from '@/types';
 import { NewChatDialog } from '@/components/new-chat-dialog';
 import { SearchDialog } from '@/components/search-dialog';
+import { StoriesBar } from '@/components/stories/stories-bar';
+import { HolidayBanner } from '@/components/holiday-banner';
+import { FolderChips } from '@/components/chat-folders/folder-chips';
+import { FolderManagerDialog } from '@/components/chat-folders/folder-manager-dialog';
+import { useChatFolders } from '@/hooks/use-chat-folders';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { M3ChatRow, M3IconRow } from './m3-chat-row';
 import { M3Avatar, M3RowItem, M3SearchBar } from './m3-surfaces';
@@ -73,6 +79,9 @@ export function M3ChatList({
   const [queryText, setQueryText] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [foldersOpen, setFoldersOpen] = useState(false);
+  const { folders, addFolder, updateFolder, deleteFolder, toggleChatInFolder } = useChatFolders(currentUser);
 
   /**
    * Radix sheets (and every modal) lock `pointer-events` on <body> while open.
@@ -128,8 +137,12 @@ export function M3ChatList({
 
   const visibleChats = useMemo(() => {
     const needle = queryText.trim().toLowerCase();
+    const folderChatIds = activeFolderId
+      ? new Set(folders.find((folder) => folder.id === activeFolderId)?.chatIds || [])
+      : null;
     return (chats || [])
       .filter((chat) => !archived.has(chat.id))
+      .filter((chat) => (folderChatIds ? folderChatIds.has(chat.id) : true))
       // bots live in their own folder, never in "Direct messages"
       .filter((chat) => {
         if (filter === 'all') return true;
@@ -148,7 +161,7 @@ export function M3ChatList({
         (a, b) =>
           (b.lastMessage?.timestamp?.toMillis?.() || 0) - (a.lastMessage?.timestamp?.toMillis?.() || 0)
       );
-  }, [chats, archived, filter, queryText, dmUsers, currentUser.uid]);
+  }, [chats, archived, filter, queryText, dmUsers, currentUser.uid, activeFolderId, folders]);
 
   const generalChat = useMemo(
     () => (chats || []).find((chat) => chat.id === 'GENERAL_CHAT' || chat.link === '/G/Infinite'),
@@ -208,6 +221,20 @@ export function M3ChatList({
           />
         </div>
       </header>
+
+      <StoriesBar currentUser={currentUser} filterArchived={false} />
+
+      <HolidayBanner />
+
+      <FolderChips
+        folders={folders}
+        activeId={activeFolderId}
+        onSelect={setActiveFolderId}
+        onManage={() => setFoldersOpen(true)}
+        allLabel={t('all_chats')}
+        manageLabel={t('folders_title')}
+        className="pt-1"
+      />
 
       <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-2 pb-1 pt-2">
         {filters.map((item) => (
@@ -338,6 +365,12 @@ export function M3ChatList({
             />
             <M3RowItem
               plain
+              icon={FolderPlus}
+              label={t('folders')}
+              onClick={() => closeMenuThen(() => setFoldersOpen(true))}
+            />
+            <M3RowItem
+              plain
               icon={Settings2}
               label={t('settings')}
               onClick={() => closeMenuThen(onOpenSettingsTab ?? onOpenSettings)}
@@ -388,6 +421,29 @@ export function M3ChatList({
           const snap = await getDoc(doc(db, 'chats', chatId));
           if (snap.exists()) onSelectChat({ id: snap.id, ...snap.data() } as Chat);
         }}
+      />
+
+      <FolderManagerDialog
+        open={foldersOpen}
+        onOpenChange={setFoldersOpen}
+        folders={folders}
+        chats={(chats || [])
+          .filter((chat) => !archived.has(chat.id))
+          .slice()
+          .sort(
+            (a, b) =>
+              (b.lastMessage?.timestamp?.toMillis?.() || 0) -
+              (a.lastMessage?.timestamp?.toMillis?.() || 0)
+          )}
+        chatTitle={(chat) =>
+          chat.type === 'dm'
+            ? otherOf(chat)?.name || otherOf(chat)?.username || t('saved_messages')
+            : chat.name || t('chats_label')
+        }
+        onCreate={addFolder}
+        onRename={(id, name) => updateFolder(id, { name })}
+        onDelete={deleteFolder}
+        onToggleChat={toggleChatInFolder}
       />
     </div>
   );
