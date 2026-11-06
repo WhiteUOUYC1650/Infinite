@@ -271,6 +271,29 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
     }
 };
 
+type ModerationAction = 'ban' | 'unban' | 'mute' | 'unmute' | 'kick';
+type ModerationCommand = { action: ModerationAction; handle?: string; reason?: string };
+
+/**
+ * Parses moderation commands typed by the group owner:
+ *
+ *   /ban @user
+ *   reason lives on the following line(s)
+ */
+function parseModerationCommand(text: string): ModerationCommand | null {
+  const [firstLine, ...rest] = String(text || '').split('\n');
+  const match = firstLine.trim().match(/^\/(ban|unban|mute|unmute|kick)\b\s*(.*)$/i);
+  if (!match) return null;
+  const action = match[1].toLowerCase() as ModerationAction;
+  const arg = match[2].trim();
+  const reason = rest.join('\n').trim() || undefined;
+  return {
+    action,
+    handle: arg.startsWith('@') ? arg : undefined,
+    reason,
+  };
+}
+
 const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, onChannelClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, onChannelClick: (channelId: string) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
     const { t } = useLanguage(); const db = useFirestore(); 
     const isChannelPost = !!message.fromChannelId;
@@ -353,7 +376,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-primary-foreground shadow-sm" : "bg-card text-card-foreground shadow-sm"), isCircleComplete ? "rounded-full" : (alignRight ? "rounded-lg rounded-br-none" : "rounded-lg rounded-bl-none"), !isCircleComplete && "px-2 pb-1 pt-1.5", "max-w-[85%] md:max-w-[70%]", glassEffect && "glass-msg", glassEffect && alignRight && "align-right")}>
                 {isChannelPost && <div className="absolute -top-3 -right-1 z-10 flex items-center bg-background/50 backdrop-blur-md px-1.5 rounded-full border border-primary/20 shadow-sm pointer-events-none"><span className="text-[8px] font-black uppercase tracking-tighter text-primary/80">{t('channel_badge')}</span></div>}
-                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div onClick={handleSenderClick} className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5 cursor-pointer hover:opacity-80"><span className="truncate">{displayName}</span>{(isChannelPost && chat.link === '/C/Infinite') && <VerifiedBadge className='w-3 h-3' />}{(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3' />}</div>)}
+                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div onClick={handleSenderClick} className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5 cursor-pointer hover:opacity-80"><span className="truncate">{displayName}</span>{chat.ownerId && chat.ownerId === message.senderId && (<span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">{t('owner_badge')}</span>)}{(isChannelPost && chat.link === '/C/Infinite') && <VerifiedBadge className='w-3 h-3' />}{(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3' />}</div>)}
                 {message.replyTo && !isCircleComplete && (<div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}><p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p><p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p></div>)}
                 {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} alt="Message" /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={message.videoMimeType && message.videoMimeType.includes('mp4') ? `${mediaUrl}#t=0.1` : mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
@@ -703,9 +726,84 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   const removeFileToSend = (index: number) => { setFilesToSend(prev => prev.filter((_, i) => i !== index)); };
   
+  /** Runs /ban, /mute, /unban, /unmute, /kick for the group owner. */
+  const runModerationCommand = async (command: ModerationCommand) => {
+    if (!db) return;
+    let targetId: string | null = null;
+    if (replyToMessage) {
+      targetId = replyToMessage.senderId;
+    } else if (command.handle) {
+      const cleanHandle = command.handle.replace(/^@/, '').toLowerCase();
+      try {
+        const usernameSnap = await getDoc(doc(db, 'usernames', `@${cleanHandle}`));
+        if (usernameSnap.exists()) targetId = usernameSnap.data().uid as string;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    if (!targetId) {
+      toast({ variant: 'destructive', title: t('mod_target_not_found'), description: t('mod_usage') });
+      return;
+    }
+    if (targetId === item.ownerId) {
+      toast({ variant: 'destructive', title: t('mod_owner_only') });
+      return;
+    }
+
+    const chatRef = doc(db, 'chats', item.id);
+    const entry = { reason: command.reason || '', by: currentUser.uid, since: Timestamp.now() };
+    try {
+      if (command.action === 'ban') {
+        await updateDoc(chatRef, {
+          [`bannedUsers.${targetId}`]: entry,
+          [`mutedUsers.${targetId}`]: deleteField(),
+        });
+        toast({ title: t('mod_banned'), description: command.reason });
+      } else if (command.action === 'mute') {
+        await updateDoc(chatRef, { [`mutedUsers.${targetId}`]: entry });
+        toast({ title: t('mod_muted'), description: command.reason });
+      } else if (command.action === 'unban') {
+        await updateDoc(chatRef, { [`bannedUsers.${targetId}`]: deleteField() });
+        toast({ title: t('mod_unbanned') });
+      } else if (command.action === 'unmute') {
+        await updateDoc(chatRef, { [`mutedUsers.${targetId}`]: deleteField() });
+        toast({ title: t('mod_unmuted') });
+      } else if (command.action === 'kick') {
+        await updateDoc(chatRef, {
+          members: arrayRemove(targetId),
+          [`mutedUsers.${targetId}`]: deleteField(),
+          [`bannedUsers.${targetId}`]: deleteField(),
+        });
+        toast({ title: t('mod_kicked') });
+      }
+    } catch (e: any) {
+      console.error('Moderation command failed', e);
+      toast({ variant: 'destructive', title: 'Error', description: e?.message });
+    }
+  };
+
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
+
+    // moderation commands are never sent as normal messages
+    const moderationCommand = !customPoll && (item.type === 'group' || item.isSupergroup)
+      ? parseModerationCommand(finalC)
+      : null;
+    if (moderationCommand) {
+      if (!isOwner) {
+        toast({ variant: 'destructive', title: t('mod_owner_only') });
+        return;
+      }
+      if (textOverride === undefined) {
+        setMessageContent('');
+        const txt = document.getElementById('message-textarea');
+        if (txt) txt.style.height = '40px';
+      }
+      await runModerationCommand(moderationCommand);
+      setReplyToMessage(null);
+      return;
+    }
     setIsSending(true); updateTypingState(false);
     if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '40px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
@@ -801,7 +899,15 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
-  const isOwner = item.ownerId === currentUser.uid; const isAdminUser = currentUser.username === '@Infinite'; const isDM = item.type === 'dm'; const isSavedMessages = item.id === currentUser.uid; const isGeneralChat = item.id === 'GENERAL_CHAT'; const canWrite = item.type !== 'channel' || isOwner;
+  const isOwner = item.ownerId === currentUser.uid; const isAdminUser = currentUser.username === '@Infinite'; const isDM = item.type === 'dm'; const isSavedMessages = item.id === currentUser.uid; const isGeneralChat = item.id === 'GENERAL_CHAT';
+  const banEntry = item.bannedUsers?.[currentUser.uid || ''];
+  const muteEntry = item.mutedUsers?.[currentUser.uid || ''];
+  const restriction: { kind: 'ban' | 'mute'; reason?: string } | null = banEntry
+    ? { kind: 'ban', reason: banEntry.reason }
+    : muteEntry
+      ? { kind: 'mute', reason: muteEntry.reason }
+      : null;
+  const canWrite = (item.type !== 'channel' || isOwner) && !restriction;
   const isOfficialBot = otherUser?.username === '@Infinite' || otherUser?.username === '@InfiniteBot' || item.link === '/B/Infinite';
   const showStartButton = !messagesLoading && isDM && otherUser?.isBot && !isOfficialBot && (!messages || messages.length === 0);
 
@@ -914,6 +1020,24 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
       </div>
 
       
+      {isMember && restriction && (
+        <div className={cn(
+          'shrink-0 border-t px-4 py-3 text-center pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
+          restriction.kind === 'ban'
+            ? 'border-destructive/25 bg-destructive/10'
+            : 'border-primary/20 bg-primary/10'
+        )}>
+          <p className={cn('text-sm font-semibold', restriction.kind === 'ban' ? 'text-destructive' : 'text-primary')}>
+            {restriction.kind === 'ban' ? t('you_are_banned') : t('you_are_muted')}
+          </p>
+          {restriction.reason ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t('restriction_reason')}: {restriction.reason}
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {isMember && canWrite && (!item.isSupergroup || activeTopicId) && (
         <footer className={cn("flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}>
           {(isRecordingVoice || isRecordingCircle) && (

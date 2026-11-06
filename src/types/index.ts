@@ -304,6 +304,19 @@ export type Chat = {
   isSupergroup?: boolean;
   topics?: ChatTopic[];
   allowedReactionsList?: string[];
+  /** Moderation (3.0.1): users muted by the group owner. */
+  mutedUsers?: Record<string, ChatRestriction>;
+  /** Moderation (3.0.1): users banned by the group owner. */
+  bannedUsers?: Record<string, ChatRestriction>;
+};
+
+/** A mute/ban entry stored on the chat document. */
+export type ChatRestriction = {
+  /** Free-form reason, typed on the line below the command. */
+  reason?: string;
+  /** UID of the moderator (group owner). */
+  by?: string;
+  since?: Timestamp;
 };
 
 export type ChatLink = {
