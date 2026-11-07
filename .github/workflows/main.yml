@@ -27,9 +27,9 @@ jobs:
       NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy"
-      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy"
+      NEXT_PUBLIC_FIREFIREBASE_STORAGE_BUCKET: "dummy"
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "dummy"
-      NEXT_PUBLIC_FIREWARE_APP_ID: "dummy"
+      NEXT_PUBLIC_FIREBASE_APP_ID: "dummy"
 
     steps:
     - uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
         echo ">>" >> android/app/build.gradle
         echo "configurations.all {" >> android/app/build.gradle
         echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'" >> android/app/build.gradle
-        echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'" >> android/app/build.gradle
+        echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'\" >> android/app/build.gradle
         echo "}" >> android/app/build.gradle
 
     # ---------------------------------------------------------------------
@@ -71,7 +71,6 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'material3' }}
       run: |
         npm run sync:android
-
         sed -i 's/minSdkVersion = .*/minSdkVersion = 23/' android/variables.gradle
         sed -i 's/applicationId .*/applicationId "com.infinite.chat"/' android/app/build.gradle
         # google-services.json must contain the edition package, otherwise
@@ -83,7 +82,7 @@ jobs:
             d = json.loads(p.read_text())
             for c in d.get('client', []):
                 c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat'
-            p.write_text(json.dumps(d, indent=2) + '\n')
+            p.write_text(json.dumps(d, indent=2) + '\\n')
         PY
         sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
         sed -i 's/versionName .*/versionName "3.0"/' android/app/build.gradle
@@ -120,7 +119,6 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'classic' }}
       run: |
         npm run sync:android
-
         sed -i 's/minSdkVersion = .*/minSdkVersion = 23/' android/variables.gradle
         sed -i 's/applicationId .*/applicationId \"com.infinite.chat.classic\"/' android/app/build.gradle
         # google-services.json must contain the edition package, otherwise
@@ -129,10 +127,8 @@ jobs:
         import json, pathlib
         p = pathlib.Path('android/app/google-services.json')
         if p.exists():
-            d = json.loads(p.read_text())
-            for c in d.get('client', []):
-                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat.classic'
-            p.write_text(json.dumps(d, indent=2) + '\\n')
+            d = json.loads(p.read_text())\n            for c in d.get('client', []):
+                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat.classic'\n            p.write_text(json.dumps(d, indent=2) + '\\n')
         PY
         sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
         sed -i 's/versionName .*/versionName \"3.0-classic\"/' android/app/build.gradle
@@ -157,11 +153,11 @@ jobs:
 
     - name: Build summary
       run: |
-        echo "### Infinite 3.0 \"Redesign\" — editions" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Artifact | Edition | Package | Design | minSdk |" >> $GITHUB_STEP_SUMMARY
-        echo "| --- | --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
-        echo "| infinite-material3-apk | Material 3 | com.infinite.chat | Material You | 23 |\" >> $GITHUB_STEP_SUMMARY
-        echo "| infinite-material2-apk | Material 2 | com.infinite.chat.m2 | Material Design 2 | 21 (Android 5+) |\" >> $GITHUB_STEP_SUMMARY
-        echo "| infinite-classic-apk | Classic 1.5 | com.infinite.chat.classic | Classic Infinite 1.5 | 23 |\" >> $GITHUB_STEP_SUMMARY
+        echo "### Infinite 3.0 \\\"Redesign\\\" — editions\" >> $GITHUB_STEP_SUMMARY
+        echo \"\" >> $GITHUB_STEP_SUMMARY
+        echo \"| Artifact | Edition | Package | Design | minSdk |\" >> $GITHUB_STEP_SUMMARY
+        echo \"| --- | --- | --- | --- | --- |\" >> $GITHUB_STEP_SUMMARY
+        echo \"| infinite-material3-apk | Material 3 | com.infinite.chat | Material You | 23 |\" >> $GITHUB_STEP_SUMMARY
+        echo \"| infinite-material2-apk | Material 2 | com.infinite.chat.m2 | Material Design 2 | 21 (Android 5+) |\" >> $GITHUB_STEP_SUMMARY
+        echo \"| infinite-classic-apk | Classic 1.5 | com.infinite.chat.classic | Classic Infinite 1.5 | 23 |\" >> $GITHUB_STEP_SUMMARY
 
