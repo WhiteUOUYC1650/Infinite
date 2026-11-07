@@ -164,4 +164,4 @@ jobs:
         echo "| infinite-material3-apk | Material 3 | com.infinite.chat | Material You | 23 |\" >> $GITHUB_STEP_SUMMARY
         echo "| infinite-material2-apk | Material 2 | com.infinite.chat.m2 | Material Design 2 | 21 (Android 5+) |\" >> $GITHUB_STEP_SUMMARY
         echo "| infinite-classic-apk | Classic 1.5 | com.infinite.chat.classic | Classic Infinite 1.5 | 23 |\" >> $GITHUB_STEP_SUMMARY
-"
+
