@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from 'react';
-import { Gamepad2, Loader2, Megaphone, Search, Users } from 'lucide-react';
+import { Gamepad2, Loader2, Megaphone, Menu, Search, Users } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { useLanguage } from '@/context/language-context';
 import { useToast } from '@/hooks/use-toast';
@@ -25,9 +25,12 @@ import { M3Avatar, M3EmptyState, M3SearchBar } from './m3-surfaces';
 export function M3SearchScreen({
   currentUser,
   onSelectChat,
+  onOpenMenu,
 }: {
   currentUser: AuthenticatedUser;
   onSelectChat: (chat: Chat) => void;
+  /** Opens the navigation drawer (hamburger in the top-left corner). */
+  onOpenMenu: () => void;
 }) {
   const db = useFirestore();
   const { t } = useLanguage();
@@ -91,8 +94,20 @@ export function M3SearchScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-m3-surface">
-      <header className="flex flex-col gap-2 px-2 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <h1 className="m3-app-bar-title-large truncate">{t('search_dialog_title')}</h1>
+      <header className="flex flex-col gap-2 px-2 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
+        <div className="flex items-start gap-1">
+          <button
+            type="button"
+            aria-label={t('more')}
+            onClick={onOpenMenu}
+            className="m3-icon-button mt-1 shrink-0 text-m3-on-surface"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <h1 className="m3-app-bar-title-large min-w-0 flex-1 truncate pt-1">
+            {t('search_dialog_title')}
+          </h1>
+        </div>
         <form
           onSubmit={(event) => {
             event.preventDefault();
