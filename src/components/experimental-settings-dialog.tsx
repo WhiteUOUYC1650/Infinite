@@ -169,7 +169,7 @@ const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, 
   const modernDesign = material3Design || material2Design;
   return (
     <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", modernDesign ? "bg-card mb-2 px-4 py-3.5" : glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
-        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("cursor-pointer whitespace-normal leading-tight mb-1", modernDesign ? "font-medium" : "font-bold", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}</div>
+        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("cursor-pointer whitespace-normal leading-tight mb-1", modernDesign ? "font-medium" : "font-bold", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-normal">{description}</span>}</div>
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className={cn("shrink-0 mt-1", glassEffect && "glass-switch")} disabled={disabled} />
     </div>
   );

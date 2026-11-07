@@ -399,7 +399,18 @@
   box-shadow: none;
   letter-spacing: 0.1px;
   font-weight: 500;
-}
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: hsl(var(--md-sys-color-on-surface) / 0.3);
+    animation: ripple-effect 0.3s ease-out;
+    pointer-events: none;
+  }
+  &::after:hover {
+    animation: none;
+  }
 
 [data-material3="true"] button[type="submit"] { border-radius: 9999px; }
 
@@ -629,4 +640,25 @@
 [data-material3="true"] .incoming-msg .rounded-bl-none,
 [data-material3="true"] .outgoing-msg .rounded-br-none {
   box-shadow: none;
+}
+
+
+/* button ripple effect */
+[ data-material3="true"] button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: hsl(var(--md-sys-color-on-surface) / 0.3);
+  animation: ripple-effect 0.3s ease-out;
+  pointer-events: none;
+}
+
+[ data-material3="true"] button::after:hover {
+  animation: none;
+}
+
+@keyframes ripple-effect {
+  0% { opacity: 0.5; }
+  100% { opacity: 0; }
 }
