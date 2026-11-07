@@ -124,6 +124,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && (resource.data.authorId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['installs', 'buyers']));
       allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
+    // linkless bot sources published from Bot Studio to InfMarket
+    match /botMarket/{sourceId} {
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.authorId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloads']));
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
     match /transfers/{transferId} { allow read, create, list: if isSignedIn(); }
     match /usernames/{username} { allow get: if true; allow create, delete: if isSignedIn(); }
     match /chatLinks/{linkId} { allow get: if true; allow create, delete: if isSignedIn(); }

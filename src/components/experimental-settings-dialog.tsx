@@ -40,6 +40,7 @@ import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { doc, setDoc, serverTimestamp, updateDoc, increment, getDoc, collection, query, where, orderBy, limit, deleteDoc, runTransaction } from 'firebase/firestore';
 import { useLanguage } from '@/context/language-context';
 import { useTheme } from '@/context/theme-context';
+import { FoldersSettingsCard } from '@/components/chat-folders/folders-settings-card';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -49,7 +50,7 @@ import { InfGoldIcon } from './ui/inf-gold-icon';
 import { DailyBonusWheel, PRIZES_WITH_ANGLES } from './daily-bonus-wheel';
 import { UserAvatarWithStatus, InfiniteLogo } from './chat/user-avatar-with-status';
 import { VerifiedBadge } from './ui/verified-badge';
-import { clearCacheDB, calculateCacheSize as getRealCacheSize } from '@/lib/cache-utils';
+import { clearCacheDB, calculateCacheSize as getRealCacheSize, enforceCacheLimit, getCacheLimitBytes, setCacheLimitBytes } from '@/lib/cache-utils';
 import { Capacitor } from '@capacitor/core';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -58,6 +59,9 @@ import { GiftPickerDialog } from './gifts/gift-picker-dialog';
 import { LegalDialog } from './legal-dialog';
 import { Input } from './ui/input';
 import React from 'react';
+
+/** Cache limit presets (1 MB … 100 GB); 0 means unlimited. */
+const CACHE_LIMIT_PRESETS_MB = [1, 5, 10, 25, 50, 100, 250, 500, 1024, 2048, 5120, 10240, 25600, 51200, 102400];
 
 const STANDARD_COLORS: Record<string, string> = {
   '0': '#000000',
@@ -148,19 +152,34 @@ const processMarkdownChildren = (children: any): any => {
     });
 };
 
-const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => (
-    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
-        <div className={cn("flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-4 transition-colors", showExpColors ? iconBg : "bg-primary/10 group-hover:bg-primary/20", isGlow && "experimental-glow")}><Icon className={cn("h-5 w-5", showExpColors ? iconColor : "text-primary")} /></div>
-        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2"><span className="font-bold whitespace-normal leading-tight">{label}</span>{description && <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}</div>
-        <div className="flex items-center gap-2 text-muted-foreground shrink-0">{value && <span className='capitalize text-xs max-w-[80px] truncate font-bold'>{value}</span>}<ChevronRight className="h-4 w-4 shrink-0" /></div>
+const SettingsItem = ({ icon: Icon, label, value, onClick, disabled = false, description, iconBg = "bg-primary/10", iconColor = "text-primary", showExpColors = false, isGlow = false, glassEffect = false }: { icon: React.ElementType, label: string, value?: string, onClick: () => void, disabled?: boolean, description?: string, iconBg?: string, iconColor?: string, showExpColors?: boolean, isGlow?: boolean, glassEffect?: boolean }) => {
+  const { material3Design, material2Design } = useTheme();
+  const modernDesign = material3Design || material2Design;
+  return (
+    <button onClick={onClick} className={cn("flex items-center w-full p-4 text-left rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none group", modernDesign ? "bg-card hover:bg-card/70 mb-2 px-4 py-3.5" : glassEffect ? "glass-button mb-1 border-none shadow-none" : "hover:bg-muted")} disabled={disabled}>
+        <div className={cn("flex-shrink-0 rounded-full flex items-center justify-center mr-4 transition-colors", material3Design ? "w-12 h-12" : "w-10 h-10", (showExpColors || modernDesign) ? iconBg : "bg-primary/10 group-hover:bg-primary/20", isGlow && "experimental-glow")}><Icon className={cn("h-5 w-5", (showExpColors || modernDesign) ? iconColor : "text-primary")} /></div>
+        <div className="flex-1 flex flex-col justify-center min-w-0 mr-2"><span className={cn("whitespace-normal leading-tight", modernDesign ? "font-medium" : "font-bold")}>{label}</span>{description && <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight mt-0.5">{description}</span>}</div>
+        <div className="flex items-center gap-2 text-muted-foreground shrink-0">{value && <span className='capitalize text-xs max-w-[80px] truncate font-bold'>{value}</span>}{modernDesign ? <span className="w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center"><ChevronRight className="h-4 w-4" /></span> : <ChevronRight className="h-4 w-4 shrink-0" />}</div>
   </button>
-);
+  );
+};
 
-const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => (
-    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
-        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("font-bold cursor-pointer whitespace-normal leading-tight mb-1", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{description}</span>}</div>
+const SettingsSwitchItem = ({ label, checked, onCheckedChange, id, description, disabled = false, glassEffect = false }: { label: string, checked: boolean, onCheckedChange: (checked: boolean) => void, id: string, description?: string, disabled?: boolean, glassEffect?: boolean }) => {
+  const { material3Design, material2Design } = useTheme();
+  const modernDesign = material3Design || material2Design;
+  return (
+    <div className={cn("flex items-start justify-between w-full p-4 rounded-xl", modernDesign ? "bg-card mb-2 px-4 py-3.5" : glassEffect && "glass-panel mb-1 border-none shadow-none bg-muted/20")}>
+        <div className="flex flex-col flex-1 mr-4 min-w-0"><Label htmlFor={id} className={cn("cursor-pointer whitespace-normal leading-tight mb-1", modernDesign ? "font-medium" : "font-bold", disabled && "opacity-50")}>{label}</Label>{description && <span className="text-xs text-muted-foreground leading-relaxed whitespace-normal">{description}</span>}</div>
         <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className={cn("shrink-0 mt-1", glassEffect && "glass-switch")} disabled={disabled} />
     </div>
+  );
+};
+
+const EditionChip = ({ label, icon: Icon }: { label: string, icon?: React.ElementType }) => (
+  <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-card text-[11px] font-medium text-foreground/80 shadow-sm">
+    {Icon && <Icon className="h-3.5 w-3.5 text-primary" />}
+    {label}
+  </span>
 );
 
 export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: { open: boolean, onOpenChange: (open: boolean) => void, currentUser: AuthenticatedUser }) {
@@ -173,13 +192,15 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   const router = useRouter();
   
   const { t, language, setLanguage } = useLanguage(); 
-  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const { theme, setTheme, isDarkMode, toggleTheme, sendOnEnter, toggleSendOnEnter, smoothScroll, toggleSmoothScroll, minimizeCallOnClose, toggleMinimizeCallOnClose, experimentalDesign, toggleExperimentalDesign, material3Design, material2Design, glassEffect, toggleGlassEffect, showFeed, toggleShowFeed, useSystemFont, toggleSystemFont, showSnowflakes, toggleSnowflakes, hideHolidayBanners, toggleHideHolidayBanners, hideUserFolders, toggleHideUserFolders, hideChatFolders, toggleHideChatFolders, hideStories, toggleHideStories, customThemeConfig, setCustomThemeConfig } = useTheme(); 
+  const modernDesign = material3Design || material2Design;
   const { isUpdateAvailable, promptUpdate, updateInfo, downloadUpdate, currentVersion } = useUpdatePrompt();
   
   const auth = useAuth(); 
   const db = useFirestore(); 
   const { toast } = useToast(); 
   const [currentCacheSize, setCurrentCacheSize] = useState('0 B'); 
+  const [cacheLimit, setCacheLimitState] = useState<number>(() => getCacheLimitBytes());
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false); 
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false); 
@@ -263,6 +284,13 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
   
   const formatSize = (bytes: number) => { if (bytes === 0) return '0 B'; const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]; };
   const calculateCacheSize = async () => { const dbSize = await getRealCacheSize(); setCurrentCacheSize(formatSize(dbSize)); };
+  const handleCacheLimitChange = async (value: string) => {
+    const bytes = parseInt(value, 10);
+    setCacheLimitBytes(bytes);
+    setCacheLimitState(bytes);
+    await enforceCacheLimit();
+    await calculateCacheSize();
+  };
   const handleManualCheckUpdates = () => { setIsCheckingUpdates(true); setHasCheckedUpdates(false); setTimeout(() => { setIsCheckingUpdates(false); setHasCheckedUpdates(true); }, 2000); };
   
   const handleBuyPrem = async (isYearly = false) => { 
@@ -317,7 +345,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
       switch(page) {
           case 'main': return (
               <div className="animate-in fade-in duration-300">
-                {(experimentalDesign || glassEffect) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div></div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
+                {(experimentalDesign || glassEffect || modernDesign) ? (<div className="flex flex-col items-center pt-6 pb-8 px-6 bg-gradient-to-b from-primary/15 to-transparent"><div className="relative mb-6"><UserAvatarWithStatus user={currentUser as any} className={cn("w-28 h-28 text-4xl border-4 border-background shadow-2xl rounded-full experimental-glow")} />{currentUser.activeGiftEmoji && <div className="absolute -bottom-1 -right-1 bg-background rounded-full w-10 h-10 flex items-center justify-center text-xl shadow-lg border-2 border-primary/20">{currentUser.activeGiftEmoji}</div>}</div><div className="text-center space-y-1.5"><h2 className="text-3xl font-bold font-headline flex items-center justify-center gap-2">{currentUser.name}{currentUser.isAdmin && <VerifiedBadge />}</h2><p className="text-muted-foreground font-medium">{currentUser.username}</p></div>{modernDesign && (<div className="flex flex-wrap items-center justify-center gap-2 pt-5"><EditionChip label={material3Design ? t('edition_material3') : t('edition_material2')} icon={Palette} /><EditionChip label={`v${currentVersion}`} /><EditionChip label="Redesign" icon={Sparkles} /></div>)}</div>) : (<div className="p-0 overflow-hidden"><UserProfileCard user={currentUser} onEditProfile={() => { onOpenChange(false); setTimeout(() => setShowEditProfile(true), 150); }} /></div>)}
                 <div className={cn("border-t p-2 space-y-1", (experimentalDesign || glassEffect) && "mt-2")}>
                   <SettingsItem icon={Paintbrush} label={t('appearance')} description={t('appearance_desc')} value={t(theme as any)} onClick={() => navigateTo('appearance')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} />
                   <SettingsItem icon={MessageSquare} label={t('chat_settings')} description={t('chat_settings_desc')} onClick={() => navigateTo('chat')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-green-500/15" iconColor="text-green-500" glassEffect={glassEffect} />
@@ -343,6 +371,10 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <SettingsSwitchItem id="exp-design" label={t('experimental_design_label')} checked={experimentalDesign} onCheckedChange={toggleExperimentalDesign} description={t('experimental_design_desc')} glassEffect={glassEffect} />
               <SettingsSwitchItem id="glass" label={t('glass_effect_label')} checked={glassEffect} onCheckedChange={toggleGlassEffect} description={t('glass_effect_desc')} glassEffect={glassEffect} />
               <SettingsSwitchItem id="show-feed" label={t('show_feed_label')} checked={showFeed} onCheckedChange={toggleShowFeed} description={t('show_feed_desc')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-holiday" label={t('hide_holiday_banners')} checked={hideHolidayBanners} onCheckedChange={toggleHideHolidayBanners} description={t('hide_holiday_banners')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-stories" label={t('hide_stories')} checked={hideStories} onCheckedChange={toggleHideStories} description={t('hide_stories')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-user-folders" label={t('hide_user_folders')} checked={hideUserFolders} onCheckedChange={toggleHideUserFolders} description={t('hide_user_folders')} glassEffect={glassEffect} />
+              <SettingsSwitchItem id="hide-chat-folders" label={t('hide_chat_folders')} checked={hideChatFolders} onCheckedChange={toggleHideChatFolders} description={t('hide_chat_folders')} glassEffect={glassEffect} />
             </div>
           );
           case 'theme': 
@@ -500,7 +532,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                 </div>
             </div>
           );
-          case 'chat': return (<div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'><SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} /><SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} /><SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} /></div>);
+          case 'chat': return (<div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'><SettingsSwitchItem id="send-enter" label={t('send_on_enter_label')} checked={sendOnEnter} onCheckedChange={toggleSendOnEnter} description={t('send_on_enter_label')} glassEffect={glassEffect} /><SettingsSwitchItem id="smooth-scroll" label={t('smooth_scroll_label')} checked={smoothScroll} onCheckedChange={toggleSmoothScroll} description={t('smooth_scroll_desc')} glassEffect={glassEffect} /><SettingsSwitchItem id="min-call" label={t('minimize_call_on_close_label')} checked={minimizeCallOnClose} onCheckedChange={toggleMinimizeCallOnClose} description={t('minimize_call_on_close_label')} glassEffect={glassEffect} /><FoldersSettingsCard currentUser={currentUser} /></div>);
           case 'privacy': return (
             <div className='p-2 space-y-1 divide-y animate-in fade-in slide-in-from-right-4 duration-300'>
               <SettingsSwitchItem id="login-prot" label={t('login_protection_label')} checked={!!currentUser.loginProtectionEnabled} onCheckedChange={handleToggleLoginProtection} description={t('login_protection_desc')} glassEffect={glassEffect} />
@@ -509,7 +541,7 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
               <div className={cn("p-4 space-y-3 rounded-xl", glassEffect && "glass-panel border-none")}><Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{t('story_expiration_label')}</Label><Select value={(currentUser.storyExpirationDuration ?? 24).toString()} onValueChange={(v) => handleSetStoryExpiration(parseInt(v))}><SelectTrigger className={cn("h-12 rounded-xl border-none font-bold", glassEffect ? "glass-input" : "bg-muted/50")}><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="12">12 {t('hours')}</SelectItem><SelectItem value="24">24 {t('hours')}</SelectItem><SelectItem value="48">48 {t('hours')}</SelectItem><SelectItem value="72">72 {t('hours')}</SelectItem><SelectItem value="0">{t('story_expiration_never')}</SelectItem></SelectContent></Select></div>
             </div>
           );
-          case 'dataStorage': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn('border rounded-3xl p-6 space-y-4 shadow-sm', glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center"><HardDrive className="h-6 w-6 text-orange-500" /></div><div><p className='text-xs font-black uppercase tracking-widest text-muted-foreground'>{t('cache_usage')}</p><p className='text-2xl font-black text-foreground'>{currentCacheSize}</p></div></div><p className="text-xs text-muted-foreground leading-relaxed">{t('clear_cache_desc')}</p><Button variant="outline" className={cn('w-full h-12 rounded-2xl font-bold border-orange-500/20 hover:bg-orange-500/5', glassEffect && "glass-button border-none")} onClick={handleClearCache}><Trash2 className="mr-2 h-4 w-4 text-orange-500" /> {t('clear_cache')}</Button></div></div>);
+          case 'dataStorage': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn('border rounded-3xl p-6 space-y-4 shadow-sm', glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center"><HardDrive className="h-6 w-6 text-orange-500" /></div><div><p className='text-xs font-black uppercase tracking-widest text-muted-foreground'>{t('cache_usage')}</p><p className='text-2xl font-black text-foreground'>{currentCacheSize}</p></div></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{t('cache_limit_label')}</Label><Select value={cacheLimit.toString()} onValueChange={handleCacheLimitChange}><SelectTrigger className={cn('h-12 rounded-xl border-none font-bold', glassEffect ? "glass-input" : "bg-muted/50")}><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="0">{t('cache_limit_unlimited')}</SelectItem>{CACHE_LIMIT_PRESETS_MB.map(mb => (<SelectItem key={mb} value={(mb * 1024 * 1024).toString()}>{formatSize(mb * 1024 * 1024)}</SelectItem>))}</SelectContent></Select><p className="text-[10px] text-muted-foreground leading-relaxed">{cacheLimit === 0 ? t('cache_limit_unlimited_desc') : t('cache_limit_desc')}</p></div><p className="text-xs text-muted-foreground leading-relaxed">{t('clear_cache_desc')}</p><Button variant="outline" className={cn('w-full h-12 rounded-2xl font-bold border-orange-500/20 hover:bg-orange-500/5', glassEffect && "glass-button border-none")} onClick={handleClearCache}><Trash2 className="mr-2 h-4 w-4 text-orange-500" /> {t('clear_cache')}</Button></div></div>);
           case 'infGold': return (<div className='p-6 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("border border-amber-500/20 rounded-[2rem] p-8 text-center space-y-4", glassEffect ? "glass-panel" : "bg-amber-500/10")}><InfGoldIcon className='h-16 w-16 mx-auto experimental-glow text-amber-600' /><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700/60 mb-1">{t('inf_gold_balance')}</p><h2 className='text-5xl font-black text-amber-600'>{Math.round(currentUser.infGoldBalance || 0)}</h2></div></div><div className="p-2 gap-1 flex flex-col"><SettingsItem icon={Sparkles} label={t('daily_bonus')} onClick={() => navigateTo('dailyBonus')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-amber-500/15" iconColor="text-amber-600" glassEffect={glassEffect} /><SettingsItem icon={Gift} label={t('send_gift')} onClick={() => setShowSelfGiftPicker(true)} showExpColors={experimentalDesign || glassEffect} iconBg="bg-pink-500/15" iconColor="text-pink-600" glassEffect={glassEffect} /><SettingsItem icon={Star} label={t('infinite_prem')} onClick={() => navigateTo('infinitePrem')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-primary/15" iconColor="text-primary" glassEffect={glassEffect} /><SettingsItem icon={Clock} label={t('transfer_history')} onClick={() => navigateTo('transferHistory')} showExpColors={experimentalDesign || glassEffect} iconBg="bg-blue-500/15" iconColor="text-blue-500" glassEffect={glassEffect} /></div></div>);
           case 'infinitePrem': return (<div className='p-6 space-y-6 animate-in fade-in slide-in-from-right-4 duration-300'><div className={cn("rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl relative overflow-hidden transition-colors", glassEffect ? "glass-panel border-none bg-primary/80 backdrop-blur-xl" : "bg-primary")}><div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-3xl rounded-full" /><div className="relative z-10 space-y-4"><div className='flex items-center justify-between'><VerifiedBadge className="w-12 h-12" />{currentUser.subscriptionTier === 'prem' && <Badge variant="secondary" className="bg-white/20 text-white border-none font-black">ACTIVE</Badge>}</div><h2 className="text-3xl font-black font-headline leading-none">Infinite Prem</h2><p className="text-white/80 text-sm leading-relaxed">{t('prem_description')}</p><ul className="space-y-3 pt-2">{[1, 2, 3].map(i => (<li key={i} className="flex items-center gap-3 text-sm font-bold"><div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0"><Check className="w-3 h-3" /></div>{t(`prem_benefit_${i}` as any)}</li>))}</ul></div></div><div className="space-y-3"><Button onClick={() => handleBuyPrem(false)} disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg shadow-xl">{isBuyingPrem ? <Loader2 className='animate-spin' /> : (currentUser.subscriptionTier === 'prem' ? t('current_plan') : t('subscribe_monthly'))}</Button><Button onClick={() => handleBuyPrem(true)} variant="outline" disabled={isBuyingPrem || currentUser.subscriptionTier === 'prem'} className="w-full h-16 rounded-3xl font-black text-lg border-primary/20">{t('subscribe_yearly')}</Button><p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('yearly_discount_note')}</p></div></div>);
           case 'transferHistory': return (<div className='p-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300'><h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">{t('transfer_history')}</h3><div className="space-y-2">{[...(sentTransfers || []), ...(receivedTransfers || [])].sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()).map(item => { const isSent = item.senderId === userId; return (<div key={item.id} className={cn("border rounded-2xl p-4 flex items-center justify-between", glassEffect ? "glass-panel" : "bg-card")}><div className="flex items-center gap-3"><div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSent ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>{isSent ? <ArrowLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}</div><div><p className="font-bold text-sm leading-tight">{isSent ? item.receiverName : item.senderName}</p><p className="text-[10px] text-muted-foreground uppercase font-medium">{isSent ? 'Sent' : 'Received'}</p></div></div><div className="text-right"><p className={cn("font-black text-base", isSent ? "text-red-500" : "text-green-500")}>{isSent ? '-' : '+'}{item.amount} G</p><p className="text-[9px] text-muted-foreground">{format(item.timestamp.toMillis(), 'dd.MM, HH:mm')}</p></div></div>); })}{(!sentTransfers?.length && !receivedTransfers?.length) && (<div className="text-center py-20 opacity-30"><Coins className="h-12 w-12 mx-auto mb-2" /><p className="text-xs font-bold uppercase">{t('no_transfers')}</p></div>)}</div></div>);
@@ -525,6 +557,19 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                                     {f.answer}
                                 </ReactMarkdown>
                             </div>
+                            {f.question === t('faq_bot_prog_q') && (
+                                <Button
+                                    variant="outline"
+                                    className="mt-3 h-11 w-full rounded-xl font-bold gap-2"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        setTimeout(() => window.dispatchEvent(new CustomEvent('open-bot-guide')), 250);
+                                    }}
+                                >
+                                    <Cpu className="h-4 w-4" />
+                                    {t('open_bot_guide')}
+                                </Button>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                 ))}
@@ -541,25 +586,34 @@ export function ExperimentalSettingsDialog({ open, onOpenChange, currentUser }: 
                     <InfiniteLogo className='w-20 h-20 text-white' />
                 </div>
                 <div className="space-y-2">
-                    <h2 className='text-4xl font-black font-headline'>Infinite Aurora</h2>
+                    <h2 className='text-4xl font-black font-headline'>Infinite Redesign</h2>
                     <Badge className="bg-primary text-white h-6 px-3 rounded-full text-xs font-black">v{currentVersion}</Badge>
                 </div>
-                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Aurora Release</div>
+                <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 text-[10px] font-black text-primary leading-relaxed uppercase tracking-widest">Redesign Release</div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                    <EditionChip label={`${t('edition_label')}: ${material3Design ? t('edition_material3') : material2Design ? t('edition_material2') : t('edition_classic')}`} icon={Palette} />
+                </div>
                 <div className="flex flex-col gap-2 w-full pt-4">
                     <button onClick={() => setShowLegalType('tos')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText className="h-4 w-4" /></div><span className="text-xs font-bold">{t('terms_of_service')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                     <button onClick={() => setShowLegalType('privacy')} className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 rounded-2xl transition-all group"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><ShieldCheck className="h-4 w-4" /></div><span className="text-xs font-bold">{t('privacy_policy')}</span></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" /></button>
                 </div>
-                <p className='text-xs text-muted-foreground leading-relaxed max-xs font-medium opacity-60'>{t('version_info_detail')}</p>
               </div>
           );
           case 'whatsNew':
               return (
                 <div className='p-6 space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 pb-20'>
                   <div className="text-center space-y-2">
-                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Aurora 1.5</h2>
+                      <h2 className="text-3xl font-black font-headline text-primary uppercase tracking-tighter">Redesign 3.0</h2>
                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('aurora_release_notes')}</p>
                   </div>
                   <div className="grid gap-3">
+                      <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
+                          <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-primary shrink-0"><Palette className="h-6 w-6" /></div>
+                          <div className="flex-1">
+                              <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">{t('material3_whats_new_title')}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium leading-tight">{t('material3_whats_new_desc')}</p>
+                          </div>
+                      </div>
                       <div className={cn("flex items-center gap-4 p-5 border rounded-3xl shadow-sm", glassEffect ? "glass-panel" : "bg-card")}>
                           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0"><Send className="h-6 w-6" /></div>
                           <div className="flex-1">

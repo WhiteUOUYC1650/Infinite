@@ -16,10 +16,76 @@ Infinite is a modern, real-time chat application built with Next.js, Firebase, a
 - **Multi-language Support:** Available in English and Russian.
 - **Admin Panel:** A dedicated panel for administrators to manage users and chats.
 
-## Getting Started
+## Editions (Infinite 3.0 "Redesign")
 
-The application is ready to run. To explore the code, a good starting point is `src/app/page.tsx`.
+The Android build produces **three editions of the same app** (same code, same libraries —
+only the design layer differs). The edition is baked in at build time, never at runtime:
 
-## Building the App
+| Edition | Artifact | Package | Design | minSdk |
+| --- | --- | --- | --- | --- |
+| Material 3 | `infinite-material3-apk` | `com.infinite.chat` | Material You: tonal surfaces, pill controls, bottom sheets | 23 |
+| Material 2 | `infinite-material2-apk` | `com.infinite.chat.m2` | Material Design 2: colored app bar, 4dp cards, uppercase buttons | 21 (Android 5.0+) |
+| Classic 1.5 | `infinite-classic-apk` | `com.infinite.chat.classic` | The classic Infinite 1.5 interface | 23 |
 
-This project is configured with Capacitor to be deployed as a native Android application. The APK is built automatically via a GitHub Action workflow defined in `.github/workflows/main.yml`. A new build is triggered on every push to the `main` branch.
+All three are built by `.github/workflows/main.yml`. The workflow runs on pushes and
+pull requests to `main`, and can also be started **manually**: Actions →
+"Build Infinite APKs …" → *Run workflow* (optionally choose a single edition).
+
+Locally:
+
+```bash
+NEXT_PUBLIC_INFINITE_EDITION=material3 npm run build   # Material 3 edition
+NEXT_PUBLIC_INFINITE_EDITION=material2 npm run build   # Material 2 edition
+npm run build                                          # Classic 1.5 (default, also the web build)
+```
+
+### Material 3 UI is a separate interface
+
+The Material 3 edition does not reuse the classic 1.5 screens — it has its own UI layer:
+
+```
+src/components/m3/
+  m3-theme.css      # all Material 3 styles (moved out of globals.css)
+  m3-primitives.tsx # M3 app bar, icon buttons, buttons, FAB, chips, navigation bar
+  m3-surfaces.tsx   # M3 cards, list rows, search bar, avatars, empty state
+  m3-chat-row.tsx   # M3 conversation row
+  m3-chat-list.tsx  # M3 conversations screen (search, filters, services sheet, FAB, nav bar)
+  m3-shell.tsx      # M3 app shell (list + content pane, mobile/desktop)
+src/lib/m3-palette.ts # seed colour -> Material You color roles
+```
+
+The accent colour picked in *Settings → Appearance* is used as a Material 3
+**seed**: `src/lib/m3-palette.ts` expands it into the tonal roles
+(`surface-container-*`, `primary-container`, `on-surface-variant`, `outline`, …)
+and remaps the legacy semantic variables, so chat, settings and every dialog
+follow Material 3 in both light and dark mode. See
+[docs/m3-design.md](docs/m3-design.md) for the full token/component overview and
+screenshots.
+
+`src/components/app-shell.tsx` only chooses between the two shells: for the Material 3
+edition it renders `M3Shell` (app bar, chips, conversation list, navigation bar), while the
+classic 1.5 markup stays exactly as before for the other two editions. Feature screens
+(chat, premium, bot studio, …) are shared, but in the M3 build they are styled by the M3
+layer, and in the 1.5 build by the classic styles.
+
+Material 3 styles live in `src/components/m3/m3-theme.css` behind `[data-material3="true"]`,
+Material 2 styles in `src/app/globals.css` behind `[data-material2="true"]`; those
+attributes are set only by the corresponding editions, so the classic interface is untouched.
+> **Note on the Material 2 edition (minSdk 21):** it is built with `minSdkVersion 21`
+> (Android 5.0) and `tools:overrideLibrary` for the Capacitor/AndroidX packages.
+> On Android 5.x the system WebView is old, so some modern UI/JS features may be
+> limited; Android 6+ is recommended for the M2 edition.
+
+
+### CI workflow: `.github/workflows/main.yml`
+
+The three-edition build is defined in `.github/workflows/main.yml`. A copy of that
+workflow is kept in [`docs/ci/main.yml`](docs/ci/main.yml) so it can be restored
+with a single copy if the GitHub App token used for automation has no `workflows`
+permission:
+
+```bash
+cp docs/ci/main.yml .github/workflows/main.yml
+git commit -am "ci: build Material 3 + Classic editions"
+git push
+```

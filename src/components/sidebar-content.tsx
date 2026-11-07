@@ -20,7 +20,7 @@ import {
 import type { Chat, PopulatedChat, User, AuthenticatedUser } from '@/types';
 import { UserAvatarWithStatus, InfiniteLogo } from '@/components/chat/user-avatar-with-status';
 import { Badge } from '@/components/ui/badge';
-import { Cog, Info, LogOut, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreVertical, ChevronDown, ChevronUp, ArrowLeft, MessageSquare, MoreHorizontal, UserPlus, Repeat } from 'lucide-react';
+import { Cog, Info, LogOut, Menu, Moon, Search, Sun, Users, Megaphone, PlusCircle, Bookmark, Languages, Globe, Trash2, Shield, Paintbrush, HelpCircle, Bot, Star, Image as ImageIcon, Video as VideoIcon, Music as MusicIcon, Clock, Check, CheckCheck, PlayCircle, Rocket, PartyPopper, Heart, ShieldCheck, Flower2, Flag, Sparkles, Gamepad2, Newspaper, Cpu, Mic, File as FileIcon, ListTodo, Archive, ArchiveX, MoreVertical, ChevronDown, ChevronUp, ArrowLeft, MessageSquare, MoreHorizontal, UserPlus, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, runTransaction, arrayRemove } from 'firebase/firestore';
@@ -43,6 +43,8 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { ExperimentalSettingsDialog } from './experimental-settings-dialog';
 import { useUpdatePrompt } from '@/context/update-prompt-context';
 import { StoriesBar } from './stories/stories-bar';
+import { FolderChips } from './chat-folders/folder-chips';
+import { useChatFolders } from '@/hooks/use-chat-folders';
 import { InfVidIcon } from './infvid/infvid-view';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -103,7 +105,7 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const auth = useAuth();
   const { language, t } = useLanguage(); 
   const { toggleTheme, isDarkMode, experimentalDesign, glassEffect, showFeed } = useTheme(); 
-  const { setOpenMobile } = useSidebar(); 
+  const { setOpenMobile, toggleSidebar, isMobile } = useSidebar(); 
   const { isUpdateAvailable } = useUpdatePrompt();
   const { toast } = useToast();
   
@@ -152,11 +154,21 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   const { data: chats, loading: chatsLoading } = useCollection<Chat>(chatsQuery);
   
   const archivedChatIds = useMemo(() => new Set(currentUser.archivedChats || []), [currentUser.archivedChats]);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const { folders } = useChatFolders(currentUser);
+  const { hideHolidayBanners, hideUserFolders, hideChatFolders, hideStories, material2Design } = useTheme();
+
+  useEffect(() => { if (hideChatFolders) setActiveFolderId(null); }, [hideChatFolders]);
 
   const sortedChats = useMemo(() => { 
     if (!chats) return []; 
-    return [...chats].sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0)); 
-  }, [chats]);
+    const folderChatIds = activeFolderId
+      ? new Set(folders.find((folder) => folder.id === activeFolderId)?.chatIds || [])
+      : null;
+    return [...chats]
+      .filter((chat) => (folderChatIds ? folderChatIds.has(chat.id) : true))
+      .sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0)); 
+  }, [chats, activeFolderId, folders]);
   
   const activeChats = useMemo(() => sortedChats.filter(c => !archivedChatIds.has(c.id)), [sortedChats, archivedChatIds]);
   const archivedChatsList = useMemo(() => sortedChats.filter(c => archivedChatIds.has(c.id)), [sortedChats, archivedChatIds]);
@@ -244,45 +256,47 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
   }, [db, handleSelect]);
 
   const handleSelectSavedMessages = async () => { 
-    if (!db || !currentUser.uid) return; 
+    if (!currentUser.uid) return; 
     const chatId = currentUser.uid; 
-    const chatRef = doc(db, 'chats', chatId); 
+    let chatData: Chat = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' }; 
     try { 
+      if (!db) throw new Error('no db'); 
+      const chatRef = doc(db, 'chats', chatId); 
       const chatSnap = await getDoc(chatRef); 
-      let chatData: Chat; 
-      if (!chatSnap.exists()) { 
-        chatData = { id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' }; 
-        await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } }); 
-      } else { 
+      if (chatSnap.exists()) { 
         chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat; 
+      } else { 
+        await setDoc(chatRef, { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } }); 
       } 
-      handleSelect(chatData); 
     } catch (error) { 
-      console.error(error); 
+      console.error('Saved messages: opening locally', error); 
     } 
+    if (typeof document !== 'undefined') document.body.style.pointerEvents = ''; 
+    handleSelect(chatData); 
   };
   
   const handleSelectGeneralChat = async () => { 
-    if (!db || !currentUser.uid) return; 
+    if (!currentUser.uid) return; 
     const chatId = 'GENERAL_CHAT'; 
-    const chatRef = doc(db, 'chats', chatId); 
+    let chatData: Chat = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' }; 
     try { 
+      if (!db) throw new Error('no db'); 
+      const chatRef = doc(db, 'chats', chatId); 
       const chatSnap = await getDoc(chatRef); 
-      let chatData: Chat; 
-      if (!chatSnap.exists()) { 
-        chatData = { id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' }; 
-        await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid], }); 
-      } else { 
+      if (chatSnap.exists()) { 
         chatData = { id: chatSnap.id, ...chatSnap.data() } as Chat; 
         if (!chatData.members.includes(currentUser.uid)) { 
           await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) }); 
           chatData.members.push(currentUser.uid); 
         } 
+      } else { 
+        await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid], }); 
       } 
-      handleSelect(chatData); 
     } catch (error) { 
-      console.error(error); 
+      console.error('General chat: opening locally', error); 
     } 
+    if (typeof document !== 'undefined') document.body.style.pointerEvents = ''; 
+    handleSelect(chatData); 
   };
   
   const handleSelectBot = async (bot: User) => { 
@@ -366,6 +380,17 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
       <SidebarHeader className="p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {material2Design && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('more')}
+                className="h-9 w-9 shrink-0"
+                onClick={() => (isMobile ? setOpenMobile(false) : toggleSidebar())}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <h1 className={cn("text-xl font-bold font-headline transition-all", isOnline ? "text-primary" : "text-muted-foreground animate-pulse")}>
               Infinite
             </h1>
@@ -437,8 +462,18 @@ export function SidebarContent({ onSelect, selectedId, currentUser }: SidebarCon
                     </Button>
                 </div>
 
-                <StoriesBar currentUser={currentUser} filterArchived={false} />
-                <HolidayBanner />
+                {!hideStories && <StoriesBar currentUser={currentUser} filterArchived={false} />}
+                {!hideHolidayBanners && <HolidayBanner />}
+                {!hideUserFolders && (
+                  <FolderChips
+                    folders={folders}
+                    activeId={activeFolderId}
+                    onSelect={setActiveFolderId}
+                    allLabel={t('all_chats')}
+                    manageLabel={t('folders_title')}
+                    className="pt-1"
+                  />
+                )}
                 
                 <div className="py-1 space-y-0.5">
                 {showFeed && (

@@ -186,3 +186,232 @@ body.use-system-font h4 {
   50% { opacity: 1; }
   100% { transform: translateY(110vh); opacity: 0; }
 }
+
+/* =========================================================================
+   Infinite 3.0 "Redesign" — MATERIAL 2 EDITION (Android 5.0+ build)
+   Scoped to [data-material2="true"], set only by the Material 2 APK.
+   Classic 1.5 and Material 3 builds never match these rules.
+   ========================================================================= */
+
+[data-material2="true"] {
+  --radius: 0.25rem;
+  --md2-e1: 0 1px 3px 0 hsl(0 0% 0% / 0.16), 0 1px 1px 0 hsl(0 0% 0% / 0.12);
+  --md2-e2: 0 2px 2px 0 hsl(0 0% 0% / 0.14), 0 3px 1px -2px hsl(0 0% 0% / 0.12), 0 1px 5px 0 hsl(0 0% 0% / 0.20);
+  --md2-e3: 0 3px 5px -1px hsl(0 0% 0% / 0.20), 0 6px 10px 0 hsl(0 0% 0% / 0.14), 0 1px 18px 0 hsl(0 0% 0% / 0.12);
+  --md2-e4: 0 5px 5px -3px hsl(0 0% 0% / 0.20), 0 8px 10px 1px hsl(0 0% 0% / 0.14), 0 3px 14px 2px hsl(0 0% 0% / 0.12);
+}
+
+.dark[data-material2="true"] {
+  --md2-e1: 0 1px 3px 0 hsl(0 0% 0% / 0.6);
+  --md2-e2: 0 2px 6px 0 hsl(0 0% 0% / 0.55);
+  --md2-e3: 0 4px 10px 0 hsl(0 0% 0% / 0.55);
+  --md2-e4: 0 6px 14px 2px hsl(0 0% 0% / 0.6);
+}
+
+/* --- typography ----------------------------------------------------------- */
+/* Font family follows Settings → System font (PT Sans when disabled). */
+
+[data-material2="true"] .font-black {
+  font-weight: 500;
+  letter-spacing: 0.0125em;
+}
+
+[data-material2="true"] .font-headline {
+  font-weight: 500;
+}
+
+/* --- app bar: solid primary surface with elevation (M2 signature) --------- */
+[data-material2="true"] header {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-bottom: none;
+  box-shadow: var(--md2-e2);
+}
+
+[data-material2="true"] header .bg-background,
+[data-material2="true"] header .bg-card {
+  background-color: transparent;
+}
+
+[data-material2="true"] header .text-muted-foreground {
+  color: hsl(var(--primary-foreground) / 0.85);
+}
+
+/* --- sidebar app bar: solid primary, white text (M2 signature) ----------- */
+[data-material2="true"] [data-sidebar="header"] {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 0;
+  box-shadow: var(--md2-e2);
+}
+
+[data-material2="true"] [data-sidebar="header"] h1 {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+[data-material2="true"] [data-sidebar="header"] button,
+[data-material2="true"] [data-sidebar="header"] svg {
+  color: hsl(var(--primary-foreground));
+}
+
+[data-material2="true"] [data-sidebar="header"] button:hover {
+  background-color: hsl(var(--primary-foreground) / 0.12);
+}
+
+/* M2 menus / sheets / dialogs keep 4dp corners */
+[data-material2="true"] [role="dialog"] {
+  border-radius: 0.25rem;
+}
+
+/* --- shape: 4dp corners everywhere --------------------------------------- */
+[data-material2="true"] .rounded-lg,
+[data-material2="true"] .rounded-xl,
+[data-material2="true"] .rounded-2xl,
+[data-material2="true"] .rounded-3xl,
+[data-material2="true"] [class*="rounded-[2.5rem]"],
+[data-material2="true"] [class*="rounded-[2rem]"] {
+  border-radius: 0.25rem;
+}
+
+/* --- cards ---------------------------------------------------------------- */
+[data-material2="true"] .bg-card {
+  box-shadow: var(--md2-e1);
+}
+
+/* --- buttons: contained, uppercase, 4dp, elevation ----------------------- */
+[data-material2="true"] button.rounded-md,
+[data-material2="true"] a.rounded-md {
+  border-radius: 0.25rem;
+}
+
+/* M2 contained buttons: uppercase, 14sp, medium (action buttons only) */
+[data-material2="true"] button.rounded-md[class*="h-10"],
+[data-material2="true"] button.rounded-md[class*="h-12"],
+[data-material2="true"] button.rounded-md[class*="h-14"],
+[data-material2="true"] button.rounded-md[class*="h-16"] {
+  text-transform: uppercase;
+  letter-spacing: 0.0625em;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+[data-material2="true"] button.bg-primary {
+  box-shadow: var(--md2-e2);
+}
+
+[data-material2="true"] button.bg-primary:hover {
+  box-shadow: var(--md2-e3);
+}
+
+[data-material2="true"] button:not(:disabled):active {
+  box-shadow: var(--md2-e4);
+}
+
+/* FAB look for the round action buttons only (not for wide submit buttons) */
+[data-material2="true"] button[type="submit"][class*="rounded-full"],
+[data-material2="true"] button.rounded-full.bg-primary {
+  border-radius: 9999px;
+  box-shadow: var(--md2-e3);
+}
+
+/* --- text fields: filled with bottom border ------------------------------ */
+[data-material2="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+[data-material2="true"] textarea {
+  border: none;
+  border-bottom: 1px solid hsl(var(--foreground) / 0.42);
+  border-radius: 0.25rem 0.25rem 0 0;
+  background-color: hsl(var(--muted));
+  box-shadow: none;
+}
+
+[data-material2="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+[data-material2="true"] textarea:focus {
+  outline: none;
+  border-bottom: 2px solid hsl(var(--primary));
+  background-color: hsl(var(--muted));
+  box-shadow: none;
+}
+
+/* --- switches: M2 track + thumb ------------------------------------------ */
+[data-material2="true"] button[role="switch"] {
+  width: 2.125rem;
+  height: 0.875rem;
+  padding: 0;
+  border: 0;
+  background-color: hsl(var(--foreground) / 0.32);
+  box-shadow: none;
+}
+
+[data-material2="true"] button[role="switch"][data-state="checked"] {
+  background-color: hsl(var(--primary) / 0.55);
+}
+
+[data-material2="true"] button[role="switch"] > span {
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: hsl(var(--card));
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.4);
+  transform: translateX(-0.1875rem);
+}
+
+[data-material2="true"] button[role="switch"][data-state="checked"] > span {
+  background-color: hsl(var(--primary));
+  transform: translateX(1.0625rem);
+}
+
+/* --- dialogs, menus, sheets ---------------------------------------------- */
+[data-material2="true"] [role="dialog"] {
+  border: none;
+  border-radius: 0.25rem;
+  background-color: hsl(var(--card));
+  box-shadow: var(--md2-e3);
+}
+
+[data-material2="true"] [role="dialog"] header {
+  background-color: transparent;
+  color: inherit;
+  box-shadow: none;
+}
+
+[data-material2="true"] [role="menu"],
+[data-material2="true"] [role="listbox"],
+[data-material2="true"] [role="tooltip"] {
+  border: none;
+  border-radius: 0.25rem;
+  box-shadow: var(--md2-e2);
+}
+
+[data-material2="true"] [role="menuitem"],
+[data-material2="true"] [role="option"] {
+  border-radius: 0.25rem;
+}
+
+/* --- chat bubbles --------------------------------------------------------- */
+[data-material2="true"] .outgoing-msg .rounded-br-none {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 1rem 1rem 0 1rem;
+  box-shadow: var(--md2-e1);
+}
+
+[data-material2="true"] .incoming-msg .rounded-bl-none {
+  background-color: hsl(var(--card));
+  border-radius: 1rem 1rem 1rem 0;
+  box-shadow: var(--md2-e1);
+}
+
+/* --- navigation drawer ---------------------------------------------------- */
+[data-material2="true"] .bg-sidebar {
+  box-shadow: var(--md2-e1);
+}
+
+[data-material2="true"] .bg-sidebar-accent {
+  background-color: hsl(var(--primary) / 0.12);
+  border-radius: 0.25rem;
+}
+
+/* --- lists ----------------------------------------------------------------- */
+[data-material2="true"] .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: 1px;
+  border-color: hsl(var(--border) / 0.8);
+}

@@ -4,8 +4,30 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { CustomThemeConfig } from '@/types';
+import { applyM3Palette } from '@/lib/m3-palette';
 
-export type Theme = 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink' | 'shining_gold' | 'first_version' | 'custom';
+export type Theme =
+  | 'orange' | 'purple' | 'blue' | 'gray' | 'green' | 'red' | 'yellow' | 'pink'
+  | 'shining_gold' | 'first_version' | 'custom'
+  /* Material 3 palette additions (used by the Material 3 edition) */
+  | 'deep_purple' | 'indigo' | 'light_blue' | 'cyan' | 'teal' | 'light_green'
+  | 'lime' | 'amber' | 'deep_orange' | 'brown' | 'blue_grey';
+
+/**
+ * Design edition is baked in at build time, see .github/workflows/main.yml:
+ *   NEXT_PUBLIC_INFINITE_EDITION=material3  → "Material 3" edition of Infinite 3.0
+ *   NEXT_PUBLIC_INFINITE_EDITION=material2  → "Material 2" edition (Android 5.0+)
+ *   unset / any other value                 → classic Infinite 1.5 interface (default)
+ *
+ * The editions are separate APKs and never switch at runtime, so the classic
+ * 1.5 interface stays byte-for-byte identical for its build.
+ */
+export type AppEdition = 'material3' | 'material2' | 'classic';
+
+const EDITION_ENV = process.env.NEXT_PUBLIC_INFINITE_EDITION;
+
+export const APP_EDITION: AppEdition =
+  EDITION_ENV === 'material3' ? 'material3' : EDITION_ENV === 'material2' ? 'material2' : 'classic';
 
 type ThemeColors = { [key: string]: string };
 
@@ -20,7 +42,66 @@ const DEFAULT_CUSTOM_COLORS: CustomThemeConfig = {
     background: { h: 30, s: 71, l: 92 }
 };
 
+/**
+ * Material 3 palette entry: a primary colour plus matching tonal surfaces.
+ * Kept separate from the classic theme rows above so the 1.5 interface is
+ * completely unaffected by these additions.
+ */
+const makePaletteTheme = (
+  h: number,
+  s: number,
+  l: number,
+  bgH: number,
+  bgS: number,
+  bgL: number
+): ThemeConfig => {
+  const lightMuted = `${bgH} ${Math.max(bgS - 20, 8)}% ${Math.max(bgL - 4, 60)}%`;
+  const card = `${bgH} ${bgS}% ${Math.min(bgL + 3, 98)}%`;
+  return {
+    light: {
+      primary: `${h} ${s}% ${l}%`,
+      foreground: `${h} ${Math.max(60, s - 10)}% 95%`,
+      background: `${bgH} ${bgS}% ${bgL}%`,
+      card,
+      'sidebar-background': card,
+      popover: card,
+      muted: lightMuted,
+      border: `${bgH} 30% ${Math.max(bgL - 10, 45)}%`,
+      input: `${bgH} 30% ${Math.max(bgL - 7, 50)}%`,
+      sidebarForeground: '20 14.3% 20.1%',
+      sidebarAccent: lightMuted,
+      sidebarAccentForeground: '20 14.3% 4.1%',
+    },
+    dark: {
+      primary: `${h} ${s}% ${l}%`,
+      foreground: `${h} ${Math.max(60, s - 10)}% 95%`,
+      background: `${bgH} 10% 10%`,
+      card: `${bgH} 10% 12%`,
+      'sidebar-background': `${bgH} 10% 12%`,
+      popover: `${bgH} 10% 10%`,
+      muted: `${bgH} 10% 20%`,
+      border: `${bgH} 10% 25%`,
+      input: `${bgH} 10% 25%`,
+      sidebarForeground: `${bgH} ${Math.min(s, 30)}% 92%`,
+      sidebarAccent: `${bgH} 10% 20%`,
+      sidebarAccentForeground: `${bgH} 20% 100%`,
+    },
+  };
+};
+
 const THEMES: Record<Exclude<Theme, 'custom'>, ThemeConfig> = {
+  /* ---- Material 3 palette (Material 500 primaries, tonal surfaces) ---- */
+  deep_purple: makePaletteTheme(262, 52, 47, 262, 45, 94),
+  indigo: makePaletteTheme(231, 48, 48, 231, 50, 94),
+  light_blue: makePaletteTheme(199, 98, 48, 199, 60, 93),
+  cyan: makePaletteTheme(187, 100, 42, 187, 55, 93),
+  teal: makePaletteTheme(174, 100, 29, 174, 40, 92),
+  light_green: makePaletteTheme(88, 50, 53, 88, 45, 93),
+  lime: makePaletteTheme(66, 70, 54, 66, 55, 92),
+  amber: makePaletteTheme(45, 100, 51, 45, 75, 93),
+  deep_orange: makePaletteTheme(14, 100, 57, 14, 75, 93),
+  brown: makePaletteTheme(16, 25, 38, 16, 25, 92),
+  blue_grey: makePaletteTheme(200, 18, 46, 200, 20, 93),
   orange: {
     light: {
       primary: '25 95% 53%',
@@ -338,6 +419,11 @@ interface ThemeContextType {
   toggleMinimizeCallOnClose: () => void;
   experimentalDesign: boolean;
   toggleExperimentalDesign: () => void;
+  /** Design edition, fixed at build time (Material 3 build only). */
+  material3Design: boolean;
+  /** Design edition, fixed at build time (Material 2 build only). */
+  material2Design: boolean;
+  appEdition: AppEdition;
   glassEffect: boolean;
   toggleGlassEffect: () => void;
   glassIntensity: number;
@@ -345,6 +431,18 @@ interface ThemeContextType {
   toggleShowFeed: () => void;
   useSystemFont: boolean;
   toggleSystemFont: () => void;
+  /** Hide the seasonal / holiday banner above the chat list. */
+  hideHolidayBanners: boolean;
+  toggleHideHolidayBanners: () => void;
+  /** Hide the user-created chat folders (chips). */
+  hideUserFolders: boolean;
+  toggleHideUserFolders: () => void;
+  /** Hide the built-in chat folders (All / DMs / Groups / Channels / Bots). */
+  hideChatFolders: boolean;
+  toggleHideChatFolders: () => void;
+  /** Hide the stories row. */
+  hideStories: boolean;
+  toggleHideStories: () => void;
   customThemeConfig: CustomThemeConfig;
   setCustomThemeConfig: (config: CustomThemeConfig) => void;
 }
@@ -359,8 +457,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [smoothScroll, setSmoothScroll] = useState(false);
   const [minimizeCallOnClose, setMinimizeCallOnClose] = useState(false);
   const [experimentalDesign, setExperimentalDesign] = useState(false);
+  const material3Design = APP_EDITION === 'material3';
+  const material2Design = APP_EDITION === 'material2';
   const [glassEffect, setGlassEffect] = useState(false);
   const [showFeed, setShowFeed] = useState(true);
+  const [hideHolidayBanners, setHideHolidayBanners] = useState(false);
+  const [hideUserFolders, setHideUserFolders] = useState(false);
+  const [hideChatFolders, setHideChatFolders] = useState(false);
+  const [hideStories, setHideStories] = useState(false);
   const [useSystemFont, setUseSystemFont] = useState(true);
   const [customThemeConfig, setCustomThemeConfig] = useState<CustomThemeConfig>(DEFAULT_CUSTOM_COLORS);
   const [isMounted, setIsMounted] = useState(false);
@@ -377,6 +481,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const storedShowFeed = localStorage.getItem('app-show-feed');
     const storedSystemFont = localStorage.getItem('app-use-system-font');
     const storedCustomColors = localStorage.getItem('app-custom-theme-config');
+    const storedHideHoliday = localStorage.getItem('app-hide-holiday-banners');
+    const storedHideUserFolders = localStorage.getItem('app-hide-user-folders');
+    const storedHideChatFolders = localStorage.getItem('app-hide-chat-folders');
+    const storedHideStories = localStorage.getItem('app-hide-stories');
 
     if (storedTheme && (THEMES[storedTheme as keyof typeof THEMES] || storedTheme === 'custom')) {
       setTheme(storedTheme);
@@ -396,6 +504,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedGlassEffect) setGlassEffect(storedGlassEffect === 'true');
     if (storedShowFeed) setShowFeed(storedShowFeed === 'true');
     if (storedSystemFont !== null) setUseSystemFont(storedSystemFont === 'true');
+    if (storedHideHoliday) setHideHolidayBanners(storedHideHoliday === 'true');
+    if (storedHideUserFolders) setHideUserFolders(storedHideUserFolders === 'true');
+    if (storedHideChatFolders) setHideChatFolders(storedHideChatFolders === 'true');
+    if (storedHideStories) setHideStories(storedHideStories === 'true');
     if (storedCustomColors) {
         try { setCustomThemeConfig(JSON.parse(storedCustomColors)); } catch(e) {}
     }
@@ -411,6 +523,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
       root.setAttribute('data-glass-effect', glassEffect ? 'true' : 'false');
       root.setAttribute('data-experimental-design', experimentalDesign ? 'true' : 'false');
+      root.setAttribute('data-material3', material3Design ? 'true' : 'false');
+      root.setAttribute('data-material2', material2Design ? 'true' : 'false');
+      root.classList.toggle('md3', material3Design);
+      root.classList.toggle('md2', material2Design);
 
       if (theme === 'shining_gold') {
         root.classList.add('theme-shining-gold');
@@ -470,8 +586,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       for (const [property, value] of Object.entries(varsToSet)) {
           if (value) root.style.setProperty(property, value);
       }
+
+      // Material 3 edition: the seed colour is expanded into the full set of
+      // Material You color roles (surface-container-*, primary-container, …)
+      // and the legacy semantic variables are remapped onto them. The classic
+      // 1.5 and Material 2 editions keep the palette set above.
+      if (material3Design) {
+          applyM3Palette(root, themeColors.primary, isDarkMode);
+      }
     }
-  }, [theme, isDarkMode, glassEffect, experimentalDesign, isMounted, customThemeConfig]);
+  }, [theme, isDarkMode, glassEffect, experimentalDesign, material3Design, material2Design, isMounted, customThemeConfig]);
 
   const handleSetTheme = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -490,6 +614,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return !prev;
     });
   };
+  const togglePersisted = (key: string, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    setter(prev => {
+      localStorage.setItem(key, String(!prev));
+      return !prev;
+    });
+  };
+
+  const handleToggleHideHolidayBanners = () => togglePersisted('app-hide-holiday-banners', setHideHolidayBanners);
+  const handleToggleHideUserFolders = () => togglePersisted('app-hide-user-folders', setHideUserFolders);
+  const handleToggleHideChatFolders = () => togglePersisted('app-hide-chat-folders', setHideChatFolders);
+  const handleToggleHideStories = () => togglePersisted('app-hide-stories', setHideStories);
+
   const handleToggleSendOnEnter = () => {
     setSendOnEnter(prev => {
       localStorage.setItem('app-send-on-enter', String(!prev));
@@ -549,6 +685,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleMinimizeCallOnClose: handleToggleMinimizeCallOnClose,
     experimentalDesign,
     toggleExperimentalDesign: handleToggleExperimentalDesign,
+    material3Design,
+    material2Design,
+    appEdition: APP_EDITION,
     glassEffect,
     toggleGlassEffect,
     glassIntensity: glassEffect ? 70 : 0,
@@ -556,6 +695,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     toggleShowFeed,
     useSystemFont,
     toggleSystemFont,
+    hideHolidayBanners,
+    toggleHideHolidayBanners: handleToggleHideHolidayBanners,
+    hideUserFolders,
+    toggleHideUserFolders: handleToggleHideUserFolders,
+    hideChatFolders,
+    toggleHideChatFolders: handleToggleHideChatFolders,
+    hideStories,
+    toggleHideStories: handleToggleHideStories,
     customThemeConfig,
     setCustomThemeConfig: handleSetCustomConfig
   };

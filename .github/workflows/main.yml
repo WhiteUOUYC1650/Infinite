@@ -1,14 +1,35 @@
-name: Build Android APKs
+name: Build Infinite APKs (Material 3 + Material 2 + Classic 1.5)
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  # Manual runs: Actions -> this workflow -> "Run workflow"
+  workflow_dispatch:
+    inputs:
+      editions:
+        description: 'Which editions to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - material3
+          - material2
+          - classic
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy"
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy"
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "dummy"
+      NEXT_PUBLIC_FIREWARE_APP_ID: "dummy"
 
     steps:
     - uses: actions/checkout@v4
@@ -30,52 +51,117 @@ jobs:
 
     - name: Initialize AI Flows
       run: |
-        echo "Building AI Genkit flows for 0.6.1 Beta..."
-        # Ensure correct packages are present for build
+        echo "Building AI Genkit flows for 3.0 Redesign..."
         npm install genkit @genkit-ai/google-genai
       env:
         GOOGLE_GENAI_API_KEY: "dummy"
 
-    - name: Sync Capacitor project
-      run: npm run sync:android
-      env:
-        NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
-        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
-        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy"
-        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy"
-        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "dummy"
-        NEXT_PUBLIC_FIREBASE_APP_ID: "dummy"
-
     - name: Fix Kotlin dependency conflict
       run: |
-        echo "" >> android/app/build.gradle
+        echo ">>" >> android/app/build.gradle
         echo "configurations.all {" >> android/app/build.gradle
         echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'" >> android/app/build.gradle
         echo "    exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'" >> android/app/build.gradle
         echo "}" >> android/app/build.gradle
 
-    - name: Build Standard APK
+    # ---------------------------------------------------------------------
+    # Edition 1 of 3 — MATERIAL 3 (Material You)
+    # ---------------------------------------------------------------------
+    - name: Build Material 3 edition
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'material3' }}
       run: |
+        npm run sync:android
+
+        sed -i 's/minSdkVersion = .*/minSdkVersion = 23/' android/variables.gradle
+        sed -i 's/applicationId .*/applicationId "com.infinite.chat"/' android/app/build.gradle
+        # google-services.json must contain the edition package, otherwise
+        # :app:processDebugGoogleServices fails with "No matching client found"
+        python3 - <<'PY'
+        import json, pathlib
+        p = pathlib.Path('android/app/google-services.json')
+        if p.exists():
+            d = json.loads(p.read_text())
+            for c in d.get('client', []):
+                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat'
+            p.write_text(json.dumps(d, indent=2) + '\n')
+        PY
+        sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
+        sed -i 's/versionName .*/versionName "3.0"/' android/app/build.gradle
+        sed -i 's#<string name="app_name">.*</string>#<string name="app_name">Infinite</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name="title_activity_main">.*</string>#<string name="title_activity_main">Infinite</string>#' android/app/src/main/res/values/strings.xml
+
+        cd android
         chmod +x ./gradlew
-        ./gradlew assembleDebug -x test --no-daemon
-        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-standard.apk
-      working-directory: ./android
+        ./gradlew clean assembleDebug -x test --no-daemon
+        cp app/build/outputs/apk/debug/app-debug.apk ../infinite-material3.apk
+      env:
+        NEXT_PUBLIC_INFINITE_EDITION: "material3"
 
-    - name: Upload Standard APK
+    - name: Upload Material 3 APK
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'material3' }}
       uses: actions/upload-artifact@v4
       with:
-        name: infinite-standard-apk
-        path: android/app/build/outputs/apk/debug/app-standard.apk
+        name: infinite-material3-apk
+        path: infinite-material3.apk
 
-    - name: Build Legacy APK (Android 4.1+)
+    # -----------------------------------\n\n...[truncated 1797 chars]...\n.m2</string>#' android/app/src/main/res/values/strings.xml\n        sed -i 's#<string name=\"custom_url_scheme\">.*</string>#<string name=\"custom_url_scheme\">com.infinite.chat.m2</string>#' android/app/src/main/res/values/strings.xml\n\n        cd android\n        chmod +x ./gradlew\n        ./gradlew clean assembleDebug -x test --no-daemon\n        cp app/build/outputs/apk/debug/app-debug.apk ../infinite-material2.apk\n      env:\n        NEXT_PUBLIC_INFINITE_EDITION: \"material2\"\n
+
+    - name: Upload Material 2 APK
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'material2' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: infinite-material2-apk
+        path: infinite-material2.apk
+
+    # ---------------------------------------------------------------------
+    # Edition 3 of 3 — CLASSIC (classic Infinite 1.5 interface)
+    # ---------------------------------------------------------------------
+    - name: Build Classic edition
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'classic' }}
       run: |
-        sed -i 's/minSdkVersion .*/minSdkVersion 16/' app/build.gradle
-        ./gradlew assembleDebug -x test --no-daemon
-        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/app-legacy.apk
-      working-directory: ./android
+        npm run sync:android
 
-    - name: Upload Legacy APK
+        sed -i 's/minSdkVersion = .*/minSdkVersion = 23/' android/variables.gradle
+        sed -i 's/applicationId .*/applicationId \"com.infinite.chat.classic\"/' android/app/build.gradle
+        # google-services.json must contain the edition package, otherwise
+        # :app:processDebugGoogleServices fails with "No matching client found"
+        python3 - <<'PY'
+        import json, pathlib
+        p = pathlib.Path('android/app/google-services.json')
+        if p.exists():
+            d = json.loads(p.read_text())
+            for c in d.get('client', []):
+                c.setdefault('client_info', {}).setdefault('android_client_info', {})['package_name'] = 'com.infinite.chat.classic'
+            p.write_text(json.dumps(d, indent=2) + '\\n')
+        PY
+        sed -i 's/versionCode .*/versionCode 3/' android/app/build.gradle
+        sed -i 's/versionName .*/versionName \"3.0-classic\"/' android/app/build.gradle
+        sed -i 's#<string name=\"app_name\">.*</string>#<string name=\"app_name\">Infinite Classic</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name=\"title_activity_main\">.*</string>#<string name=\"title_activity_main\">Infinite Classic</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name=\"package_name\">.*</string>#<string name=\"package_name\">com.infinite.chat.classic</string>#' android/app/src/main/res/values/strings.xml
+        sed -i 's#<string name=\"custom_url_scheme\">.*</string>#<string name=\"custom_url_scheme\">com.infinite.chat.classic</string>#' android/app/src/main/res/values/strings.xml
+
+        cd android
+        chmod +x ./gradlew
+        ./gradlew clean assembleDebug -x test --no-daemon
+        cp app/build/outputs/apk/debug/app-debug.apk ../infinite-classic.apk
+      env:
+        NEXT_PUBLIC_INFINITE_EDITION: "classic"
+
+    - name: Upload Classic APK
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.editions == 'all' || inputs.editions == 'classic' }}
       uses: actions/upload-artifact@v4
       with:
-        name: infinite-legacy-apk
-        path: android/app/build/outputs/apk/debug/app-legacy.apk
+        name: infinite-classic-apk
+        path: infinite-classic.apk
+
+    - name: Build summary
+      run: |
+        echo "### Infinite 3.0 \"Redesign\" — editions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Artifact | Edition | Package | Design | minSdk |" >> $GITHUB_STEP_SUMMARY
+        echo "| --- | --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
+        echo "| infinite-material3-apk | Material 3 | com.infinite.chat | Material You | 23 |\" >> $GITHUB_STEP_SUMMARY
+        echo "| infinite-material2-apk | Material 2 | com.infinite.chat.m2 | Material Design 2 | 21 (Android 5+) |\" >> $GITHUB_STEP_SUMMARY
+        echo "| infinite-classic-apk | Classic 1.5 | com.infinite.chat.classic | Classic Infinite 1.5 | 23 |\" >> $GITHUB_STEP_SUMMARY
+

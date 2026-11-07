@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { User, CustomBot, BotMiniApp, Gift, SharedMusic } from '@/types';
 import { useLanguage } from '@/context/language-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { TranslationKey } from '@/lib/translations';
@@ -44,6 +45,7 @@ interface UserProfileDialogProps {
 const statusTranslations: Record<User['status'], TranslationKey> = { online: 'online', away: 'away', offline: 'offline' }
 
 export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: UserProfileDialogProps) {
+  const isMobile = useIsMobile();
   const { t } = useLanguage();
   const { user: authUser } = useUser();
   const db = useFirestore();
@@ -138,7 +140,13 @@ export function UserProfileDialog({ user, open, onOpenChange, onSendMessage }: U
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm p-0 overflow-hidden h-[85vh] max-h-[85vh] flex flex-col", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn(
+        "p-0 overflow-hidden flex flex-col",
+        isMobile
+          // phones: the profile is a full-screen page
+          ? "left-0 top-0 h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-none border-none sm:rounded-none"
+          : cn("max-w-sm h-[85vh] max-h-[85vh]", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl bg-card" : "rounded-lg")
+      )}>
         <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <div className="flex flex-col h-full overflow-hidden relative">
             <div className={cn("absolute top-0 left-0 right-0 z-20 h-14 flex items-center px-4 transition-all duration-300 border-b", showCompactHeader ? "bg-background/95 backdrop-blur-md opacity-100" : "bg-transparent opacity-0 pointer-events-none border-transparent")}>

@@ -1,0 +1,664 @@
+/* ==========================================================================
+   Infinite 3.0 "Redesign" — MATERIAL 3 EDITION design layer
+   --------------------------------------------------------------------------
+   Imported only by the Material 3 UI (src/components/m3/*) and applied only
+   while <html data-material3="true"> is set, which happens only in the
+   Material 3 build (NEXT_PUBLIC_INFINITE_EDITION=material3). The classic 1.5
+   and Material 2 editions never load these rules.
+
+   Colours come from the Material 3 color roles generated in
+   src/lib/m3-palette.ts (--md-sys-color-*), so the palette follows the user's
+   accent colour ("dynamic colour") the way Material You does.
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ tokens */
+[data-material3="true"] {
+  /* shape scale (M3: xs 4, s 8, m 12, l 16, xl 28) */
+  --md3-shape-xs: 4px;
+  --md3-shape-sm: 8px;
+  --md3-shape-md: 12px;
+  --md3-shape-lg: 16px;
+  --md3-shape-xl: 28px;
+
+  /* elevation levels 1-4 (soft, as in M3) */
+  --md3-elev-1: 0 1px 2px hsl(0 0% 0% / 0.3), 0 1px 3px 1px hsl(0 0% 0% / 0.15);
+  --md3-elev-2: 0 1px 2px hsl(0 0% 0% / 0.3), 0 2px 6px 2px hsl(0 0% 0% / 0.15);
+  --md3-elev-3: 0 1px 3px hsl(0 0% 0% / 0.3), 0 4px 8px 3px hsl(0 0% 0% / 0.15);
+  --md3-elev-4: 0 2px 3px hsl(0 0% 0% / 0.3), 0 6px 10px 4px hsl(0 0% 0% / 0.15);
+
+  /* state layers */
+  --md3-hover: 0.08;
+  --md3-focus: 0.1;
+  --md3-press: 0.1;
+
+  /* motion */
+  --md3-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md3-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  --radius: 1rem;
+
+  /* chat bubble surfaces (white on cream in light, tonal in dark) */
+  --md3-incoming-surface: var(--md-sys-color-surface-container-lowest);
+}
+
+.dark[data-material3="true"] {
+  --md3-incoming-surface: var(--md-sys-color-surface-container-high);
+  --md3-elev-1: 0 1px 3px hsl(0 0% 0% / 0.55);
+  --md3-elev-2: 0 2px 6px hsl(0 0% 0% / 0.5);
+  --md3-elev-3: 0 4px 10px hsl(0 0% 0% / 0.55);
+  --md3-elev-4: 0 6px 14px hsl(0 0% 0% / 0.6);
+}
+
+/* -------------------------------------------------- base & type ---------- */
+[data-material3="true"] body {
+  /* Font family is intentionally inherited from the app base font (PT Sans) or
+     from the system stack when Settings → System font is enabled: the toggle
+     must keep working in every edition. */
+  background-color: hsl(var(--md-sys-color-surface));
+  background-image: none;
+  color: hsl(var(--md-sys-color-on-surface));
+}
+
+[data-material3="true"] .font-headline,
+[data-material3="true"] .font-body,
+[data-material3="true"] button,
+[data-material3="true"] input,
+[data-material3="true"] textarea,
+[data-material3="true"] select {
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+/* Material 3 type scale: medium weights, no tight/black tracking */
+[data-material3="true"] .font-black { font-weight: 500; letter-spacing: 0; }
+[data-material3="true"] .font-bold { font-weight: 500; }
+[data-material3="true"] .font-headline { font-weight: 500; letter-spacing: 0; }
+[data-material3="true"] h1,
+[data-material3="true"] h2,
+[data-material3="true"] h3 { font-weight: 500; letter-spacing: 0; }
+[data-material3="true"] .tracking-widest { letter-spacing: 0.06em; }
+[data-material3="true"] .tracking-tighter { letter-spacing: 0; }
+[data-material3="true"] .uppercase { letter-spacing: 0.06em; }
+
+[data-material3="true"] .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+[data-material3="true"] .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* ------------------------------------------------- app bar (top app bar) */
+/* M3 top app bars sit flush on the surface: no card, no shadow, no border. */
+[data-material3="true"] header {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background-color: hsl(var(--md-sys-color-surface));
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-material3="true"] header .bg-background,
+[data-material3="true"] header .bg-card\/40 {
+  background-color: transparent;
+}
+
+[data-material3="true"] header h2 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.1px;
+}
+
+/* subtitle / status line under the title */
+[data-material3="true"] header .tracking-widest {
+  margin-top: -1px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding-bottom: 1px;
+}
+
+.m3-app-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: calc(8px + env(safe-area-inset-top)) 8px 8px;
+  background-color: hsl(var(--md-sys-color-surface));
+}
+
+.m3-app-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+}
+
+.m3-app-bar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 4px;
+  text-align: left;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 28px;
+  color: hsl(var(--md-sys-color-on-surface));
+}
+
+.m3-app-bar-title strong { font-weight: 500; }
+
+.m3-app-bar-subtitle {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+}
+
+/* ------------------------------------------------ navigation bar (bottom) */
+.m3-nav-bar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  height: calc(80px + env(safe-area-inset-bottom));
+  padding: 10px 8px calc(8px + env(safe-area-inset-bottom));
+  background-color: hsl(var(--md-sys-color-surface));
+  border-top: none;
+}
+
+.m3-nav-item {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+  transition: color 0.2s var(--md3-ease-standard);
+}
+
+.m3-nav-item-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 32px;
+  border-radius: 9999px;
+  transition: background-color 0.25s var(--md3-ease-standard);
+}
+
+.m3-nav-item[aria-current="page"] { color: hsl(var(--md-sys-color-on-surface)); }
+
+.m3-nav-item[aria-current="page"] .m3-nav-item-indicator {
+  background-color: hsl(var(--md-sys-color-primary-container));
+  color: hsl(var(--md-sys-color-on-primary-container));
+}
+
+.m3-nav-item-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 16px;
+}
+
+/* ------------------------------------------------------- chips & buttons */
+.m3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 9999px;
+  background-color: transparent;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition: background-color 0.2s var(--md3-ease-standard),
+    color 0.2s var(--md3-ease-standard);
+}
+
+.m3-chip:active { background-color: hsl(var(--md-sys-color-on-surface) / var(--md3-press)); }
+
+.m3-chip[aria-pressed="true"],
+.m3-chip[data-selected="true"] {
+  background-color: hsl(var(--md-sys-color-primary-container));
+  color: hsl(var(--md-sys-color-on-primary-container));
+}
+
+.m3-chip-glyph { flex: 0 0 auto; }
+
+.m3-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: var(--md3-shape-lg);
+  background-color: hsl(var(--md-sys-color-primary-container));
+  color: hsl(var(--md-sys-color-on-primary-container));
+  box-shadow: var(--md3-elev-3);
+  transition: transform 0.2s var(--md3-ease-emphasized), box-shadow 0.2s var(--md3-ease-standard);
+}
+
+.m3-fab:active { transform: scale(0.95); box-shadow: var(--md3-elev-2); }
+
+.m3-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 9999px;
+  background-color: transparent;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+  transition: background-color 0.2s var(--md3-ease-standard), color 0.2s var(--md3-ease-standard);
+}
+
+.m3-icon-button:active { background-color: hsl(var(--md-sys-color-on-surface) / var(--md3-press)); }
+.m3-icon-button[data-active="true"] {
+  color: hsl(var(--md-sys-color-on-secondary-container));
+  background-color: hsl(var(--md-sys-color-secondary-container));
+}
+
+/* ----------------------------------------------------- search bar & lists */
+.m3-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  border-radius: 9999px;
+  background-color: hsl(var(--md-sys-color-surface-container-high));
+  color: hsl(var(--md-sys-color-on-surface));
+}
+
+.m3-search-field input { letter-spacing: 0; }
+
+.m3-search-field input {
+  height: 100% !important;
+  width: 100%;
+  border: none !important;
+  border-radius: 9999px !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding-left: 48px !important;
+  padding-right: 44px !important;
+  font-size: 16px;
+  color: inherit;
+}
+
+.m3-search-field input::placeholder { color: hsl(var(--md-sys-color-on-surface-variant)); }
+.m3-search-field .m3-search-icon {
+  position: absolute;
+  left: 16px;
+  width: 20px;
+  height: 20px;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+  pointer-events: none;
+}
+
+.m3-list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--md3-shape-md);
+  background-color: transparent;
+  text-align: left;
+  transition: background-color 0.15s var(--md3-ease-standard);
+}
+
+.m3-list-item:active { background-color: hsl(var(--md-sys-color-on-surface) / var(--md3-press)); }
+.m3-list-item[data-selected="true"] { background-color: hsl(var(--md-sys-color-secondary-container)); }
+
+.m3-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background-color: hsl(var(--md-sys-color-primary));
+  color: hsl(var(--md-sys-color-on-primary));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.m3-section-label {
+  padding: 8px 16px 4px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: hsl(var(--md-sys-color-primary));
+}
+
+/* ------------------------------------- dialogs, sheets, menus, text fields */
+[data-material3="true"] [role="dialog"] {
+  border: none;
+  border-radius: var(--md3-shape-xl);
+  background-color: hsl(var(--md-sys-color-surface-container-high));
+  color: hsl(var(--md-sys-color-on-surface));
+  box-shadow: var(--md3-elev-3);
+}
+
+/* sheets attached to a screen edge: only the inner corners are rounded */
+[data-material3="true"] [role="dialog"][data-side="bottom"] {
+  border-radius: var(--md3-shape-xl) var(--md3-shape-xl) 0 0;
+}
+[data-material3="true"] [role="dialog"][data-side="left"] {
+  border-radius: 0 var(--md3-shape-xl) var(--md3-shape-xl) 0;
+}
+[data-material3="true"] [role="dialog"][data-side="right"] {
+  border-radius: var(--md3-shape-xl) 0 0 var(--md3-shape-xl);
+}
+[data-material3="true"] [role="dialog"][data-side="top"] {
+  border-radius: 0 0 var(--md3-shape-xl) var(--md3-shape-xl);
+}
+
+/* an app bar inside a dialog should not behave like a page app bar */
+[data-material3="true"] [role="dialog"] header {
+  padding-top: 0;
+  margin: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+[data-material3="true"] [role="menu"],
+[data-material3="true"] [role="listbox"],
+[data-material3="true"] [role="tooltip"] {
+  border: none;
+  border-radius: var(--md3-shape-md);
+  background-color: hsl(var(--md-sys-color-surface-container));
+  box-shadow: var(--md3-elev-2);
+}
+
+[data-material3="true"] [role="menuitem"] {
+  border-radius: var(--md3-shape-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+[data-material3="true"] [role="menuitem"]:focus {
+  background-color: hsl(var(--md-sys-color-surface-container-highest));
+  color: hsl(var(--md-sys-color-on-surface));
+}
+
+[data-material3="true"] button {
+  box-shadow: none;
+  letter-spacing: 0.1px;
+  font-weight: 500;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: hsl(var(--md-sys-color-on-surface) / 0.3);
+    animation: ripple-effect 0.3s ease-out;
+    pointer-events: none;
+  }
+  &::after:hover {
+    animation: none;
+  }
+
+[data-material3="true"] button[type="submit"] { border-radius: 9999px; }
+
+/* text fields: filled look, 1dp outline, primary 2dp focus outline */
+[data-material3="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+[data-material3="true"] textarea {
+  border: none;
+  border-radius: var(--md3-shape-md);
+  background-color: hsl(var(--md-sys-color-surface-container-lowest));
+  box-shadow: inset 0 0 0 1px hsl(var(--md-sys-color-outline-variant));
+  transition: box-shadow 0.2s var(--md3-ease-standard), background-color 0.2s var(--md3-ease-standard);
+}
+
+[data-material3="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+[data-material3="true"] textarea:focus {
+  outline: none;
+  background-color: hsl(var(--md-sys-color-surface-container-lowest));
+  box-shadow: inset 0 0 0 2px hsl(var(--md-sys-color-primary));
+}
+
+/* switch: 52x32 track, 24dp thumb (+ stretched thumb while pressed) */
+[data-material3="true"] button[role="switch"] {
+  width: 3.25rem;
+  height: 2rem;
+  /* 6dp inset keeps the thumb visually 4dp away from the 2dp outline in both
+     states (before, the "off" thumb sat 2dp from the outline and looked off). */
+  padding: 6px;
+  border: none;
+  background-color: hsl(var(--md-sys-color-surface-container-highest));
+  box-shadow: inset 0 0 0 2px hsl(var(--md-sys-color-outline));
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"] {
+  background-color: hsl(var(--md-sys-color-primary));
+  box-shadow: none;
+}
+
+[data-material3="true"] button[role="switch"] > span {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  background-color: hsl(var(--md-sys-color-outline));
+  box-shadow: none;
+  /* "off" thumb: 8dp from the left edge */
+  transform: translateX(2px);
+  transition: transform 250ms var(--md3-ease-standard),
+    width 250ms var(--md3-ease-standard), height 250ms var(--md3-ease-standard);
+}
+
+/* 24dp thumb in a 44dp inner area: travel = 20dp, so it stops exactly
+   at the 4dp padding edge (no overshoot to the right) */
+[data-material3="true"] button[role="switch"][data-state="checked"] > span {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: hsl(var(--md-sys-color-on-primary));
+  /* "on" thumb: 4dp from the right edge */
+  transform: translateX(1.125rem);
+}
+
+/* pressed: the thumb grows to 28dp and stops exactly at the right padding edge */
+[data-material3="true"] button[role="switch"]:active > span {
+  width: 1.75rem;
+  height: 1.5rem;
+}
+
+[data-material3="true"] button[role="switch"][data-state="checked"]:active > span {
+  width: 1.75rem;
+  transform: translateX(0.875rem);
+}
+
+/* -------------------------------------------------- chat screen (shared) */
+/* The chat screen itself is shared with the classic editions; in the M3 build
+   it is restyled here instead of being rewritten. */
+
+[data-material3="true"] .incoming-msg .rounded-bl-none {
+  border-radius: 20px 20px 20px var(--md3-shape-xs);
+  background-color: hsl(var(--md3-incoming-surface));
+  color: hsl(var(--md-sys-color-on-surface));
+  box-shadow: none;
+}
+
+[data-material3="true"] .outgoing-msg .rounded-br-none {
+  border-radius: 20px 20px var(--md3-shape-xs) 20px;
+  background-color: hsl(var(--md-sys-color-primary-container));
+  color: hsl(var(--md-sys-color-on-primary-container));
+  box-shadow: none;
+}
+
+[data-material3="true"] .outgoing-msg .rounded-br-none a,
+[data-material3="true"] .outgoing-msg .rounded-br-none .text-primary {
+  color: hsl(var(--md-sys-color-on-primary-container));
+}
+
+/* date pills as M3 label chips */
+[data-material3="true"] .date-separator-marker > .absolute { display: none; }
+[data-material3="true"] .date-separator-marker > div {
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+[data-material3="true"] .date-separator-marker span {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+  opacity: 1;
+}
+
+/* composer: elevated pill field + round filled send button */
+[data-material3="true"] footer {
+  border-top: none;
+  background-color: hsl(var(--md-sys-color-surface));
+}
+
+[data-material3="true"] #message-textarea {
+  min-height: 44px;
+  border: none;
+  border-radius: 24px;
+  background-color: hsl(var(--md-sys-color-surface-container));
+  box-shadow: none;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+[data-material3="true"] #message-textarea:focus {
+  background-color: hsl(var(--md-sys-color-surface-container-high));
+  box-shadow: inset 0 0 0 2px hsl(var(--md-sys-color-primary));
+}
+
+/* ------------------------------------------------------ misc harmonisation */
+[data-material3="true"] .shadow-2xl { box-shadow: var(--md3-elev-3); }
+[data-material3="true"] .shadow-xl { box-shadow: var(--md3-elev-3); }
+[data-material3="true"] .shadow-lg { box-shadow: var(--md3-elev-2); }
+[data-material3="true"] .shadow-md { box-shadow: var(--md3-elev-2); }
+[data-material3="true"] .shadow-sm { box-shadow: var(--md3-elev-1); }
+
+[data-material3="true"] .bg-sidebar { background-color: hsl(var(--md-sys-color-surface-container-low)); }
+
+[data-material3="true"] ::-webkit-scrollbar { width: 6px; height: 6px; }
+[data-material3="true"] ::-webkit-scrollbar-track { background: transparent; }
+[data-material3="true"] ::-webkit-scrollbar-thumb {
+  background: hsl(var(--md-sys-color-outline) / 0.35);
+  border-radius: 9999px;
+}
+
+/* state layers on the shared utility buttons (hover = 8% on-surface) */
+[data-material3="true"] .hover\:bg-accent:hover,
+[data-material3="true"] .hover\:bg-accent\/40:hover,
+[data-material3="true"] .hover\:bg-muted\/50:hover,
+[data-material3="true"] .hover\:bg-muted\/40:hover {
+  background-color: hsl(var(--md-sys-color-on-surface) / var(--md3-hover));
+}
+
+/* legacy arbitrary radii from shared screens -> M3 extra-large shape */
+[data-material3="true"] [class*="rounded-[2.5rem]"],
+[data-material3="true"] [class*="rounded-[2rem]"] {
+  border-radius: var(--md3-shape-xl);
+}
+
+/* ------------------------------------------------- home screen typography */
+.m3-app-bar-title-large {
+  display: block;
+  padding: 0 8px;
+  font-size: 27px;
+  font-weight: 500;
+  line-height: 34px;
+  letter-spacing: -0.4px;
+  color: hsl(var(--md-sys-color-on-surface));
+}
+
+.m3-app-bar-tagline {
+  display: block;
+  padding: 0 8px;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 16px;
+  color: hsl(var(--md-sys-color-on-surface-variant));
+}
+
+/* tinted leading tile for the "Saved messages" / "General chat" rows */
+.m3-icon-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  border-radius: 15px;
+  background-color: hsl(var(--md-sys-color-primary-container));
+  color: hsl(var(--md-sys-color-on-primary-container));
+}
+
+/* pinned message strip above the messages (mock: "Совзон команды…") */
+.m3-pin-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 8px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background-color: hsl(var(--md-sys-color-primary-container));
+  color: hsl(var(--md-sys-color-on-primary-container));
+}
+
+/* pastel avatars (light and dark variants) */
+.m3-avatar-pastel,
+[data-material3="true"] .m3-avatar-pastel {
+  background-color: hsl(var(--m3-avatar-h, 25) 62% 89%);
+  color: hsl(var(--m3-avatar-h, 25) 40% 30%);
+}
+
+.dark[data-material3="true"] .m3-avatar-pastel {
+  background-color: hsl(var(--m3-avatar-h, 25) 30% 24%);
+  color: hsl(var(--m3-avatar-h, 25) 58% 84%);
+}
+
+/* group & channel avatars use the M3 12dp square in the M3 edition */
+[data-material3="true"] .m3-avatar-square {
+  border-radius: 12px;
+}
+
+/* bubbles stay flat even though the shared markup adds shadow-sm */
+[data-material3="true"] .incoming-msg .rounded-bl-none,
+[data-material3="true"] .outgoing-msg .rounded-br-none {
+  box-shadow: none;
+}
+
+
+/* button ripple effect */
+[ data-material3="true"] button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: hsl(var(--md-sys-color-on-surface) / 0.3);
+  animation: ripple-effect 0.3s ease-out;
+  pointer-events: none;
+}
+
+[ data-material3="true"] button::after:hover {
+  animation: none;
+}
+
+@keyframes ripple-effect {
+  0% { opacity: 0.5; }
+  100% { opacity: 0; }
+}

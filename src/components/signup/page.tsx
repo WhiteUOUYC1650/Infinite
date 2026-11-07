@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
+import { EditionBadge } from '@/components/ui/edition-badge';
 
 const step1Schema = z.object({
   name: z.string().min(2, { message: 'Nickname must be at least 2 characters.' }),
@@ -192,7 +193,7 @@ export default function SignUpPage() {
         </p>
       </div>
        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))]">
-        <Badge variant="outline">{t('beta_badge')}</Badge>
+        <EditionBadge />
       </div>
     </div>
   );
