@@ -91,7 +91,7 @@ export default function WelcomePage() {
         'absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] transition-colors duration-700',
         step === 2 ? 'text-gray-900' : 'text-white'
       )}>
-        <Badge variant="outline" className="border-current text-current font-bold">3.0 REDESIGN</Badge>
+        <Badge variant="outline" className="border-current text-current font-bold">3.0.1 REDESIGN</Badge>
       </div>
     </div>
   );
