@@ -379,8 +379,8 @@ function AdminPage() {
             </TabsList>
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-4 pb-20 space-y-8">
-                <TabsContent value="users" className="mt-0 outline-none">
+            <div className="w-full min-w-0 max-w-full overflow-x-hidden p-4 pb-20 space-y-8">
+                <TabsContent value="users" className="mt-0 min-w-0 overflow-hidden outline-none">
                     <ItemList items={users} loading={usersLoading} renderItem={(user: User) => (
                         <UserItem 
                           key={user.id} 
@@ -392,10 +392,10 @@ function AdminPage() {
                         />
                     )} />
                 </TabsContent>
-                <TabsContent value="groups" className="mt-0 outline-none">
+                <TabsContent value="groups" className="mt-0 min-w-0 overflow-hidden outline-none">
                     <ItemList items={groups} loading={chatsLoading} renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'group' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />} />
                 </TabsContent>
-                <TabsContent value="channels" className="mt-0 outline-none">
+                <TabsContent value="channels" className="mt-0 min-w-0 overflow-hidden outline-none">
                     <ItemList items={channels} loading={chatsLoading} renderItem={(chat: Chat) => <ChatItem key={chat.id} chat={chat} onDelete={handleDeleteChat} onRename={(c) => { setRenameTarget({ id: c.id, type: 'chat', currentVal: c.link || '', chatType: 'channel' }); setNewVal(c.link || ''); setRenameDialogOpen(true); }} />} />
                 </TabsContent>
                 <TabsContent value="legal" className="mt-0 outline-none">
@@ -556,18 +556,21 @@ interface ItemListProps<T> { items: T[] | null; loading: boolean; renderItem: (i
 function ItemList<T>({ items, loading, renderItem }: ItemListProps<T>) {
   if (loading) return <div className="flex h-40 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!items || items.length === 0) return <p className="text-center text-muted-foreground py-8">No items found.</p>;
-  return <div className="space-y-2">{items.map(renderItem)}</div>;
+  return <div className="w-full min-w-0 max-w-full space-y-2 overflow-hidden">{items.map(renderItem)}</div>;
 }
 
 function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: User; onBan: (user: User) => void; onGrantGold: (user: User) => void; onToggleBeta: (userId: string, current: boolean) => void; onRename: (user: User) => void; }) {
   const isProtectedUser = user.username === '@Infinite' || user.username === '@InfiniteBot';
   const { t } = useLanguage();
   return (
-    <div className="flex items-center gap-4 rounded-xl border p-3 bg-card/50">
+    <div className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-xl border p-3 bg-card/50">
       <UserAvatarWithStatus user={user} />
-      <div className="flex-1 truncate">
-        <div className="font-semibold flex items-center gap-2">{user.isDeleted ? t('deleted_account') : user.name} {isProtectedUser && <VerifiedBadge />}</div>
-        <p className="text-sm text-muted-foreground">{user.username}</p>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2 font-semibold">
+          <span className="truncate">{user.isDeleted ? t('deleted_account') : user.name}</span>
+          {isProtectedUser && <VerifiedBadge />}
+        </div>
+        <p className="truncate text-sm text-muted-foreground">{user.username}</p>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -585,9 +588,12 @@ function UserItem({ user, onBan, onGrantGold, onToggleBeta, onRename }: { user: 
 function ChatItem({ chat, onDelete, onRename }: { chat: Chat; onDelete: (id: string) => void; onRename: (chat: Chat) => void; }) {
   const Icon = chat.type === 'group' ? Users : Megaphone;
   return (
-    <div className="flex items-center gap-4 rounded-xl border p-3 bg-card/50">
-      <Avatar><AvatarFallback><Icon className="h-5 w-5" /></AvatarFallback></Avatar>
-      <div className="flex-1 truncate"><div className="font-semibold">{chat.name}</div><p className="text-xs text-muted-foreground">{chat.link}</p></div>
+    <div className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-xl border p-3 bg-card/50">
+      <Avatar className="shrink-0"><AvatarFallback><Icon className="h-5 w-5" /></AvatarFallback></Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-semibold">{chat.name}</div>
+        <p className="truncate text-xs text-muted-foreground">{chat.link}</p>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end">

@@ -30,6 +30,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/lib/utils';
 import { aiChat } from '@/ai/flows/ai-chat-flow';
+import { useTheme } from '@/context/theme-context';
+import { ExperimentalSettingsDialog } from '@/components/experimental-settings-dialog';
+import { M3Shell } from '@/components/m3/m3-shell';
+import type { M3Service } from '@/components/m3/m3-chat-list';
 
 const iconMap = {
     Users,
@@ -52,11 +56,50 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const [activeCall, setActiveCall] = useState<{ chat: PopulatedChat, otherUser: User | null, isVideo: boolean, isCaller: boolean } | null>(null);
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [showSubPrompt, setShowSubPrompt] = useState(false);
+  const { material3Design } = useTheme();
+  const [m3SettingsOpen, setM3SettingsOpen] = useState(false);
+  const [isOnlineState, setIsOnlineState] = useState(true);
+  const [selectionNonce, setSelectionNonce] = useState(0);
   const [targetChannelId, setTargetChannelId] = useState<string | null>(null);
+  const [botGuideRequested, setBotGuideRequested] = useState(false);
 
   const processedMsgIds = useRef<Set<string>>(new Set());
   const engineStartedAt = useRef<number>(Date.now());
   const botDetectionCache = useRef<Record<string, boolean>>({});
+
+  /*
+   * Presence: keep `status` / `lastSeen` fresh while the app is open, so DM
+   * headers can show "online", "was online …" instead of stale values.
+   */
+  useEffect(() => {
+    if (!db || !currentUser?.uid) return;
+    const userRef = doc(db, 'users', currentUser.uid);
+    let stopped = false;
+    const mark = (status: 'online' | 'away' | 'offline') => {
+      if (stopped) return;
+      updateDoc(userRef, { status, lastSeen: serverTimestamp() }).catch(() => {});
+    };
+    mark('online');
+    const heartbeat = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      mark('online');
+    }, 45000);
+    const onVisibility = () => {
+      if (typeof document === 'undefined') return;
+      mark(document.visibilityState === 'visible' ? 'online' : 'away');
+    };
+    const onPageHide = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') mark('offline');
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      stopped = true;
+      clearInterval(heartbeat);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [db, currentUser?.uid]);
 
   const userDocRef = useMemoFirebase(() => db ? doc(db, 'users', currentUser.uid) : null, [db, currentUser.uid]);
   const { data: userData } = useDoc<User>(userDocRef);
@@ -99,6 +142,18 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     const selectedId = typeof selectedItem === 'string' ? selectedItem : selectedItem?.id;
     setActiveChatId(selectedId || null);
   }, [selectedItem, setActiveChatId]);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    const sync = () => setIsOnlineState(navigator.onLine);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
 
   const handleSelect = useCallback((item: PopulatedChat | 'infvid' | 'infmusic' | 'infgames' | 'feed' | 'bot_studio' | null) => {
     setSelectedItem(item);
@@ -318,8 +373,9 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
     };
     const handleInitiateCallEvent = (event: any) => { const { chat, otherUser, isVideo } = event.detail; setActiveCall({ chat, otherUser, isVideo, isCaller: true }); setShowCallDialog(true); };
     const handleOpenInfVid = (event: any) => { setInfVidInitialVideoId(event.detail.videoId); handleSelect('infvid'); };
-    window.addEventListener('open-chat', handleOpenChat); window.addEventListener('answer-call', handleAnswerCall); window.addEventListener('initiate-call', handleInitiateCallEvent); window.addEventListener('open-infvid', handleOpenInfVid);
-    return () => { window.removeEventListener('open-chat', handleOpenChat); window.removeEventListener('answer-call', handleAnswerCall); window.removeEventListener('initiate-call', handleInitiateCallEvent); window.removeEventListener('open-infvid', handleOpenInfVid); };
+    const handleOpenBotGuide = () => { setBotGuideRequested(true); handleSelect('bot_studio'); };
+    window.addEventListener('open-chat', handleOpenChat); window.addEventListener('answer-call', handleAnswerCall); window.addEventListener('initiate-call', handleInitiateCallEvent); window.addEventListener('open-infvid', handleOpenInfVid); window.addEventListener('open-bot-guide', handleOpenBotGuide);
+    return () => { window.removeEventListener('open-chat', handleOpenChat); window.removeEventListener('answer-call', handleAnswerCall); window.removeEventListener('initiate-call', handleInitiateCallEvent); window.removeEventListener('open-infvid', handleOpenInfVid); window.removeEventListener('open-bot-guide', handleOpenBotGuide); };
   }, [db, handleSelect, currentUser.uid]);
 
   const populatedUser: AuthenticatedUser | null = useMemo(() => {
@@ -340,13 +396,134 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
   const renderSelectedContent = () => {
     if (!populatedUser) return null;
     if (selectedItem === 'feed') return <FeedView currentUser={populatedUser} onClose={() => handleSelect(null)} onSelectChat={handleSelect} />;
-    if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
+    if (selectedItem === 'bot_studio') return <BotStudioView currentUser={populatedUser} onClose={() => { setBotGuideRequested(false); handleSelect(null); }} initialGuideOpen={botGuideRequested} />;
     if (selectedItem === 'infvid') return <InfVidView currentUser={populatedUser} onClose={() => handleSelect(null)} initialVideoId={infVidInitialVideoId || undefined} />;
     if (selectedItem === 'infmusic') return <InfMusicView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
     if (selectedItem === 'infgames') return <InfGamesView currentUser={populatedUser} onClose={() => handleSelect(null)} />;
-    if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={selectedItem.id} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
+    if (selectedItem && typeof selectedItem !== 'string') return <ChatView key={`${selectedItem.id}-${selectionNonce}`} item={selectedItem} onClose={() => handleSelect(null)} currentUser={populatedUser} onSelectChat={handleSelect} />;
     return null;
   };
+
+  /* ---------------------------------------------------------------------
+   * Material 3 edition — completely separate UI layer (src/components/m3).
+   * The classic 1.5 markup below is never rendered for this edition.
+   * ------------------------------------------------------------------- */
+  const handleM3SelectChat = useCallback((chat: Chat) => {
+    /*
+     * Any modal (M3 sheets, dialogs) locks pointer events on <body> while open.
+     * Navigating straight from such a sheet can leave that lock behind, which
+     * makes the UI ignore taps until the app is restarted - seen with the Saved
+     * messages / General chat shortcuts. Clearing it here keeps the app alive.
+     */
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = '';
+    }
+    setSelectionNonce((n) => n + 1);
+    const iconName = (chat.icon === 'Drum' || chat.name === 'Infinite') ? 'Bot' : chat.icon as any;
+    handleSelect({ ...chat, iconComponent: iconName ? iconMap[iconName as keyof typeof iconMap] : undefined } as PopulatedChat);
+  }, [handleSelect]);
+
+  const handleM3SelectService = useCallback((service: M3Service) => handleSelect(service), [handleSelect]);
+
+  /*
+   * Saved messages / General chat open immediately and sync in the background.
+   * Awaiting Firestore before navigating made these rows feel dead on a slow
+   * connection ("the General chat button sometimes does nothing").
+   */
+  const handleM3SavedMessages = () => {
+    if (!currentUser.uid) return;
+    const chatId = currentUser.uid;
+    handleM3SelectChat({ id: chatId, type: 'dm', members: [currentUser.uid], icon: 'Bookmark' } as Chat);
+    if (!db) return;
+    setDoc(
+      doc(db, 'chats', chatId),
+      { type: 'dm', members: [currentUser.uid], icon: 'Bookmark', unreadCounts: { [currentUser.uid]: 0 } },
+      { merge: true }
+    ).catch((e) => console.error('Saved messages: could not sync chat doc', e));
+  };
+
+  const handleM3GeneralChat = () => {
+    if (!currentUser.uid) return;
+    const chatId = 'GENERAL_CHAT';
+    handleM3SelectChat({ id: chatId, type: 'group', name: 'General Chat', members: [currentUser.uid], icon: 'Globe' } as Chat);
+    if (!db) return;
+    (async () => {
+      try {
+        const chatRef = doc(db, 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) {
+          await setDoc(chatRef, { type: 'group', name: 'General Chat', icon: 'Globe', members: [currentUser.uid] }, { merge: true });
+          return;
+        }
+        const members = (chatSnap.data().members as string[] | undefined) || [];
+        if (!members.includes(currentUser.uid)) {
+          await updateDoc(chatRef, { members: arrayUnion(currentUser.uid) });
+        }
+      } catch (e) {
+        console.error('General chat: could not sync chat doc', e);
+      }
+    })();
+  };
+
+  if (material3Design) {
+    return (
+      <>
+        {populatedUser && (
+          <M3Shell
+            currentUser={populatedUser}
+            selectedId={currentSelectedId}
+            hasContent={!!selectedItem}
+            isOnline={isOnlineState}
+            onSelectChat={handleM3SelectChat}
+            onSelectService={handleM3SelectService}
+            onSelectSaved={handleM3SavedMessages}
+            onSelectGeneral={handleM3GeneralChat}
+            onOpenSettings={() => setM3SettingsOpen(true)}
+          >
+            {selectedItem ? renderSelectedContent() : null}
+          </M3Shell>
+        )}
+
+        {populatedUser && (
+          <ExperimentalSettingsDialog
+            open={m3SettingsOpen}
+            onOpenChange={setM3SettingsOpen}
+            currentUser={populatedUser}
+          />
+        )}
+
+        {incomingCall && (
+          <div className="fixed left-0 right-0 top-[env(safe-area-inset-top)] z-[100] flex cursor-pointer justify-center p-4" onClick={handleAcceptIncoming}>
+            <div className="flex w-full max-w-sm items-center gap-3 rounded-[1.5rem] bg-card p-3 shadow-xl">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Phone className="h-6 w-6" /></div>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{t('incoming_call')}</p><p className="text-xs text-muted-foreground">{incomingCall.isVideo ? t('video_call') : t('audio_call')}</p></div>
+              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <Button variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={handleDeclineCall}><PhoneOff className="h-5 w-5" /></Button>
+                <Button className="h-10 w-10 rounded-full bg-emerald-500 text-white hover:bg-emerald-600" size="icon" onClick={handleAcceptIncoming}>{incomingCall.isVideo ? <Video className="h-5 w-5" /> : <Phone className="h-5 w-5" />}</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeCall && (
+          <CallDialog open={showCallDialog} onOpenChange={(open) => { setShowCallDialog(open); if (!open) setActiveCall(null); }} chat={activeCall.chat} otherUser={activeCall.otherUser} currentUser={populatedUser!} isCaller={activeCall.isCaller} isVideo={activeCall.isVideo} />
+        )}
+
+        <Dialog open={showSubPrompt} onOpenChange={setShowSubPrompt}>
+          <DialogContent className="max-w-sm p-8">
+            <DialogHeader className="items-center space-y-4 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-primary/10"><Bell className="h-10 w-10 animate-bounce text-primary" /></div>
+              <div className="space-y-2"><DialogTitle className="text-xl font-medium">{t('subscribe_prompt_title')}</DialogTitle><DialogDescription className="leading-relaxed text-muted-foreground">{t('subscribe_prompt_desc')}</DialogDescription></div>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 pt-4">
+              <Button onClick={handleSubscribeToChannel} className="h-12 w-full">{t('subscribe')}</Button>
+              <Button variant="ghost" onClick={() => setShowSubPrompt(false)} className="h-12 w-full text-muted-foreground">{t('cancel')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <>

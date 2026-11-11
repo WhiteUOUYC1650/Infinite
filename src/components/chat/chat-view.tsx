@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, MessageAttachment, ChatTopic, TypingStatus } from '@/types';
+import type { Message, PopulatedChat, User, AuthenticatedUser, Chat, Poll, CustomBot, BotMiniApp, MessageAttachment, ChatTopic, TypingStatus } from '@/types';
 import { Loader2, Paperclip, Phone, Send, Video, X, MoreVertical, Info, Trash2, Users, Megaphone, CheckCheck, Bookmark, Globe, Bot, Copy, Edit, Reply, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Clock, Check, CheckCheck as CheckDouble, File as FileIcon, Mic, Camera, Pause, Play, ListTodo, Plus, CheckCircle2, Forward, Bell, BellOff, ThumbsUp, ChevronDown, ChevronUp, Smile, Radio, Eraser, LogOut, ChevronRight, LayoutGrid, MessageSquare, ArrowDown, Download, Trash, MoreHorizontal, Square, Zap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { UserAvatarWithStatus } from './user-avatar-with-status';
 import { cn } from '@/lib/utils';
@@ -54,6 +54,8 @@ import { VerifiedBadge } from '../ui/verified-badge';
 import { useTheme } from '@/context/theme-context';
 import { getCachedFile, cacheFile, fetchAndCacheImage } from '@/lib/cache-utils';
 import { Input } from '../ui/input';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { MiniAppPlayer } from '@/components/bot-studio/mini-app-player';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 
@@ -269,6 +271,29 @@ const AttachmentRenderer = ({ attachment, onPreviewImage, onMediaLoad }: { attac
     }
 };
 
+type ModerationAction = 'ban' | 'unban' | 'mute' | 'unmute' | 'kick';
+type ModerationCommand = { action: ModerationAction; handle?: string; reason?: string };
+
+/**
+ * Parses moderation commands typed by the group owner:
+ *
+ *   /ban @user
+ *   reason lives on the following line(s)
+ */
+function parseModerationCommand(text: string): ModerationCommand | null {
+  const [firstLine, ...rest] = String(text || '').split('\n');
+  const match = firstLine.trim().match(/^\/(ban|unban|mute|unmute|kick)\b\s*(.*)$/i);
+  if (!match) return null;
+  const action = match[1].toLowerCase() as ModerationAction;
+  const arg = match[2].trim();
+  const reason = rest.join('\n').trim() || undefined;
+  return {
+    action,
+    handle: arg.startsWith('@') ? arg : undefined,
+    reason,
+  };
+}
+
 const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, onChannelClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, onChannelClick: (channelId: string) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
     const { t } = useLanguage(); const db = useFirestore(); 
     const isChannelPost = !!message.fromChannelId;
@@ -351,11 +376,11 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
             ) : (chatType === 'group' && !alignRight && !isOfficialBotChat) ? <div className="w-10 flex-shrink-0" /> : null}
             <div className={cn("min-w-0 flex flex-col relative transition-all duration-300", isCircleComplete ? "bg-transparent shadow-none p-0" : (alignRight ? "bg-primary text-primary-foreground shadow-sm" : "bg-card text-card-foreground shadow-sm"), isCircleComplete ? "rounded-full" : (alignRight ? "rounded-lg rounded-br-none" : "rounded-lg rounded-bl-none"), !isCircleComplete && "px-2 pb-1 pt-1.5", "max-w-[85%] md:max-w-[70%]", glassEffect && "glass-msg", glassEffect && alignRight && "align-right")}>
                 {isChannelPost && <div className="absolute -top-3 -right-1 z-10 flex items-center bg-background/50 backdrop-blur-md px-1.5 rounded-full border border-primary/20 shadow-sm pointer-events-none"><span className="text-[8px] font-black uppercase tracking-tighter text-primary/80">{t('channel_badge')}</span></div>}
-                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div onClick={handleSenderClick} className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5 cursor-pointer hover:opacity-80"><span className="truncate">{displayName}</span>{(isChannelPost && chat.link === '/C/Infinite') && <VerifiedBadge className='w-3 h-3' />}{(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3' />}</div>)}
+                {(isChannelPost || (chatType === 'group' && !isCurrentUser) || chatType === 'channel' || message.type === 'announcement') && !isCircleComplete && (<div onClick={handleSenderClick} className="font-bold text-[13px] flex items-center gap-2 mb-0.5 px-0.5 cursor-pointer hover:opacity-80"><span className="truncate">{displayName}</span>{chat.ownerId && chat.ownerId === message.senderId && (<span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">{t('owner_badge')}</span>)}{(isChannelPost && chat.link === '/C/Infinite') && <VerifiedBadge className='w-3 h-3' />}{(!isChannelPost && sender?.username === '@InfiniteBot') && <VerifiedBadge className='w-3 h-3' />}</div>)}
                 {message.replyTo && !isCircleComplete && (<div onClick={(e) => { e.stopPropagation(); document.getElementById(`message-${message.replyTo!.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className={cn("mb-1.5 p-1.5 border-l-4 rounded-r-md cursor-pointer transition-colors max-w-full overflow-hidden flex flex-col", alignRight ? "bg-black/10 border-white/50 hover:bg-black/20" : "bg-primary/5 border-primary hover:bg-primary/10")}><p className={cn("text-[11px] font-bold truncate", alignRight ? "text-white" : "text-primary")}>{message.replyTo.senderName}</p><p className={cn("text-[11px] truncate line-clamp-1 opacity-80 italic", alignRight ? "text-white" : "text-muted-foreground")}>{message.replyTo.content}</p></div>)}
                 {message.imageUrl && !isCircleComplete && (<div className={cn("w-full flex mb-1", alignRight ? "justify-end" : "justify-start")}><img src={message.imageUrl} onClick={() => onPreviewImage(message.imageUrl!)} className="max-w-full max-h-[320px] w-auto object-contain rounded-lg cursor-pointer" onLoad={onMediaLoad} alt="Message" /></div>)}
                 {message.videoStatus === 'complete' && mediaUrl && !isCircleComplete && (<div className="pt-1"><video src={message.videoMimeType && message.videoMimeType.includes('mp4') ? `${mediaUrl}#t=0.1` : mediaUrl} controls className="max-full rounded-lg" onLoadedData={onMediaLoad} /></div>)}
-                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
+                {(message.musicStatus === 'complete' || message.voiceStatus === 'complete') && mediaUrl && !isCircleComplete && (<div className="pt-1"><CustomAudioPlayer src={mediaUrl} isMusic={!!message.musicStatus} duration={message.voiceDuration} fileName={message.fileName} messageId={message.id} onMediaLoad={onMediaLoad} /></div>)}
                 {message.fileStatus === 'complete' && mediaUrl && !isCircleComplete && (<AttachmentRenderer attachment={{ id: message.id, type: 'file', fileName: message.fileName, fileMimeType: message.fileMimeType, chunkIds: message.fileChunkIds }} onPreviewImage={onPreviewImage} onMediaLoad={onMediaLoad} />)}
                 {message.attachments && message.attachments.length > 0 && (<div className="flex flex-col gap-1 w-full mb-1">{message.attachments.map(att => (<AttachmentRenderer key={att.id} attachment={att} onPreviewImage={onPreviewImage} onMediaLoad={onMediaLoad} />))}</div>)}
                 {isCircleComplete && mediaUrl && (<div className={cn("rounded-full overflow-hidden bg-black aspect-square shrink-0 cursor-pointer w-48 h-48")} onClick={handleCircleClick}><video ref={circleVideoRef} src={mediaUrl} loop muted playsInline className="w-full h-full object-cover" onLoadedData={onMediaLoad} /></div>)}
@@ -402,7 +427,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
 ChatMessage.displayName = 'ChatMessage';
 
 export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat }: { item: PopulatedChat, onClose: () => void, currentUser: AuthenticatedUser, onSelectChat: (chat: PopulatedChat) => void }) {
-  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect } = useTheme(); 
+  const db = useFirestore(); const { t } = useLanguage(); const { toast } = useToast(); const { theme: colorTheme, sendOnEnter, smoothScroll, experimentalDesign, glassEffect, material3Design } = useTheme(); 
   const isMobile = useIsMobile();
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;
   const [messageContent, setMessageContent] = useState(''); const [isSending, setIsSending] = useState(false); const [profileDialogUser, setProfileDialogUser] = useState<User | null>(null); const [showChatProfile, setShowChatProfile] = useState(false); const [replyToMessage, setReplyToMessage] = useState<Message | null>(null); const [editingMessage, setEditingMessage] = useState<Message | null>(null); 
@@ -414,24 +439,49 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   const [showScrollDown, setShowScrollDown] = useState(false); const [showNewPoll, setShowNewPoll] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false); const [isRecordingCircle, setIsRecordingCircle] = useState(false); const [isRecordingLocked, setIsRecordingLocked] = useState(false); const [recordingDuration, setRecordingDuration] = useState(0); const mediaRecorderRef = useRef<MediaRecorder | null>(null); const chunksRef = useRef<Blob[]>([]); const timerRef = useRef<NodeJS.Timeout | null>(null); const activeStreamRef = useRef<MediaStream | null>(null);
   const isRecordingCanceledRef = useRef(false);
+  const recordingDurationRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  /** Stops every track of the active stream — always called, so the microphone
+   *  indicator disappears as soon as the recording ends or is cancelled. */
+  const releaseActiveStream = useCallback(() => {
+    const stream = activeStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch { /* already stopped */ }
+      });
+    }
+    activeStreamRef.current = null;
+  }, []);
 
   const [typingUsers, setTypingUsers] = useState<TypingStatus[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingSentAtRef = useRef(0);
 
   const isMember = useMemo(() => initialItem?.members?.includes(currentUser.uid!) ?? false, [initialItem?.members, currentUser.uid]);
   const chatDocRef = useMemoFirebase(() => db ? doc(db, 'chats', initialItem.id) : null, [db, initialItem.id]); const { data: liveChatData } = useDoc<Chat>(chatDocRef); const item = useMemo(() => { if (!liveChatData) return initialItem; return { ...initialItem, ...liveChatData }; }, [initialItem.id, liveChatData]);
   
   const messagesQuery = useMemoFirebase(() => { 
     if (!db || !isMember) return null; 
-    let q = query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
-    if (item.isSupergroup && activeTopicId) {
-        q = query(collection(db, 'chats', item.id, 'messages'), where('topicId', '==', activeTopicId), orderBy('timestamp', 'desc'), limit(messageLimit));
-    }
-    return q;
-  }, [db, item.id, isMember, messageLimit, item.isSupergroup, activeTopicId]); 
+    // Topics are filtered on the client on purpose: a `where('topicId') + orderBy`
+    // query needs a composite Firestore index, and without it the snapshot errors
+    // out - which made every topic show the same (cached) message list.
+    return query(collection(db, 'chats', item.id, 'messages'), orderBy('timestamp', 'desc'), limit(messageLimit));
+  }, [db, item.id, isMember, messageLimit]); 
   
   const { data: rawMessages, loading: messagesLoading } = useCollection<Message>(messagesQuery);
-  const messages = useMemo(() => rawMessages ? [...rawMessages].reverse() : null, [rawMessages]);
+  const messages = useMemo(() => {
+    if (!rawMessages) return null;
+    const list = [...rawMessages].reverse();
+    if (!item.isSupergroup || !activeTopicId) return list;
+    // In a supergroup each topic is its own thread: show only that topic's
+    // messages (messages without a topicId belong to the topic list itself).
+    return list.filter((m) =>
+      activeTopicId === 'general'
+        ? !m.topicId || m.topicId === 'general'
+        : m.topicId === activeTopicId
+    );
+  }, [rawMessages, item.isSupergroup, activeTopicId]);
   const allUserIds = useMemo(() => { const ids = new Set<string>(item.members || []); messages?.forEach(m => ids.add(m.senderId)); return Array.from(ids); }, [item.members, messages]); const { users: memberDetails } = useBatchUsers(allUserIds);
 
   const otherUserId = useMemo(() => { 
@@ -452,10 +502,19 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     }
   }, [db, messages, item.id, isMember, currentUser.uid]);
   
-  const scrollToBottom = useCallback((b: ScrollBehavior = 'auto') => { if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight; }, []);
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    try { el.scrollTo({ top: el.scrollHeight, behavior }); } catch { el.scrollTop = el.scrollHeight; }
+  }, []);
+
+  /** Media loading must not yank the view when the user is reading history. */
+  const handleMediaLoaded = useCallback(() => {
+    if (isAtBottomRef.current) scrollToBottom();
+  }, [scrollToBottom]);
   const handleScroll = useCallback(() => { if (!scrollContainerRef.current) return; const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current; const atBottom = scrollHeight - scrollTop - clientHeight < 300; isAtBottomRef.current = atBottom; if (!atBottom && Date.now() - autoScrollGuardRef.current > 10000) autoScrollGuardRef.current = 0; if (scrollTop < 100 && hasMore && !messagesLoading && messages && messages.length >= messageLimit) { prevScrollHeightRef.current = scrollHeight; setMessageLimit(p => p + 50); } setShowStickyDate(true); if (stickyHideTimeoutRef.current) clearTimeout(stickyHideTimeoutRef.current); stickyHideTimeoutRef.current = setTimeout(() => setShowStickyDate(false), 1000); const markers = scrollContainerRef.current.querySelectorAll('.date-separator-marker'); let currentTopDate = null; markers.forEach((marker: any) => { if (marker.offsetTop <= scrollTop + 100) { currentTopDate = marker.getAttribute('data-date'); } }); setStickyDate(currentTopDate); setShowScrollDown(!atBottom); }, [hasMore, messagesLoading, messages, messageLimit]);
   
-  useEffect(() => { const ro = new ResizeObserver(() => { if (isAtBottomRef.current || (Date.now() - autoScrollGuardRef.current < 10000)) requestAnimationFrame(() => { scrollToBottom(); setTimeout(scrollToBottom, 50); }); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
+  useEffect(() => { const ro = new ResizeObserver(() => { if (!isAtBottomRef.current) return; requestAnimationFrame(() => scrollToBottom()); }); if (listInnerRef.current) ro.observe(listInnerRef.current); return () => ro.disconnect(); }, [scrollToBottom]);
   
   useLayoutEffect(() => {
     if (prevScrollHeightRef.current > 0 && scrollContainerRef.current && messages) {
@@ -465,38 +524,112 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollTop + heightDiff;
           prevScrollHeightRef.current = 0;
       }
-    } else if (isAtBottomRef.current) {
-      autoScrollGuardRef.current = Date.now();
+    } else if (isAtBottomRef.current || Date.now() - autoScrollGuardRef.current < 1500) {
       scrollToBottom(smoothScroll ? 'smooth' : 'auto');
     }
   }, [messages, smoothScroll, scrollToBottom]);
 
-  useEffect(() => { autoScrollGuardRef.current = Date.now(); scrollToBottom(); }, [item.id, activeTopicId, scrollToBottom]);
+  useEffect(() => {
+    // switching chats (or topics) starts a fresh page of history
+    setMessageLimit(50);
+    setHasMore(true);
+    prevScrollHeightRef.current = 0;
+    isAtBottomRef.current = true;
+    autoScrollGuardRef.current = Date.now();
+    scrollToBottom();
+  }, [item.id, activeTopicId, scrollToBottom]);
   
   useEffect(() => { const handleSystemBack = () => { if (previewImage) setPreviewImage(null); else if (showChatProfile) setShowChatProfile(false); else if (profileDialogUser) setProfileDialogUser(null); else if (showNewPoll) setShowNewPoll(false); else if (replyToMessage) setReplyToMessage(null); else if (item.isSupergroup && activeTopicId) setActiveTopicId(null); else if (filesToSend.length > 0) setFilesToSend([]); else if (isRecordingVoice || isRecordingCircle) stopRecording(true); else onClose(); }; let backListener: any; if (Capacitor.isNativePlatform()) { import('@capacitor/app').then(({ App }) => { backListener = App.addListener('backButton', handleSystemBack); }); } return () => { if (backListener) { backListener.then((l: any) => l.remove()); } }; }, [onClose, previewImage, showChatProfile, profileDialogUser, showNewPoll, replyToMessage, filesToSend.length, isRecordingVoice, isRecordingCircle, item.isSupergroup, activeTopicId]);
   
-  const startRecording = async (type: 'voice' | 'circle') => {
-    try {
-      const constraints = { audio: true, video: type === 'circle' ? { facingMode: 'user' as const, width: 480, height: 480 } : false };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints); activeStreamRef.current = stream;
-      const mr = new MediaRecorder(stream, { mimeType: type === 'circle' ? 'video/webm' : 'audio/webm' }); mediaRecorderRef.current = mr;
-      chunksRef.current = []; isRecordingCanceledRef.current = false;
-      mr.ondataavailable = (e) => { if (e.data.size > 0 && !isRecordingCanceledRef.current) { chunksRef.current.push(e.data); } };
-      mr.onstop = async () => { 
-          if (!isRecordingCanceledRef.current && chunksRef.current.length > 0) {
-            const blob = new Blob(chunksRef.current, { type: mr.mimeType }); 
-            if (blob.size > 500) handleSendMediaMessage(blob, type); 
-          }
-          stream.getTracks().forEach(t => t.stop()); activeStreamRef.current = null;
-      };
-      mr.start(500); if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true); 
-      setRecordingDuration(0); setIsRecordingLocked(false); timerRef.current = setInterval(() => setRecordingDuration(p => p + 1), 1000);
-    } catch (e) { console.error(e); toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') }); }
+  /** Picks a MIME type the current WebView can actually record (iOS needs mp4). */
+  const pickRecorderMime = (type: 'voice' | 'circle') => {
+    if (typeof MediaRecorder === 'undefined') return '';
+    const candidates = type === 'circle'
+      ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+      : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    const canCheck = typeof (MediaRecorder as any).isTypeSupported === 'function';
+    return candidates.find((candidate) => !canCheck || (MediaRecorder as any).isTypeSupported(candidate)) || '';
   };
-  const stopRecording = (canceled: boolean) => { if (timerRef.current) clearInterval(timerRef.current); isRecordingCanceledRef.current = canceled; if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); } setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false); };
-  
+
+  const startRecording = async (type: 'voice' | 'circle') => {
+    // never start a second recorder on top of a running one (that leaked the mic)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') return;
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: true,
+        video: type === 'circle' ? { facingMode: 'user' } : false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (!mountedRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
+      releaseActiveStream();
+      activeStreamRef.current = stream;
+
+      const mimeType = pickRecorderMime(type);
+      // an unsupported mimeType used to throw here and leave the mic open
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+      isRecordingCanceledRef.current = false;
+      recordingDurationRef.current = 0;
+
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0 && !isRecordingCanceledRef.current) chunksRef.current.push(e.data);
+      };
+      mr.onerror = () => { releaseActiveStream(); };
+      mr.onstop = () => {
+        const duration = recordingDurationRef.current;
+        const canceled = isRecordingCanceledRef.current;
+        const chunks = chunksRef.current.slice();
+        chunksRef.current = [];
+        releaseActiveStream();
+        mediaRecorderRef.current = null;
+        if (canceled || chunks.length === 0) return;
+        const blobType = mr.mimeType || mimeType || (type === 'voice' ? 'audio/webm' : 'video/webm');
+        const blob = new Blob(chunks, { type: blobType });
+        if (blob.size > 350) void handleSendMediaMessage(blob, type, duration);
+      };
+
+      mr.start(500);
+      if (type === 'voice') setIsRecordingVoice(true); else setIsRecordingCircle(true);
+      setRecordingDuration(0);
+      setIsRecordingLocked(false);
+      timerRef.current = setInterval(() => {
+        recordingDurationRef.current += 1;
+        setRecordingDuration(recordingDurationRef.current);
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      releaseActiveStream();
+      mediaRecorderRef.current = null;
+      setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false);
+      toast({ variant: 'destructive', title: t('microphone_error_title'), description: t('microphone_error_desc') });
+    }
+  };
+
+  const stopRecording = (canceled: boolean) => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    isRecordingCanceledRef.current = canceled;
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') {
+      try { mr.stop(); } catch { releaseActiveStream(); }
+    } else {
+      releaseActiveStream();
+    }
+    setIsRecordingVoice(false); setIsRecordingCircle(false); setIsRecordingLocked(false);
+  };
+
+  // leaving the chat must never keep the microphone busy
+  useEffect(() => () => {
+    mountedRef.current = false;
+    if (timerRef.current) clearInterval(timerRef.current);
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') { try { mr.stop(); } catch { /* noop */ } }
+    releaseActiveStream();
+  }, [releaseActiveStream]);
+
   const botDocRef = useMemoFirebase(() => (db && otherUser?.isCustomBot) ? doc(db, 'customBots', otherUser.id) : null, [db, otherUser?.id, otherUser?.isCustomBot]);
   const { data: botConfig } = useDoc<CustomBot>(botDocRef); const botApps = botConfig?.miniApps || [];
+  const [activeMiniApp, setActiveMiniApp] = useState<BotMiniApp | null>(null); const [miniAppChooserOpen, setMiniAppChooserOpen] = useState(false);
   
   useEffect(() => {
     if (!db || !isMember || item.type === 'channel') return;
@@ -506,7 +639,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         const statuses = snapshot.docs
             .map(d => d.data() as TypingStatus)
             .filter(s => {
-                const isRecent = s.timestamp?.toMillis() > (now - 5000);
+                const isRecent = (s.timestamp?.toMillis?.() ?? now) > (now - 5000);
                 const isOtherUser = s.userId !== currentUser.uid;
                 const isMatchingTopic = !item.isSupergroup || s.topicId === activeTopicId;
                 return isRecent && isOtherUser && isMatchingTopic;
@@ -529,15 +662,33 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
 
   useEffect(() => {
-    if (messageContent.length > 0) {
-        updateTypingState(true);
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => updateTypingState(false), 3000);
-    } else {
+    if (item.type === 'channel') return;
+    if (messageContent.length === 0) {
+        typingSentAtRef.current = 0;
         updateTypingState(false);
+        return;
     }
+    // refresh the "typing" flag at most every 2s while the user keeps typing,
+    // so the other side sees it as soon as the first character is entered
+    const now = Date.now();
+    if (now - typingSentAtRef.current > 2000) {
+        typingSentAtRef.current = now;
+        updateTypingState(true);
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+        typingSentAtRef.current = 0;
+        updateTypingState(false);
+    }, 2500);
     return () => { if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); };
-  }, [messageContent, item.id]);
+  }, [messageContent, item.id, item.type]);
+
+  // leaving the chat must clear the "typing…" status for the other side
+  useEffect(() => () => {
+      if (item.type === 'channel') return;
+      if (!db || !currentUser.uid) return;
+      deleteDoc(doc(db, 'chats', item.id, 'typing', currentUser.uid)).catch(() => {});
+  }, [db, item.id, item.type, currentUser.uid]);
 
   const getStatusLine = () => { 
     if (item.id === currentUser.uid) return null; 
@@ -575,9 +726,84 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   };
   const removeFileToSend = (index: number) => { setFilesToSend(prev => prev.filter((_, i) => i !== index)); };
   
+  /** Runs /ban, /mute, /unban, /unmute, /kick for the group owner. */
+  const runModerationCommand = async (command: ModerationCommand) => {
+    if (!db) return;
+    let targetId: string | null = null;
+    if (replyToMessage) {
+      targetId = replyToMessage.senderId;
+    } else if (command.handle) {
+      const cleanHandle = command.handle.replace(/^@/, '').toLowerCase();
+      try {
+        const usernameSnap = await getDoc(doc(db, 'usernames', `@${cleanHandle}`));
+        if (usernameSnap.exists()) targetId = usernameSnap.data().uid as string;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    if (!targetId) {
+      toast({ variant: 'destructive', title: t('mod_target_not_found'), description: t('mod_usage') });
+      return;
+    }
+    if (targetId === item.ownerId) {
+      toast({ variant: 'destructive', title: t('mod_owner_only') });
+      return;
+    }
+
+    const chatRef = doc(db, 'chats', item.id);
+    const entry = { reason: command.reason || '', by: currentUser.uid, since: Timestamp.now() };
+    try {
+      if (command.action === 'ban') {
+        await updateDoc(chatRef, {
+          [`bannedUsers.${targetId}`]: entry,
+          [`mutedUsers.${targetId}`]: deleteField(),
+        });
+        toast({ title: t('mod_banned'), description: command.reason });
+      } else if (command.action === 'mute') {
+        await updateDoc(chatRef, { [`mutedUsers.${targetId}`]: entry });
+        toast({ title: t('mod_muted'), description: command.reason });
+      } else if (command.action === 'unban') {
+        await updateDoc(chatRef, { [`bannedUsers.${targetId}`]: deleteField() });
+        toast({ title: t('mod_unbanned') });
+      } else if (command.action === 'unmute') {
+        await updateDoc(chatRef, { [`mutedUsers.${targetId}`]: deleteField() });
+        toast({ title: t('mod_unmuted') });
+      } else if (command.action === 'kick') {
+        await updateDoc(chatRef, {
+          members: arrayRemove(targetId),
+          [`mutedUsers.${targetId}`]: deleteField(),
+          [`bannedUsers.${targetId}`]: deleteField(),
+        });
+        toast({ title: t('mod_kicked') });
+      }
+    } catch (e: any) {
+      console.error('Moderation command failed', e);
+      toast({ variant: 'destructive', title: 'Error', description: e?.message });
+    }
+  };
+
   const handleSendMessage = async (customPoll?: Poll, textOverride?: string) => {
     const finalC = textOverride !== undefined ? textOverride : messageContent; if ((!finalC.trim() && filesToSend.length === 0 && !customPoll) || !db) return;
     if (finalC.length > 1600) { toast({ variant: 'destructive', title: 'Error', description: 'Message too long (max 1600 characters)' }); return; }
+
+    // moderation commands are never sent as normal messages
+    const moderationCommand = !customPoll && (item.type === 'group' || item.isSupergroup)
+      ? parseModerationCommand(finalC)
+      : null;
+    if (moderationCommand) {
+      if (!isOwner) {
+        toast({ variant: 'destructive', title: t('mod_owner_only') });
+        return;
+      }
+      if (textOverride === undefined) {
+        setMessageContent('');
+        const txt = document.getElementById('message-textarea');
+        if (txt) txt.style.height = '40px';
+      }
+      await runModerationCommand(moderationCommand);
+      setReplyToMessage(null);
+      return;
+    }
     setIsSending(true); updateTypingState(false);
     if (textOverride === undefined) { setMessageContent(''); const txt = document.getElementById('message-textarea'); if (txt) txt.style.height = '40px'; } setFilesToSend([]); setReplyToMessage(null); autoScrollGuardRef.current = Date.now();
     try {
@@ -615,7 +841,14 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     } catch (e: any) { toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not send message.' }); } finally { setIsSending(false); }
   };
 
-  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle') => {
+  const readBlobAsBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+    reader.onerror = () => reject(reader.error || new Error('Could not read the recording'));
+    reader.readAsDataURL(blob);
+  });
+
+  const handleSendMediaMessage = async (blob: Blob, type: 'voice' | 'circle', duration = 0) => {
       if (!db || !currentUser.uid) return;
       setIsSending(true);
       try {
@@ -623,37 +856,58 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           const col = type === 'voice' ? 'voiceChunks' : 'circleChunks';
           const chunkIds: string[] = [];
           const CHUNK_SIZE = 384 * 1024;
-          const reader = new FileReader();
-          reader.readAsDataURL(blob);
-          reader.onload = async () => {
-              const base64Data = (reader.result as string).split(',')[1];
-              const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
-              for (let i = 0; i < totalChunks; i++) {
-                  const start = i * CHUNK_SIZE;
-                  const end = Math.min(start + CHUNK_SIZE, base64Data.length);
-                  const chunk = base64Data.substring(start, end);
-                  const cref = doc(collection(db, col));
-                  await setDoc(cref, { data: chunk, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() });
-                  chunkIds.push(cref.id);
-                  if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
-              }
-              const data: any = { 
-                  senderId: currentUser.uid, content: '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username,
-                  ...(type === 'voice' ? { voiceStatus: 'complete', voiceChunkIds: chunkIds, voiceMimeType: blob.type } : { circleStatus: 'complete', circleChunkIds: chunkIds, circleMimeType: blob.type }),
-                  ...(activeTopicId && { topicId: activeTopicId })
-              };
-              await setDoc(mref, data);
-              await updateDoc(doc(db, 'chats', item.id), { lastMessage: { id: mref.id, content: type === 'voice' ? t('voice_message') : 'Video Circle', senderId: currentUser.uid, senderName: currentUser.name || currentUser.username, timestamp: Timestamp.now() } });
+          const base64Data = await readBlobAsBase64(blob);
+          if (!base64Data) throw new Error('Empty recording');
+
+          const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
+          for (let i = 0; i < totalChunks; i++) {
+              const start = i * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, base64Data.length);
+              const chunk = base64Data.substring(start, end);
+              const cref = doc(collection(db, col));
+              await setDoc(cref, { data: chunk, part: i, senderId: currentUser.uid, chatId: item.id, messageId: mref.id, timestamp: serverTimestamp() });
+              chunkIds.push(cref.id);
+              if (i % 5 === 0) await new Promise(res => setTimeout(res, 100));
+          }
+
+          const mime = blob.type || (type === 'voice' ? 'audio/webm' : 'video/webm');
+          const data: any = {
+              senderId: currentUser.uid, content: '', timestamp: serverTimestamp(), readBy: [], senderName: currentUser.name || currentUser.username,
+              ...(type === 'voice'
+                  ? { voiceStatus: 'complete', voiceChunkIds: chunkIds, voiceMimeType: mime, voiceDuration: duration }
+                  : { circleStatus: 'complete', circleChunkIds: chunkIds, circleMimeType: mime, circleDuration: duration }),
+              ...(activeTopicId && { topicId: activeTopicId })
           };
-      } catch (e) { console.error(e); } finally { setIsSending(false); }
+          await setDoc(mref, data);
+          updateDoc(doc(db, 'chats', item.id), {
+              lastMessage: {
+                  id: mref.id,
+                  content: type === 'voice' ? t('voice_message') : 'Video Circle',
+                  senderId: currentUser.uid,
+                  senderName: currentUser.name || currentUser.username,
+                  timestamp: Timestamp.now(),
+              },
+          }).catch(() => {});
+      } catch (e: any) {
+          console.error(e);
+          toast({ variant: 'destructive', title: 'Error', description: e?.message || 'Could not send the recording.' });
+      } finally { setIsSending(false); }
   };
-  
+
   const handleToggleReaction = async (mid: string, e: string) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', mid); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const rs = snap.data().reactions || {}; let ex: string | null = null; for (const [k, u] of Object.entries(rs)) if ((u as string[]).includes(currentUser.uid!)) { ex = k; break; } const up: any = {}; if (ex) { const nu = (rs[ex] as string[]).filter(u => u !== currentUser.uid); if (nu.length === 0) up[`reactions.${ex}`] = deleteField(); else up[`reactions.${e}`] = nu; if (ex === e) { tx.update(mref, up); return; } } up[`reactions.${e}`] = arrayUnion(currentUser.uid); tx.update(mref, up); }); } catch (e) { console.error(e); } };
   const handleVote = async (msgId: string, index: number) => { if (!db) return; const mref = doc(db, 'chats', item.id, 'messages', msgId); try { await runTransaction(db, async (tx) => { const snap = await tx.get(mref); if (!snap.exists()) return; const poll = snap.data().poll as Poll; if (!poll) return; const newOptions = poll.options.map((opt, i) => { const votes = [...opt.votes]; const alreadyVoted = votes.includes(currentUser.uid!); if (i === index) { if (alreadyVoted) votes.splice(votes.indexOf(currentUser.uid!), 1); else votes.push(currentUser.uid!); } else if (!poll.isMultipleChoice) { const idx = votes.indexOf(currentUser.uid!); if (idx !== -1) votes.splice(idx, 1); } return { ...opt, votes }; }); tx.update(mref, { 'poll.options': newOptions }); }); } catch (e) { console.error("Voting failed", e); } };
   const handleDeleteMessage = async (msgId: string) => { if (!db) return; try { await deleteDoc(doc(db, 'chats', item.id, 'messages', msgId)); toast({ title: t('dm_success'), description: t('delete_message') }); } catch (e) { console.error(e); } };
   const handleAttachmentSelection = (type: string) => { let a = '*/*'; if (type === 'photo') a = 'image/*'; else if (type === 'video') a = 'video/*'; else if (type === 'music') a = 'audio/*'; if (fileInputRef.current) { fileInputRef.current.accept = a; fileInputRef.current.click(); } };
 
-  const isOwner = item.ownerId === currentUser.uid; const isAdminUser = currentUser.username === '@Infinite'; const isDM = item.type === 'dm'; const isSavedMessages = item.id === currentUser.uid; const isGeneralChat = item.id === 'GENERAL_CHAT'; const canWrite = item.type !== 'channel' || isOwner;
+  const isOwner = item.ownerId === currentUser.uid; const isAdminUser = currentUser.username === '@Infinite'; const isDM = item.type === 'dm'; const isSavedMessages = item.id === currentUser.uid; const isGeneralChat = item.id === 'GENERAL_CHAT';
+  const banEntry = item.bannedUsers?.[currentUser.uid || ''];
+  const muteEntry = item.mutedUsers?.[currentUser.uid || ''];
+  const restriction: { kind: 'ban' | 'mute'; reason?: string } | null = banEntry
+    ? { kind: 'ban', reason: banEntry.reason }
+    : muteEntry
+      ? { kind: 'mute', reason: muteEntry.reason }
+      : null;
+  const canWrite = (item.type !== 'channel' || isOwner) && !restriction;
   const isOfficialBot = otherUser?.username === '@Infinite' || otherUser?.username === '@InfiniteBot' || item.link === '/B/Infinite';
   const showStartButton = !messagesLoading && isDM && otherUser?.isBot && !isOfficialBot && (!messages || messages.length === 0);
 
@@ -672,12 +926,12 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
     <div className={cn("flex items-center w-full transition-all duration-300 gap-2", experimentalDesign ? "h-14 px-1" : "p-2 h-14")}>
         <div className={cn(experimentalDesign ? "glass-panel backdrop-blur-xl rounded-2xl h-12 w-12 flex items-center justify-center border-white/20 shadow-lg" : "flex items-center", experimentalDesign && !glassEffect && "bg-card/40")}>
             <button onClick={item.isSupergroup && activeTopicId ? () => setActiveTopicId(null) : onClose} className="rounded-full h-10 w-10 flex items-center justify-center hover:bg-muted/50 transition-colors">
-                {item.isSupergroup && activeTopicId ? <ArrowLeft className="h-5 w-5" /> : <X className="h-5 w-5" />}
+                {item.isSupergroup && activeTopicId ? <ArrowLeft className="h-5 w-5" /> : material3Design ? <ArrowLeft className="h-5 w-5" /> : <X className="h-5 w-5" />}
             </button>
         </div>
         <div className={cn("flex-1 flex items-center min-w-0 h-full", experimentalDesign && "glass-panel backdrop-blur-xl rounded-2xl h-12 px-3 border-white/20 shadow-lg", experimentalDesign && !glassEffect && "bg-card/40")}>
             <button disabled={isGeneralChat} className="flex items-center text-left hover:bg-accent/40 px-3 py-1 rounded-xl transition-colors min-w-0 flex-1 h-full disabled:hover:bg-transparent" onClick={() => isDM ? setProfileDialogUser(otherUser) : (isGeneralChat ? null : setShowChatProfile(true))}>
-                <div className='shrink-0 h-9 w-9'>{isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} className="h-9 w-9" />) : (<Avatar className="h-9 w-9"><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-5 w-5 text-primary" /> : (item.type === 'group' ? <Users className='h-4 w-4 text-muted-foreground' /> : <Megaphone className='h-4 w-4 text-muted-foreground' />)}</AvatarFallback></Avatar>)}</div>
+                <div className='shrink-0 h-9 w-9'>{isDM ? (<UserAvatarWithStatus user={otherUser} isSavedMessages={isSavedMessages} isSelected={true} className="h-9 w-9" />) : (<Avatar className={cn("h-9 w-9", material3Design && "m3-avatar-square")}><AvatarImage src={item.avatar} /><AvatarFallback>{isGeneralChat ? <Globe className="h-5 w-5 text-primary" /> : (item.type === 'group' ? <Users className='h-4 w-4 text-muted-foreground' /> : <Megaphone className='h-4 w-4 text-muted-foreground' />)}</AvatarFallback></Avatar>)}</div>
                 <div className="ml-2.5 min-w-0 flex flex-col justify-center h-full text-left">
                     <div className="flex items-center gap-1.5">
                         <h2 className={cn("text-[15px] font-bold font-headline truncate leading-none")}>{isSavedMessages ? t('saved_messages') : (isGeneralChat ? t('general_chat') : (isDM ? otherUser?.name : item.name))}</h2>
@@ -703,10 +957,29 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
   
   return (
     <div className={cn("relative flex flex-col h-svh h-full-safe bg-background overflow-hidden animate-in fade-in duration-300", isMobile ? 'w-screen' : 'w-full')}>
-      <header className={cn("flex-shrink-0 z-30 transition-all duration-300", experimentalDesign ? "fixed top-[env(safe-area-inset-top)] left-4 right-4 mt-2" : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0")}>
-        {experimentalDesign ? (<div className="bg-transparent overflow-hidden">{headerContent}</div>) : (<>{headerContent}<div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}><div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel backdrop-blur-xl" : "bg-muted/95")}><span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span></div></div></>)}
+      <header className={cn("flex-shrink-0 z-30 transition-all duration-300", (experimentalDesign && isMobile) ? "fixed top-[env(safe-area-inset-top)] left-4 right-4 mt-2" : "flex flex-col border-b pt-[calc(0.5rem+env(safe-area-inset-top))] bg-background sticky top-0")}>
+        {(experimentalDesign && isMobile) ? (<div className="bg-transparent overflow-hidden">{headerContent}</div>) : (<>{headerContent}<div className={cn("absolute top-[calc(56px+env(safe-area-inset-top)+8px)] left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none", showStickyDate && stickyDate ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2")}><div className={cn("px-4 py-1.5 rounded-full border border-border/50 shadow-lg transition-all", glassEffect ? "glass-panel backdrop-blur-xl" : "bg-muted/95")}><span className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{stickyDate}</span></div></div></>)}
       </header>
-      
+
+      {/* bot mini apps: a full-width bar under the app bar (used to float over the messages) */}
+      {isDM && otherUser?.isCustomBot && botApps.length > 0 && (
+        <div className="relative z-20 shrink-0 px-2 pb-1">
+          <Button
+            onClick={() => {
+              if (botApps.length === 1) setActiveMiniApp(botApps[0]);
+              else setMiniAppChooserOpen(true);
+            }}
+            className={cn(
+              "flex h-10 w-full items-center justify-center gap-2 rounded-full font-bold text-primary-foreground shadow-none transition-all active:scale-[0.99]",
+              glassEffect ? "glass-button bg-primary/60" : "bg-primary"
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            {botApps.length === 1 ? t('open_mini_app_button') : t('open_mini_apps_menu')}
+          </Button>
+        </div>
+      )}
+
       <div className="relative flex-1 bg-background overflow-hidden min-h-0 z-10">
         {item.isSupergroup && !activeTopicId ? (
             <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
@@ -734,7 +1007,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                         {messages?.map((m, i) => {
                             const msgDate = getSafeDate(m.timestamp); const prevMsg = messages[i - 1]; const showDate = !prevMsg || !isSameDay(msgDate, getSafeDate(prevMsg.timestamp));
                             let dateStr = ""; if (isSameDay(msgDate, new Date())) dateStr = t('today_is'); else if (isYesterday(msgDate)) dateStr = t('yesterday'); else dateStr = format(msgDate, 'dd.MM.yyyy');
-                            return (<React.Fragment key={m.id}>{showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} onChannelClick={handleOpenChannelProfile} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={scrollToBottom} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} /></React.Fragment>);
+                            return (<React.Fragment key={m.id}>{showDate && <DateSeparator date={dateStr} rawDate={format(msgDate, 'yyyy-MM-dd')} experimentalDesign={experimentalDesign} glassEffect={glassEffect} />}<ChatMessage message={m} sender={memberDetails[m.senderId]} isCurrentUser={m.senderId === currentUser.uid} chatType={item.type} onAvatarClick={setProfileDialogUser} onChannelClick={handleOpenChannelProfile} chat={item} currentUser={currentUser} onReply={setReplyToMessage} setEditingMessage={setEditingMessage} onMediaLoad={handleMediaLoaded} onPreviewImage={setPreviewImage} onForward={setForwardingMessage} onVote={(idx) => handleVote(m.id, idx)} onDelete={handleDeleteMessage} onToggleReaction={handleToggleReaction} isMobile={isMobile || false} isActiveOnMobile={activeMessageId === m.id} onToggleActiveOnMobile={() => setActiveMessageId(p => p === m.id ? null : m.id)} experimentalDesign={experimentalDesign} glassEffect={glassEffect} /></React.Fragment>);
                         })}
                         <div className={cn("shrink-0 pointer-events-none", (experimentalDesign || glassEffect) ? "h-20" : "h-2")} aria-hidden="true" />
                     </div>
@@ -746,8 +1019,25 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         )}
       </div>
 
-      {isDM && otherUser?.isCustomBot && botApps.length > 0 && (<div className={cn("absolute bottom-[calc(60px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[45] animate-in slide-in-from-bottom-4 duration-500", (experimentalDesign || glassEffect) ? "mb-6" : "mb-2")}><Button onClick={() => setProfileDialogUser(otherUser)} className={cn("rounded-full shadow-2xl text-white font-bold h-12 px-8 flex items-center gap-2 border-2 border-white/20 hover:scale-105 active:scale-95 transition-all", glassEffect ? "glass-button bg-primary/60" : "bg-primary")}><LayoutGrid className="h-5 w-5" />{botApps.length === 1 ? t('open_mini_app_button') : t('open_mini_apps_menu')}</Button></div>)}
       
+      {isMember && restriction && (
+        <div className={cn(
+          'shrink-0 border-t px-4 py-3 text-center pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
+          restriction.kind === 'ban'
+            ? 'border-destructive/25 bg-destructive/10'
+            : 'border-primary/20 bg-primary/10'
+        )}>
+          <p className={cn('text-sm font-semibold', restriction.kind === 'ban' ? 'text-destructive' : 'text-primary')}>
+            {restriction.kind === 'ban' ? t('you_are_banned') : t('you_are_muted')}
+          </p>
+          {restriction.reason ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t('restriction_reason')}: {restriction.reason}
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {isMember && canWrite && (!item.isSupergroup || activeTopicId) && (
         <footer className={cn("flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}>
           {(isRecordingVoice || isRecordingCircle) && (
@@ -833,6 +1123,41 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
           </div>
         </footer>
       )}
+      <MiniAppPlayer
+        app={activeMiniApp}
+        open={!!activeMiniApp}
+        onOpenChange={(open) => { if (!open) setActiveMiniApp(null); }}
+        botName={otherUser?.name || otherUser?.username || ''}
+        botAvatar={otherUser?.avatar}
+        scripts={botConfig?.scripts}
+      />
+
+      <Sheet open={miniAppChooserOpen} onOpenChange={setMiniAppChooserOpen}>
+        <SheetContent side="bottom" hideCloseButton className="border-0 bg-background p-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <SheetHeader className="px-3 pb-2 text-left">
+            <SheetTitle className="text-base font-medium">{t('open_mini_apps_menu')}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-1">
+            {botApps.map((miniApp) => (
+              <button
+                key={miniApp.id}
+                type="button"
+                onClick={() => {
+                  setMiniAppChooserOpen(false);
+                  setActiveMiniApp(miniApp);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <LayoutGrid className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{miniApp.name}</span>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {profileDialogUser && <UserProfileDialog user={profileDialogUser} open={!!profileDialogUser} onOpenChange={(o) => !o && setProfileDialogUser(null)} onSendMessage={() => {}} />}
       {showChatProfile && <ChatProfileDialog chat={item} members={[]} currentUser={currentUser} open={showChatProfile} onOpenChange={setShowChatProfile} onCloseChat={onClose} />}
       <NewPollDialog open={showNewPoll} onOpenChange={setShowNewPoll} onCreate={(p) => handleSendMessage(p)} />
