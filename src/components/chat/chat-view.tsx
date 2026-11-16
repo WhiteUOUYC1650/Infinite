@@ -1060,7 +1060,9 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 batch.commit();
                 setIsSelectingMessages(false);
                 setSelectedMessageIds(new Set());
-              } className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">{t('archive')}</Button>
+              } className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+                {t('archive')}
+              </Button>
             </div>
           </div>
         </div>
