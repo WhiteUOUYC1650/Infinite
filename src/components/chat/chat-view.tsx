@@ -1050,7 +1050,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => setIsSelectingMessages(false)} className="h-8 w-8 rounded-full hover:bg-muted/30"><X className="h-4 w-4" /></Button>
-              <Button variant="primary" size="small" onClick={() => {
+              <Button variant="primary" size="small" className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => {
                 // Archive selected messages
                 if (!db) return;
                 const batch = writeBatch(db);
@@ -1060,7 +1060,7 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
                 batch.commit();
                 setIsSelectingMessages(false);
                 setSelectedMessageIds(new Set());
-              } className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+              }}>
                 {t('archive')}
               </Button>
             </div>
