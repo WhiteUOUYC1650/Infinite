@@ -294,6 +294,10 @@ function parseModerationCommand(text: string): ModerationCommand | null {
   };
 }
 
+const [isSelectingMessages, setIsSelectingMessages] = useState(false);
+const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
+const [selectStartTime, setSelectStartTime] = useState<number>(0);
+
 const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAvatarClick, onChannelClick, chat, currentUser, onReply, setEditingMessage, onMediaLoad, onPreviewImage, onForward, onVote, onDelete, onToggleReaction, isMobile, isActiveOnMobile, onToggleActiveOnMobile, experimentalDesign, glassEffect }: { message: Message, sender?: User, isCurrentUser: boolean, chatType: PopulatedChat['type'], onAvatarClick: (user: User) => void, onChannelClick: (channelId: string) => void, chat: PopulatedChat, currentUser: AuthenticatedUser, onReply: (message: Message) => void, setEditingMessage: (message: Message | null) => void, onMediaLoad: () => void; onPreviewImage: (url: string) => void; onForward: (message: Message) => void; onVote: (index: number) => void; onDelete: (id: string) => void; onToggleReaction: (msgId: string, emoji: string) => void; isMobile: boolean; isActiveOnMobile?: boolean; onToggleActiveOnMobile?: () => void; experimentalDesign: boolean; glassEffect: boolean }) => {
     const { t } = useLanguage(); const db = useFirestore(); 
     const isChannelPost = !!message.fromChannelId;
@@ -368,7 +372,7 @@ const ChatMessage = React.memo(({ message, sender, isCurrentUser, chatType, onAv
     const handleSenderClick = () => { if (isChannelPost && message.fromChannelId) { onChannelClick(message.fromChannelId); } else if (!isChannelPost && sender && !sender.isDeleted && !isCurrentUser) { onAvatarClick(sender); } };
 
     return (
-        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onClick={() => isMobile && onToggleActiveOnMobile?.()}>
+        <div id={`message-${message.id}`} className={cn("group flex items-end gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300", alignRight ? "flex-row-reverse outgoing-msg" : "flex-row incoming-msg")} onTouchStart={(e) => { if (!isSelectingMessages) setSelectStartTime(Date.now()); e.stopPropagation(); }} onTouchEnd={(e) => { const duration = Date.now() - (selectStartTime.current || 0); if (duration > 500 if (duration > 500  !e.target.className.includes("selection-bg"))if (duration > 500  !e.target.className.includes("selection-bg")) !e.target.className.includes("selection-bg")) { setIsSelectingMessages(true); } setSelectStartTime(0); }} onClick={() => { if (!isSelectingMessages || selectedMessageIds.has(message.id)) { onToggleActiveOnMobile?.(); return; } e.stopPropagation(); }}>
             {showSenderAvatar ? (
                 <div className="w-10 h-10 flex-shrink-0">
                     <button onClick={handleSenderClick}><UserAvatarWithStatus user={isChannelPost ? ({ id: 'channel', name: displayName, avatar: displayAvatar } as any) : (message.type === 'announcement' ? { id: 'bot', name: displayName, avatar: displayAvatar, isBot: true } as any : sender!)} /></button>
@@ -1038,7 +1042,29 @@ export function ChatView({ item: initialItem, onClose, currentUser, onSelectChat
         </div>
       )}
 
-      {isMember && canWrite && (!item.isSupergroup || activeTopicId) && (
+      {isSelectingMessages && selectedMessageIds.size > 0 && (
+        <div className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-b p-2 md:p-4">
+          <div className="max-w-full flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase text-muted-foreground">{t('selected')} {selectedMessageIds.size}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setIsSelectingMessages(false)} className="h-8 w-8 rounded-full hover:bg-muted/30"><X className="h-4 w-4" /></Button>
+              <Button variant="primary" size="small" onClick={() => {
+                // Archive selected messages
+                if (!db) return;
+                const batch = writeBatch(db);
+                selectedMessageIds.forEach(msgId => {
+                  batch.update(doc(db, 'chats', item.id, 'messages', msgId), { archived: true });
+                });
+                batch.commit();
+                setIsSelectingMessages(false);
+                setSelectedMessageIds(new Set());
+              } className="h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">{t('archive')}</Button>
+            </div>
+          </div>
+        </div>
+      )}\n\n      {isMember && canWrite && (!item.isSupergroup || activeTopicId) && (
         <footer className={cn("flex-shrink-0 p-2 md:p-3 h-auto flex flex-col pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative z-40 transition-all duration-300", (experimentalDesign || glassEffect) ? "bg-transparent absolute bottom-0 left-0 right-0 p-4" : "bg-background border-t")}>
           {(isRecordingVoice || isRecordingCircle) && (
             <div className="absolute inset-0 z-[120] flex items-center justify-between px-4 animate-in slide-in-from-bottom-2 shadow-2xl bg-background w-full h-full">

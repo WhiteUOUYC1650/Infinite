@@ -1,4 +1,4 @@
-export type Language = 'en' | 'ru' | 'es' | 'pt-BR' | 'be' | 'old-ru';
+export type Language = 'en-US' | 'en-GB' | 'en-AU' | 'en' | 'ru' | 'es' | 'pt-BR' | 'be' | 'old-ru';
 
 export const translations = {
     en: {
@@ -189,7 +189,7 @@ export const translations = {
       'welcome_title': 'Welcome to Infinite!',
       'welcome_subtitle': 'Experience the future of communication.',
       'beta_badge': '3.0.1 REDESIGN',
-      'beta_badge_classic': '3.0 CLASSIC',
+      'beta_badge_classic': '3.0.1 CLASSIC',
       'beta_badge_m2': '3.0 MATERIAL 2',
       'welcome_message': 'Thank you for choosing Infinite.',
       'continue_button': 'Continue',
@@ -336,6 +336,9 @@ export const translations = {
       'infvid_upload_title': 'Upload Video',
       'infvid_video_limits': 'Up to {size}',
       'infvid_no_description': 'No description.',
+'infvid_tab_home': 'Home',
+'infvid_tab_search': 'Search',
+'infvid_tab_channel': 'My Channel',
       'infvid_assembly_failed': 'Assembly Failed',
       'save_to_device': 'Save to device',
       'download': 'Download',
@@ -1025,6 +1028,9 @@ export const translations = {
       'infvid_upload_title': 'Загрузить видео',
       'infvid_video_limits': 'До {size}',
       'infvid_no_description': 'Описание отсутствует.',
+'infvid_tab_home': 'Главная',
+'infvid_tab_search': 'Поиск',
+'infvid_tab_channel': 'Мой канал',
       'infvid_assembly_failed': 'Ошибка сборки видео',
       'save_to_device': 'Сохранить на устройство',
       'download': 'Скачать',

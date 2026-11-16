@@ -15,7 +15,7 @@ export type Theme =
 
 /**
  * Design edition is baked in at build time, see .github/workflows/main.yml:
- *   NEXT_PUBLIC_INFINITE_EDITION=material3  → "Material 3" edition of Infinite 3.0
+ *   NEXT_PUBLIC_INFINITE_EDITION=material3  → "Material 3" edition of Infinite 3.0.1
  *   NEXT_PUBLIC_INFINITE_EDITION=material2  → "Material 2" edition (Android 5.0+)
  *   unset / any other value                 → classic Infinite 1.5 interface (default)
  *

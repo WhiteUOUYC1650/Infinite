@@ -4,7 +4,7 @@
  * Material 3 conversation row (used by the Material 3 edition only).
  *
  * Flat list item — 72dp tall, tonal avatar, no card, no divider — as in the
- * Material 3 list spec and in the Infinite 3.0 Figma file.
+ * Material 3 list spec and in the Infinite 3.0.1 Figma file.
  */
 
 import React from 'react';

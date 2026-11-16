@@ -3,7 +3,7 @@
 /**
  * Material 3 conversations screen — independent from the classic 1.5 sidebar.
  *
- * Layout follows the Infinite 3.0 Material 3 mock-up:
+ * Layout follows the Infinite 3.0.1 Material 3 mock-up:
  *   large app bar ("Infinite" + tagline + overflow menu)
  *   search field
  *   filter chips (All / DMs / Groups / Channels / Bots), text chips
@@ -239,7 +239,7 @@ export function M3ChatList({
           </button>
           <div className="min-w-0 flex-1 pt-1">
             <span className="m3-app-bar-title-large truncate">Infinite</span>
-            <span className="m3-app-bar-tagline truncate">3.0 / Redesign</span>
+            <span className="m3-app-bar-tagline truncate">3.0.1 / Redesign</span>
           </div>
         </div>
 

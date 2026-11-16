@@ -248,6 +248,7 @@ export function InfVidView({ currentUser, onClose, initialVideoId }: { currentUs
   const { t } = useLanguage(); const db = useFirestore(); const { toast } = useToast(); const { theme: colorTheme } = useTheme();
   const [isUploadOpen, setIsUploadOpen] = useState(false); const [isUploading, setIsUploading] = useState(false); const [searchQuery, setSearchQuery] = useState(''); const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null); const [fetchedExternalVideo, setFetchedExternalVideo] = useState<SharedVideo | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'shorts' | 'watch_later'>('all');
+const [activeBottomTab, setActiveBottomTab] = useState<'home' | 'search' | 'channel'>('home');
   const [retryVideoId, setRetryVideoId] = useState<string | null>(null);
   const [isShortsPlayerOpen, setIsShortsPlayerOpen] = useState(false);
   const isPrem = currentUser.subscriptionTier === 'prem'; const maxSizeText = isPrem ? '4GB' : '1GB'; const maxSizeInBytes = isPrem ? 4 * 1024 * 1024 * 1024 : 1 * 1024 * 1024 * 1024;

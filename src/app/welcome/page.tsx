@@ -58,7 +58,7 @@ export default function WelcomePage() {
                 </div>
             </div>
             <div className="space-y-2">
-                <h1 className="text-4xl font-bold font-headline">Infinite 3.0</h1>
+                <h1 className="text-4xl font-bold font-headline">Infinite 3.0.1</h1>
                 <p className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Codename: Redesign</p>
             </div>
             <p className="max-w-md text-lg opacity-90 font-medium">{t('thank_you_beta')}</p>

@@ -415,3 +415,13 @@ body.use-system-font h4 {
   border-top-width: 1px;
   border-color: hsl(var(--border) / 0.8);
 }
+
+/***** Prevent text selection on long press *****/
+.prevent-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}

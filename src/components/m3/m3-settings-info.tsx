@@ -199,7 +199,7 @@ export function M3AboutPage({ onOpenAllSettings }: { onOpenAllSettings: () => vo
       </div>
 
       <p className="px-4 pt-2 text-center text-[11px] text-m3-on-surface-variant">
-        Infinite 3.0 · Redesign
+        Infinite 3.0.1 · Redesign
       </p>
 
       <LegalDialog open={!!legal} onOpenChange={(open) => !open && setLegal(null)} type={legal || 'tos'} />

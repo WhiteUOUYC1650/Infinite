@@ -27,7 +27,9 @@ import { M3SectionLabel } from './m3-surfaces';
 import { M3ThemeSwatches, M3ToggleRow } from './m3-settings-rows';
 
 const LANGUAGES: { id: Language; label: string }[] = [
-  { id: 'en', label: 'English' },
+  { id: 'en-US', label: 'English (American)' },
+  { id: 'en-GB', label: 'English (British)' },
+  { id: 'en-AU', label: 'English (Australian)' },
   { id: 'ru', label: 'Русский' },
   { id: 'es', label: 'Español' },
   { id: 'pt-BR', label: 'Português (BR)' },

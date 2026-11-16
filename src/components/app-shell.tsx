@@ -478,7 +478,7 @@ function ChatUI({ currentUser, sessionId }: { currentUser: FirebaseUser, session
             onSelectService={handleM3SelectService}
             onSelectSaved={handleM3SavedMessages}
             onSelectGeneral={handleM3GeneralChat}
-            onOpenSettings={() => setM3SettingsOpen(true)}
+            onOpenSettings={() => setExperimentalSettingsOpen(true)}
           >
             {selectedItem ? renderSelectedContent() : null}
           </M3Shell>
