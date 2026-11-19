@@ -146,7 +146,7 @@ export function M3SettingsScreen({
             </div>
 
             <p className="mt-4 text-center text-[11px] text-m3-on-surface-variant">
-              Infinite 3.0 · Redesign · {t('edition_material3')}
+              Infinite 3.0.1 · Redesign · {t('edition_material3')}
             </p>
           </div>
         )}
