@@ -43,7 +43,7 @@ export default function Error({
       >
         {/* Circle with N letter */}
         <div className="flex items-center justify-center h-20 w-20 rounded-full mx-auto mb-6 bg-primary/10 border border-primary/20">
-          <Search className="h-10 w-10 text-primary" />
+          <span className="text-3xl font-bold text-primary">N</span>
         </div>
         
         <h2 className="text-xl font-bold font-headline text-center mb-3">Error</h2>
