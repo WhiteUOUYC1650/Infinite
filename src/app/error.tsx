@@ -1,3 +1,5 @@
+'use client';
+
 import { Search, Copy, CopyDone, CopyError } from 'lucide-react';
 
 export default function Error({
