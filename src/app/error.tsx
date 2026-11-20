@@ -11,6 +11,21 @@ export default function Error({
 }) {
   const [showDetails, setShowDetails] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const [highlightedUrl, setHighlightedUrl] = React.useState<string | null>(null);
+
+  // Extract URL from Next.js error pattern: "Application error: a client-side exception has occurred while loading ..."
+  const nextJsErrorPattern = /Application error: a client-side exception has occurred while loading (.+)/i;
+  const extractedUrl = React.useMemo(() => {
+    if (typeof error === 'string' && nextJsErrorPattern.test(error)) {
+      const match = error.match(nextJsErrorPattern);
+      if (match[1]) {
+        setHighlightedUrl(match[1].trim());
+        return match[1].trim();
+      }
+    }
+    return null;
+  }, [error]);
+
   const errorMessage = React.useMemo(() => {
     if (error === null || error === undefined) return 'Unknown error';
     if (typeof error === 'string') return error;
@@ -26,7 +41,8 @@ export default function Error({
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(errorMessage);
+      const textToCopy = highlightedUrl || errorMessage;
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       // Reset after 2 seconds
       const timer = setTimeout(() => setCopied(false), 2000);
@@ -59,6 +75,28 @@ export default function Error({
         >
           <Search className="mr-2 h-4 w-4" /> Show error details
         </button>
+
+        {/* URL highlight box - appears when URL is detected */}
+        {highlightedUrl && (
+          <div
+            className="bg-primary/5 border border-primary/2 rounded-md p-3 mb-6 rounded-xl animate-in fade-in duration-300"
+            style="max-width: 420px; margin-left: auto; margin-right: auto;"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <Search className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-primary mb-1">
+                  Vercel Preview URL
+                </p>
+                <p className="text-xs text-primary/80 line-clamp-2">
+                  {highlightedUrl}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Error details panel - appears when toggled */}
         {showDetails && (
