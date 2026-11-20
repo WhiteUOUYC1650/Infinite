@@ -41,7 +41,7 @@ function FontManager() {
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <main className="flex-1 p-4">
       <BackgroundManager />
       <FontManager />
       <OrientationManager />
@@ -55,7 +55,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             </UpdatePromptProvider>
           </NotificationProvider>
       </LanguageProvider>
-    </>
+    </main>
   );
 }
 
