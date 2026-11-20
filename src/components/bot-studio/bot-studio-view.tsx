@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, orderBy, doc, setDoc, deleteDoc, Timestamp, runTransaction, updateDoc, getDoc, getDocs, increment, arrayUnion } from 'firebase/firestore';
-import type { AuthenticatedUser, CustomBot, BotMarketItem } from '@/types';
+import type { AuthenticatedUser, CustomBot, BotMarketItem, BotMiniApp, BotScript, BotSourceItem } from '@/types';
 import { useLanguage } from '@/context/language-context';
-import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost, X, LayoutGrid, ShoppingBag, Search, Download, Star, ExternalLink, Info, Coins } from 'lucide-react';
+import { Cpu, Plus, ArrowLeft, Loader2, Bot, Pencil, Trash2, Play, Pause, ChevronRight, Code2, Ghost, X, LayoutGrid, ShoppingBag, Search, Download, Star, ExternalLink, Info, Coins, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,101 @@ import { cn } from '@/lib/utils';
 import { Capacitor } from '@capacitor/core';
 import { InfGoldIcon } from '../ui/inf-gold-icon';
 
-export function BotStudioView({ currentUser, onClose }: { currentUser: AuthenticatedUser, onClose: () => void }) {
+/** Full bot programming guide (opened from the FAQ and from the studio header). */
+const BOT_GUIDE: { title: string; items: { name: string; description: string }[] }[] = [
+  {
+    title: 'События — с чего начинается сценарий',
+    items: [
+      { name: 'При старте (event_start)', description: 'Срабатывает, когда пользователь открывает бота или отправляет /start.' },
+      { name: 'При сообщении (event_message)', description: 'Срабатывает на любое входящее сообщение.' },
+      { name: 'При нажатии кнопки (event_button_click)', description: 'Срабатывает, когда нажата кнопка с указанным button_id.' },
+    ],
+  },
+  {
+    title: 'Действия — что делает бот',
+    items: [
+      { name: 'Отправить сообщение (action_send)', description: 'Отправляет текст. Можно подставлять переменные: {name}.' },
+      { name: 'Ответить (action_reply)', description: 'Отвечает реплаем на сообщение пользователя.' },
+      { name: 'Подождать (action_wait)', description: 'Пауза перед следующим блоком (миллисекунды).' },
+      { name: 'Реакция (action_reaction)', description: 'Ставит реакцию на сообщение.' },
+      { name: 'Медиа (action_send_image / video / music / file)', description: 'Отправляет вложение по ссылке.' },
+      { name: 'Остановить (action_stop)', description: 'Прерывает выполнение сценария.' },
+    ],
+  },
+  {
+    title: 'Логика — ветвления',
+    items: [
+      { name: 'Если (logic_if)', description: 'Условие, например {gold} >= 100 или {text} == "привет".' },
+      { name: 'Иначе (logic_else)', description: 'Альтернативная ветка условия.' },
+      { name: 'Конец условия (logic_end_if)', description: 'Закрывает блок условия.' },
+      { name: 'Если текст (condition_if_text)', description: 'Сравнивает текст сообщения с заданным.' },
+    ],
+  },
+  {
+    title: 'Переменные — память бота',
+    items: [
+      { name: 'Задать (variable_set)', description: 'Присваивает переменной текст или значение.' },
+      { name: 'Математика (variable_math)', description: 'Сложение, вычитание, умножение, деление.' },
+      { name: 'Случайное (variable_random)', description: 'Случайное число в заданном диапазоне.' },
+      { name: 'Очистить (variable_clear)', description: 'Удаляет переменную.' },
+    ],
+  },
+  {
+    title: 'Интерфейс мини-приложений',
+    items: [
+      { name: 'Заголовок (ui_header)', description: 'Крупный заголовок экрана мини-приложения.' },
+      { name: 'Текст (ui_text)', description: 'Абзац текста.' },
+      { name: 'Кнопка (ui_button)', description: 'Кнопка с button_id: на неё реагирует «При нажатии кнопки».' },
+      { name: 'Разделитель (ui_separator)', description: 'Горизонтальная линия.' },
+    ],
+  },
+];
+
+/** Bot links: English letters (any case), digits and underscores only. */
+const HANDLE_REGEX = /^[A-Za-z0-9_]+$/;
+
+type HandleState = 'empty' | 'invalid' | 'checking' | 'taken' | 'available';
+
+/** Debounced uniqueness check for a bot link (@username + /B/link). */
+function useHandleAvailability(db: any, rawHandle: string, enabled: boolean): HandleState {
+  const [state, setState] = useState<HandleState>('empty');
+  useEffect(() => {
+    const cleanHandle = rawHandle.replace('@', '').trim();
+    if (!enabled || !cleanHandle) { setState('empty'); return; }
+    if (!HANDLE_REGEX.test(cleanHandle)) { setState('invalid'); return; }
+    if (!db) return;
+    setState('checking');
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const [usernameSnap, linkSnap] = await Promise.all([
+          getDoc(doc(db, 'usernames', '@' + cleanHandle)),
+          getDoc(doc(db, 'botLinks', encodeURIComponent('/B/' + cleanHandle))),
+        ]);
+        if (!cancelled) setState(usernameSnap.exists() || linkSnap.exists() ? 'taken' : 'available');
+      } catch {
+        // never block creation because the availability probe failed
+        if (!cancelled) setState('available');
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [db, rawHandle, enabled]);
+  return state;
+}
+
+function HandleHint({ state, t }: { state: HandleState; t: any }) {
+  if (state === 'empty') return null;
+  const map: Record<Exclude<HandleState, 'empty'>, { text: string; className: string }> = {
+    invalid: { text: t('handle_hint_invalid'), className: 'text-destructive' },
+    checking: { text: t('handle_hint_checking'), className: 'text-muted-foreground' },
+    taken: { text: t('handle_hint_taken'), className: 'text-destructive' },
+    available: { text: t('handle_hint_available'), className: 'text-emerald-600' },
+  };
+  const item = map[state];
+  return <p className={cn('ml-1 text-[11px] font-bold', item.className)}>{item.text}</p>;
+}
+
+export function BotStudioView({ currentUser, onClose, initialGuideOpen = false }: { currentUser: AuthenticatedUser, onClose: () => void, initialGuideOpen?: boolean }) {
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -32,6 +126,8 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
   const [newBotName, setNewBotName] = useState('');
   const [newBotHandle, setNewBotHandle] = useState('');
   const [selectedBot, setSelectedBot] = useState<CustomBot | null>(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(initialGuideOpen);
+  const handleState = useHandleAvailability(db, newBotHandle, isCreateOpen);
 
   const botsQuery = useMemo(() => {
     if (!db) return null;
@@ -95,6 +191,28 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
     }
   };
 
+  /** Publishes the bot source (scripts + mini apps) to InfMarket without a link. */
+  const handlePublishSource = async (bot: CustomBot) => {
+    if (!db) return;
+    try {
+      await setDoc(doc(collection(db, 'botMarket')), {
+        authorId: currentUser.uid,
+        authorName: currentUser.name || currentUser.username,
+        name: bot.name,
+        description: bot.description || '',
+        avatar: bot.avatar || null,
+        scripts: bot.scripts || [],
+        miniApps: bot.miniApps || [],
+        downloads: 0,
+        createdAt: Timestamp.now(),
+      });
+      toast({ title: t('dm_success'), description: t('bot_source_published') });
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: e?.message });
+    }
+  };
+
   const handleToggleActive = async (bot: CustomBot) => {
     if (!db) return;
     try {
@@ -143,6 +261,9 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
             <Button variant="outline" className={cn("rounded-full font-bold h-10 px-4 transition-all", activeTab === 'market' ? "bg-primary text-white border-primary" : "")} onClick={() => setActiveTab(activeTab === 'my_bots' ? 'market' : 'my_bots')}>
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 <span>Market</span>
+            </Button>
+            <Button variant="outline" size="icon" title={t('open_bot_guide')} onClick={() => setIsGuideOpen(true)} className="h-10 w-10 rounded-full shrink-0">
+                <Info className="h-4 w-4" />
             </Button>
             <Button onClick={() => setIsCreateOpen(true)} className="rounded-full gap-2 font-bold shadow-lg shadow-primary/20 h-10 px-4 shrink-0">
                 <Plus className="h-4 w-4" />
@@ -193,6 +314,9 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                                             <Button variant="outline" size="sm" className="flex-1 rounded-xl font-bold h-10 border-none bg-background hover:bg-primary/5" onClick={() => setSelectedBot(bot)}>
                                                 <Pencil className="h-4 w-4 mr-2" /> {t('manage_bot')}
                                             </Button>
+                                            <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 border-none bg-background hover:bg-primary/5" title={t('publish_bot_source')} onClick={() => handlePublishSource(bot)}>
+                                                <ShoppingBag className="h-4 w-4" />
+                                            </Button>
                                             <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 border-none bg-background hover:bg-primary/5" onClick={() => handleToggleActive(bot)}>
                                                 {bot.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                                             </Button>
@@ -214,6 +338,41 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
             )}
         </div>
       </main>
+
+      <Dialog open={isGuideOpen} onOpenChange={setIsGuideOpen}>
+          <DialogContent hideCloseButton className="max-w-2xl h-[85vh] max-h-[85vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-[2rem]">
+              <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                  <Button variant="ghost" size="icon" onClick={() => setIsGuideOpen(false)} className="absolute left-2 top-1/2 -translate-y-1/2"><ArrowLeft /></Button>
+                  <DialogTitle>{t('open_bot_guide')}</DialogTitle>
+                  <Button variant="ghost" size="icon" onClick={() => setIsGuideOpen(false)} className="absolute right-2 top-1/2 -translate-y-1/2"><X /></Button>
+              </DialogHeader>
+              <ScrollArea className="flex-1">
+                  <div className="p-6 space-y-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                          Бот — это сценарий из блоков. Сценарий всегда начинается с события, дальше идут действия,
+                          условия и переменные. Блоки добавляются в редакторе бота; мини-приложения собираются
+                          из блоков интерфейса и открываются кнопкой «Открыть приложение» в чате с ботом.
+                      </p>
+                      {BOT_GUIDE.map((section) => (
+                          <section key={section.title} className="space-y-3">
+                              <h3 className="text-xs font-black uppercase tracking-[0.18em] text-primary">{section.title}</h3>
+                              <div className="space-y-2">
+                                  {section.items.map((item) => (
+                                      <div key={item.name} className="rounded-2xl bg-muted/40 p-4">
+                                          <p className="text-sm font-bold">{item.name}</p>
+                                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+                                      </div>
+                                  ))}
+                              </div>
+                          </section>
+                      ))}
+                  </div>
+              </ScrollArea>
+              <DialogFooter className="p-4 border-t shrink-0">
+                  <Button onClick={() => setIsGuideOpen(false)} className="w-full h-12 rounded-xl font-bold">{t('ok')}</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogContent hideCloseButton className="max-w-sm rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden">
@@ -237,10 +396,11 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
                           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">@</span>
                           <Input id="bot-handle" value={newBotHandle} onChange={(e) => setNewBotHandle(e.target.value.replace('@', '').replace(/\s/g, ''))} placeholder="helper_bot" className="h-12 pl-7 rounded-xl bg-muted/50 border-none focus-visible:ring-primary font-bold" />
                       </div>
+                      <HandleHint state={handleState} t={t} />
                   </div>
               </div>
               <DialogFooter className="p-8 pt-0 flex flex-col gap-2">
-                  <Button onClick={handleCreateBot} disabled={isCreating || !newBotName.trim() || !newBotHandle.trim()} className="w-full h-12 rounded-xl font-bold">
+                  <Button onClick={handleCreateBot} disabled={isCreating || !newBotName.trim() || handleState !== 'available'} className="w-full h-12 rounded-xl font-bold">
                       {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                       {t('create_bot')}
                   </Button>
@@ -250,6 +410,147 @@ export function BotStudioView({ currentUser, onClose }: { currentUser: Authentic
       </Dialog>
     </div>
   );
+}
+
+/** InfMarket: linkless bot sources published from Bot Studio. Importing asks the
+ *  importer for their own bot link. */
+function BotSourcesSection({ currentUser }: { currentUser: AuthenticatedUser }) {
+    const { t } = useLanguage();
+    const db = useFirestore();
+    const { toast } = useToast();
+    const [importTarget, setImportTarget] = useState<BotSourceItem | null>(null);
+    const [importHandle, setImportHandle] = useState('');
+    const [isImporting, setIsImporting] = useState(false);
+    const importState = useHandleAvailability(db, importHandle, !!importTarget);
+
+    const sourcesQuery = useMemo(() => (db ? query(collection(db, 'botMarket'), orderBy('downloads', 'desc')) : null), [db]);
+    const { data: sources, loading } = useCollection<BotSourceItem>(sourcesQuery as any);
+
+    const myBotsQuery = useMemo(() => (db ? query(collection(db, 'customBots'), where('ownerId', '==', currentUser.uid)) : null), [db, currentUser.uid]);
+    const { data: myBots } = useCollection<CustomBot>(myBotsQuery as any);
+    const importedIds = useMemo(() => new Set(((myBots || []) as any[]).map((bot) => bot.sourceMarketId).filter(Boolean)), [myBots]);
+
+    const handleImport = async () => {
+        if (!db || !importTarget || importState !== 'available') return;
+        const cleanHandle = importHandle.replace('@', '').trim();
+        setIsImporting(true);
+        try {
+            await runTransaction(db, async (transaction) => {
+                const usernameRef = doc(db, 'usernames', '@' + cleanHandle);
+                const userSnap = await transaction.get(usernameRef);
+                if (userSnap.exists()) throw new Error(t('handle_hint_taken'));
+
+                const botId = doc(collection(db, 'users')).id;
+                const source = importTarget;
+                transaction.set(doc(db, 'customBots', botId), {
+                    id: botId,
+                    name: source.name,
+                    username: '@' + cleanHandle,
+                    ownerId: currentUser.uid,
+                    avatar: source.avatar || null,
+                    description: source.description || '',
+                    scripts: source.scripts || [],
+                    miniApps: source.miniApps || [],
+                    isActive: true,
+                    createdAt: Timestamp.now(),
+                    sourceMarketId: source.id,
+                } as any);
+                transaction.set(doc(db, 'users', botId), {
+                    id: botId, name: source.name, username: '@' + cleanHandle, isBot: true, isCustomBot: true,
+                    botOwnerId: currentUser.uid, status: 'online', statusMessage: 'Custom bot imported from InfMarket.',
+                });
+                transaction.set(usernameRef, { uid: botId });
+                transaction.set(doc(db, 'botLinks', encodeURIComponent('/B/' + cleanHandle)), { botId });
+                transaction.update(doc(db, 'botMarket', source.id), { downloads: increment(1) });
+            });
+            toast({ title: t('dm_success') });
+            setImportTarget(null);
+            setImportHandle('');
+        } catch (e: any) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: e?.message });
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
+    if (loading) return <div className="flex justify-center py-10"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
+    if (!sources || sources.length === 0) return null;
+
+    return (
+        <div className="space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">{t('bot_market_sources')}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sources.map((source) => {
+                    const alreadyImported = importedIds.has(source.id);
+                    return (
+                        <Card key={source.id} className="rounded-3xl border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-card flex flex-col overflow-hidden">
+                            <CardHeader className="flex flex-row items-center gap-4 pb-4">
+                                <Avatar className="w-14 h-14 rounded-2xl border bg-muted flex items-center justify-center shrink-0">
+                                    <AvatarImage src={source.avatar} />
+                                    <AvatarFallback><Bot className="h-8 w-8 text-muted-foreground" /></AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                    <CardTitle className="truncate font-bold text-lg">{source.name}</CardTitle>
+                                    <CardDescription className="truncate font-medium">{source.authorName}</CardDescription>
+                                </div>
+                            </CardHeader>
+                            {source.description ? (
+                                <CardContent className="pt-0"><p className="text-xs text-muted-foreground line-clamp-2">{source.description}</p></CardContent>
+                            ) : null}
+                            <CardFooter className="mt-auto p-4 gap-2 bg-muted/20 items-center justify-between">
+                                <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+                                    <Download className="h-3.5 w-3.5" /> {source.downloads || 0}
+                                </span>
+                                <Button
+                                    size="sm"
+                                    className="rounded-xl font-bold h-10 px-4"
+                                    disabled={alreadyImported}
+                                    onClick={() => { setImportTarget(source); setImportHandle(''); }}
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    {alreadyImported ? t('imported_bot') : t('import_bot_source')}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    );
+                })}
+            </div>
+
+            <Dialog open={!!importTarget} onOpenChange={(open) => { if (!open) { setImportTarget(null); setImportHandle(''); } }}>
+                <DialogContent hideCloseButton className="max-w-sm rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden">
+                    <DialogHeader className="relative flex-row items-center justify-center p-4 border-b shrink-0 h-16">
+                        <DialogTitle>{t('import_bot_source')}</DialogTitle>
+                        <Button variant="ghost" size="icon" onClick={() => { setImportTarget(null); setImportHandle(''); }} className="absolute right-2 top-1/2 -translate-y-1/2"><X /></Button>
+                    </DialogHeader>
+                    <div className="px-8 pt-6 pb-4 space-y-4">
+                        <DialogDescription>{importTarget?.name}</DialogDescription>
+                        <div className="space-y-2">
+                            <Label htmlFor="import-handle" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">{t('bot_link_for_import')}</Label>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">@</span>
+                                <Input
+                                    id="import-handle"
+                                    value={importHandle}
+                                    onChange={(e) => setImportHandle(e.target.value.replace('@', '').replace(/\s/g, ''))}
+                                    placeholder="my_copy_bot"
+                                    className="h-12 pl-7 rounded-xl bg-muted/50 border-none focus-visible:ring-primary font-bold"
+                                />
+                            </div>
+                            <HandleHint state={importState} t={t} />
+                        </div>
+                    </div>
+                    <DialogFooter className="p-8 pt-0 flex flex-col gap-2">
+                        <Button onClick={handleImport} disabled={isImporting || importState !== 'available'} className="w-full h-12 rounded-xl font-bold">
+                            {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                            {t('import_bot_source')}
+                        </Button>
+                        <Button variant="ghost" onClick={() => { setImportTarget(null); setImportHandle(''); }} className="w-full h-12 rounded-xl font-medium text-muted-foreground">{t('cancel')}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
 }
 
 function MarketView({ currentUser }: { currentUser: AuthenticatedUser }) {
@@ -308,6 +609,7 @@ function MarketView({ currentUser }: { currentUser: AuthenticatedUser }) {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <BotSourcesSection currentUser={currentUser} />
             <div className="text-center space-y-4 max-w-lg mx-auto">
                 <h2 className="text-4xl font-black font-headline text-primary">InfMarket</h2>
                 <p className="text-muted-foreground font-medium">Торговая площадка для плагинов и скриптов Bot Studio.</p>

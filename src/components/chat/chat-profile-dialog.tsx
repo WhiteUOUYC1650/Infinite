@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AuthenticatedUser, PopulatedChat, User, type Chat, type ChatLink } from '@/types';
 import { useLanguage } from '@/context/language-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Megaphone, Users, LogOut, Trash2, Pencil, Loader2, MessageSquare, Share2, Bell, BellOff, X, SmilePlus, ArrowLeft, Globe, Eraser, Search, MoreHorizontal, ShoppingBag, Coins } from 'lucide-react';
 import { useFirestore } from '@/firebase';
@@ -96,6 +97,7 @@ async function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<
 }
 
 export function ChatProfileDialog({ chat, members: initialMembers, currentUser, open, onOpenChange, onCloseChat }: ChatProfileDialogProps) {
+  const isMobile = useIsMobile();
   const { t } = useLanguage();
   const db = useFirestore();
   const { toast } = useToast();
@@ -254,7 +256,13 @@ export function ChatProfileDialog({ chat, members: initialMembers, currentUser, 
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideCloseButton className={cn("max-w-sm flex flex-col p-0 overflow-hidden h-[85vh] h-full-safe max-h-[85vh] bg-card", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl" : "rounded-lg")}>
+      <DialogContent hideCloseButton className={cn(
+        "flex flex-col p-0 overflow-hidden bg-card",
+        isMobile
+          // phones: full-screen chat profile
+          ? "left-0 top-0 h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-none border-none sm:rounded-none"
+          : cn("max-w-sm h-[85vh] h-full-safe max-h-[85vh]", experimentalDesign ? "rounded-[2.5rem] border-none shadow-2xl" : "rounded-lg")
+      )}>
         <DialogTitle className="sr-only">{chat.name || 'Chat Profile'}</DialogTitle>
         {imageToCrop ? (
             <div className="p-6 h-full flex flex-col">
