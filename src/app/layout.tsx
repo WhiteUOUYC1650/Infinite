@@ -10,6 +10,7 @@ import { ThemeProvider, useTheme } from '@/context/theme-context';
 import { Snowfall } from '@/components/ui/snowfall';
 import { NotificationProvider } from '@/context/notification-context';
 import { OrientationManager } from '@/components/OrientationManager';
+import { DebugConsole } from '@/components/DebugConsole';
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 
@@ -84,6 +85,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
+        <DebugConsole />
         <FirebaseClientProvider>
           <ThemeProvider>
             <div className="min-h-svh h-full flex flex-col relative antialiased">
