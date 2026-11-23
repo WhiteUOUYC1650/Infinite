@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/context/theme-context';
 import type { User } from '@/types';
 import { LegalDialog } from '@/components/legal-dialog';
+import { EditionBadge } from '@/components/ui/edition-badge';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -583,7 +584,7 @@ export default function LoginPage() {
       </div>
 
       <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))]">
-        <Badge variant="outline">{t('beta_badge')}</Badge>
+        <EditionBadge />
       </div>
 
       <LegalDialog 

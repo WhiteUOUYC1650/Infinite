@@ -35,11 +35,20 @@ export type User = {
   watchLater?: string[];
   activeGiftEmoji?: string | null;
   archivedChats?: string[];
+  chatFolders?: ChatFolder[];
   birthday?: {
     day: number;
     month: number;
     year?: number;
   };
+};
+
+/** User-defined chat folders ("tabs" above the chat list). */
+export type ChatFolder = {
+  id: string;
+  name: string;
+  emoji?: string;
+  chatIds: string[];
 };
 
 export type Sticker = {
@@ -229,6 +238,20 @@ export type BotMarketItem = {
   type: 'script' | 'plugin';
 };
 
+/** A bot source published to InfMarket (linkless — the importer picks the link). */
+export type BotSourceItem = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  scripts: BotScript[];
+  miniApps?: BotMiniApp[];
+  downloads: number;
+  createdAt?: Timestamp;
+};
+
 export type Transfer = {
   id: string;
   senderId: string;
@@ -281,6 +304,19 @@ export type Chat = {
   isSupergroup?: boolean;
   topics?: ChatTopic[];
   allowedReactionsList?: string[];
+  /** Moderation (3.0.1): users muted by the group owner. */
+  mutedUsers?: Record<string, ChatRestriction>;
+  /** Moderation (3.0.1): users banned by the group owner. */
+  bannedUsers?: Record<string, ChatRestriction>;
+};
+
+/** A mute/ban entry stored on the chat document. */
+export type ChatRestriction = {
+  /** Free-form reason, typed on the line below the command. */
+  reason?: string;
+  /** UID of the moderator (group owner). */
+  by?: string;
+  since?: Timestamp;
 };
 
 export type ChatLink = {
